@@ -61,7 +61,7 @@ export function EnterCodeForm({
 
   return (
     <>
-      <form className={styles.form} onSubmit={submitCode}>
+      <form className={styles.form} noValidate onSubmit={submitCode}>
         {state.email !== null ? (
           <div data-testid="login-code-email" className={styles.sentTo}>
             {ACCOUNT_ACCESS_COPY.codeSentTo} <strong>{state.email}</strong>
@@ -89,7 +89,6 @@ export function EnterCodeForm({
             className={styles.input}
             type="text"
             inputMode="numeric"
-            pattern="[0-9]*"
             maxLength={8}
             autoComplete="one-time-code"
             value={code}

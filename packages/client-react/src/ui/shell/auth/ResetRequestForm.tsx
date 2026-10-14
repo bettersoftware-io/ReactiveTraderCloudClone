@@ -32,7 +32,7 @@ export function ResetRequestForm({
 
   return (
     <>
-      <form className={styles.form} onSubmit={submitResetRequest}>
+      <form className={styles.form} noValidate onSubmit={submitResetRequest}>
         <label className={styles.field}>
           <span className={styles.label}>{ACCOUNT_ACCESS_COPY.emailLabel}</span>
           <input
