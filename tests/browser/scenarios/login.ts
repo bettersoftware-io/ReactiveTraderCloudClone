@@ -123,7 +123,7 @@ export async function expectAccountLinksAbsent(
 }
 
 /** Click the create-account link. */
-export async function openCreateAccount(ctx: TestContext): Promise<void> {
+async function openCreateAccount(ctx: TestContext): Promise<void> {
   await login(ctx).openCreateAccount();
 }
 
@@ -141,10 +141,7 @@ export async function typeEmail(
 }
 
 /** Type into the display-name field. */
-export async function typeDisplayName(
-  ctx: TestContext,
-  value: string,
-): Promise<void> {
+async function typeDisplayName(ctx: TestContext, value: string): Promise<void> {
   await login(ctx).typeDisplayName(value);
 }
 
@@ -188,11 +185,6 @@ export async function expectNotice(
 /** Click the notice's action button. */
 export async function takeNoticeAction(ctx: TestContext): Promise<void> {
   await login(ctx).takeNoticeAction();
-}
-
-/** Click Back (to sign in). */
-export async function goBackToSignIn(ctx: TestContext): Promise<void> {
-  await login(ctx).goBack();
 }
 
 /** Assert the login page has made no request whose path ends with `path`. */
