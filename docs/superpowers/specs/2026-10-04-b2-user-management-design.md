@@ -549,6 +549,31 @@ the code to `/confirm-email`. It must render:
 `AccountErrorDto.rule` is a plain string in B2a (a `PasswordRuleId`, `email`,
 `display-name` or `password`); B2b types it.
 
+*Amended 2026-10-14 (B2b as built, PR #TBD-B2B).*
+
+- `AuthPresenter` gains `accounts` (the port's five account flows, a
+  pass-through). A machine factory is handed presenters only (`CoreFactory`),
+  so the flows cannot reach `accountAccess` any other way; the earlier
+  statement that the `auth` presenter only maps messages no longer holds.
+- `AuthViewState` gains `failure` (the `AuthFailureReason`, with `error` as
+  its text) so the sign-in form can offer the code entry on `unconfirmed`.
+- `accountAccess` phases: `signIn` (at rest), `register`, `code` (flow
+  `signup` or `reset`), `requestReset`, `pendingApproval`, `passwordUnset`,
+  `passwordChanged`. One pure fold, `stepAccountAccess` in `@rtc/core-logic`,
+  serves all three cores. The password is held in the machine's closure and
+  never in state; the devtools hub masks `password` and `code` in recorded
+  intent arguments.
+- "I already have a code" (`startCodeEntry`) opens the code step with nothing
+  held, so a user whose resend was throttled can use the latest code.
+- `registrationAvailable` is the shell lane's name; it is true only on a page
+  with a server URL (an empty `VITE_SERVER_URL` counts as none).
+- All copy lives in `@rtc/core-logic` (`accountAccessCopy.ts`); the account
+  forms carry `noValidate` so that copy shows instead of the browser's bubble.
+- React Native is untouched.
+
+How it works and where the pieces live:
+[authentication.md §7.9](../../authentication.md#79-the-client-flows-b2b).
+
 React Native is out of scope. Its login keeps working against the deployed
 server for roster and registered accounts alike, since `/login` keeps its
 shape; the three new failure reasons read as a failed sign-in there.
@@ -642,7 +667,7 @@ by our code after the request that sets it).
 | Stage | Ships | Usable alone |
 |---|---|---|
 | **B2a** | Migrations, `accounts/`, the six endpoints, token claims, upgrade re-check, limits, keep-alive, the probe script, privacy notice, docs (*amended 2026-10-04*: the identity on each connection moves to B2c) | Yes, with `curl`; approval in the Supabase dashboard |
-| **B2b** | `AuthPort` additions, `accountAccess` in three cores, login-screen modes in both clients, goldens | Yes; approval in the dashboard |
+| **B2b** | `AuthPort` additions, `accountAccess` in three cores (one shared fold), login-screen modes in both clients at parity, eight visual scenarios, a real-server e2e; *as built, PR #TBD-B2B* | Yes; approval in the dashboard |
 | **B2c** | Admin effects, Users panel in three cores and both clients, `/mcp` admin gate (*amended 2026-10-04*: plus `SessionUser.access`, the identity on each connection, `sessionRegistry` and the status cache's invalidation) | Completes B2 |
 
 Each stage gets its own plan, review and PR train. B2a's token change is

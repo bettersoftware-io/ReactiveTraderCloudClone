@@ -433,14 +433,13 @@ amendments, is the
 [B2 spec](superpowers/specs/2026-10-04-b2-user-management-design.md); the
 privacy notice is [`privacy.md`](privacy.md).
 
-B2a is the server half. There are no registration screens yet (B2b adds
-them), so registering, confirming and resetting are `curl` calls for now
+B2a is the server half; [§7.9](#79-the-client-flows-b2b) is the client half
+(B2b): the login screens of both web clients register, confirm and reset. The
+same calls can still be made with `curl`
 ([`DEPLOY.md` §4](DEPLOY.md#4-supabase-account-store) has them). Signing in
-already works from the existing sign-in form, because the hybrid client sends
-every non-demo credential to `/login`: type the email address as the
-username. The current clients show the three new `403` refusals as "Service
-unavailable", since `HttpAuthAdapter` reads every status but `200` and `401`
-that way; B2b gives each its own message.
+works from the sign-in form because the hybrid client sends every non-demo
+credential to `/login`: type the email address as the username. Each of the
+three `403` refusals (`unconfirmed`, `pending`, `blocked`) has its own message.
 
 Only `@rtc/server` knows the account store exists. No Supabase URL, key or
 SDK is in a client, in `@rtc/shared` or in `@rtc/domain`, and Supabase's own
@@ -834,3 +833,105 @@ curl -s localhost:4000/login -H 'Content-Type: application/json' \
 | Live probe of a real project | `packages/server/scripts/probe-accounts.ts` (`pnpm --filter @rtc/server accounts:probe`) |
 | Keep-alive | `.github/workflows/accounts-keepalive.yml` |
 | Full-stack journey | `tests/fullstack/accounts-journey.ts` |
+
+### 7.9 The client flows (B2b)
+
+The login screen in both web clients (React and Solid, at parity) drives the
+six endpoints through one machine, `accountAccess`, native in all three
+application cores over a single pure fold, `stepAccountAccess` in
+`@rtc/core-logic`. The fold returns `{ state, held, request,
+cancelsInFlight }`; each core only supplies the request slot and the timers.
+React Native is untouched: its login keeps working against the server for
+roster and registered accounts, and reads the new failure reasons as a failed
+sign-in.
+
+**Phases.** `signIn` is the machine at rest, the ordinary sign-in form.
+
+```mermaid
+flowchart TB
+  signIn["signIn"] --> register["register"]
+  signIn --> requestReset["requestReset"]
+  signIn --> codeEntry["code (I already have a code)"]
+  register --> codeSignup["code (signup)"]
+  requestReset --> codeReset["code (reset)"]
+  codeSignup --> pending["pendingApproval"]
+  codeSignup --> unset["passwordUnset"]
+  codeReset --> changed["passwordChanged"]
+```
+
+Every phase returns to `signIn` through `returnToSignIn`; `passwordUnset`
+leads on to `requestReset`. `unconfirmed` at sign-in offers the code entry,
+and `pending` / `blocked` show a plain message
+(`AuthViewState.failure` carries the reason, `error` its text). "I already
+have a code" opens the code step with nothing held, so a user whose resend was
+throttled can use the latest code they received.
+
+**Who holds what.** The password chosen on the create-account form lives in
+the machine's closure (`held.password`) until the confirmation request leaves;
+no emitted state ever carries a password or a code. The devtools hub masks
+`password` and `code` in recorded intent arguments (`DevtoolsHub`,
+`redactIntentSecrets`). The `auth` presenter gains `accounts`, a pass-through
+of the port's five flows, because a machine factory is handed presenters only.
+
+**Checks before a request.** Run in form order, in the fold, so a malformed
+value never costs a ban strike: the address is trimmed, lowercased and
+shape-checked; the display name is normalized and checked; the code is trimmed
+and must be eight digits; the password is sent as typed, must be non-empty and
+must satisfy the policy (the same rule list as the live checklist).
+
+**Races.** A request in flight is cancelled only when an intent actually
+changes state. A settle for a request the user left never lands: the fold
+requires `busy` and a matching phase and flow. A password-rule refusal at
+confirmation did not spend the code, so the held password is dropped and the
+form shows the field; at a reset the same refusal means the code is spent.
+
+**Copy.** All text lives in
+`packages/core-logic/src/presenters/accountAccessCopy.ts`; no component holds
+a user-readable literal. By reason:
+
+| Refusal | Text |
+|---|---|
+| `invalid_input`, rule `email` | Enter a valid email address |
+| `invalid_input`, rule `display-name` | Display name: 2 to 40 characters, with at least one letter or digit |
+| `invalid_input`, a password rule | "Password: " plus the checklist label, lowercased |
+| `invalid_input`, rule `password`, at a reset | That code has been used. Request a new one and choose a different password |
+| `invalid_input`, rule `password`, elsewhere | That password was refused. Request a reset code to set one |
+| `invalid_code` | That code is not valid or has expired |
+| `registration_closed` | Sign-up is paused for now |
+| `rate_limited`, on a send | Too many codes requested. The last code you received still works |
+| `rate_limited`, otherwise | Too many attempts. Wait a few minutes and try again |
+| `unavailable` | The live desk is unavailable right now. Try again shortly |
+
+The account forms carry `noValidate`, so the fold's error copy shows instead of
+the browser's validation bubble.
+
+**Links.** "Create account" and "Forgot password?" render only on a page with a
+server URL: `offersRegistration` in `@rtc/web-boot` feeds
+`registrationAvailable` on the shell lane (the one the demo hint uses), and an
+empty `VITE_SERVER_URL` counts as none. A simulator-only build therefore
+offers no registration, and no core learns about build configuration. The
+create-account form links the [privacy notice](privacy.md).
+
+**Where the pieces live.**
+
+| Piece | File |
+|---|---|
+| Phase and intent types | `packages/core-api/src/machines/accountAccess.ts` |
+| The fold, input checks, request dispatch | `packages/core-logic/src/presenters/accountAccessFold.ts` |
+| Every line of copy | `packages/core-logic/src/presenters/accountAccessCopy.ts` |
+| The three machines | `packages/client-core-rxjs/src/presenters/AccountAccessMachine.ts`, `packages/client-core-async/src/machines/accountAccess.ts`, `packages/client-core-effect/src/machines/accountAccess.ts` |
+| Address, name and code rules | `packages/domain/src/auth/accountInput.ts` |
+| Shared core contract suite | `packages/core-contract/src/suites/accountAccess.ts` |
+| Login-screen forms | `packages/client-react/src/ui/shell/auth/`, `packages/client-solid/src/ui/shell/auth/` |
+| UI contract | `packages/ui-contract/src/specs/shell/auth/LoginScreen.accountAccess.contract.spec.ts` |
+| Visual scenarios (`login/live-links`, `create-account`, `create-account-checklist`, `enter-code`, `enter-code-reset`, `reset-request`, `pending-approval`, `password-unset`) | `packages/ui-contract/src/visual/scenarios.ts` |
+| Real-server e2e | `tests/fullstack/browser/accounts.spec.ts` |
+
+**Driving it locally.** `pnpm dev:react:fs` (or `dev:solid:fs`) starts the
+server with the in-memory directory and the client together. Seeds:
+`admin@`, `trader@`, `pending@` and `blocked@rtc.test`, password
+`Mcdc2026!desk`; the confirmation code for any address is `00000000`. Register
+a new address, enter `00000000`, and the account lands in `pendingApproval`;
+`pending@` and `blocked@` show their sign-in messages. The in-memory
+directory cannot produce `password_unset` or `unconfirmed`; those are rendered
+by the visual scenarios and the shared contract suite.
