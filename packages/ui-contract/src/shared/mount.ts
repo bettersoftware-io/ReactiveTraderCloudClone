@@ -1,6 +1,7 @@
 import { BehaviorSubject } from "rxjs";
 
 import type {
+  AccountAccessState,
   AnimationIntent,
   AuthViewState,
   CoreImpl,
@@ -123,6 +124,12 @@ export interface MountOptions<P> {
   /** Seeds the one-shot `takePreferencesReopen()` (true: the composition a
    * core swap produced); defaults to false. */
   preferencesReopen?: boolean;
+  /** Seeds `useAccountAccess().state` (World.accountAccess); defaults to
+   * `{ phase: "signIn" }`, the ordinary sign-in form. */
+  accountAccess?: AccountAccessState;
+  /** Seeds `useRegistrationAvailable()` (World.registrationAvailable);
+   * defaults to false, where LoginScreen offers no account links. */
+  registrationAvailable?: boolean;
 }
 
 const mounted: MountedRoot[] = [];
@@ -320,6 +327,8 @@ export function mount<P, Page extends MountedComponent<P>>(
     coreImpl: opts.coreImpl,
     demoAccounts: opts.demoAccounts,
     preferencesReopen: opts.preferencesReopen,
+    accountAccess: opts.accountAccess,
+    registrationAvailable: opts.registrationAvailable,
   });
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

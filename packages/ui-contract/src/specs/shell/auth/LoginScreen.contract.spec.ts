@@ -155,6 +155,29 @@ describe("LoginScreen", () => {
     expect(page.loginArgs()).toEqual([["astark", "shared-pw"]]);
   });
 
+  it("renders the demo-accounts hint only on the sign-in form", () => {
+    const page = mount(LoginScreen, {
+      auth: { status: "unauthenticated" },
+      accountAccess: { phase: "register", busy: false, error: null },
+      demoAccounts: createDemoAccounts(),
+    });
+
+    expect(page.phase()).toBe("register");
+    expect(page.hasDemoAccounts()).toBe(false);
+  });
+
+  it("offers no create-account or forgot-password link when registration is unavailable", () => {
+    const page = mount(LoginScreen, {
+      auth: { status: "unauthenticated" },
+      demoAccounts: createDemoAccounts(),
+    });
+
+    expect(page.phase()).toBe("signIn");
+    expect(page.hasDemoAccounts()).toBe(true);
+    expect(page.hasCreateAccountLink()).toBe(false);
+    expect(page.hasForgotPasswordLink()).toBe(false);
+  });
+
   it("disables the demo accounts while authenticating", () => {
     const page = mount(LoginScreen, {
       auth: { status: "authenticating" },
