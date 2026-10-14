@@ -87,7 +87,8 @@ export function describePasswordRule(rule: PasswordRuleId): string {
 
 /** The error line for a refused account flow. Which request it refused
  * matters twice: a spent code (`password` at a reset) and a throttled SEND
- * (the last code still works). */
+ * (the last code still works — except at a first registration, which never
+ * received one). */
 export function describeAccountFailure(
   refusal: AccountFlowRefusal,
   request: AccountRequestKind,
@@ -100,9 +101,7 @@ export function describeAccountFailure(
     case "registration_closed":
       return "Sign-up is paused for now";
     case "rate_limited":
-      return isSend(request)
-        ? "Too many codes requested. The last code you received still works"
-        : "Too many attempts. Wait a few minutes and try again";
+      return describeRateLimit(request);
     case "unavailable":
       return "The live desk is unavailable right now. Try again shortly";
   }
@@ -133,11 +132,15 @@ function describeInputRule(
   return describePasswordRule(rule);
 }
 
-/** The requests that send a code by email. */
-function isSend(request: AccountRequestKind): boolean {
-  return (
-    request === "register" ||
-    request === "resendCode" ||
-    request === "requestPasswordReset"
-  );
+function describeRateLimit(request: AccountRequestKind): string {
+  switch (request) {
+    case "register":
+      return "Too many sign-up attempts. Try again later";
+    case "resendCode":
+    case "requestPasswordReset":
+      return "Too many codes requested. The last code you received still works";
+    case "confirmEmail":
+    case "resetPassword":
+      return "Too many attempts. Wait a few minutes and try again";
+  }
 }

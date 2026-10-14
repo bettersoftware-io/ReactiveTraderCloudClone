@@ -886,7 +886,11 @@ and must be eight digits; the password is sent as typed, must be non-empty and
 must satisfy the policy (the same rule list as the live checklist).
 
 **Races.** A request in flight is cancelled only when an intent actually
-changes state. A settle for a request the user left never lands: the fold
+changes state. A send intent (create account, send a reset code, confirm,
+resend) while a request is in flight is ignored, so a second click never
+spends the address's send budget or drops the answer to a confirmation the
+server has already made; the resend link is disabled meanwhile. Navigation
+("Back to sign in", "I already have a code") still supersedes it. A settle for a request the user left never lands: the fold
 requires `busy` and a matching phase and flow. A password-rule refusal at
 confirmation did not spend the code, so the held password is dropped and the
 form shows the field; at a reset the same refusal means the code is spent.
@@ -905,7 +909,8 @@ a user-readable literal. By reason:
 | `invalid_input`, no rule | The request was refused |
 | `invalid_code` | That code is not valid or has expired |
 | `registration_closed` | Sign-up is paused for now |
-| `rate_limited`, on a send | Too many codes requested. The last code you received still works |
+| `rate_limited`, at a registration | Too many sign-up attempts. Try again later |
+| `rate_limited`, on a resend or a reset request | Too many codes requested. The last code you received still works |
 | `rate_limited`, otherwise | Too many attempts. Wait a few minutes and try again |
 | `unavailable` | The live desk is unavailable right now. Try again shortly |
 

@@ -174,7 +174,10 @@ export function callAccountFlow(
  * machine now holds, whether the request in flight is dropped, and the port
  * call to make (if any). The one fold all three cores run, so a core is a
  * store, a request slot and this. An event the phase ignores returns the
- * SAME `state` and `held` objects with `cancelsInFlight: false`. */
+ * SAME `state` and `held` objects with `cancelsInFlight: false` — and so
+ * does a send intent (register, requestReset, submitCode, resendCode) while
+ * the phase is busy: the request in flight keeps its answer and no second
+ * send spends the address's budget. Navigation still supersedes it. */
 export function stepAccountAccess(
   state: AccountAccessState,
   held: AccountAccessHeld,
@@ -193,19 +196,20 @@ export function stepAccountAccess(
     case "returnToSignIn":
       return go(ACCOUNT_ACCESS_IDLE, NOTHING_HELD);
     case "register":
-      return state.phase === "register"
+      return state.phase === "register" && !state.busy
         ? beginRegistration(event.input)
         : stay(state, held);
     case "requestReset":
-      return state.phase === "requestReset" || state.phase === "passwordUnset"
+      return (state.phase === "requestReset" && !state.busy) ||
+        state.phase === "passwordUnset"
         ? beginResetRequest(event.email)
         : stay(state, held);
     case "submitCode":
-      return state.phase === "code"
+      return state.phase === "code" && !state.busy
         ? beginCode(state, held, event.input)
         : stay(state, held);
     case "resendCode":
-      return state.phase === "code"
+      return state.phase === "code" && !state.busy
         ? beginResend(state, held, event.email)
         : stay(state, held);
     case "settled":

@@ -23,6 +23,7 @@ const CODE_INPUT_ERROR = "Enter the 8-digit code from the email";
 const MIN_LENGTH_ERROR = "Password: at least 12 characters";
 const SEND_THROTTLED =
   "Too many codes requested. The last code you received still works";
+const REGISTER_THROTTLED = "Too many sign-up attempts. Try again later";
 const UNAVAILABLE = "The live desk is unavailable right now. Try again shortly";
 
 const STRONG = "Correct-Horse-9x";
@@ -444,7 +445,7 @@ export function describeAccountAccessContract(
         (driver: ScriptedDriver): void => {
           driver.resolveAccountCall({ ok: false, reason: "rate_limited" });
         },
-        SEND_THROTTLED,
+        REGISTER_THROTTLED,
       ],
       [
         "unavailable",
@@ -567,6 +568,76 @@ export function describeAccountAccessContract(
         h.driver.resolveAccountCall(CODE_SENT);
         await settle();
         expect(c.values.at(-1)).toEqual(createCodeStep("signup", EMAIL, true));
+        c.unsubscribe();
+      } finally {
+        m.dispose();
+        await h.teardown();
+      }
+    });
+
+    it("a send intent while busy sends nothing and keeps the request in flight", async () => {
+      const h = makeHarness();
+      const m = h.machines.accountAccess();
+
+      try {
+        const c = collect(m.state$);
+        m.intents.startRegistration();
+        await settle();
+        m.intents.register(createRegistration());
+        await settle();
+        const registering = c.values.at(-1);
+        const registerEmitted = c.values.length;
+        m.intents.register(createRegistration());
+        await settle();
+        expect(c.values).toHaveLength(registerEmitted);
+        expect(c.values.at(-1)).toBe(registering);
+        expect(h.driver.pendingAccountCalls()).toEqual([
+          { kind: "register", email: EMAIL, displayName: "Ann Stark" },
+        ]);
+        h.driver.resolveAccountCall(CODE_SENT);
+        await settle();
+        expect(c.values.at(-1)).toEqual(createCodeStep("signup", EMAIL, true));
+
+        m.intents.submitCode({ code: CODE });
+        await settle();
+        const confirming = c.values.at(-1);
+        const confirmEmitted = c.values.length;
+        m.intents.resendCode();
+        m.intents.submitCode({ code: "87654321" });
+        await settle();
+        expect(c.values).toHaveLength(confirmEmitted);
+        expect(c.values.at(-1)).toBe(confirming);
+        expect(h.driver.pendingAccountCalls()).toEqual([
+          {
+            kind: "confirmEmail",
+            email: EMAIL,
+            code: "12345678",
+            password: STRONG,
+          },
+        ]);
+        h.driver.resolveAccountCall({ ok: false, reason: "invalid_code" });
+        await settle();
+        expect(c.values.at(-1)).toMatchObject({ busy: false });
+
+        m.intents.resendCode();
+        await settle();
+        const resending = c.values.at(-1);
+        const resendEmitted = c.values.length;
+        m.intents.resendCode();
+        m.intents.submitCode({ code: CODE });
+        await settle();
+        expect(c.values).toHaveLength(resendEmitted);
+        expect(c.values.at(-1)).toBe(resending);
+        expect(h.driver.pendingAccountCalls()).toEqual([
+          { kind: "resendCode", email: EMAIL },
+        ]);
+        h.driver.resolveAccountCall(CODE_SENT);
+        await settle();
+        expect(c.values.at(-1)).toEqual({
+          ...createCodeStep("signup", EMAIL, true),
+          resent: true,
+        });
+        expect(h.driver.pendingAccountCalls()).toEqual([]);
         c.unsubscribe();
       } finally {
         m.dispose();

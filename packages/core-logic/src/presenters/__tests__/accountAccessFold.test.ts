@@ -19,6 +19,7 @@ import {
 } from "#/presenters/accountAccessCopy";
 import {
   ACCOUNT_ACCESS_IDLE,
+  type AccountAccessEvent,
   type AccountAccessHeld,
   type AccountRequest,
   callAccountFlow,
@@ -140,10 +141,7 @@ describe("callAccountFlow", () => {
 
 describe("describeAccountFailure", () => {
   it.each([
-    [
-      "register",
-      "Too many codes requested. The last code you received still works",
-    ],
+    ["register", "Too many sign-up attempts. Try again later"],
     [
       "resendCode",
       "Too many codes requested. The last code you received still works",
@@ -756,6 +754,67 @@ describe("stepAccountAccess — the code step", () => {
       request: null,
       cancelsInFlight: false,
     });
+  });
+});
+
+describe("stepAccountAccess — a send intent while busy", () => {
+  it.each<[string, AccountAccessState, AccountAccessEvent]>([
+    [
+      "register on a busy create-account form",
+      { phase: "register", busy: true, error: null },
+      { kind: "register", input: createRegistration() },
+    ],
+    [
+      "requestReset on a busy reset form",
+      { phase: "requestReset", busy: true, error: null },
+      { kind: "requestReset", email: "a@b.co" },
+    ],
+    [
+      "submitCode on a busy sign-up code step",
+      createCodePhase("signup", { email: "a@b.co", busy: true }),
+      { kind: "submitCode", input: { code: "12345678", password: STRONG } },
+    ],
+    [
+      "resendCode on a busy sign-up code step",
+      createCodePhase("signup", { email: "a@b.co", busy: true }),
+      { kind: "resendCode", email: undefined },
+    ],
+    [
+      "submitCode on a busy reset code step",
+      createCodePhase("reset", { email: "a@b.co", busy: true }),
+      { kind: "submitCode", input: { code: "12345678", password: STRONG } },
+    ],
+    [
+      "resendCode on a busy reset code step",
+      createCodePhase("reset", { email: "a@b.co", busy: true }),
+      { kind: "resendCode", email: "a@b.co" },
+    ],
+  ])(
+    "%s is ignored: the request in flight stays, nothing is sent",
+    (_name, state, event) => {
+      const held: AccountAccessHeld = { email: "a@b.co", password: STRONG };
+
+      const step = stepAccountAccess(state, held, event);
+
+      expect(step.state).toBe(state);
+      expect(step.held).toBe(held);
+      expect(step.request).toBeNull();
+      expect(step.cancelsInFlight).toBe(false);
+    },
+  );
+
+  it("a navigation intent still supersedes the request in flight", () => {
+    const busy = createCodePhase("signup", { email: "a@b.co", busy: true });
+    const held: AccountAccessHeld = { email: "a@b.co", password: STRONG };
+
+    for (const event of [
+      { kind: "returnToSignIn" },
+      { kind: "startCodeEntry" },
+      { kind: "startRegistration" },
+      { kind: "startReset" },
+    ] as const) {
+      expect(stepAccountAccess(busy, held, event).cancelsInFlight).toBe(true);
+    }
   });
 });
 
