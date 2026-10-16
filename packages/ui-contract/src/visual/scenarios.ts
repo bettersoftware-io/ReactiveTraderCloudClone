@@ -933,6 +933,10 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "LoginScreen",
     fixtureKey: "login-create-account",
   },
+  "login/create-account-field-errors": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-create-account",
+  },
   "login/enter-code": {
     componentKey: "LoginScreen",
     fixtureKey: "login-enter-code",
