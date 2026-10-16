@@ -1,6 +1,5 @@
 import {
   expect,
-  type Frame,
   type Page,
   type Request,
   test,
@@ -150,14 +149,14 @@ interface NavigationCounter {
   readonly count: () => number;
 }
 
-/** Counts main-frame navigations from now on — a `goto` or a reload each
- * add one; the app performs no same-document (History API) navigations. */
+/** Counts main-frame document loads from now on — a `goto` or a reload each
+ * add one. The app's hash routes (`#/sign-in`, `#/fx`, ...) are same-document
+ * navigations, which fire `framenavigated` but never `load`, so they are not
+ * counted. */
 function countMainFrameNavigations(page: Page): NavigationCounter {
   let navigations = 0;
-  page.on("framenavigated", (frame: Frame) => {
-    if (frame === page.mainFrame()) {
-      navigations += 1;
-    }
+  page.on("load", () => {
+    navigations += 1;
   });
   return {
     count: () => {
@@ -166,14 +165,10 @@ function countMainFrameNavigations(page: Page): NavigationCounter {
   };
 }
 
-/** Resolves on the next main-frame navigation (the mode-change reload). */
-function waitForMainFrameNavigation(page: Page): Promise<Frame> {
-  return page.waitForEvent("framenavigated", {
-    predicate: (frame: Frame) => {
-      return frame === page.mainFrame();
-    },
-    timeout: SETTLE_TIMEOUT_MS,
-  });
+/** Resolves on the next document load (the mode-change reload) — not on a
+ * same-document hash-route change. */
+function waitForMainFrameNavigation(page: Page): Promise<Page> {
+  return page.waitForEvent("load", { timeout: SETTLE_TIMEOUT_MS });
 }
 
 /** The stored data-source choice, or null when nothing wrote it. */
