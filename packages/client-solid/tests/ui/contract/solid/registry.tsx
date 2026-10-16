@@ -8,6 +8,7 @@ import {
   AnimationProbe,
   AppShell,
   AuthGate,
+  AuthGatedAppShell,
   AuthGatedHeaderChrome,
   BlotterHeader,
   BlotterRow,
@@ -808,6 +809,16 @@ export const registry = new Map<AnyToken, ElementFor>([
     AppShell,
     (): JSX.Element => {
       return <App />;
+    },
+  ],
+  [
+    AuthGatedAppShell,
+    (): JSX.Element => {
+      return (
+        <AuthGateComponent>
+          <App />
+        </AuthGateComponent>
+      );
     },
   ],
   [

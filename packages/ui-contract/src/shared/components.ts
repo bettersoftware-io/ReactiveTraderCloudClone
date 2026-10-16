@@ -164,6 +164,7 @@ import {
 } from "./pages/fx/liveRates/tile/TileRfqPage";
 import { PositionsHeadPage } from "./pages/fx/positions/PositionsHeadPage";
 import { PositionsPanelPage } from "./pages/fx/positions/PositionsPanelPage";
+import { AuthGatedAppPage } from "./pages/shell/auth/AuthGatedAppPage";
 import { AuthGatePage } from "./pages/shell/auth/AuthGatePage";
 import { LoginScreenPage } from "./pages/shell/auth/LoginScreenPage";
 import { AmbientBackgroundPage } from "./pages/shell/background/AmbientBackgroundPage";
@@ -469,6 +470,16 @@ export const AppShell = component<Record<string, never>, JarvisDriverPage>(
     return new JarvisDriverPage(ctx);
   },
 );
+
+/** The full `App` shell under the real `AuthGate`, as `AppRoot` mounts them:
+ * signing in swaps the login screen for the app over one World and one page
+ * history — the hand-off between the login and workspace route hooks. */
+export const AuthGatedAppShell = component<
+  Record<string, never>,
+  AuthGatedAppPage
+>((ctx) => {
+  return new AuthGatedAppPage(ctx);
+});
 
 export const ThemePicker = component<Record<string, never>, ThemePickerPage>(
   (ctx) => {
