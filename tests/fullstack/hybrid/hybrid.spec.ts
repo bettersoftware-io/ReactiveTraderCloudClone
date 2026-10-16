@@ -22,10 +22,10 @@ test.describe("hybrid data source", () => {
     page,
   }) => {
     const serverHits = recordServerRequests(page);
-    const navigations = countMainFrameNavigations(page);
+    const loads = countDocumentLoads(page);
 
     await page.goto("/");
-    const navigationsAfterLoad = navigations.count();
+    const loadsAfterGoto = loads.count();
     await signIn(page, "demo", DEMO_PASSWORD);
 
     await expect(page.getByTestId(TESTIDS.auth.loginScreen)).toBeHidden({
@@ -35,7 +35,7 @@ test.describe("hybrid data source", () => {
       timeout: SETTLE_TIMEOUT_MS,
     });
     expect(serverHits).toEqual([]);
-    expect(navigations.count()).toBe(navigationsAfterLoad);
+    expect(loads.count()).toBe(loadsAfterGoto);
     // Only the routing port writes this key — a plain live or sim page never
     // does — so "sim" here also witnesses that the page WAS composed hybrid.
     await expect
@@ -50,11 +50,11 @@ test.describe("hybrid data source", () => {
   }) => {
     const serverHits = recordServerRequests(page);
     const sockets = recordWebSockets(page);
-    const navigations = countMainFrameNavigations(page);
+    const loads = countDocumentLoads(page);
 
     await page.goto("/");
-    const navigationsAfterLoad = navigations.count();
-    const reloaded = waitForMainFrameNavigation(page);
+    const loadsAfterGoto = loads.count();
+    const reloaded = waitForDocumentLoad(page);
     await signIn(page, "demo", SERVER_PASSWORD);
     await reloaded;
 
@@ -78,7 +78,7 @@ test.describe("hybrid data source", () => {
         return url.endsWith("/login");
       }),
     ).toBe(true);
-    expect(navigations.count()).toBe(navigationsAfterLoad + 1);
+    expect(loads.count()).toBe(loadsAfterGoto + 1);
     expect(await readDataSourceChoice(page)).toBe("live");
   });
 
@@ -86,26 +86,26 @@ test.describe("hybrid data source", () => {
     page,
   }) => {
     await page.goto("/");
-    const reloaded = waitForMainFrameNavigation(page);
+    const reloaded = waitForDocumentLoad(page);
     await signIn(page, "demo", SERVER_PASSWORD);
     await reloaded;
     await expect(page.getByTestId(TESTIDS.auth.loginScreen)).toBeHidden({
       timeout: SETTLE_TIMEOUT_MS,
     });
 
-    const navigations = countMainFrameNavigations(page);
+    const loads = countDocumentLoads(page);
     await page.goto("/");
-    const navigationsAfterLoad = navigations.count();
+    const loadsAfterGoto = loads.count();
 
     // Session restored, live composed, no login screen and no further
-    // navigation (spec §8.3 step 5).
+    // document load (spec §8.3 step 5).
     await expect(page.getByTestId(TESTIDS.auth.loginScreen)).toBeHidden({
       timeout: SETTLE_TIMEOUT_MS,
     });
     await expect(page.getByTestId(TESTIDS.shell.header)).toBeVisible({
       timeout: SETTLE_TIMEOUT_MS,
     });
-    expect(navigations.count()).toBe(navigationsAfterLoad);
+    expect(loads.count()).toBe(loadsAfterGoto);
     expect(await readDataSourceChoice(page)).toBe("live");
   });
 });
@@ -144,31 +144,31 @@ function recordWebSockets(page: Page): string[] {
   return sockets;
 }
 
-/** A running count of main-frame navigations since it was armed. */
-interface NavigationCounter {
+/** A running count of document loads since it was armed. */
+interface DocumentLoadCounter {
   readonly count: () => number;
 }
 
-/** Counts main-frame document loads from now on — a `goto` or a reload each
- * add one. The app's hash routes (`#/sign-in`, `#/fx`, ...) are same-document
- * navigations, which fire `framenavigated` but never `load`, so they are not
- * counted. */
-function countMainFrameNavigations(page: Page): NavigationCounter {
-  let navigations = 0;
+/** Counts document loads from now on — a `goto` or a reload each add one.
+ * The app's hash routes (`#/sign-in`, `#/fx`, ...) change the URL within the
+ * same document, which fires `framenavigated` but never `load`, so they are
+ * not counted. */
+function countDocumentLoads(page: Page): DocumentLoadCounter {
+  let loads = 0;
   page.on("load", () => {
-    navigations += 1;
+    loads += 1;
   });
   return {
     count: () => {
-      return navigations;
+      return loads;
     },
   };
 }
 
 /** Resolves on the next document load (the mode-change reload) — not on a
  * same-document hash-route change. */
-function waitForMainFrameNavigation(page: Page): Promise<Page> {
-  return page.waitForEvent("load", { timeout: SETTLE_TIMEOUT_MS });
+async function waitForDocumentLoad(page: Page): Promise<void> {
+  await page.waitForEvent("load", { timeout: SETTLE_TIMEOUT_MS });
 }
 
 /** The stored data-source choice, or null when nothing wrote it. */
