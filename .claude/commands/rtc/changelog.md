@@ -9,7 +9,7 @@ ISO week after the newest one in the file, up to and including the current
 one).
 
 This command has no pre-executed shell blocks on purpose — see the "Authoring
-trap" section of `CLAUDE.md`. Run each step yourself.
+trap" in the `authoring-slash-commands` skill. Run each step yourself.
 
 ## 1. Find the gap
 
