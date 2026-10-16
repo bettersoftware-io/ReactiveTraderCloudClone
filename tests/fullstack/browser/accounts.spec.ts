@@ -76,6 +76,9 @@ test.describe("full-stack: malformed account input is refused locally", () => {
       "Enter the 8-digit code from the email",
     );
     await login.expectLoginPhase(ctx, "code");
+    // The step was opened from Forgot password, so a sent code would post to
+    // /reset-password; /confirm-email is the sign-up flow's path.
+    login.expectNoRequestsTo(ctx, "/reset-password");
     login.expectNoRequestsTo(ctx, "/confirm-email");
   });
 
