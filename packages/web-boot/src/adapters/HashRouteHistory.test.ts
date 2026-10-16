@@ -29,6 +29,29 @@ describe("createHashRouteHistory (jsdom history)", () => {
     expect(history.length).toBe(before);
   });
 
+  it("push and replace keep the page's path under a <base href> elsewhere", () => {
+    const base = document.createElement("base");
+    base.href = "/elsewhere/";
+    document.head.append(base);
+
+    try {
+      const routes = createHashRouteHistory(window);
+
+      routes.push({ area: "workspace", tab: "credit" });
+
+      expect(location.pathname).toBe("/");
+      expect(location.search).toBe("?core=rxjs");
+      expect(location.hash).toBe("#/credit");
+
+      routes.replace({ area: "workspace", tab: "fx" });
+
+      expect(location.pathname).toBe("/");
+      expect(location.hash).toBe("#/fx");
+    } finally {
+      base.remove();
+    }
+  });
+
   it("current reads location.hash", () => {
     const routes = createHashRouteHistory(window);
     expect(routes.current()).toBeNull();

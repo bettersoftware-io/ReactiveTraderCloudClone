@@ -49,6 +49,8 @@ afterEach(async () => {
   vi.restoreAllMocks();
   // jsdom has no `navigator.webdriver`; a case that sets it is undone here.
   Reflect.deleteProperty(navigator, "webdriver");
+  // A case that sets a path, query or hash route leaves none behind.
+  history.replaceState(null, "", "/");
 });
 
 describe("startWebClient", () => {
