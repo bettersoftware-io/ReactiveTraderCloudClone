@@ -11,9 +11,7 @@ describe("createFakeRouteHistory", () => {
     history.push({ area: "account", mode: "register" });
     history.replace({ area: "workspace", tab: "fx" });
 
-    expect(history.writes).toHaveLength(2);
-    expect(history.writes[0]).toMatch(/^push #/);
-    expect(history.writes[1]).toMatch(/^replace #/);
+    expect(history.writes).toEqual(["push #/create-account", "replace #/fx"]);
     expect(history.current()).toEqual({ area: "workspace", tab: "fx" });
   });
 
@@ -31,6 +29,19 @@ describe("createFakeRouteHistory", () => {
     expect(heard).toEqual([{ area: "account", mode: "register" }, null]);
     expect(history.current()).toBeNull();
     expect(history.writes).toHaveLength(1);
+  });
+
+  it("tells no subscriber about its own push or replace", () => {
+    const history = createFakeRouteHistory();
+    const heard: Array<AppRoute | null> = [];
+    history.subscribe((route) => {
+      heard.push(route);
+    });
+
+    history.push({ area: "account", mode: "register" });
+    history.replace({ area: "workspace", tab: "fx" });
+
+    expect(heard).toEqual([]);
   });
 
   it("stops delivering to a listener after it unsubscribes", () => {
