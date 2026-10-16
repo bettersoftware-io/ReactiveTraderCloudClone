@@ -25,6 +25,7 @@ import {
 } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
 import { LockScreen } from "./shell/lock/LockScreen";
+import { useWorkspaceRoutes } from "./shell/routes/useWorkspaceRoutes";
 import { StatusBar } from "./shell/status/StatusBar";
 
 import styles from "./App.module.css";
@@ -40,6 +41,8 @@ export function App(): ReactElement {
   const { useWorkspaceNav } = useViewModel();
   const { state: navState, switchTab } = useWorkspaceNav();
   const activeTab = navState.activeTab;
+  // The URL follows the tab: Back/Forward walk the tabs visited.
+  useWorkspaceRoutes(activeTab, switchTab);
   const { pulsing, clearPulse } = useJarvisDrivenPulse();
 
   return (

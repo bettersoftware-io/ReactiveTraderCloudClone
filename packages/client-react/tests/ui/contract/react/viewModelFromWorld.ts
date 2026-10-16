@@ -37,6 +37,7 @@ import {
   JarvisPanelsPresenter,
 } from "@rtc/client-core-rxjs";
 import type {
+  AccountAccessIntents,
   CodeInput,
   CoreImpl,
   DockLayoutStore,
@@ -260,6 +261,53 @@ function getWorkspaceNav(
   }
 
   return machine;
+}
+
+/** `useAccountAccess()`'s intents, built once PER WORLD: the real
+ * machine's intents are stable for its lifetime, and the login route hook
+ * lists the four navigation intents as effect dependencies — a fresh set
+ * per render would rebuild its route sync, and re-open the URL's mode, on
+ * every render. The four navigation intents record and move the World
+ * subject to the phase they open; the four requests only record — a spec
+ * seeds busy, error and later phases. */
+const accountIntents = new WeakMap<World, AccountAccessIntents>();
+
+function getAccountIntents(world: World): AccountAccessIntents {
+  const cached = accountIntents.get(world);
+
+  if (cached) {
+    return cached;
+  }
+
+  const intents: AccountAccessIntents = {
+    startRegistration: () => {
+      world.navigateAccountAccess("startRegistration");
+    },
+    startReset: () => {
+      world.navigateAccountAccess("startReset");
+    },
+    startCodeEntry: () => {
+      world.navigateAccountAccess("startCodeEntry");
+    },
+    returnToSignIn: () => {
+      world.navigateAccountAccess("returnToSignIn");
+    },
+    register: (input: RegistrationInput) => {
+      world.commands.accountRegister.push(input);
+    },
+    requestReset: (email: string) => {
+      world.commands.accountRequestReset.push(email);
+    },
+    submitCode: (input: CodeInput) => {
+      world.commands.accountSubmitCode.push(input);
+    },
+    resendCode: (email?: string) => {
+      world.commands.accountResendCode.push(email);
+    },
+  };
+  accountIntents.set(world, intents);
+
+  return intents;
 }
 
 /** The REAL per-tab `createLayoutMachine` SINGLETON map, one map PER WORLD —
@@ -1876,36 +1924,12 @@ export function reactViewModel(world: World): ViewModel {
     useDemoAccounts: () => {
       return world.demoAccounts;
     },
-    // Account flows: state from the World subject. The four navigation
-    // intents record and move the subject to the phase they open; the four
-    // requests only record — a spec seeds busy, error and later phases.
+    // Account flows: state from the World subject, intents from the
+    // per-World set (see `getAccountIntents`).
     useAccountAccess: () => {
       return {
         state: useSubject(world.accountAccess),
-        startRegistration: () => {
-          world.navigateAccountAccess("startRegistration");
-        },
-        startReset: () => {
-          world.navigateAccountAccess("startReset");
-        },
-        startCodeEntry: () => {
-          world.navigateAccountAccess("startCodeEntry");
-        },
-        returnToSignIn: () => {
-          world.navigateAccountAccess("returnToSignIn");
-        },
-        register: (input: RegistrationInput) => {
-          world.commands.accountRegister.push(input);
-        },
-        requestReset: (email: string) => {
-          world.commands.accountRequestReset.push(email);
-        },
-        submitCode: (input: CodeInput) => {
-          world.commands.accountSubmitCode.push(input);
-        },
-        resendCode: (email?: string) => {
-          world.commands.accountResendCode.push(email);
-        },
+        ...getAccountIntents(world),
       };
     },
     useRegistrationAvailable: () => {
