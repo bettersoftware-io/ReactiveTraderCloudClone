@@ -140,7 +140,7 @@ export async function expectAccountLinksAbsent(
 }
 
 /** Click the create-account link. */
-async function openCreateAccount(ctx: TestContext): Promise<void> {
+export async function openCreateAccount(ctx: TestContext): Promise<void> {
   await login(ctx).openCreateAccount();
 }
 
@@ -232,4 +232,22 @@ export async function registerAndConfirm(
   await submitLogin(ctx);
   await expectNotice(ctx, "administrator");
   await takeNoticeAction(ctx);
+}
+
+/** Click the browser's Back button. */
+export async function pressBrowserBack(ctx: TestContext): Promise<void> {
+  await login(ctx).browserBack();
+}
+
+/** Click the browser's Forward button. */
+export async function pressBrowserForward(ctx: TestContext): Promise<void> {
+  await login(ctx).browserForward();
+}
+
+/** Assert the URL hash reads `expected` within 5s. */
+export async function expectUrlHash(
+  ctx: TestContext,
+  expected: string,
+): Promise<void> {
+  await login(ctx).waitUrlHash(expected, 5_000);
 }

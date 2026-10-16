@@ -63,6 +63,17 @@ export interface WorkspacePO {
   /** Snapshot: is the given tab's nav button currently marked active
    *  (`data-active`, NavTab.tsx). */
   isTabActive(tab: "fx" | "credit" | "admin" | "equities"): Promise<boolean>;
+  /** Wait until the given tab's nav button is (or is not) marked active. */
+  waitTabActive(
+    tab: "fx" | "credit" | "admin" | "equities",
+    timeoutMs: number,
+  ): Promise<void>;
+  /** The browser's own Back button (history). */
+  browserBack(): Promise<void>;
+  /** The browser's own Forward button. */
+  browserForward(): Promise<void>;
+  /** Wait until the page URL's hash reads exactly `expected` (e.g. `#/fx`). */
+  waitUrlHash(expected: string, timeoutMs: number): Promise<void>;
   reload(): Promise<void>;
   setOffline(offline: boolean): Promise<void>;
   rootBackgroundColor(): Promise<string>;

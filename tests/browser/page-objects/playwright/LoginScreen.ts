@@ -233,6 +233,27 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
     await this.page().getByTestId(TESTIDS.auth.loginBack).click();
   }
 
+  async browserBack(): Promise<void> {
+    await this.page().goBack();
+  }
+
+  async browserForward(): Promise<void> {
+    await this.page().goForward();
+  }
+
+  async waitUrlHash(expected: string, timeoutMs: number): Promise<void> {
+    const page = this.page();
+
+    await expect
+      .poll(
+        () => {
+          return new URL(page.url()).hash;
+        },
+        { timeout: timeoutMs },
+      )
+      .toBe(expected);
+  }
+
   countRequestsTo(path: string): number {
     return this.requestPaths.filter((requested) => {
       return requested.endsWith(path);

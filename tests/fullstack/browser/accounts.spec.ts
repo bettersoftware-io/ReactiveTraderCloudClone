@@ -95,6 +95,37 @@ test.describe("full-stack: malformed account input is refused locally", () => {
   });
 });
 
+// Browser Back/Forward through the login modes (spec §5): a mode link pushes
+// a history entry, Back/Forward drive the screen, the hash names the mode.
+test.describe("full-stack: browser history through the login modes", () => {
+  test("Back and Forward walk create-account and forgot-password", async ({
+    ctx,
+  }) => {
+    await login.openLoginScreen(ctx);
+    await login.expectUrlHash(ctx, "#/sign-in");
+
+    await login.openCreateAccount(ctx);
+    await login.expectUrlHash(ctx, "#/create-account");
+    await login.expectLoginTitle(ctx, `${TITLE}CREATE ACCOUNT`);
+
+    await login.pressBrowserBack(ctx);
+    await login.expectUrlHash(ctx, "#/sign-in");
+    await login.expectLoginTitle(ctx, `${TITLE}SIGN IN`);
+
+    await login.pressBrowserForward(ctx);
+    await login.expectUrlHash(ctx, "#/create-account");
+    await login.expectLoginTitle(ctx, `${TITLE}CREATE ACCOUNT`);
+
+    await login.pressBrowserBack(ctx);
+    await login.openForgotPassword(ctx);
+    await login.expectUrlHash(ctx, "#/forgot-password");
+
+    await login.pressBrowserBack(ctx);
+    await login.expectUrlHash(ctx, "#/sign-in");
+    await login.expectLoginTitle(ctx, `${TITLE}SIGN IN`);
+  });
+});
+
 // The account journey over the real server (RTC_DEV_ACCOUNTS=1 in-memory
 // directory, seeded admin@ / trader@ / pending@ / blocked@rtc.test with
 // password "Mcdc2026!desk" and dev code 00000000). Every assertion delegates
