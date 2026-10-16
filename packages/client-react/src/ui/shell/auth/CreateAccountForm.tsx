@@ -19,6 +19,7 @@ import {
 
 import { FieldError } from "./FieldError";
 import { fieldErrorId } from "./fieldErrorId";
+import { keepFieldFocus } from "./keepFieldFocus";
 import { PasswordChecklist } from "./PasswordChecklist";
 
 import styles from "./LoginScreen.module.css";
@@ -163,6 +164,7 @@ export function CreateAccountForm({
         <button
           type="submit"
           data-testid="login-submit"
+          onMouseDown={keepFieldFocus}
           className={styles.submit}
           disabled={state.busy}
         >
@@ -175,6 +177,7 @@ export function CreateAccountForm({
           {ACCOUNT_ACCESS_COPY.privacyLead}{" "}
           <a
             data-testid="login-privacy"
+            onMouseDown={keepFieldFocus}
             href={PRIVACY_NOTICE_URL}
             target="_blank"
             rel="noreferrer"
@@ -188,6 +191,7 @@ export function CreateAccountForm({
         <button
           type="button"
           data-testid="login-have-code"
+          onMouseDown={keepFieldFocus}
           className={styles.link}
           onClick={onHaveCode}
         >
@@ -196,6 +200,7 @@ export function CreateAccountForm({
         <button
           type="button"
           data-testid="login-back"
+          onMouseDown={keepFieldFocus}
           className={styles.link}
           onClick={onBack}
         >

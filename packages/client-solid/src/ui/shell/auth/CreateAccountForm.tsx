@@ -13,6 +13,7 @@ import {
 
 import { FieldError } from "./FieldError";
 import { fieldErrorId } from "./fieldErrorId";
+import { keepFieldFocus } from "./keepFieldFocus";
 import { PasswordChecklist } from "./PasswordChecklist";
 
 import styles from "./LoginScreen.module.css";
@@ -169,6 +170,7 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
         <button
           type="submit"
           data-testid="login-submit"
+          onMouseDown={keepFieldFocus}
           class={styles.submit}
           disabled={props.state.busy}
         >
@@ -181,6 +183,7 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
           {ACCOUNT_ACCESS_COPY.privacyLead}{" "}
           <a
             data-testid="login-privacy"
+            onMouseDown={keepFieldFocus}
             href={PRIVACY_NOTICE_URL}
             target="_blank"
             rel="noreferrer"
@@ -194,6 +197,7 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
         <button
           type="button"
           data-testid="login-have-code"
+          onMouseDown={keepFieldFocus}
           class={styles.link}
           onClick={startCodeEntry}
         >
@@ -202,6 +206,7 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
         <button
           type="button"
           data-testid="login-back"
+          onMouseDown={keepFieldFocus}
           class={styles.link}
           onClick={returnToSignIn}
         >

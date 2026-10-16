@@ -15,6 +15,7 @@ import {
 
 import { FieldError } from "./FieldError";
 import { fieldErrorId } from "./fieldErrorId";
+import { keepFieldFocus } from "./keepFieldFocus";
 
 import styles from "./LoginScreen.module.css";
 
@@ -88,6 +89,7 @@ export function ResetRequestForm({
         <button
           type="submit"
           data-testid="login-submit"
+          onMouseDown={keepFieldFocus}
           className={styles.submit}
           disabled={state.busy}
         >
@@ -101,6 +103,7 @@ export function ResetRequestForm({
         <button
           type="button"
           data-testid="login-back"
+          onMouseDown={keepFieldFocus}
           className={styles.link}
           onClick={onBack}
         >

@@ -149,6 +149,11 @@ export async function openForgotPassword(ctx: TestContext): Promise<void> {
   await login(ctx).openForgotPassword();
 }
 
+/** Click "Back to sign in" once, with a real pointer. */
+export async function returnToSignIn(ctx: TestContext): Promise<void> {
+  await login(ctx).goBack();
+}
+
 /** Type into the email field. */
 export async function typeEmail(
   ctx: TestContext,

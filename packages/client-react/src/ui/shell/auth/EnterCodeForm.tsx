@@ -19,6 +19,7 @@ import {
 
 import { FieldError } from "./FieldError";
 import { fieldErrorId } from "./fieldErrorId";
+import { keepFieldFocus } from "./keepFieldFocus";
 import { PasswordChecklist } from "./PasswordChecklist";
 
 import styles from "./LoginScreen.module.css";
@@ -77,9 +78,24 @@ export function EnterCodeForm({
     });
   }
 
-  /** A held address is the machine's to name; a typed one is passed on. */
+  /** A held address is the machine's to name. A typed one is gated like a
+   * submit, on the address alone: one that fails shows its error under the
+   * field, takes the focus and sends nothing; one that passes is passed on. */
   function resendCode(): void {
-    onResend(asksEmail ? email : undefined);
+    if (!asksEmail) {
+      onResend(undefined);
+
+      return;
+    }
+
+    if (!emailCheck.ok) {
+      revealEmailError();
+      emailInput.current?.focus();
+
+      return;
+    }
+
+    onResend(email);
   }
 
   function revealEmailError(): void {
@@ -192,6 +208,7 @@ export function EnterCodeForm({
         <button
           type="submit"
           data-testid="login-submit"
+          onMouseDown={keepFieldFocus}
           className={styles.submit}
           disabled={state.busy}
         >
@@ -203,6 +220,7 @@ export function EnterCodeForm({
         <button
           type="button"
           data-testid="login-resend"
+          onMouseDown={keepFieldFocus}
           className={styles.link}
           disabled={state.busy}
           onClick={resendCode}
@@ -212,6 +230,7 @@ export function EnterCodeForm({
         <button
           type="button"
           data-testid="login-back"
+          onMouseDown={keepFieldFocus}
           className={styles.link}
           onClick={onBack}
         >

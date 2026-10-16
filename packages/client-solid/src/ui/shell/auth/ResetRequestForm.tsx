@@ -9,6 +9,7 @@ import {
 
 import { FieldError } from "./FieldError";
 import { fieldErrorId } from "./fieldErrorId";
+import { keepFieldFocus } from "./keepFieldFocus";
 
 import styles from "./LoginScreen.module.css";
 
@@ -83,6 +84,7 @@ export function ResetRequestForm(props: ResetRequestFormProps): JSX.Element {
         <button
           type="submit"
           data-testid="login-submit"
+          onMouseDown={keepFieldFocus}
           class={styles.submit}
           disabled={props.state.busy}
         >
@@ -96,6 +98,7 @@ export function ResetRequestForm(props: ResetRequestFormProps): JSX.Element {
         <button
           type="button"
           data-testid="login-back"
+          onMouseDown={keepFieldFocus}
           class={styles.link}
           onClick={returnToSignIn}
         >

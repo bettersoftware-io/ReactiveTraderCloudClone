@@ -95,6 +95,23 @@ test.describe("full-stack: malformed account input is refused locally", () => {
   });
 });
 
+// Leaving a field reveals its error, which moves the controls below it on
+// the vertically centred panel. A pointer press on a link keeps the field's
+// focus, so nothing moves between the press and the release and one real
+// click lands (Ruling 7).
+test.describe("full-stack: a link under a focused field takes one click", () => {
+  test("Back to sign in leaves Create account on the first click", async ({
+    ctx,
+  }) => {
+    await login.openLoginScreen(ctx);
+    await login.openCreateAccount(ctx);
+    await login.expectLoginPhase(ctx, "register");
+    await login.typeEmail(ctx, "ann@");
+    await login.returnToSignIn(ctx);
+    await login.expectLoginPhase(ctx, "signIn");
+  });
+});
+
 // Browser Back/Forward through the login modes (spec §5): a mode link pushes
 // a history entry, Back/Forward drive the screen, the hash names the mode.
 test.describe("full-stack: browser history through the login modes", () => {
@@ -119,6 +136,7 @@ test.describe("full-stack: browser history through the login modes", () => {
     await login.pressBrowserBack(ctx);
     await login.openForgotPassword(ctx);
     await login.expectUrlHash(ctx, "#/forgot-password");
+    await login.expectLoginPhase(ctx, "requestReset");
 
     await login.pressBrowserBack(ctx);
     await login.expectUrlHash(ctx, "#/sign-in");

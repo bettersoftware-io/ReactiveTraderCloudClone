@@ -5,7 +5,10 @@
  * is left, live as the value changes. A submit reveals every field and,
  * when one fails, sends nothing and focuses the first failing field. The
  * checks and their copy are `@rtc/core-logic`'s; a server refusal stays at
- * form level.
+ * form level. Resend code checks a typed address the same way, on that
+ * field alone. A pointer press on a button or link keeps the focus where it
+ * is, so the press does not blur a field, reveal its error and move the
+ * control away before the click lands.
  */
 
 import { LoginScreen } from "@ui-contract/components";
@@ -242,6 +245,86 @@ describe("LoginScreen field validation — code step", () => {
   });
 });
 
+describe("LoginScreen field validation — Resend code checks a typed address", () => {
+  it("refuses a malformed address: shows its error, focuses it and sends nothing", async () => {
+    const page = mountAt(createCodeState({ email: null, passwordHeld: false }));
+
+    await page.typeEmail("ann");
+    await page.resend();
+
+    expect(page.resendArgs()).toEqual([]);
+    expect(page.fieldErrorFields()).toEqual(["email"]);
+    expect(page.fieldError("email")).toBe(EMAIL_INPUT_ERROR);
+    expect(page.focusedControl()).toBe("login-email");
+    expect(page.error()).toBe("");
+  });
+
+  it("refuses an empty address the same way, moving the focus to it", async () => {
+    const page = mountAt(createCodeState({ email: null, passwordHeld: false }));
+
+    expect(page.focusedControl()).toBe("");
+
+    await page.resend();
+
+    expect(page.resendArgs()).toEqual([]);
+    expect(page.fieldError("email")).toBe(EMAIL_INPUT_ERROR);
+    expect(page.focusedControl()).toBe("login-email");
+  });
+
+  it("checks nothing when the address is held", async () => {
+    const page = mountAt(createCodeState());
+
+    await page.resend();
+
+    expect(page.resendArgs()).toEqual([undefined]);
+    expect(page.fieldErrorFields()).toEqual([]);
+  });
+});
+
+describe("LoginScreen field validation — a press on a button or link keeps the field's focus", () => {
+  it("cancels the press on every control of the create-account form, not on its inputs", () => {
+    const page = mountAt(createRegisterState());
+
+    expect(readPressesKeepingFocus(page, REGISTER_CONTROLS)).toEqual(
+      everyTestId(REGISTER_CONTROLS, true),
+    );
+    expect(readPressesKeepingFocus(page, REGISTER_INPUTS)).toEqual(
+      everyTestId(REGISTER_INPUTS, false),
+    );
+  });
+
+  it("cancels the press on every control of the reset request, not on its input", () => {
+    const page = mountAt(createRequestResetState());
+
+    expect(readPressesKeepingFocus(page, RESET_CONTROLS)).toEqual(
+      everyTestId(RESET_CONTROLS, true),
+    );
+    expect(page.pressKeepsFocus("login-email")).toBe(false);
+  });
+
+  it("cancels the press on every control of the code step, not on its inputs", () => {
+    const page = mountAt(createCodeState({ email: null, passwordHeld: false }));
+
+    expect(readPressesKeepingFocus(page, CODE_CONTROLS)).toEqual(
+      everyTestId(CODE_CONTROLS, true),
+    );
+    expect(readPressesKeepingFocus(page, CODE_INPUTS)).toEqual(
+      everyTestId(CODE_INPUTS, false),
+    );
+  });
+
+  it("still runs the click: a typed address leaves on Resend, and the field keeps the focus", async () => {
+    const page = mountAt(createCodeState({ email: null, passwordHeld: false }));
+
+    await page.typeEmail("ann@desk.io");
+    await page.resend();
+
+    expect(page.resendArgs()).toEqual(["ann@desk.io"]);
+    expect(page.focusedControl()).toBe("login-email");
+    expect(page.fieldErrorFields()).toEqual([]);
+  });
+});
+
 describe("LoginScreen field validation — reset request", () => {
   it("shows the address error once the field is left", async () => {
     const page = mountAt(createRequestResetState());
@@ -297,6 +380,27 @@ describe("LoginScreen field validation — the server stays at form level", () =
   });
 });
 
+/** Each control's test id paired with whether a press on it keeps the
+ * focus, in the order given. */
+function readPressesKeepingFocus(
+  page: LoginScreenPage,
+  testIds: readonly string[],
+): Array<[string, boolean]> {
+  return testIds.map((testId): [string, boolean] => {
+    return [testId, page.pressKeepsFocus(testId)];
+  });
+}
+
+/** Every test id paired with the same expected answer. */
+function everyTestId(
+  testIds: readonly string[],
+  keepsFocus: boolean,
+): Array<[string, boolean]> {
+  return testIds.map((testId): [string, boolean] => {
+    return [testId, keepsFocus];
+  });
+}
+
 /** Mounts LoginScreen signed out, in one account-access phase. */
 function mountAt(accountAccess: AccountAccessState): LoginScreenPage {
   return mount(LoginScreen, {
@@ -335,6 +439,29 @@ function createCodeState(seed: CodeSeed = {}): AccountAccessState {
     ...seed,
   };
 }
+
+const REGISTER_CONTROLS = [
+  "login-submit",
+  "login-privacy",
+  "login-have-code",
+  "login-back",
+] as const;
+
+const REGISTER_INPUTS = [
+  "login-email",
+  "login-display-name",
+  "login-new-password",
+] as const;
+
+const RESET_CONTROLS = ["login-submit", "login-back"] as const;
+
+const CODE_CONTROLS = ["login-submit", "login-resend", "login-back"] as const;
+
+const CODE_INPUTS = [
+  "login-email",
+  "login-code",
+  "login-new-password",
+] as const;
 
 /** Meets every password rule. */
 const STRONG = "Correct-Horse-9x";

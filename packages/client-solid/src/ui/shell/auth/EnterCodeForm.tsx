@@ -13,6 +13,7 @@ import {
 
 import { FieldError } from "./FieldError";
 import { fieldErrorId } from "./fieldErrorId";
+import { keepFieldFocus } from "./keepFieldFocus";
 import { PasswordChecklist } from "./PasswordChecklist";
 
 import styles from "./LoginScreen.module.css";
@@ -86,9 +87,24 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
     });
   }
 
-  /** A held address is the machine's to name; a typed one is passed on. */
+  /** A held address is the machine's to name. A typed one is gated like a
+   * submit, on the address alone: one that fails shows its error under the
+   * field, takes the focus and sends nothing; one that passes is passed on. */
   function resendCode(): void {
-    props.onResend(asksEmail() ? email() : undefined);
+    if (!asksEmail()) {
+      props.onResend(undefined);
+
+      return;
+    }
+
+    if (!checkEmailInput(email()).ok) {
+      revealEmailError();
+      emailInput?.focus();
+
+      return;
+    }
+
+    props.onResend(email());
   }
 
   function revealEmailError(): void {
@@ -209,6 +225,7 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
         <button
           type="submit"
           data-testid="login-submit"
+          onMouseDown={keepFieldFocus}
           class={styles.submit}
           disabled={props.state.busy}
         >
@@ -220,6 +237,7 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
         <button
           type="button"
           data-testid="login-resend"
+          onMouseDown={keepFieldFocus}
           class={styles.link}
           disabled={props.state.busy}
           onClick={resendCode}
@@ -229,6 +247,7 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
         <button
           type="button"
           data-testid="login-back"
+          onMouseDown={keepFieldFocus}
           class={styles.link}
           onClick={returnToSignIn}
         >

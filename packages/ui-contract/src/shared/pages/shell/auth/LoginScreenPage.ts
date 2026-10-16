@@ -1,4 +1,4 @@
-import { within } from "@testing-library/dom";
+import { fireEvent, within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { RoutedComponent } from "@ui-contract/harness/RoutedComponent";
 
@@ -242,6 +242,13 @@ export class LoginScreenPage extends RoutedComponent<Record<string, never>> {
     }
 
     await this.user.tab();
+  }
+
+  /** Press the pointer down on `testId` — a bare `mousedown`, no release —
+   * and report whether the control cancelled it, which is how a button or a
+   * link keeps the focus on the field being typed into. */
+  pressKeepsFocus(testId: string): boolean {
+    return !fireEvent.mouseDown(within(this.root).getByTestId(testId));
   }
 
   /** The inline error under `field` (`login-field-error` with that
