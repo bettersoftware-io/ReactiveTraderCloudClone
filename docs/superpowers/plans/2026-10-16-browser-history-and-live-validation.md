@@ -10,6 +10,8 @@
 
 **Spec:** [docs/superpowers/specs/2026-10-16-browser-history-and-live-validation-design.md](../specs/2026-10-16-browser-history-and-live-validation-design.md)
 
+**Rulings made during execution:** [2026-10-16-browser-history-and-live-validation-rulings.md](2026-10-16-browser-history-and-live-validation-rulings.md)
+
 ## Global Constraints
 
 - Hash routes, exactly: `#/fx`, `#/credit`, `#/equities`, `#/admin`, `#/sign-in`, `#/create-account`, `#/forgot-password`, `#/enter-code`. Anything else reads as no route. The query string and the path are never read or written by routing.
