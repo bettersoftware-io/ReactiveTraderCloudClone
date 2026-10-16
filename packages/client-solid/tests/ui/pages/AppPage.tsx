@@ -9,7 +9,7 @@ import {
 import { BehaviorSubject } from "rxjs";
 
 import { rxjsCore } from "@rtc/client-core-rxjs";
-import type { CoreSelection } from "@rtc/core-api";
+import type { CoreSelection, RouteHistory } from "@rtc/core-api";
 import type { DemoAccount } from "@rtc/domain";
 import {
   buildBrowserPorts,
@@ -88,6 +88,7 @@ export function appPage(): AppPage {
             composition={createComposition()}
             demoAccounts={readRunDemoAccounts()}
             registrationAvailable={false}
+            routes={createInertRoutes()}
           >
             <App />
           </AppRoot>
@@ -185,6 +186,20 @@ function createComposition(): Composition {
     },
     peekPreferencesReopen: () => {
       return false;
+    },
+  };
+}
+
+/** A page with no history to speak of: nothing here navigates. */
+function createInertRoutes(): RouteHistory {
+  return {
+    current: () => {
+      return null;
+    },
+    push: () => {},
+    replace: () => {},
+    subscribe: () => {
+      return () => {};
     },
   };
 }

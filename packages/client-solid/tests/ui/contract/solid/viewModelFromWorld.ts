@@ -1854,6 +1854,9 @@ export function solidViewModel(world: World): ViewModel {
     useRegistrationAvailable: () => {
       return world.registrationAvailable;
     },
+    useRouteHistory: () => {
+      return null;
+    },
     takePreferencesReopen: () => {
       return world.takePreferencesReopen();
     },

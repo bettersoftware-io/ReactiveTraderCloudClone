@@ -158,6 +158,9 @@ export function buildShellSlice(options: ShellSliceOptions = {}): ShellSlice {
     useRegistrationAvailable: () => {
       return false;
     },
+    useRouteHistory: () => {
+      return null;
+    },
     useAmbientStyle: () => {
       return ambientStylePreference;
     },

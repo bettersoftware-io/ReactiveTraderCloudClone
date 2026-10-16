@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useRef } from "react";
 
+import type { RouteHistory } from "@rtc/core-api";
 import type { DemoAccount } from "@rtc/domain";
 import {
   createViewModel,
@@ -31,6 +32,7 @@ export function AppRoot({
   composition,
   demoAccounts,
   registrationAvailable,
+  routes,
   children,
 }: AppRootProps): ReactElement {
   const viewModelRef = useRef<ViewModel | null>(null);
@@ -44,6 +46,7 @@ export function AppRoot({
         coreSelection: composition.coreSelection,
         demoAccounts,
         registrationAvailable,
+        routes,
         takePreferencesReopen: () => {
           return composition.takePreferencesReopen();
         },
@@ -80,5 +83,7 @@ interface AppRootProps {
   /** Whether the page has a server to register with: the page's, like the
    * demo accounts. */
   registrationAvailable: boolean;
+  /** The page's history, as routes: the page's, like the demo accounts. */
+  routes: RouteHistory;
   children: ReactNode;
 }

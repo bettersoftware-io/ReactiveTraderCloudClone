@@ -1911,6 +1911,9 @@ export function reactViewModel(world: World): ViewModel {
     useRegistrationAvailable: () => {
       return world.registrationAvailable;
     },
+    useRouteHistory: () => {
+      return null;
+    },
     takePreferencesReopen: () => {
       return world.takePreferencesReopen();
     },

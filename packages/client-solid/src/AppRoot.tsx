@@ -1,5 +1,6 @@
 import { type JSX, type ParentProps, untrack } from "solid-js";
 
+import type { RouteHistory } from "@rtc/core-api";
 import type { DemoAccount } from "@rtc/domain";
 import { createViewModel, ViewModelProvider } from "@rtc/solid-bindings";
 import type { Composition } from "@rtc/web-boot";
@@ -27,13 +28,16 @@ import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 export function AppRoot(props: ParentProps<AppRootProps>): JSX.Element {
   // Neither prop changes within one mount: a swap renders a new tree rather
   // than re-valuing this component, so one `untrack`ed read is correct.
-  const { composition, demoAccounts, registrationAvailable } = untrack(() => {
-    return {
-      composition: props.composition,
-      demoAccounts: props.demoAccounts,
-      registrationAvailable: props.registrationAvailable,
-    };
-  });
+  const { composition, demoAccounts, registrationAvailable, routes } = untrack(
+    () => {
+      return {
+        composition: props.composition,
+        demoAccounts: props.demoAccounts,
+        registrationAvailable: props.registrationAvailable,
+        routes: props.routes,
+      };
+    },
+  );
 
   const viewModel = createViewModel(
     composition.presenters,
@@ -43,6 +47,7 @@ export function AppRoot(props: ParentProps<AppRootProps>): JSX.Element {
       coreSelection: composition.coreSelection,
       demoAccounts,
       registrationAvailable,
+      routes,
       takePreferencesReopen: () => {
         return composition.takePreferencesReopen();
       },
@@ -72,4 +77,6 @@ interface AppRootProps {
   /** Whether the page has a server to register with: the page's, like the
    * demo accounts. */
   registrationAvailable: boolean;
+  /** The page's history, as routes: the page's, like the demo accounts. */
+  routes: RouteHistory;
 }
