@@ -221,6 +221,36 @@ describe("createAccountRouteSync", () => {
     expect(h.called).toEqual(["returnToSignIn"]);
   });
 
+  it("traversal to forgot-password opens the reset request, writing nothing", () => {
+    const h = createHarness("#/sign-in", true);
+    h.mount();
+    h.called.length = 0;
+    h.history.traverse("#/forgot-password");
+
+    expect(h.called).toEqual(["startReset"]);
+    expect(h.history.writes).toEqual([]);
+  });
+
+  it("traversal to enter-code opens code entry, writing nothing", () => {
+    const h = createHarness("#/sign-in", true);
+    h.mount();
+    h.called.length = 0;
+    h.history.traverse("#/enter-code");
+
+    expect(h.called).toEqual(["startCodeEntry"]);
+    expect(h.history.writes).toEqual([]);
+  });
+
+  it("the already-have-a-code link pushes enter-code, then runs its intent", () => {
+    const h = createHarness("#/sign-in", true);
+    h.mount();
+    h.called.length = 0;
+    h.sync.navigate("startCodeEntry");
+
+    expect(h.history.writes).toEqual(["push #/enter-code"]);
+    expect(h.called).toEqual(["startCodeEntry"]);
+  });
+
   it("dispose stops listening", () => {
     const h = createHarness("#/sign-in", true);
     h.mount();
