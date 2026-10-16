@@ -221,7 +221,8 @@ affected checkout; do **not** bump `react-native-worklets`/`react-native-reanima
 pins). Diagnose headlessly without a sim via `expo export --platform ios` and a
 dev-bundle curl to `/.expo/.virtual-metro-entry.bundle?platform=ios&dev=true`
 (a clean bundle is >100 KB and contains no `Babel plugin exception`). This is
-the RN analogue of CLAUDE.md's Vite "blank screen = stale pre-bundle" note.
+the RN analogue of the Vite "blank screen = stale pre-bundle" note in the
+`launching-the-app` skill (`.claude/skills/launching-the-app/SKILL.md`).
 
 ## Reading a run's verdicts
 

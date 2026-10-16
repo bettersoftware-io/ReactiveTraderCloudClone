@@ -55,7 +55,7 @@ so every worktree and session gets them):
 `/rtc:gauntlet` re-reads `ci.yml`'s step list on every run and warns if CI has
 gained a gate it doesn't know about, so it can't silently drift out of sync.
 
-Editing a command under `.claude/commands/`? Read `.claude/commands/CLAUDE.md` first — its `` !`…` `` blocks have a silent failure mode.
+Editing a command under `.claude/commands/`? Load the `authoring-slash-commands` skill first — its `` !`…` `` blocks have a silent failure mode.
 
 ## Architecture Goals
 
