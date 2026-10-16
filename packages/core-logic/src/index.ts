@@ -55,3 +55,4 @@ export * from "#/presenters/shallowArrayEquals";
 export * from "#/presenters/shellFolds";
 export * from "#/presenters/staleFlagFold";
 export * from "#/presenters/tileExecutionState";
+export * from "#/routes/appRoutes";
