@@ -91,6 +91,16 @@
   color: var(--accent-negative, #ef4444);
 }
 
+/* A field's own error, tucked under its input: the form's gap is wide, so
+ * the negative margin pulls the line up to the field it explains. */
+.fieldError {
+  margin-top: -8px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--accent-negative, #ef4444);
+}
+
 .submit {
   display: block;
   width: 100%;

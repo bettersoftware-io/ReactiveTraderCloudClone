@@ -1,21 +1,47 @@
 import { createSignal, type JSX, Show } from "solid-js";
 
 import type { AccountAccessState } from "@rtc/core-api";
-import { ACCOUNT_ACCESS_COPY } from "@rtc/core-logic";
+import {
+  ACCOUNT_ACCESS_COPY,
+  checkEmailInput,
+  describeFieldError,
+} from "@rtc/core-logic";
+
+import { FieldError } from "./FieldError";
+import { fieldErrorId } from "./fieldErrorId";
 
 import styles from "./LoginScreen.module.css";
 
 /**
- * "Forgot password?": asks for the address a reset code goes to. Dumb
- * component: the address lives in a local signal and leaves through
- * `onRequest`.
+ * "Forgot password?": asks for the address a reset code goes to. The
+ * address shows its check's error under the field once it has been left; a
+ * submit reveals it and sends nothing while it fails. Dumb component: the
+ * address lives in a local signal and leaves through `onRequest`.
  */
 export function ResetRequestForm(props: ResetRequestFormProps): JSX.Element {
   const [email, setEmail] = createSignal("");
+  const [emailRevealed, setEmailRevealed] = createSignal(false);
+  let emailInput: HTMLInputElement | undefined;
+
+  function emailError(): string | null {
+    return describeFieldError(checkEmailInput(email()), emailRevealed());
+  }
 
   function submitResetRequest(event: SubmitEvent): void {
     event.preventDefault();
+    setEmailRevealed(true);
+
+    if (!checkEmailInput(email()).ok) {
+      emailInput?.focus();
+
+      return;
+    }
+
     props.onRequest(email());
+  }
+
+  function revealEmailError(): void {
+    setEmailRevealed(true);
   }
 
   function changeEmail(event: InputChangeEvent): void {
@@ -32,14 +58,21 @@ export function ResetRequestForm(props: ResetRequestFormProps): JSX.Element {
         <label class={styles.field}>
           <span class={styles.label}>{ACCOUNT_ACCESS_COPY.emailLabel}</span>
           <input
+            ref={emailInput}
             data-testid="login-email"
             class={styles.input}
             type="email"
             autocomplete="email"
+            aria-invalid={emailError() !== null}
+            aria-describedby={
+              emailError() === null ? undefined : fieldErrorId("email")
+            }
             value={email()}
             onInput={changeEmail}
+            onBlur={revealEmailError}
           />
         </label>
+        <FieldError field="email" error={emailError()} />
 
         <Show when={props.state.error !== null}>
           <div data-testid="login-error" role="alert" class={styles.error}>

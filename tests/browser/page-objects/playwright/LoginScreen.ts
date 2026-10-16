@@ -127,6 +127,24 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
     );
   }
 
+  async waitFieldError(
+    field: string,
+    expected: string,
+    timeoutMs: number,
+  ): Promise<void> {
+    const page = this.page();
+
+    await expect(
+      page
+        .getByTestId(TESTIDS.auth.loginFieldError)
+        .and(page.locator(`[data-field="${field}"]`)),
+    ).toHaveText(expected, { timeout: timeoutMs });
+  }
+
+  async hasLoginError(): Promise<boolean> {
+    return (await this.page().getByTestId(TESTIDS.auth.loginError).count()) > 0;
+  }
+
   async waitGone(timeoutMs: number): Promise<void> {
     await expect(this.page().getByTestId(TESTIDS.auth.loginScreen)).toHaveCount(
       0,

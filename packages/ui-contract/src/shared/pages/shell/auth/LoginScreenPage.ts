@@ -7,6 +7,7 @@ import type {
   CodeInput,
   RegistrationInput,
 } from "@rtc/core-api";
+import type { AccountField } from "@rtc/core-logic";
 import type { LoginWaitVariant } from "@rtc/domain";
 
 import { waitVariantWithin } from "./AuthWaitPage";
@@ -231,6 +232,59 @@ export class LoginScreenPage extends RoutedComponent<Record<string, never>> {
     await this.typeInto("login-code", value);
   }
 
+  /** Leave the field `testId` with Tab, as a user would — focusing it
+   * first when it does not hold focus. */
+  async blur(testId: string): Promise<void> {
+    const field = within(this.root).getByTestId(testId);
+
+    if (this.root.ownerDocument.activeElement !== field) {
+      await this.user.click(field);
+    }
+
+    await this.user.tab();
+  }
+
+  /** The inline error under `field` (`login-field-error` with that
+   * `data-field`); null when none shows. */
+  fieldError(field: AccountField): string | null {
+    const error = this.fieldErrorElements().find((candidate) => {
+      return candidate.getAttribute("data-field") === field;
+    });
+
+    return error?.textContent?.trim() ?? null;
+  }
+
+  /** The `data-field` of every inline field error on screen, top to bottom. */
+  fieldErrorFields(): string[] {
+    return this.fieldErrorElements().map((error) => {
+      return error.getAttribute("data-field") ?? "";
+    });
+  }
+
+  /** True when the input `testId` is marked `aria-invalid="true"`. */
+  isMarkedInvalid(testId: string): boolean {
+    return (
+      within(this.root).getByTestId(testId).getAttribute("aria-invalid") ===
+      "true"
+    );
+  }
+
+  /** The text of what the input `testId`'s `aria-describedby` names; null
+   * when it names nothing, or nothing on screen. */
+  describedBy(testId: string): string | null {
+    const ids = within(this.root)
+      .getByTestId(testId)
+      .getAttribute("aria-describedby");
+
+    if (ids === null) {
+      return null;
+    }
+
+    const described = this.root.ownerDocument.getElementById(ids);
+
+    return described === null ? null : (described.textContent?.trim() ?? "");
+  }
+
   /** True when the email field is on screen. */
   hasEmailField(): boolean {
     return this.byTestId("login-email") !== null;
@@ -373,6 +427,10 @@ export class LoginScreenPage extends RoutedComponent<Record<string, never>> {
 
   private inputValue(testId: string): string {
     return within(this.root).getByTestId<HTMLInputElement>(testId).value;
+  }
+
+  private fieldErrorElements(): HTMLElement[] {
+    return within(this.root).queryAllByTestId("login-field-error");
   }
 
   private demoAccountRows(): HTMLElement[] {

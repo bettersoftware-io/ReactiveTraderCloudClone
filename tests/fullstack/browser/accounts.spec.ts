@@ -54,10 +54,12 @@ test.describe
     });
   });
 
-// Ruling R13: the account forms skip native validation, so a malformed input
-// reaches the fold and shows the fold's own copy, with no request sent.
+// The account forms skip native validation (Ruling R13) and check each field
+// themselves with the fold's own checks (spec §7): a malformed input stops at
+// the form, before the fold, and shows the fold's copy under its field — not
+// at form level — with no request sent.
 test.describe("full-stack: malformed account input is refused locally", () => {
-  test("a non-numeric code shows the fold's error and sends no request", async ({
+  test("a non-numeric code shows the code field's error and sends no request", async ({
     ctx,
   }) => {
     await login.openLoginScreen(ctx);
@@ -68,19 +70,23 @@ test.describe("full-stack: malformed account input is refused locally", () => {
     await login.typeCode(ctx, "12ab");
     await login.typeNewPassword(ctx, "Reset-Horse-7y");
     await login.submitLogin(ctx);
-    await login.expectLoginError(ctx, "Enter the 8-digit code from the email");
+    await login.expectFieldError(
+      ctx,
+      "code",
+      "Enter the 8-digit code from the email",
+    );
     await login.expectLoginPhase(ctx, "code");
     login.expectNoRequestsTo(ctx, "/confirm-email");
   });
 
-  test("a malformed email on the reset form shows the fold's error", async ({
+  test("a malformed email on the reset form shows the address field's error", async ({
     ctx,
   }) => {
     await login.openLoginScreen(ctx);
     await login.openForgotPassword(ctx);
     await login.typeEmail(ctx, "not-an-email");
     await login.submitLogin(ctx);
-    await login.expectLoginError(ctx, "Enter a valid email address");
+    await login.expectFieldError(ctx, "email", "Enter a valid email address");
     await login.expectLoginPhase(ctx, "requestReset");
     login.expectNoRequestsTo(ctx, "/request-reset");
   });

@@ -374,6 +374,9 @@ export const TESTIDS = {
     loginPassword: "login-password",
     loginSubmit: "login-submit",
     loginError: "login-error",
+    /** One field's inline error; its `data-field` names the field (`email`,
+     *  `display-name`, `code`). */
+    loginFieldError: "login-field-error",
     loginCreateAccount: "login-create-account",
     loginForgotPassword: "login-forgot-password",
     loginHaveCode: "login-have-code",

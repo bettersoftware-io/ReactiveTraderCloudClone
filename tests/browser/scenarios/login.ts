@@ -63,6 +63,23 @@ export async function expectLoginError(
   await login(ctx).waitErrorText(expected, 5_000);
 }
 
+/** Assert the inline error under `field` (`email`, `display-name`, `code`)
+ *  reads `expected` within 5s, and that the form-level error line is absent:
+ *  a local refusal shows once, under its field. */
+export async function expectFieldError(
+  ctx: TestContext,
+  field: string,
+  expected: string,
+): Promise<void> {
+  await login(ctx).waitFieldError(field, expected, 5_000);
+
+  if (await login(ctx).hasLoginError()) {
+    throw new Error(
+      `a local refusal of the ${field} field also shows at form level`,
+    );
+  }
+}
+
 /** Assert the login screen is gone (AuthGate let the app through) within 5s. */
 export async function expectLoginScreenGone(ctx: TestContext): Promise<void> {
   await login(ctx).waitGone(5_000);

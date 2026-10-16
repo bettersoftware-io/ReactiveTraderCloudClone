@@ -1,29 +1,84 @@
 import { createSignal, type JSX, Show } from "solid-js";
 
 import type { AccountAccessState, RegistrationInput } from "@rtc/core-api";
-import { ACCOUNT_ACCESS_COPY, PRIVACY_NOTICE_URL } from "@rtc/core-logic";
+import {
+  ACCOUNT_ACCESS_COPY,
+  type AccountField,
+  checkDisplayNameInput,
+  checkEmailInput,
+  describeFieldError,
+  findFirstFailingField,
+  PRIVACY_NOTICE_URL,
+} from "@rtc/core-logic";
 
+import { FieldError } from "./FieldError";
+import { fieldErrorId } from "./fieldErrorId";
 import { PasswordChecklist } from "./PasswordChecklist";
 
 import styles from "./LoginScreen.module.css";
 
 /**
  * The create-account form: email, display name and a new password with its
- * live checklist. It registers with exactly what was typed — normalizing is
- * the machine's job. Dumb component: the fields live in local signals only
- * and are never logged.
+ * live checklist. The address and the display name each show their check's
+ * error under the field once it has been left; a submit reveals both and
+ * sends nothing while either fails, focusing the first that does. It
+ * registers with exactly what was typed — normalizing is the machine's job.
+ * Dumb component: the fields live in local signals only and are never
+ * logged.
  */
 export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
   const [email, setEmail] = createSignal("");
   const [displayName, setDisplayName] = createSignal("");
   const [password, setPassword] = createSignal("");
+  const [revealed, setRevealed] =
+    createSignal<ReadonlySet<AccountField>>(NOTHING_REVEALED);
+  let emailInput: HTMLInputElement | undefined;
+  let displayNameInput: HTMLInputElement | undefined;
+
+  function emailError(): string | null {
+    return describeFieldError(
+      checkEmailInput(email()),
+      revealed().has("email"),
+    );
+  }
+
+  function displayNameError(): string | null {
+    return describeFieldError(
+      checkDisplayNameInput(displayName()),
+      revealed().has("display-name"),
+    );
+  }
 
   function submitRegistration(event: SubmitEvent): void {
     event.preventDefault();
+    setRevealed(EVERY_FIELD_REVEALED);
+    const failing = findFirstFailingField([
+      ["email", checkEmailInput(email())],
+      ["display-name", checkDisplayNameInput(displayName())],
+    ]);
+
+    if (failing !== null) {
+      (failing === "email" ? emailInput : displayNameInput)?.focus();
+
+      return;
+    }
+
     props.onRegister({
       email: email(),
       displayName: displayName(),
       password: password(),
+    });
+  }
+
+  function revealEmailError(): void {
+    setRevealed((shown) => {
+      return new Set(shown).add("email");
+    });
+  }
+
+  function revealDisplayNameError(): void {
+    setRevealed((shown) => {
+      return new Set(shown).add("display-name");
     });
   }
 
@@ -53,28 +108,44 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
         <label class={styles.field}>
           <span class={styles.label}>{ACCOUNT_ACCESS_COPY.emailLabel}</span>
           <input
+            ref={emailInput}
             data-testid="login-email"
             class={styles.input}
             type="email"
             autocomplete="email"
+            aria-invalid={emailError() !== null}
+            aria-describedby={
+              emailError() === null ? undefined : fieldErrorId("email")
+            }
             value={email()}
             onInput={changeEmail}
+            onBlur={revealEmailError}
           />
         </label>
+        <FieldError field="email" error={emailError()} />
 
         <label class={styles.field}>
           <span class={styles.label}>
             {ACCOUNT_ACCESS_COPY.displayNameLabel}
           </span>
           <input
+            ref={displayNameInput}
             data-testid="login-display-name"
             class={styles.input}
             type="text"
             autocomplete="nickname"
+            aria-invalid={displayNameError() !== null}
+            aria-describedby={
+              displayNameError() === null
+                ? undefined
+                : fieldErrorId("display-name")
+            }
             value={displayName()}
             onInput={changeDisplayName}
+            onBlur={revealDisplayNameError}
           />
         </label>
+        <FieldError field="display-name" error={displayNameError()} />
 
         <label class={styles.field}>
           <span class={styles.label}>{ACCOUNT_ACCESS_COPY.passwordLabel}</span>
@@ -140,6 +211,13 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
     </>
   );
 }
+
+const NOTHING_REVEALED: ReadonlySet<AccountField> = new Set();
+
+const EVERY_FIELD_REVEALED: ReadonlySet<AccountField> = new Set([
+  "email",
+  "display-name",
+]);
 
 type InputChangeEvent = Event & { currentTarget: HTMLInputElement };
 

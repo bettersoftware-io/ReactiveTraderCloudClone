@@ -24,6 +24,15 @@ export interface LoginScreenPO {
   submit(): Promise<void>;
   /** Wait until the rendered error text reads exactly `expected`. */
   waitErrorText(expected: string, timeoutMs: number): Promise<void>;
+  /** Wait until the inline error under `field` (its `data-field`) reads
+   *  exactly `expected`. */
+  waitFieldError(
+    field: string,
+    expected: string,
+    timeoutMs: number,
+  ): Promise<void>;
+  /** True when the form-level error line is on screen. */
+  hasLoginError(): Promise<boolean>;
   /** Wait until the login screen is no longer in the DOM (AuthGate let the
    *  app through). */
   waitGone(timeoutMs: number): Promise<void>;
