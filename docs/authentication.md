@@ -935,9 +935,70 @@ create-account form links the [privacy notice](privacy.md).
 | Address, name and code rules | `packages/domain/src/auth/accountInput.ts` |
 | Shared core contract suite | `packages/core-contract/src/suites/accountAccess.ts` |
 | Login-screen forms | `packages/client-react/src/ui/shell/auth/`, `packages/client-solid/src/ui/shell/auth/` |
+| Routes: grammar and sync controllers; field feedback | `packages/core-logic/src/routes/`, `packages/core-logic/src/presenters/accountFieldFeedback.ts` |
+| Routes: hash adapter; the client hooks | `packages/web-boot/src/adapters/HashRouteHistory.ts`, `src/ui/shell/routes/` in each client |
 | UI contract | `packages/ui-contract/src/specs/shell/auth/LoginScreen.accountAccess.contract.spec.ts` |
 | Visual scenarios (`login/live-links`, `create-account`, `create-account-checklist`, `enter-code`, `enter-code-reset`, `reset-request`, `pending-approval`, `password-unset`) | `packages/ui-contract/src/visual/scenarios.ts` |
 | Real-server e2e | `tests/fullstack/browser/accounts.spec.ts` |
+
+**Routes (browser Back and Forward).** Both web clients mirror the login mode
+and the workspace tab in the URL hash, so the browser's Back and Forward move
+between them instead of leaving the app. The hash is the only part of the URL a
+route touches: `?core=`, `?splash` and other paths (`/devtools/`) are never
+read or written. Anything else in the hash (empty, unknown, malformed) reads as
+no route.
+
+| Route | Hash | Area |
+|---|---|---|
+| FX, Credit, Equities, Admin tab | `#/fx`, `#/credit`, `#/equities`, `#/admin` | workspace |
+| Sign in | `#/sign-in` | account |
+| Create account | `#/create-account` | account |
+| Forgot password | `#/forgot-password` | account |
+| Enter a code ("I already have a code") | `#/enter-code` | account |
+
+The machines stay the source of truth: the URL mirrors them, and Back or
+Forward becomes the mode's opening intent (`returnToSignIn`,
+`startRegistration`, `startReset`, `startCodeEntry`), never state written past
+the machine. The four login links (Create account, Forgot password, I already
+have a code, Back to sign in) push a history entry; a phase change that is a
+result (register answered, a code accepted, a reset requested) replaces the
+current entry, so Back from the code step lands where the user was before
+Create account, not on a form whose request already finished. The code step of
+a reset shows `#/forgot-password`, because no intent opens it with nothing
+held; the three notices (`pendingApproval`, `passwordUnset`,
+`passwordChanged`) show `#/sign-in`. Nothing secret reaches the URL or the
+history state: a route is a mode name.
+
+Signed out on a tab route (`#/credit`), the URL is kept: the sign-in form
+shows, and after sign-in the workspace lands on that tab, so a shared tab link
+works. Signed in, a login route reached by Back is replaced with the current
+tab. A reload keeps the tab, and so does a core swap from Preferences (the
+remounted view re-applies the URL's tab over a core that starts on FX). A page
+with no server offers no account links, so it honours `#/sign-in` only: any
+other account route, on load or by Back, opens the sign-in form and is
+replaced with `#/sign-in`. The pieces: the route grammar and the two
+route-sync controllers (`createAccountRouteSync`, `createWorkspaceRouteSync`)
+are pure code in `packages/core-logic/src/routes/`; the one browser adapter,
+`createHashRouteHistory`, is `packages/web-boot/src/adapters/HashRouteHistory.ts`,
+built once per page by `startWebClient` and handed to the view as
+`page.routes`; each client's `src/ui/shell/routes/` holds the two hooks
+(`useAccountRoutes`, `useWorkspaceRoutes`). A host that passes no `routes`
+(React Native, a harness without a fake) gets no routing. Design:
+[the spec](superpowers/specs/2026-10-16-browser-history-and-live-validation-design.md).
+
+**Live field checks.** The address (create account, forgot password), the
+display name and the code are checked as the user types, with the fold's own
+checks (`checkEmailInput`, `checkDisplayNameInput`, `checkCodeInput`) and
+their copy. A field shows nothing while the user first types into it; once it
+has been left (blur) its error shows under it and then follows the value, so it
+clears the moment the value is fixed. A submit reveals every error, moves focus
+to the first failing field in form order and sends nothing, so a local refusal
+shows once, under its field. The error is `data-testid="login-field-error"`
+with `data-field` set to `email`, `display-name` or `code`, and the input gets
+`aria-invalid` and `aria-describedby`. The server's refusals stay at form level
+(`login-error`), and the fold still checks on submit. What to show when is one
+pure helper, `describeFieldError` / `findFirstFailingField` in
+`packages/core-logic/src/presenters/accountFieldFeedback.ts`.
 
 **Driving it locally.** `pnpm dev:react:fs` (or `dev:solid:fs`) starts the
 server with the in-memory directory and the client together. Seeds:
