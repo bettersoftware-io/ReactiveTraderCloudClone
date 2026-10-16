@@ -16,6 +16,7 @@
     { "path": "../client-core-effect" },
     { "path": "../client-core-rxjs" },
     { "path": "../core-api" },
+    { "path": "../core-logic" },
     { "path": "../devtools-core" },
     { "path": "../domain" }
   ]

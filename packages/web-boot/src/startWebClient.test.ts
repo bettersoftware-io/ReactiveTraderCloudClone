@@ -71,6 +71,7 @@ describe("startWebClient", () => {
   });
 
   it("boots the default core: logs it, hands the view the page, mounts and publishes", async () => {
+    history.replaceState(null, "", "/#/create-account");
     const client = createClient({
       env: { devAuth: JSON.stringify({ astark: "pw" }) },
     });
@@ -90,6 +91,10 @@ describe("startWebClient", () => {
         return account.username;
       }),
     ).toEqual(["astark"]);
+    expect(page.routes.current()).toEqual({
+      area: "account",
+      mode: "register",
+    });
     expect(client.view.mount).toHaveBeenCalledTimes(1);
     expect(client.composition(1).generation).toBe(1);
     expect(client.composition(1).impl).toBe("rxjs");

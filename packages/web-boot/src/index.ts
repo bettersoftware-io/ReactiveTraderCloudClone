@@ -1,6 +1,7 @@
 // @rtc/web-boot: the boot code both web clients share.
 
 export { BrowserConnectionEventsAdapter } from "#/adapters/BrowserConnectionEventsAdapter";
+export { createHashRouteHistory } from "#/adapters/HashRouteHistory";
 export { LocalStorageDataSourceStore } from "#/adapters/LocalStorageDataSourceStore";
 export { LocalStorageDockLayoutStore } from "#/adapters/LocalStorageDockLayoutStore";
 export { LocalStorageLayoutPresetStore } from "#/adapters/LocalStorageLayoutPresetStore";
