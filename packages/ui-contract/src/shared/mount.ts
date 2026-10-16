@@ -130,6 +130,9 @@ export interface MountOptions<P> {
   /** Seeds `useRegistrationAvailable()` (World.registrationAvailable);
    * defaults to false, where LoginScreen offers no account links. */
   registrationAvailable?: boolean;
+  /** Seeds `useRouteHistory()` (World.routes) with a fake history at this
+   * hash; defaults to none, where the page is unrouted. */
+  routeHash?: string;
 }
 
 const mounted: MountedRoot[] = [];
@@ -193,6 +196,7 @@ function buildContext<P>(
     },
     throughputSets: world.throughputSets,
     commands: world.commands,
+    routes: world.routes,
     // Admin / telemetry setters: flush-wrapped so React re-renders are flushed
     // synchronously before the next assertion (mirrors ctx.emit behaviour).
     setTopology: (value: ServiceTopology | null) => {
@@ -329,6 +333,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     preferencesReopen: opts.preferencesReopen,
     accountAccess: opts.accountAccess,
     registrationAvailable: opts.registrationAvailable,
+    routeHash: opts.routeHash,
   });
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

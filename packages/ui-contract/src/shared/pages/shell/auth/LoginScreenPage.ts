@@ -1,9 +1,12 @@
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import { MountedComponent } from "@ui-contract/harness/component";
-import type { AccountNavigation } from "@ui-contract/harness/world";
+import { RoutedComponent } from "@ui-contract/harness/RoutedComponent";
 
-import type { CodeInput, RegistrationInput } from "@rtc/core-api";
+import type {
+  AccountNavigation,
+  CodeInput,
+  RegistrationInput,
+} from "@rtc/core-api";
 import type { LoginWaitVariant } from "@rtc/domain";
 
 import { waitVariantWithin } from "./AuthWaitPage";
@@ -22,7 +25,7 @@ export interface PasswordChecklistRow {
  * request a reset, and the notices. One `login-submit`, `login-error` and
  * `login-title` serve every phase.
  */
-export class LoginScreenPage extends MountedComponent<Record<string, never>> {
+export class LoginScreenPage extends RoutedComponent<Record<string, never>> {
   private readonly user: UserEvent = userEvent.setup();
 
   /** True when the login form root is present. */

@@ -21,6 +21,7 @@ import type {
   SessionInfo,
 } from "@rtc/domain";
 
+import type { FakeRouteHistory } from "./createFakeRouteHistory";
 import type { CommandLog, HookValues, MetricsView } from "./world";
 
 /** Everything a page object needs: the rendered root + update drivers + command log. */
@@ -43,6 +44,8 @@ export interface PageContext<P> {
   /** Values captured from useThroughput().setValue calls. */
   readonly throughputSets: number[];
   readonly commands: CommandLog;
+  /** The world's fake page history, or null on an unrouted mount. */
+  readonly routes: FakeRouteHistory | null;
   // Admin / telemetry setters (Phase 5 — flush-wrapped so re-renders are immediate).
   /** Push a new service topology snapshot (useTopology source). */
   setTopology(value: ServiceTopology | null): void;
@@ -256,6 +259,15 @@ export abstract class MountedComponent<P> {
   /** Select an instrument on the shared eqWorkspace machine. */
   selectInstrument(symbol: string): void {
     this.ctx.selectInstrument(symbol);
+  }
+
+  /** The fake page history this mount was seeded with (`routeHash`). */
+  protected routeHistory(): FakeRouteHistory {
+    if (this.ctx.routes === null) {
+      throw new Error("this mount has no route history: pass routeHash");
+    }
+
+    return this.ctx.routes;
   }
 
   /** Run an async mutation inside the driver's async flush (React: act). */

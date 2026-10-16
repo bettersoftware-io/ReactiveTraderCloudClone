@@ -1912,7 +1912,7 @@ export function reactViewModel(world: World): ViewModel {
       return world.registrationAvailable;
     },
     useRouteHistory: () => {
-      return null;
+      return world.routes;
     },
     takePreferencesReopen: () => {
       return world.takePreferencesReopen();
