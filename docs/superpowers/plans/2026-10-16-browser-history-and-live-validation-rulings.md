@@ -61,3 +61,5 @@ Triaged by the final reviewer as can-wait (the one must-fix, the hybrid helper n
 ## Proof
 
 Mutation checks (`scripts/mutation-check.mts`), all KILLED: Task 2 19/19, Task 3 2/2, Task 6 1/1, Task 7 23/23, Task 8 40/40, final fix wave 14/14. The full local gauntlet (36 gates, including the web-boot and React Native coverage gates) passed on the final tree; both clients were checked by hand on `dev:react:fs` / `dev:solid:ws:local` (login Back/Forward, one-click Back from a half-typed address, blur/live/submit validation, `#/credit` sign-in hand-off, tab Back/Forward, Back onto login history while signed in, reload, a core swap).
+
+The x86 `react/` golden for `login/create-account-field-errors` (10 skins) was rendered by `update-visual-goldens.yml` run 38969324484 in the CI container (commit f68ea8a1f) and checked by eye against the local `react-local/darwin-arm64` set.
