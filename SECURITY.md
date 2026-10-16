@@ -3,7 +3,7 @@
 This repository is a **demonstration project** — a clean-architecture
 re-creation of ReactiveTraderCloud. It handles no real money, no customer data,
 and its trading, pricing and accounts are simulated. The demo login roster is
-committed on purpose (see `CLAUDE.md`, "Demo accounts & auth env") and is not a
+committed on purpose (see the `launching-the-app` skill, `.claude/skills/launching-the-app/SKILL.md`) and is not a
 finding.
 
 That said, the pipeline and the deployed demo are real, and reports are welcome.

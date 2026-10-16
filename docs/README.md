@@ -136,8 +136,9 @@ flowchart TD
 
 ## Process & contributor rules
 
-- [`../CLAUDE.md`](../CLAUDE.md) — repo-wide guidance (package structure,
-  dependency rules, the doctrines that gate changes).
+- [`../CLAUDE.md`](../CLAUDE.md) — repo-wide guidance every session loads (toolchain
+  traps, the doctrines that gate changes); task-specific guidance lives in the
+  skills under [`../.claude/skills/`](../.claude/skills/).
 - [`../.claude/skills/shipping-repo-changes/SKILL.md`](../.claude/skills/shipping-repo-changes/SKILL.md)
   — the mandatory worktree → PR → CI → merge → cleanup workflow for *any* change
   to this repo, including the Rule 3 catch-up-risk triage.

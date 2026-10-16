@@ -306,7 +306,7 @@ packages/
   devtools-relay/      @rtc/devtools-relay      Dev-machine WebSocket relay for the React Native inspector.
 ```
 
-[`CLAUDE.md`](CLAUDE.md) has the full per-package description and dependency rules.
+Each package's `package.json` describes it; the dependency rules are in [`docs/architecture/06-package-dependencies.md`](docs/architecture/06-package-dependencies.md) and are enforced by `.dependency-cruiser.mts`.
 
 </details>
 
