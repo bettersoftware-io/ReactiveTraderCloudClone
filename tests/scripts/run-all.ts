@@ -10,8 +10,8 @@
  *     for the Gherkin ones (RTC_E2E_SERVE — see lib/serveMode.ts).
  *   - The presenter suite runs against in-process simulators — no server at all.
  *   - Full-stack smokes boot their own real server (and client) on dedicated
- *     ports (4123/4124/3100 for node/browser, 4125/3101 for hybrid, 4127/3102 for
- *     the Solid run of the browser smoke).
+ *     ports (4123/4124/3100 for node/browser, 4125/3101 for hybrid, 4127/3102 and
+ *     4128/3103 for the Solid runs of the browser and hybrid smokes).
  *
  * Each suite's output is buffered and flushed atomically on completion (rather
  * than interleaved live), followed by a pass/fail summary. Wall-clock time is
@@ -61,6 +61,7 @@ const suites: Suite[] = [
   { script: "test:fullstack:browser" },
   { script: "test:fullstack:browser:solid" },
   { script: "test:fullstack:hybrid" },
+  { script: "test:fullstack:hybrid:solid" },
   // Presenter peer — in-process, no server.
   { script: "test:presenter:vitest-fake-timers" },
   // Heavy browser suites — one dev server + browser each.

@@ -286,10 +286,11 @@ function postLogin(
 
 // Distinct from the neighbors also claiming a port in this dir: this
 // file's own `PORT` (4123, default), `browser-smoke.ts`'s `SERVER_PORT`
-// (4124 React, 4127 Solid — all concurrent under run-all.ts's e2e suite; 4126
-// is THIS file's own gated port, which the Solid run once collided with) and
+// (4124 React, 4127 Solid) and `hybrid-smoke.ts`'s (4125 React, 4128 Solid),
+// all concurrent under run-all.ts's e2e suite, and
 // `../scripts/jarvis-live-smoke.ts`'s hardcoded 4125 (manual-only, not part
-// of run-all.ts, but still a live claim worth staying clear of).
+// of run-all.ts, but still a live claim worth staying clear of). 4126 is THIS
+// file's own gated port, which the Solid browser run once collided with.
 const GATED_PORT: number = PORT + 3;
 
 interface AvailabilityCapable {
