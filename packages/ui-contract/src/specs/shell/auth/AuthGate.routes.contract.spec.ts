@@ -62,7 +62,8 @@ describe("AuthGate routes — an unmounted hook leaves the history alone", () =>
         .slice(writesBefore)
         .filter((write) => {
           return (
-            parseAppRoute(write.slice(write.indexOf("#")))?.area === "account"
+            parseAppRoute(write.slice(write.indexOf(" ") + 1))?.area ===
+            "account"
           );
         }),
     ).toEqual([]);
