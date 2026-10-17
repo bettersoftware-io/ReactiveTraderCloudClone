@@ -341,7 +341,7 @@ landed, delegation was deleted, and the core became a load-time choice.
 
 ## 2026-W38 — 14 Sep – 20 Sep
 
-The busiest week of the five (68 PRs). Dockview became the default layout
+A heavy week (68 PRs). Dockview became the default layout
 engine and gained floating groups, chart instances and saved layouts; the
 pluggable core went from slice 1 to slice 3; CI gained a security tier; and
 test fixtures got a house style enforced by lint.
@@ -532,6 +532,1603 @@ audit that turned into seven plans and several new lint rules.
 
 <!-- PR links: one definition per cited PR, ascending. -->
 
+## 2026-W35 — 24 Aug – 30 Aug
+
+Three pushes, nearly all of it landing over one weekend. The Dockview engine
+took on the in-house engine's panel design and motion; the React Native client
+went screen by screen against the mobile-v1 prototype, from an honest
+comparison to all 21 surfaces rated close; and the devtools inspector got
+Redux-style store-first navigation plus a three-phase follow-ups sweep.
+
+### Added
+
+- **Dockview wears the in-house panel chrome** on both clients: the panel's
+  38px head is dockview's tab bar, with card insets, 7px gutters, collapse and
+  maximize controls and the 360px design rail, all built from header pieces
+  now shared with the in-house engine. [#587]
+- **Dockview glides** collapse, expand, maximize and restore over the in-house
+  engine's 0.34s curve, while sash drags and resizes stay instant ([#602]); a
+  fully collapsed rail column becomes stacked vertical strips, as in-house
+  ([#629]).
+- **Store-first navigation in the devtools inspector** — one tree (All /
+  Presenters / Machines / Wire) replaces the filter rail and the Machines and
+  Wire lenses. Selecting a node scopes the actions list, the State pane and a
+  new Machine tab; **Clear** / **Unclear** hide everything before a watermark
+  without touching the store. The spec ([#596]), the plan ([#598]) and the
+  build ([#600]).
+
+### Changed
+
+- **React Native, screen by screen to the mobile-v1 prototype:** the equities
+  blotter as stacked order and position cards ([#595]); the trade view as the
+  design's card stack with a chip-and-stepper ticket ([#597]); Markets
+  ([#610]); the credit RFQ tiles ([#611]); analytics number formats and bubble
+  sizes ([#612] [#619]); the Appearance sheet ([#613]); the LockScreen
+  ([#608]); the boot chrome as the design's bottom block ([#624]); the open
+  radial dock, the new-RFQ form and the spot trade ticket ([#622] [#625]
+  [#626]).
+- **React Native, across every screen:** a boxed segmented sub-nav ([#599]); no
+  connection banner while connected ([#601]); the HUD grid shows through every
+  module root and cards take the design's 12px tile surface ([#603]); real
+  600/700 font cuts instead of iOS faux bold ([#606]); the Orbitron wordmark and
+  the remaining face and case misses ([#623]).
+
+### Fixed
+
+- **Dockview panel bodies under every skin.** The 3D skins' gradient tokens
+  were invalid through dockview's `background-color`, so cards painted nothing
+  and the backdrop showed through; the React bridge's passive effect left the
+  first frame blank, which produced two blank x86 goldens and a red
+  post-merge `visual.yml`. [#594]
+- **Dockview:** the Admin tab threw and rendered nothing, because its single
+  panel made a leaf-rooted grid dockview rejects ([#590]); the React bridge
+  rebuilt dockview on every layout change, and the saved layout drifted a few
+  pixels per reload ([#587]).
+- **The React DevTools extension froze the inspector tab** under live traffic
+  by serialising its props on every commit; it is now disabled on the
+  inspector page, with `?react-devtools` to opt back in. [#620]
+- **React Native:** the ambient background ignored Freeze ([#588]), and the
+  trade-ticket sheet animated under reduced motion ([#626]).
+- Two devtools-app tests that failed only on the shared CI runner. [#615]
+
+### Decisions
+
+- **Dockview residuals** — maximize stays dockview-native and Jarvis-docked
+  panels stay in-house only, recorded in
+  [ADR-002](docs/adr/ADR-002-layout-management-port.md). [#587]
+- **Before-golden first:** every RN fidelity change starts from a golden of
+  the target's real composition already on `main`, so the diff shows before
+  and after ([#593]); restyles are accepted by eyeballing a before / after /
+  prototype strip, not merged on green ([#597] [#599]).
+- **Web-only extras the mobile prototype never drew are removed, not
+  restyled** — the desk P&L gauge and sparkline, the depth ladder, the sector
+  heat map, each for that reason. [#595] [#597] [#610]
+- **The React DevTools guard is an inline script**, because Biome's import
+  sorting leaves no way to run a guard ahead of `react` without a lint
+  disable, which the repo bans. [#620]
+
+### Under the hood
+
+- **RN visual harness made honest:** every module golden framed in the real
+  HUD chrome ([#588]), the boot goldens in the real `BootSequence` ([#591]),
+  `lock/hold` in the real `LockScreen` ([#607]); a report-only visual-reach
+  instrument that lists the files no golden renders ([#593]); the credit fake
+  seeds the real dealer desks ([#617]). The harness had captured first-commit
+  text in the system font, so it now mounts scenarios only once fonts load and
+  all 21 goldens were re-pinned ([#623]).
+- **Zero-pixel RN refactors**, each proven against the committed goldens: the
+  duplicate `border` token folded into `borderSubtle` ([#605]), one
+  `SegmentedPill` primitive ([#618]), a `labelStyle` helper over 55 sites
+  ([#628]), and a file renamed after its last export ([#616]).
+- **Devtools follow-ups sweep:** mechanical fixes, a coverage backfill and
+  ≥95% CI gates for both devtools packages, which also join the coverage report
+  as two tiers ([#604]); then structural fixes — the context pane split, an
+  `Evicted (n)` tree leaf, a frame cap on `LiveHistory`, an exact mount seed
+  ([#609]).
+- **Docs:** the
+  [RN prototype-fidelity comparison](docs/showcase/rn-prototype-fidelity-comparison.html)
+  showcase ([#589]), refreshed as the work landed ([#614] [#621]) and closed
+  with a residuals entry in STATUS at 21 close, 0 moderate, 0 far ([#627]).
+- **Visual goldens:** the Mac-local `react-local` set regenerated after two
+  weeks of drift. [#592]
+- **Dependencies:** [#584] [#585].
+
+## 2026-W34 — 17 Aug – 23 Aug
+
+A maintenance week. Most of it was dependency upkeep — two bumps that could
+not pass on their own were unblocked at the root, and Renovate moved from a
+continuous drip to one grouped Monday wave — plus two test fixes.
+
+### Changed
+
+- **Renovate opens one weekly wave** (before 06:00 on Monday) instead of a
+  continuous drip, and groups the coupled ecosystems: `react-native` with
+  `@react-native/**`, the React Native community libraries, type definitions,
+  and lint tooling. [#582]
+
+### Fixed
+
+- **Solid's equities chart painted its price labels under the plot**, not over
+  it as React does; a canvas line crossing a label showed through its edge. [#567]
+- A Dockview unit test slept a fixed 5ms waiting for a saved size and lost the
+  race on a loaded runner; it now polls for the value it asserts. [#565]
+
+### Decisions
+
+- **Let the Expo SDK drive `react-native`.** Grouping the RN core makes a
+  version-skewed RN/jest-preset PR impossible rather than red on every
+  release; risk-bearing production dependencies stay ungrouped, per package.
+  [#582]
+
+### Under the hood
+
+- **Tests:** `Scenario.strict`, an opt-in zero-tolerance pixel budget, applied
+  to `equities/chart-canvas` after it measured zero run-to-run noise. [#567]
+- **Two bumps unblocked at the root:** `@types/node` 26.2.0 across all ten
+  declaring packages plus a lockfile dedupe, which collapses the duplicate
+  vitest copies that broke typecheck ([#574]); the
+  `@react-native/jest-preset` peer that `jest-expo` 57.0.4 requires, declared
+  ahead of the Expo bump so all 109 jest suites still start ([#575]).
+- **Dependencies:** React 19.2.8 ([#563]), the Expo SDK 57 patch wave
+  ([#562]), Reanimated 4.5.3 ([#564]), Vite 8.2.1 ([#583]), and the rest of the
+  Renovate wave ([#544] [#561] [#566] [#568] [#569] [#571] [#572] [#573] [#576]
+  [#578] [#581]).
+
+## 2026-W33 — 10 Aug – 16 Aug
+
+Two switchable renderers, both off by default: the equities chart gained a
+canvas substrate and the workspace gained Dockview as a second docking engine.
+Jarvis panels could be pinned into the workspace, React Native Equities got
+its mobile-v1 rehaul, and the RN visual tier stopped screenshotting a live
+app. The week closed on a dependency-and-gates day.
+
+### Added
+
+- **Canvas chart renderer.** A "Chart renderer" preference draws the equities
+  chart's geometry (candles, lines, grid, volume, drawings, panes, crosshair)
+  immediate-mode on canvas; text stays DOM and DOM/SVG stays the default.
+  Redraw is event-driven, with no rAF. [#520] Follow-ups: per-layer stroke
+  widths ([#522]) and a closed `Canvas2D` `fillStyle` type hole, with a visible
+  MACD histogram in the golden ([#528]).
+- **Dockview as a second layout engine** — a `LayoutEngine` preference in both
+  web clients (the in-house engine stays the default): drag tabs to re-dock,
+  layout persisted per workspace tab, confined to the new leaf package
+  `@rtc/layout-dockview`. [#534] Jarvis's collapse/expand intents now work under
+  it; `resize` turned out never to have been a gap. [#555]
+- **Pinned Jarvis panels** — a generated panel docks into the workspace as an
+  ordinary tile (up to four), and the whole per-tab workspace (splits, rails,
+  docked panels) survives a reload; "pin that panel" works through the drive
+  vocabulary, and a Reset row restores defaults. [#532]
+- **React Native Equities, mobile-v1** — a ranked movers board with Skia
+  sparklines and a rank-move glide, a tick-flashing header, a Skia candle chart
+  replacing the `react-native-svg` one, an order ceremony over all six ticket
+  phases, blotter status pills, and the module's first visual scenarios. [#518]
+  [#519]
+- **Readable component names in the debug deploy** — rolldown's `keepNames` in
+  both web clients' debug builds only; the lean build is byte-identical. [#530]
+
+### Changed
+
+- **The FPS meter keeps sampling under power-saver Freeze**, in all three
+  clients — it is diagnostic, not decoration. Its rAF loop is marked, so the
+  freeze census still asserts zero decorative rAF. [#531]
+- **Preferences modal** split into reusable `ModalShell` chrome and
+  `PreferencesContent`, with every row now pixel-asserted; the boot-animation
+  toggle defaults to on (it only overrides `prefers-reduced-motion`). [#541]
+
+### Fixed
+
+- **Comparison line catch-up** — a compare turned on after scrolling back, or
+  swapped mid-session, now backfills to the visible window instead of drawing
+  a partial line. [#533]
+- **The RN app crashed on its first Jarvis turn in WS mode** (`Property
+  'crypto' doesn't exist`): Hermes has no Web Crypto, so the RN entry installs a
+  polyfill backed by `expo-crypto`. [#523]
+- **Light mode:** the boot splash starts on white, the boot canvas no longer
+  draws the default skin's accents under every other skin, and the Admin
+  Observability pane matches the panel chrome. [#537]
+- **Deploy:** the debug build's alias for `@rtc/layout-dockview` swallowed its
+  `/styles` subpath and failed both Vercel client builds. [#539]
+- **CI typecheck flake** — `typecheck` and `build` shared one `tsbuildinfo`
+  and raced; typecheck now writes its own. [#550]
+- `/rtc:status` had been broken for ~19 days by `case` wrappers the `!`-block
+  permission checker rejects. [#542]
+
+### Decisions
+
+- **[ADR-002](docs/adr/ADR-002-layout-management-port.md) rewritten** —
+  Accepted as implemented, with Dockview as the first off-the-shelf adapter
+  ([#534]); its Dockview-first gate for pinned panels was stale, so they
+  shipped on the in-house engine ([#532]).
+- **The RN visual harness renders a static fake ViewModel** instead of live
+  simulator ports — spec ([#526]), plan ([#527]), built in [#536]. 20 of 21
+  scenarios now reproduce exactly, the two equities scenarios have goldens at
+  last, and tolerance is per-scenario and exact by default, because no global
+  threshold separated a real change from noise.
+- **Biome's `noImportantStyles` fix refused for the freeze catch-all** — its
+  `!important`s are what outrank arbitrary animations — via a scoped override
+  with its reason. [#552]
+- **Renovate bumps that need source changes go on our own branch**, since a
+  hand-push onto a Renovate branch disables its automation. [#547] [#552]
+
+### Under the hood
+
+- **RN coverage measured for the first time** — two tiers (jest 63.89% of
+  statements, vitest 26.48%) that must not be added together; and
+  `check:react-coverage`, which checked lint policy rather than coverage, is
+  renamed `check:react-policies`. [#551]
+- **Visual tier:** x86 golden syncs for the canvas renderer, prefs modal and
+  admin chrome ([#521] [#524] [#529] [#538]); the RN `DRIFT.md` pairing derived
+  from the golden tree instead of a hand-kept flag, plus two capture-tier
+  defects ([#525]).
+- **Docs:** what a worklet actually is, in the RN motion architecture doc
+  ([#535]); three stale STATUS entries reconciled against live state ([#549]).
+- **Dependencies:** the nanoid override raised to 3.3.18 after its advisory was
+  re-scoped ([#543]); async-storage 2 → 3, inlined in vitest since v3 dropped
+  CommonJS ([#547]); Biome 2.5.2 → 2.5.8 with the findings its new rules raise
+  ([#552]); dependency-cruiser 18 and the Renovate wave ([#75] [#115] [#119]
+  [#548] [#553] [#554] [#556] [#557] [#558] [#559] [#560]).
+
+## 2026-W32 — 3 Aug – 9 Aug
+
+The equities chart reached the TradingView tier: indicator panes, a log axis,
+round-number ticks, drawing tools and a comparison series, in both web clients.
+Jarvis grew live floating panels, learned to drive the app and speak first, and
+gained a spending gate and a demo guide. On React Native, the open-items list
+was worked down and the Appearance surface became a bottom sheet.
+
+### Added
+
+- **TradingView tier on the equities chart**, in both web clients: RSI and MACD
+  indicator panes ([#475]); a linear/log price-axis toggle, with one pluggable
+  price↔y mapping so candles, crosshair and overlays cannot disagree ([#480]);
+  round-number ticks anchored to price in both modes ([#485]); drawing tools —
+  trendlines and horizontal levels, drawn, selected and deleted ([#493]), then
+  drag-edited ([#501]); and a comparison series on a percent-change axis with
+  VS pills ([#508]) that pages older candles alongside the primary ([#514]).
+- **Jarvis generative UI, round 1** — Jarvis authors closed-vocabulary
+  `PanelSpec`s through a server-side `render_panel` tool; both web clients show
+  them as floating HUD panels bound to live ticks, which survive closing the
+  chat and change form in place on request. Five renderers; the scripted brain
+  demos it all with zero tokens. Spec [#477], built [#488].
+- **Jarvis drives the app and speaks first** — a `drive_app` tool over a closed
+  `DriveCommand` vocabulary, and a proactive narrator triggered by detected
+  market anomalies. [#498]
+- **Jarvis usage auto-gating** — an estimated-USD budget per 5-hour window
+  (default $1, `RTC_JARVIS_BUDGET_USD`): at 80% the expensive brains leave the
+  picker, at 100% only Scripted remains, enforced per turn on the server and
+  shown in both clients. [#505]
+- **Jarvis discoverability** — one guide catalog feeding rotating hint chips,
+  an ⓘ demo-guide panel and a hands-free scripted demo that spends no tokens.
+  [#516]
+- **React Native Appearance sheet** — a bottom sheet with a three-way mode
+  segment, a 3×2 skin grid and the ambient picker. Spec [#510], built [#513].
+
+### Fixed
+
+- **RN shell and boot:** Replay Boot did nothing, for three stacked reasons
+  ([#474]), and then showed only a one-frame flash because the fade value
+  outlived the splash ([#515]); the header's text buttons, which pushed Sign out
+  off screen, became the prototype's two glyphs ([#490]); the status strip's
+  centre is kept clear of the dock button, which had hidden the FPS cell
+  ([#507]).
+- **The RN open-items list worked down from 31 entries to 14** — the
+  reanimated jest mock, the Exposure bubbles to the mobile design, the P&L delta
+  window, the FPS clock resync and a three-level power-saver control among the
+  fixes; the rest reclassified or re-diagnosed. [#483] [#484]
+- **Two ReDoS security alerts closed**, one of them quadratic on free chat
+  text, and gauntlet↔CI parity restored. [#496]
+- **E2e suites seed the narrator off** — default-on narration was landing
+  mid-test ([#502]); the live smoke's panel prompt now names an unambiguous
+  pair ([#503]).
+
+### Decisions
+
+- **Observability: Sentry behind a repo-owned port, W3C Trace Context and OTLP
+  on the wire** — nothing auto-instruments WebSockets, so the vendor choice
+  came down to backend, UX and cost. Spec only ([#491]), re-verified with
+  errata and two more vendors weighed ([#497]).
+- **RN Appearance: adopt the design's form, keep our fuller content** — the
+  prototype has no slot for System mode, the ambient variants or the
+  power-saver ladder, and matching it literally would delete them. [#510]
+- **The Expo bundle-smoke tolerance deleted** — the crash it hid was already
+  fixed; the evidence that it was live came from grepping the CI log's echo of
+  the script itself. A worklets/reanimated bump raised to test it was
+  reverted. [#506]
+- **The RN visual-tier bake-off is unfinished, not decided** — it was a
+  three-scenario iOS spike, and Maestro stays because `simctl` cannot
+  screenshot Android ([#499]); Maestro's JDK floor is 17, pinned to 21 as the
+  newest that runs clean ([#504]).
+
+### Under the hood
+
+- **RN visual tier:** Rates gets pixel coverage through a pricing pin ([#486]);
+  a shell-chrome golden ([#489]); the expo dev-menu bubble hidden from captures
+  ([#492]); a boot golden mismatch measured to be a live pulse, not a
+  regression ([#479]); the React Native Analytics module closed against
+  the prototype, its fidelity gaps recorded ([#481]).
+- **Web visual tier:** x86 golden syncs for each chart feature ([#476] [#482]
+  [#487] [#494] [#509]).
+- **Docs and STATUS:** RN logged as having no coverage measurement and no UI
+  contract tier ([#495]); the Jarvis P5 entry closed ([#500]) and the Jarvis
+  backlog reconciled ([#511]); the discoverability idea and panel-composition
+  riffs captured ([#512]); the RN Equities mobile-v1 plan ([#517]).
+- **Dependencies:** four audit advisories cleared — fast-uri, brace-expansion,
+  postcss, undici. [#478]
+
+## 2026-W31 — 27 Jul – 2 Aug
+
+Jarvis, the AI desk assistant, went from a scripted surface to a real
+Anthropic agent with an MCP endpoint and a brain picker in one week. The
+equities chart became interactive, gained a navigator and on-demand history,
+and the visual tier's tolerance was measured and tightened twelvefold. On
+React Native, the blank and frozen boot scenes were finally fixed on device and
+Credit was rebuilt to the prototype.
+
+### Added
+
+- **Jarvis, in five steps.** A scripted assistant in both web clients — header
+  orb, a ⌘/Ctrl+J cinematic overlay, typed-out replies, suggestion chips and a
+  confirm-gated trade card ([#405], receipt in [#414]); the brain moved
+  server-side behind a `JARVIS_*` WebSocket wire with no change to the
+  machine, the UI or the goldens ([#440]); a real `claude-opus-5` agent
+  reasoning over seven desk tools in the new `@rtc/agent-tools` package, with
+  the scripted loop kept as the CI path and demo fallback ([#444] [#446]); the
+  same tools exposed to external MCP clients at `/mcp`, so a trade from Claude
+  Desktop or Code lands in the running app's blotter ([#453]); and a brain
+  picker — Scripted, Haiku 4.5 (the new default), Sonnet 5 or Opus 5, plus
+  effort — with per-turn routing, an in-memory usage meter, a footer chip and
+  an Admin usage card ([#472]).
+- **Interactive equities chart** in both web clients: cursor-anchored wheel
+  zoom, drag and keyboard pan with BACK TO LIVE, a crosshair readout,
+  candle/line/area types, a volume pane and SMA 20 / EMA 50 overlays. [#409]
+- **Chart navigator** — a full-history strip under the chart whose brush *is*
+  the viewport: drag to pan, resize to zoom, click to jump ([#417]); polished
+  so a drag re-runs only the window style, with register, box and handle-clamp
+  fixes ([#434]).
+- **Candle backfill paging** — panning near the left edge fetches older
+  300-candle pages down to a 3,000-candle depth, with `LOADING OLDER…` and
+  `START OF HISTORY` chips, in simulator and both WebSocket modes. [#448]
+- **Login-wait preferences** — pin the Handshake or Reactor treatment and add
+  an artificial delay (Off / 1s / 3s / 6s) so the animations can actually be
+  watched; the Preferences modal splits a new MOTION section out of DISPLAY to
+  even its columns. [#410]
+- **React Native:** the analytics exposure bubbles ported to Skia with the
+  prototype's layered treatment and a settle animation ([#406]); Credit rebuilt
+  to prototype fidelity — countdown ring, flat quote rows with the best quote
+  tinted, an ACCEPTED stamp, chip-driven New RFQ and a sell-side stepper
+  ([#451]).
+
+### Changed
+
+- **The repo relies on the React Compiler instead of manual memoization.** The
+  compiler was switched on for the React Native client and the devtools
+  extension (which had been shipping the inspector unmemoized), 36 of 39 memo
+  sites removed, `useMemo`/`useCallback`/`memo` banned by lint, and a
+  `check:compiler` gate asserts the values that lost their memos are still
+  cached ([#421]). The ban's default-import hole was closed ([#431]), and a new
+  gate requires every React package to declare an explicit React policy, so a
+  new package cannot silently fall outside the rules ([#435]).
+- **Visual tolerance from measurement, not assumption.** Five regenerations on
+  five runners differed by zero pixels, so `maxDiffPixelRatio` dropped from
+  0.06 to 0.005 for React ([#424]) and for the Solid parity gate, which had
+  been left behind ([#430]); a `maxDiffPixels` cap of 100 then bounds the
+  full-page worst case, which had been 10,368 px ([#436]).
+- **Chart renderer seam** — every chart view model now computes a numeric
+  `ChartScene` first, with CSS variables as a separate projection, proven by a
+  Canvas-2D spike that renders the same scene in both clients. No behaviour
+  change. [#463]
+
+### Fixed
+
+- **React Native boot scenes.** Five of the eight scenes rendered blank on
+  device, including the live boot splash: three causes — worklets calling
+  functions or module-level constants declared later in the file, and a
+  missing `"worklet"` directive ([#439], after the investigation and one
+  directive fix in [#413]). Separately, every scene had been frozen at t=0
+  because an inline frame callback restarted its clock on each render ([#456]).
+- **React Native Credit, found on device:** New RFQ quantity chips broadcast
+  1000× the notional ([#454]); the accept ceremony was never visible, sell-side
+  live tickets sat below the history, and quote prices had ragged decimals
+  ([#455]).
+- **Chart on slow hardware.** The Solid chart recreated its whole DOM per
+  zoom/pan step and had no load-shedding, costing 3.45× React's main thread at
+  8× CPU throttle; it now uses position-keyed slots and frame-coalesced gesture
+  writes (1.24×) ([#427]). A horizontal scrollbar flickered on Windows during
+  navigator drags ([#428]), and the 6px navigator handles gained an ~18px
+  invisible grab target ([#429]).
+- **Power saver:** Jarvis ring spins ignored the calm gate because the
+  `animation` shorthand reset it, and the topology pulse respawned under
+  freeze. [#420]
+- **Jarvis follow-ups:** a confirmation teardown leak, spread turns without a
+  tool badge, and confirm-card prices formatted like the tiles. [#415]
+- **Deploy:** the Vercel CLI pinned to major 57 after 58.0.0 broke the
+  env-linked `vercel pull`. [#419]
+
+### Decisions
+
+- **React vs Solid: no significant performance argument for Solid in this
+  app**, measured on production builds with a new
+  `pnpm perf:framework-compare` ([#425]). A rAF throttle for Solid's drag was
+  built, measured as a no-op on fast hardware and reverted ([#426]); the
+  slow-hardware fix then corrected the verdict ([#427]). All in
+  [`docs/react-vs-solid-performance.md`](docs/react-vs-solid-performance.md).
+- **The ViewModel seam and the React Compiler are mutually exclusive by
+  construction** (118 of 123 bails) — documented, not fixed. [#421]
+- **Two clients, one golden set:** the Solid tier's tolerance is the parity
+  definition and must move in lockstep with React's. [#430]
+- **MCP:** `execute_trade` is ungated at our layer because external clients
+  own tool approval, and `/mcp` is mounted regardless of the Jarvis env gate
+  ([#452]); the MCP SDK stays on 1.x until 2.0 is GA ([#469]).
+- **Jarvis cost and billing:** deployed Jarvis is gated Anthropic-side with
+  prepaid credits for now ([#460]); Haiku assessed as ~5× cheaper and
+  expected sufficient ([#462]); governance round 1 is display-only, with no
+  automatic gating ([#465]).
+- **The prototype deviation corpus is never a CI gate** — the prototype is
+  frozen, so a difference is never a failure. [#461]
+
+### Under the hood
+
+- **Jarvis docs:** the wire plan, plus two STATUS entries restored after a
+  merge silently dropped them ([#432]); the agent-loop ([#441]), MCP ([#452])
+  and brain-picker ([#467]) plans; the brain-picker spec ([#465]); the
+  [running-real-Jarvis runbook](docs/running-real-jarvis.md) and a
+  usage-governance backlog entry ([#457]); rate-limit and limits-trip
+  behaviour ([#462]); the round's deploy follow-ups ([#473]).
+- **Chart docs:** the navigator ([#411] [#416]) and backfill ([#437]) specs
+  and plans.
+- **React Native docs:** [`docs/rn-motion-architecture.md`](docs/rn-motion-architecture.md)
+  — Skia vs Reanimated, and the frozen-boot case study ([#458]); running the app
+  on a real iPhone for free ([#459]); the Credit plan ([#447]); the boot-scene
+  STATUS entry corrected ([#433]); the deviation corpus — spec ([#461]), plan
+  ([#464]) and 24 prototype shots with a generated `DRIFT.md` readable from a
+  phone ([#468]).
+- **Web goldens:** syncs after the interactive chart ([#412]), the navigator
+  ([#418] [#442]), backfill ([#449]) and the canvas spike ([#466]); 132 drifted
+  goldens refreshed, including a whole Jarvis re-skin the tier had missed
+  ([#422]); 162 latent-drift local goldens resynced ([#438]).
+- **React Native goldens:** every golden now asserts what the app draws —
+  theme background, safe-area insets, a pinned status bar, a pinned `boot/topo`
+  clock ([#443]); the two Credit goldens captured ([#470]); the seeded
+  blotter's dates pinned so it stops re-dating daily ([#471]).
+- **Tooling:** `/rtc:visual-tolerance-audit` and `pnpm visual:jitter` ([#424]);
+  `pnpm check:worklet-order`, first a report ([#413]) and then a CI gate
+  ([#439]); the gauntlet now mirrors CI's Cucumber hooks tests ([#431]); the
+  motion audit's `--` argument fix ([#420]).
+- **Presentations:** the Clean Architecture case-study Part II deck refreshed.
+  [#423]
+- **Dependencies:** `brace-expansion` overrides bumped to the corrected
+  per-major fixes and the spent audit suppression dropped. [#450]
+
+## 2026-W30 — 20 Jul – 26 Jul
+
+The test-tooling bake-off ended: one winner per category kept, the rest
+deleted or parked, and the post-merge visual job went from ~52 to ~15 minutes.
+Around that, the React Native rehaul rebuilt Rates and Blotter and ported all
+eight boot scenes to Skia, the DevTools inspector became timeline-first, and a
+coverage sweep plus a new handler-naming lint rule went through the repo.
+
+### Added
+
+- **Timeline-first DevTools inspector.** Four tabs became one filterable event
+  timeline; clicking a row pins the whole inspector to that moment, with
+  Event / State / Diff panes, a rolling history buffer and a retroactive
+  "Export last buffer". The protocol and hub are untouched. [#310]
+- **React Native Rates and Blotter rebuilt to the mobile-v1 prototype** over an
+  unchanged view-model seam — spot-tile grid, tick flash, filter glide, a
+  bottom-sheet trade ticket and execution stamp ([#295]); the blotter's filter
+  chips, fills summary and insert flash ([#301]).
+- **React Native boot suite on Skia, eight of eight scenes.** A Skia boot
+  canvas with `core` and `laser` on a shared 3D projection kernel, plus
+  hold-to-unlock on the lock screen ([#314]); `core` and `laser` completed and
+  `docking` added ([#353]); a shared projected-3D camera seam ([#375]); then
+  `hologram` ([#382]), `layers` ([#383]), `geo` ([#390]), `jarvis` ([#391]) and
+  `topo` ([#392]).
+- **React Native Analytics:** the pair P&L bars animate on `scaleX` and the
+  cards follow the prototype's order. [#403]
+- **Waiting feedback on sign-in and unlock** in both web clients — two
+  alternating treatments, and the lock screen now has an in-flight state at
+  all. [#345]
+- **Equities chart groundwork:** candles gain `volume` and a 300-deep history
+  ([#395]); the pure viewport, crosshair and indicator maths in
+  `@rtc/motion-core`, no UI yet ([#400]).
+- **Server WebSocket connection logging** — one line per connect, disconnect
+  and rejected upgrade, naming why, never the token. [#341]
+- **Symmetric per-mode dev scripts** (`:sim`, `:ws:local`, `:ws:remote`, `:fs`)
+  for all three clients, which also restores the RN app's lost `serverUrl`
+  wiring. [#337]
+
+### Changed
+
+- **The test bake-off is over.** Both Cypress suites deleted — native
+  Playwright drives the browser ([#297]); the playwright-ct and vitest-browser
+  assert tiers retired with ~226 MB of goldens, leaving the Playwright golden
+  tier as the visual contract ([#299]); the presenter tier collapsed to
+  vitest with fake timers ([#300]); the Gherkin browser suites parked behind a
+  weekly workflow ([#303]), and `cucumber-fake-timers` kept as a parked
+  presenter-tier showcase beside them ([#318]). Solid reads `VITE_DEV_AUTH` like
+  React, so `login.spec` runs on both clients ([#296]).
+- **Visual CI is faster:** React and Solid run as a parallel job matrix with a
+  cached build ([#311]); doc-only merges skip the job, and the container golden
+  regen takes a scenario filter ([#339]); Solid's config honours
+  `SCENARIO_PATTERN` ([#407]).
+- **`@rtc/boot-splash`** — the boot-splash engine both web clients carried as a
+  renamed copy, extracted into one framework-free package (−5,286 / +1,048
+  lines). [#317]
+- **`rtc/name-functions-by-effect`** — a lint rule that a handler is named for
+  what it does, not what triggers it, with ~340 renames across 9 packages
+  ([#394]); one-line handlers re-extracted rather than inlined ([#398]); the
+  eight deferred findings closed ([#402]).
+- **Dependency-cruiser's package-boundary rules actually fire.** They had been
+  resolving `@rtc/*` to excluded `dist/` and enforcing almost nothing; a
+  resolution-only tsconfig maps them to `src`, and 14 rules became
+  allowlists. [#327]
+
+### Fixed
+
+- **The WebSocket connects only once signed in.** Before, the adapter connected
+  in its constructor and retried a tokenless upgrade every 3 s on the login
+  screen ([#306]); the RN wiring is pinned by a test ([#336]) and verified live
+  against the deployed server using the new connection log ([#313] [#342]).
+- **Every equities chart was pixel-identical** — the candle walk was seeded by
+  timeframe only; the symbol is now mixed in. [#308]
+- **Security:** a polynomial ReDoS in `parseNotional`, ~7.4 s → ~0.35 ms on a
+  50k-digit input ([#323]); CodeQL's ReDoS step regexes and missing workflow
+  token permissions ([#320]).
+- **Power-saver freeze:** a delayed `backwards` animation held text invisible —
+  the catch-all now zeroes delays too, the visual hosts load the real global
+  stylesheet, and a computed-style spec witnesses it ([#355]); per-quote
+  animation churn and resident paused loops removed, with a repeatable
+  `/rtc:perf-audit` motion audit ([#388]).
+- **React Native:** five of eight boot variants failed to persist ([#302]); the
+  boot never cycled off `core`, faint splash mesh and a lock-ring worklet
+  crash ([#340]); a `core` scene worklet crash on device ([#334]); boot-scene
+  text drew nothing because `Skia.Font()` had no typeface — JetBrains Mono is
+  now bundled ([#362]); a cold-Metro worklets Babel red-box ([#332]); the
+  recurring `expo-env.d.ts` / `tsconfig.json` churn ([#361]); Rates
+  stylesheets rebuilt on every tick ([#347]).
+- **Vercel stopped auto-deploying on every push** — the off-switch only works in
+  a file named exactly `vercel.json`. [#401]
+- Native scrollbars and form controls follow the theme, so Windows Chrome
+  matches macOS. [#335]
+- **Flakes:** the DevTools pin step races a live stream — it now pins by
+  `ArrowUp` ([#325]); the cucumber suites' fixed sleep and teardown timeout
+  ([#404]), then teardown judged by whether the browser is still connected
+  rather than by the clock ([#408]).
+- The RN visual capture tapped blind at fixed coordinates and could pin the
+  Expo launcher as a golden; it now polls the accessibility tree for
+  readiness. [#350]
+
+### Decisions
+
+- **One tool per test category** — native Playwright for the browser, the
+  Playwright golden tier for pixels, vitest with fake timers for the presenter,
+  Gherkin parked and run weekly. The verdicts, timings and the proof nothing
+  was lost: [`docs/test-bakeoff-outcome.md`](docs/test-bakeoff-outcome.md)
+  ([#315]) and ADR-001's Outcome ([#299]); the four deferred follow-ups
+  ([#305]); why `cucumber-fake-timers` over quickpickle as the parked peer
+  ([#318]).
+- **A prose-only overlap no longer forces a catch-up merge** — 53% of
+  catch-ups were `docs/STATUS.md` alone ([#367] [#370]); a merge queue is
+  unavailable on a user-owned repo ([#381]); a conflicting PR gets no CI run at
+  all, so re-triggering cannot help ([#374]).
+- **Handlers get names even at one line**, reversing the inline-arrow policy
+  [#394] shipped with. [#398]
+- **`gh pr merge` pre-approved repo-wide**, narrowed to that one verb. [#360]
+- **The shared `.tsbuildinfo` typecheck race** behind a "flaky" CI run is
+  logged with three fix options, the fix left to its own PR. [#377]
+- **React Native boot and module plans:** hybrid declarative/imperative Skia
+  rendering chosen per scene ([#309]); the rest of the boot-scene port split into
+  non-projected and projected halves, then by scene ([#348] [#372] [#386]); the holo flicker
+  threaded per draw call and no bloom anywhere ([#353]); `boot/topo` left
+  unregistered as a golden because it prints a wall clock ([#393]).
+- **The remaining React Native modules designed as Credit, Equities and
+  Analytics**, with
+  three design calls settled and a ledger of prototype/data-model mismatches
+  ([#349] [#351] [#352]); the Analytics plan fixes the frozen positions below
+  both clients ([#396]), done in [#397].
+- **Equities chart interactivity design** — renderer-neutral maths in
+  `@rtc/motion-core`, thin React and Solid gesture shells. [#387]
+- **Jarvis re-phased** around the v5 prototype's scripted surface; voice out of
+  scope. [#384]
+- **The `ui-visual` coverage tier measures the golden matrix's reach**, not
+  incidental pixel-tier coverage — renamed "visual reach" and added for Solid
+  ([#358] [#369]); boot-splash's canvas drawing excluded from coverage with its
+  reason inline ([#379]).
+
+### Under the hood
+
+- **Coverage sweep:** the Solid registries, server and domain tails ([#366]),
+  the React wiring and client-app tails ([#371]), the ui-contract tail ([#380]),
+  `client-core`'s ws-real RPC paths ([#389]) and devtools-core's bounds and
+  guards ([#399]); `pnpm coverage:gaps` made to read lcov and merge tiers
+  correctly ([#376]).
+- **React Native CI and visuals:** a spike proves the iOS golden pin is
+  reachable on free macOS runners ([#373]), behind a survey of mobile CI options
+  ([`docs/mobile-ci-testing-options.md`](docs/mobile-ci-testing-options.md),
+  [#357]); boot scenarios registered for the new scenes ([#385] [#393]); one
+  page for every open RN item,
+  [`docs/rn-open-items.md`](docs/rn-open-items.md) ([#356]).
+- **Agent workflow:** `/rtc:gauntlet` and `/rtc:status` ([#364]), `/rtc:docs`,
+  `/rtc:backfill-test-coverage` and the per-file gap analyser ([#365]), and
+  fixes found by using them ([#368]); worktree freshness made mechanical in the
+  shipping skill ([#307]).
+- **Docs:** the bake-off docs synced ([#294] [#304]); the shared Gherkin corpus
+  explained in [`tests/GHERKIN.md`](tests/GHERKIN.md) ([#324] [#326]); the §6
+  package diagram stacked vertically ([#329]); the add-a-package recipe needs a
+  `tsconfig.depcruise.json` entry ([#331]); the Clean Architecture case-study
+  Part II deck and a fixed Part I build ([#319] [#333]); STATUS bookkeeping
+  ([#298] [#313] [#316] [#328] [#330] [#344] [#346] [#359] [#363]).
+- **Dependencies:** postcss and brace-expansion advisories that had reddened
+  the audit gate on `main` ([#338]); the CRITICAL `@vitest/browser` and HIGH
+  `fast-uri` advisories, moving the whole vitest train to 4.1.10 ([#343]); the
+  last Dependabot alert, transitive `uuid` 7 → 11 ([#354]).
+
+## 2026-W29 — 13 Jul – 19 Jul
+
+The SolidJS client went from a walking skeleton to full parity with React in
+one week, and the custom RTC devtools went from nothing to an inspector that
+reaches React, Solid, React Native and deployed builds. Real login replaced the
+Basic-Auth wall, power-saver mode arrived, and the React Native HUD rehaul
+started. The visual-golden set was collapsed into one and then restored.
+
+### Added
+
+- **The SolidJS client, end to end.** `@rtc/solid-bindings` and a
+  `@rtc/client-solid` walking skeleton ([#183]); the shell and FX subtree with a
+  byte-equality CSS parity gate ([#184]); credit, equities and admin, passing
+  all 82 shared UI-contract spec files ([#216]); pixel parity, with all three
+  visual tiers asserting against React's goldens and Solid owning none
+  ([#230]); the shared e2e suites run against Solid, which caught a real
+  double-fire bug in the notional input ([#240]); the login gate ([#241]); and
+  full RTC-devtools wiring with its own `/devtools/` panel ([#262]). Solid
+  Devtools instrumentation for development builds only ([#185]).
+- **Custom devtools for the RxJS state layer** — `@rtc/devtools-core`
+  (decorators at the composition root, a dormant-until-attached hub) and
+  `@rtc/devtools-app`, a four-panel inspector served at `/devtools/` ([#188]).
+  Then, the same week: intent injection from the panel, the first inbound
+  write ([#211]); an MV3 Chrome extension that attaches to any running
+  instance, deployed builds included ([#213]); record, replay and
+  time-scrubbing with JSON export, entirely panel-side ([#221]); and React
+  Native inspection over a dev-machine WebSocket relay, `@rtc/devtools-relay`
+  ([#227]), with intent injection on RN too ([#235]).
+- **A login screen and genuine server-side authentication** — a scrypt-checked
+  roster, an HMAC-signed token that gates the WebSocket upgrade, and a real
+  password re-auth lock screen, on every client ([#210]). React Native gets its
+  own login screen with the Sim/Live toggle reachable before sign-in ([#226]),
+  session persistence across cold launches and a sign-out button ([#234]).
+- **Power-saver mode** — one persisted switch that removes the ambient GPU
+  layers and conflates price rendering ([#218]), then a three-state ladder,
+  Off / Calm / Freeze, where Freeze stops all decorative motion for GPU-less
+  remote desktops ([#245]). An **"Always play boot animation"** preference
+  overrides `prefers-reduced-motion` for the splash alone ([#255]).
+- **Aurora ambient background** from the v5 design, selectable against the
+  existing rays via an Ambient-style preference, and a **draggable Preferences
+  dialog** ([#259]).
+- **Live FPS and memory readouts** in the HUD status bar, replacing two static
+  numbers, frozen in the test harnesses so goldens stay stable ([#231]); a
+  **HUD-logo favicon** on both web clients ([#219]).
+- **React Native rehaul toward the mobile-v1 prototype, first four stages** — the native motion and render
+  stack (Reanimated, Skia, gesture-handler, Expo native modules) with no
+  visible change ([#220]); theme completion, a Skia ambient background, an
+  Orbitron wordmark and a rebuilt Appearance sheet ([#228]); a Mac-local
+  simulator visual harness ([#232]) with Maestro and owl tiers ([#236]),
+  repaired so scenarios render outside the login gate and scored in a tier
+  bake-off ([#279]); and the HUD shell — header, status strip and a radial
+  command dock replacing the tab bar ([#285]).
+- **A multi-producer GitHub Pages site** on a `gh-pages` branch, where the
+  coverage report and presentation decks publish without clobbering each other
+  ([#198] [#200] [#204]), plus a published **visual-diff failure report** at
+  `/visual/` ([#280]).
+- **Deploy Solid** to `rtc-clone-solid.vercel.app` ([#257]).
+
+### Changed
+
+- **One `Deploy` workflow** with React / Solid / server checkboxes and a
+  sourcemaps toggle; the React target becomes `rtc-clone-react` ([#281]). The
+  debug build then actually works: inline maps, because Vercel refuses to serve
+  `.map` files ([#284]), and `@rtc/*` libraries resolved from source with
+  distinct `-dbg-` filenames ([#290]).
+- **The `pnpm dev*` scripts became an orthogonal matrix** — client ×
+  simulator / attached server / full stack ([#225]) — and `pnpm dev` went back
+  to being a zero-setup simulator alias of `dev:react` ([#229]).
+- **Demo credentials are committed** so `pnpm dev` can sign in out of the box
+  ([#237]), and every client's demo password was standardised to the same value
+  ([#238]).
+- **The ambient animated background is on by default** on the web clients,
+  after measuring it as compositor-only; React Native stays off ([#203]).
+- **Web design prototype v5** added under Git LFS (the repo's first use of it)
+  and made the current prototype ([#186] [#187]).
+- The account menu's Lock Session and Sign Out rows now match the rest of the
+  list, in title case, with only Sign Out in red ([#246] [#260]).
+- The devtools inspector repaints at ~15 Hz from one animation frame instead of
+  on every batch, which had starved the panel under CPU load ([#191]); six
+  hardening follow-ups — bounded registries, a typed event builder, a liveness
+  timeout, identity-stable rows with React Compiler, a WAAPI change-flash and a
+  production copy-path check ([#209]).
+
+### Fixed
+
+- **LiveRates sparklines keep their history** when a currency filter hides and
+  re-shows a tile, instead of restarting from zero ([#242]).
+- **The instrument dropdown and blotter filter popovers are frosted again**,
+  not see-through, with an opaque fallback under power saver ([#249]).
+- **Solid e2e was stranded on the login screen** (main red) because the client
+  ignored the seeded session; it now persists sessions in `localStorage` ([#247]).
+- **React Native bundles and runs on the simulator** — a Babel 8 leak into the
+  worklets plugin and an FPS worklet-boundary crash, both invisible to jest
+  ([#289]).
+- The devtools inspector connects whichever side opens first ([#189]) and
+  paints edge to edge ([#190]).
+
+### Decisions
+
+- **One container-canonical golden set: built, then reverted.** The emulated
+  x86 container was measured byte-identical to CI on any host ([#263]), so the
+  per-architecture sets were deleted ([#272] [#273] [#274]) — and restored a
+  day later because it killed the fast, Docker-free native loop ([#275]).
+  Recorded in ADR-001, with the two axes of golden duplication ([#276]).
+- **Devtools intent injection is gated by a runtime flag, not dead-code
+  elimination**, so React Native can use it; the bundle-grep CI gate goes, and
+  relay Origin-hardening is skipped as dev-only ([#235]).
+- **The Solid coverage gate holds branches at 85, not 95** — Solid's compiler
+  inflates the branch denominator with arms no test can reach ([#216]). Solid's
+  component-test visual tier is a full-page fallback because
+  `@playwright/experimental-ct-solid` is frozen at 1.48 ([#230]).
+- **react-native-owl is not viable** on RN 0.86 / React 19 (the RN visual
+  harness's `BAKEOFF.md`, [#279]).
+- **Ending the test-tooling bake-off** — plain Playwright as the sole CI visual
+  tier, Cypress deleted, the Gherkin suites off the PR gate: the plan and its
+  locked decisions, not yet executed ([#293]).
+- **Catch-up before merge is risk-based**, not automatic; a merge queue goes to
+  the new `docs/IDEAS.md` icebox ([#201]).
+- **Parked:** a general blank-line-between-blocks lint rule, with its measured
+  blast radius ([#288]).
+- **Designs and plans:** the devtools Chrome extension ([#194]), hardening
+  ([#205]), intent injection, record/replay and RN inspection ([#206] [#207]);
+  the RN mobile-v1 rehaul's phased spec and its first plans ([#208] [#224]).
+
+### Under the hood
+
+- **Visual goldens:** repins after the power-saver header ([#223]), the frosted
+  popovers ([#256]) and four drifted merges ([#261]), and the Aurora gap — its
+  scenario had been merged with no goldens ([#266]); a `goldens:regen` /
+  `goldens:verify` container wrapper ([#265]); a fix for a first-mount race
+  that broke filtered runs ([#268]); a scenario filter and auto-commit for
+  `update-visual-goldens`, kept off `main` ([#269] [#291]); a drift guard for
+  the Playwright image tag ([#270]); the golden trees moved to
+  `@rtc/ui-contract` ([#286]); an `UPDATING-GOLDENS` runbook ([#277]); status
+  and gitignore wrap-up ([#271] [#283]).
+- **Lint:** a blank line between multiline declarations, 456 spots autofixed
+  ([#243]); a committed ESLint-warning ledger with a CI drift gate ([#250]);
+  `newspaper-order` moves `jest.mock` below the tests, as it does `vi.mock`
+  ([#287]).
+- **Docs:** `docs/STATUS.md`, the cross-workstream pending backlog, with a
+  maintenance skill and a drift hook ([#196] [#278]); §21 "One Test Suite, Two
+  Frameworks" ([#282]); `docs/boot-splash-animations.md` with a
+  readability rename of the draw code, proven safe by a fingerprint verifier
+  ([#197] [#199]); framework DevTools vs the RTC inspector ([#264]); the docs
+  map and idea lifecycle ([#202]); devtools docs sync ([#215]); a
+  Clean Architecture case-study deck ([#193] [#195]); TOC fixes ([#192]); the
+  CI-polling budget in `shipping-repo-changes` ([#254]).
+- **Backlog upkeep** in `docs/STATUS.md`: [#214] [#217] [#222] [#233] [#239]
+  [#251] [#252] [#253] [#258] [#267] [#292].
+
+## 2026-W28 — 6 Jul – 12 Jul
+
+The web client was rebuilt to the v2 design prototype screen by screen, then
+made cheap to run: steady-state animations moved to the compositor and the
+traps were written down. Alongside, the architecture docs became a split,
+link-checked atlas, a family of WebSocket subscription leaks was closed, the
+React Native client moved to Expo SDK 57, and the SolidJS port took its first
+step.
+
+### Added
+
+- **The v2 prototype's screens, one PR each.** Dock drag, maximize and
+  collapse behaviour plus FX chrome ([#114]); working FX Watchlist and
+  Activity views in place of "coming online" placeholders ([#118]); Credit as
+  a three-panel dock — New RFQ form, dealer-quote RFQ cards, blotter ([#123]);
+  Equities as a four-panel dock with timeframe candles carried as real data
+  from the domain through the wire to the chart, an order ticket and a
+  rank-gliding watchlist ([#125]); Admin as an observability board with KPI
+  cards, glow charts, service health and live events ([#124]).
+- **v3 and v4 design sync** — an executing spinner on tiles, "isotope" filter
+  choreography on the rates grid and watchlist, the ambient dots visible
+  through the holo skins, and five new boot scenes ([#164]); the core boot
+  splash rebuilt as a global market mesh of trading hubs and order-flow arcs
+  ([#170]).
+- **React Native on Expo SDK 57 / RN 0.86**, with build profiles that need no
+  paid Apple account and are bound to their EAS environments ([#116] [#121]),
+  a root `dev:ios` script ([#122]) and a README for the new run and
+  distribution options ([#120]). A v2 visual pass gave the mobile app elevated
+  FX cards, a polished shell and "3D" skins that are really 3D ([#143]), then
+  carried a shared card and spacing scale to Credit, Equities, Analytics and
+  the blotters ([#147]).
+- **`@rtc/motion-core`** — the DOM-free animation math behind the FLIP and
+  rank-glide hooks, extracted so a second UI framework can reuse it. [#174]
+- **Design prototypes in the repo:** v3 ([#157]); `docs/design/` split into
+  `web/` and `mobile/` with web v4 and mobile v1 added and a deploy target per
+  side ([#166] [#169]); root `dev:proto` and `dev:design` scripts, the latter
+  a zero-dependency Node server ([#108] [#109] [#110]); a README for
+  `client-prototype` ([#106]).
+
+### Changed
+
+- **Steady-state animations run on the compositor** — same visuals, about 40%
+  less CPU on FX ([#139]), and Credit and Equities with their main thread idle
+  ([#141]).
+- **Two fidelity punch-lists against the live prototype:** 15 items of shell
+  chrome, dock geometry and panel polish ([#127]); then a 22-item second round
+  across FX, themes, the layout engine, the shell and Admin, which was merged,
+  reverted and re-landed reconciled with the new animation rules
+  ([#136] [#138] [#144]).
+- **The UI contract suite moved to its own package, `@rtc/ui-contract`** —
+  all 82 specs framework-neutral, the first step of the SolidJS port. [#182]
+
+### Fixed
+
+- **WebSocket subscriptions no longer accumulate.** Toggling the FX filter
+  multiplied the tick rate because the client could not unsubscribe and the
+  server merged a fresh stream per subscribe ([#171]); the same leak in
+  equities quotes and depth, and on every tab switch, is closed too ([#172]);
+  a whole-app sweep fixed a server timer leak in the credit RFQ simulator and
+  kept the Admin charts warm across tab visits ([#173]).
+- **The deployed server crash-looped on Fly** — `tsc-alias` rewrote the `ws`
+  import to the same-named local folder; the folder is now `src/socket`. [#134]
+- **The deployed web app opened no WebSocket** — Turbo's strict env mode
+  stripped `VITE_SERVER_URL` from the build; a deploy guard now fails loudly.
+  [#150]
+- **The React Native app crashed at boot** under Metro, from a missing Babel
+  preset and a stale `@expo/metro-runtime`. [#111] [#112]
+- Bugs found while porting the screens: the activity feed and Admin event log
+  lost their history on every tab switch ([#118]); the docked New RFQ form
+  dead-ended after its first submission ([#123]); the Admin throughput chart
+  was a permanently flat line ([#124]).
+- `clean:deep` reaches every package, including RN's generated `ios/` and
+  `android/`. [#107] [#126]
+
+### Decisions
+
+- **The visual-diff gate runs after merge, not on PRs**, while the UI churns
+  — the reasoning and the way back are in ADR-001. [#158] [#160]
+- **Where UI logic lives** — RxJS machine, plain hook, or pure function plus a
+  thin framework shell: [ADR-005](docs/adr/ADR-005-ui-logic-placement.md). [#174]
+- **Keep singleton streams warm on the client instead of coalescing duplicate
+  subscribes on the server**, because coalescing would drop the first-subscribe
+  state-of-the-world replay (recorded in [#172]).
+- **The second fidelity round was reverted, then re-landed** — the revert was
+  prompted by a suspected stale build, and the re-land reconciled it with the
+  animation rules. [#138] [#144]
+- **Designs and plans merged ahead of their work:** power-saver mode ([#140]),
+  atomic test-ID renames via a shared registry package ([#154]), custom
+  DevTools for the presenter layer ([#168]), login with server-side
+  authentication ([#176]), the Jarvis AI assistant and its capability roadmap
+  ([#177], with architecture chapters §18–§19 in [#178] [#179]), the SolidJS
+  port ([#180]), and RN visual snapshot testing as a Mac-local, non-gating
+  suite ([#149]).
+
+### Under the hood
+
+- **Architecture docs** — synced with the multi-client reality, with animated
+  diagrams and theme-safe, narrower Mermaid ([#128] [#129] [#130] [#131]), a
+  Clean Architecture rings primer ([#135] [#137]), satellite docs and sandbox
+  isolation caught up ([#132] [#133]); `docs/architecture.md` split into one
+  file per section ([#148]); the Codebase Atlas — §13–§16, decision
+  narratives, READMEs for every package and a CI doc-link check ([#151]); §17
+  on the web client up close ([#162] [#165]) and the custom-hook surface
+  ([#175]).
+- **Performance and environment docs:** [`docs/performance.md`](docs/performance.md),
+  the catalogue of rendering traps, fix patterns and profiling recipe
+  ([#142]); [`docs/env-files.md`](docs/env-files.md), every `.env` file and a
+  token-rotation checklist ([#163]).
+- **Gates:** braces on every control statement (Biome `useBlockStatements`,
+  521 fixes) ([#145]); every workspace must declare `typecheck` and a test
+  script ([#146]); dependency-cruiser pair rules naming all nine packages and
+  RN dumb-UI grep gates 30–33 ([#155]); the React-hooks and component-order
+  lint rules extended to RN ([#153]); render functions became components under
+  a new `rtc/no-render-functions` rule ([#165]).
+- **Visual goldens:** the full theme matrix — five skins × dark/light at
+  1920×1080 ([#152]); real app fonts and an uncropped Admin ([#156]); layout
+  scenarios at real workspace size ([#159]); deterministic webfont loading
+  that ended a golden width race ([#161]); a v3 regen with a contract-tier
+  coverage audit, 95% → 97% branch ([#167]).
+- IntelliJ stops indexing generated folders. [#181]
+- **Dependencies:** Biome 2.5.2 and tsc-alias 1.9.0. [#113] [#117]
+
+## 2026-W27 — 29 Jun – 5 Jul
+
+The first week in which every change went through a PR. The web client's HUD
+redesign finished, and two new clients went from nothing to complete screens.
+The app layer was pulled out into a shared `@rtc/client-core`, and a React
+Native app grew on top of it in eight phases. A readable React port of the v2
+design prototype was built screen by screen. The server was rewritten on a
+declarative WebSocket effects library and now serves equities too.
+
+### Added
+
+- **Equities trading module**: watchlist, canvas candlestick
+  chart, depth ladder, order ticket with fill choreography, orders and
+  positions blotters, P&L gauge and sector heatmap, over three new seedable
+  domain simulators. [#43]
+- **Admin observability dashboard**: gauges, throughput, latency
+  and error charts, sessions, a live event log and a service-topology graph.
+  Injecting an incident drives the real connection banner to DISCONNECTED, and
+  the overlay offers a **Clear incident** button. [#49]
+- **System theme.** The header toggle cycles dark → light → system, following
+  the OS `prefers-color-scheme` ([#54]). **Two 3D skins**, `holo3d` and
+  `terminal3d`, each added as one token entry per client ([#100]).
+- **React Native client** (`@rtc/client-react-native`, Expo SDK 55), in eight
+  phases: the scaffold and monorepo wiring ([#61]); a live spot-tile grid
+  against the Fly server with a simulator toggle ([#69]); tap-to-trade and a
+  blotter ([#82]); Analytics and P&L in `react-native-svg` ([#85]); skin × mode
+  theming with bundled fonts ([#92]); the boot splash and lock overlay ([#95]);
+  the Credit RFQ desk ([#98]); and Equities, with Appearance moved to a toolbar
+  gear ([#102]). A cold-start runbook covers the live WS token and running on a
+  device ([#73]).
+- **`@rtc/client-prototype`**: a readable, self-contained React port of the v2
+  design prototype. It covers the scaffold, themes and canvas boot sequence
+  ([#57]), shell chrome ([#60]), FX ([#72]) and its Analytics and Positions
+  aside ([#80]), Credit plus a shared dock ([#84]), Equities ([#87]) and Admin
+  ([#90]). A final parity pass against the HTML prototype closed the remaining
+  gaps ([#96]).
+- **Equities over WebSocket.** The server now serves equities, which until then
+  ran only in the in-browser simulator. A fullstack e2e proves it. [#91]
+- **Prototype deploys** became an on-demand, version-configurable button
+  ([#46]). They were then split into two deploys, the Claude Design HTML mockup
+  and the React port, each with its own Vercel project ([#97]).
+- **The full istanbul coverage report is published to GitHub Pages**, next to
+  the job-summary view. [#44]
+
+### Changed
+
+- **HUD reskin of FX and Credit**: glass panels, display and mono type, and
+  tick, fill, reject and expiry flashes driven by the live domain streams, with
+  no behaviour change ([#41]). A closing pass re-verified every tier across
+  the redesigned client ([#51]). Open deferrals were closed: presenter tests and a
+  layout splitter-drag e2e ([#54]). The vestigial `admin-throughput` panel was
+  removed ([#52]).
+- **v2 fidelity** for the main web client: self-hosted fonts, v2 tokens, the
+  four-layer aurora, glass chrome and a faithful FX tile ([#88]). Demo data was
+  made realistic in the domain, so web, server and RN share it; the FX right
+  column became a fixed 360px rail with a new Positions panel, retiring the
+  `d3-force` cluster; and the nav and panel heads took the prototype's chrome
+  ([#105]).
+- **The app layer was extracted** into `@rtc/client-core` (neutral presenters,
+  machines and composition) and `@rtc/react-bindings` (the React ViewModel
+  bridge). `client-react` became a thin DOM shell. [#56] The UI seam had been
+  renamed from `Hooks`/`AppHooks` to `ViewModel` just before, a pure rename
+  ([#55]).
+- **The server runs on `@rtc/ws-effects`**, a new `rxjs`-only declarative
+  WebSocket effects library with per-effect error isolation. It replaces the
+  738-line `switch` handler with 24 effects. The wire protocol is unchanged, and
+  the protocol constants moved into `@rtc/shared`. [#91]
+- **Deploys:** the main app deploys only on demand, because Vercel's Git
+  auto-deploy is now off ([#48]). The Fly server scales to zero when idle
+  ([#45]).
+
+### Fixed
+
+- **The Cypress e2e flakes were fixed at their source**, a reload-unsafe report
+  and command-queue races, and test-level `retries` were removed. [#66]
+- `placeOrder$` answers a failed order with a nack and keeps serving, where it
+  used to leave the client's RPC hanging. [#93]
+- The prototype rendered as an empty shell in real browsers, because `.shell`
+  had no definite height. [#104]
+- Prototype deploy runs went red on Vercel's deployment protection; the smoke
+  now checks the canonical alias. [#101]
+- A FLIP glide started from a stale origin after a resize, and the tile showed a
+  "▲ 0 pip" badge on its first paint. [#94]
+- The StatusBar x86 golden flaked in width ([#42]). An RN analytics test timed
+  out on loaded x86 CI ([#89]).
+
+### Decisions
+
+- **ADR-004**: the UI seam is a `ViewModel`, and feature flags are layered
+  behind a port. The flag layering was documented only ([#55]). Research then
+  chose Flagsmith behind OpenFeature, with a dependency-free static adapter as
+  the default; this landed as a spec and plan, not code ([#83]).
+- **React Native choices**: Expo SDK 55 rather than the just-published SDK 57,
+  so the 24-hour release cooldown holds ([#61]); component tests run under
+  `jest-expo`, because vitest cannot parse RN's Flow source ([#69]); and
+  `d3-force` was replaced by a deterministic shelf-packing layout ([#85]).
+- **Build `ws-effects` from scratch instead of adopting marblejs**, which is
+  unmaintained and pulls in a vulnerable `ws`. The runtime topology is now
+  documented in `docs/architecture.md`. [#86]
+- **The visual tolerance `maxDiffPixelRatio: 0.06` was recorded as settled**,
+  and forcing font hinting off was rejected. That ratio has since been
+  tightened. [#81]
+- **Renovate auto-merges** GitHub Actions bumps and patch or minor
+  devDependency bumps once CI is green. Majors and production dependencies stay
+  manual. [#76]
+- **Deploy config:** only real credentials should be secrets. The cleanup was
+  planned but its execution deferred ([#103]). Meanwhile the prototype project
+  id became a secret too, for consistency ([#99]).
+
+### Under the hood
+
+- **Four new lint rules**: no inline `style={{…}}` in client source ([#47]);
+  `rtc/newspaper-order`, tests before helpers, autofixed across about 80 files
+  ([#50]); one class per file, with the filename matching the class ([#53]);
+  and `rtc/component-newspaper`, one exported component per `.tsx` that comes
+  first, with 67 files reordered ([#59]).
+- **Agent workflow:** `shipping-repo-changes` fetches before it branches and
+  catches up to `main` before it merges. [#58]
+- **Dependencies:** `@babel/core` 8, Biome 2.5.1, pnpm 11.9.0, two React Native
+  libraries, and four GitHub Actions majors for cache and Pages. [#25] [#27]
+  [#62] [#63] [#64] [#65] [#68] [#70] [#71] [#74]
+
+[#25]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/25
+[#27]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/27
+[#41]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/41
+[#42]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/42
+[#43]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/43
+[#44]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/44
+[#45]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/45
+[#46]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/46
+[#47]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/47
+[#48]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/48
+[#49]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/49
+[#50]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/50
+[#51]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/51
+[#52]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/52
+[#53]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/53
+[#54]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/54
+[#55]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/55
+[#56]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/56
+[#57]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/57
+[#58]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/58
+[#59]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/59
+[#60]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/60
+[#61]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/61
+[#62]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/62
+[#63]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/63
+[#64]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/64
+[#65]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/65
+[#66]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/66
+[#68]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/68
+[#69]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/69
+[#70]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/70
+[#71]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/71
+[#72]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/72
+[#73]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/73
+[#74]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/74
+[#75]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/75
+[#76]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/76
+[#80]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/80
+[#81]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/81
+[#82]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/82
+[#83]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/83
+[#84]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/84
+[#85]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/85
+[#86]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/86
+[#87]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/87
+[#88]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/88
+[#89]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/89
+[#90]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/90
+[#91]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/91
+[#92]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/92
+[#93]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/93
+[#94]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/94
+[#95]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/95
+[#96]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/96
+[#97]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/97
+[#98]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/98
+[#99]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/99
+[#100]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/100
+[#101]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/101
+[#102]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/102
+[#103]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/103
+[#104]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/104
+[#105]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/105
+[#106]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/106
+[#107]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/107
+[#108]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/108
+[#109]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/109
+[#110]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/110
+[#111]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/111
+[#112]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/112
+[#113]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/113
+[#114]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/114
+[#115]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/115
+[#116]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/116
+[#117]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/117
+[#118]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/118
+[#119]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/119
+[#120]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/120
+[#121]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/121
+[#122]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/122
+[#123]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/123
+[#124]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/124
+[#125]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/125
+[#126]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/126
+[#127]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/127
+[#128]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/128
+[#129]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/129
+[#130]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/130
+[#131]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/131
+[#132]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/132
+[#133]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/133
+[#134]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/134
+[#135]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/135
+[#136]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/136
+[#137]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/137
+[#138]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/138
+[#139]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/139
+[#140]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/140
+[#141]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/141
+[#142]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/142
+[#143]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/143
+[#144]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/144
+[#145]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/145
+[#146]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/146
+[#147]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/147
+[#148]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/148
+[#149]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/149
+[#150]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/150
+[#151]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/151
+[#152]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/152
+[#153]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/153
+[#154]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/154
+[#155]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/155
+[#156]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/156
+[#157]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/157
+[#158]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/158
+[#159]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/159
+[#160]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/160
+[#161]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/161
+[#162]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/162
+[#163]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/163
+[#164]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/164
+[#165]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/165
+[#166]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/166
+[#167]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/167
+[#168]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/168
+[#169]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/169
+[#170]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/170
+[#171]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/171
+[#172]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/172
+[#173]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/173
+[#174]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/174
+[#175]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/175
+[#176]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/176
+[#177]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/177
+[#178]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/178
+[#179]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/179
+[#180]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/180
+[#181]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/181
+[#182]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/182
+[#183]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/183
+[#184]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/184
+[#185]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/185
+[#186]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/186
+[#187]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/187
+[#188]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/188
+[#189]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/189
+[#190]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/190
+[#191]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/191
+[#192]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/192
+[#193]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/193
+[#194]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/194
+[#195]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/195
+[#196]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/196
+[#197]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/197
+[#198]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/198
+[#199]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/199
+[#200]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/200
+[#201]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/201
+[#202]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/202
+[#203]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/203
+[#204]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/204
+[#205]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/205
+[#206]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/206
+[#207]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/207
+[#208]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/208
+[#209]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/209
+[#210]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/210
+[#211]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/211
+[#213]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/213
+[#214]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/214
+[#215]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/215
+[#216]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/216
+[#217]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/217
+[#218]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/218
+[#219]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/219
+[#220]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/220
+[#221]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/221
+[#222]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/222
+[#223]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/223
+[#224]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/224
+[#225]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/225
+[#226]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/226
+[#227]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/227
+[#228]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/228
+[#229]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/229
+[#230]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/230
+[#231]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/231
+[#232]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/232
+[#233]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/233
+[#234]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/234
+[#235]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/235
+[#236]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/236
+[#237]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/237
+[#238]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/238
+[#239]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/239
+[#240]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/240
+[#241]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/241
+[#242]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/242
+[#243]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/243
+[#245]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/245
+[#246]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/246
+[#247]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/247
+[#249]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/249
+[#250]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/250
+[#251]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/251
+[#252]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/252
+[#253]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/253
+[#254]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/254
+[#255]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/255
+[#256]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/256
+[#257]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/257
+[#258]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/258
+[#259]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/259
+[#260]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/260
+[#261]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/261
+[#262]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/262
+[#263]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/263
+[#264]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/264
+[#265]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/265
+[#266]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/266
+[#267]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/267
+[#268]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/268
+[#269]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/269
+[#270]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/270
+[#271]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/271
+[#272]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/272
+[#273]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/273
+[#274]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/274
+[#275]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/275
+[#276]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/276
+[#277]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/277
+[#278]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/278
+[#279]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/279
+[#280]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/280
+[#281]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/281
+[#282]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/282
+[#283]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/283
+[#284]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/284
+[#285]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/285
+[#286]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/286
+[#287]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/287
+[#288]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/288
+[#289]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/289
+[#290]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/290
+[#291]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/291
+[#292]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/292
+[#293]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/293
+[#294]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/294
+[#295]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/295
+[#296]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/296
+[#297]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/297
+[#298]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/298
+[#299]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/299
+[#300]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/300
+[#301]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/301
+[#302]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/302
+[#303]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/303
+[#304]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/304
+[#305]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/305
+[#306]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/306
+[#307]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/307
+[#308]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/308
+[#309]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/309
+[#310]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/310
+[#311]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/311
+[#313]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/313
+[#314]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/314
+[#315]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/315
+[#316]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/316
+[#317]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/317
+[#318]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/318
+[#319]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/319
+[#320]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/320
+[#323]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/323
+[#324]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/324
+[#325]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/325
+[#326]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/326
+[#327]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/327
+[#328]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/328
+[#329]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/329
+[#330]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/330
+[#331]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/331
+[#332]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/332
+[#333]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/333
+[#334]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/334
+[#335]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/335
+[#336]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/336
+[#337]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/337
+[#338]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/338
+[#339]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/339
+[#340]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/340
+[#341]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/341
+[#342]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/342
+[#343]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/343
+[#344]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/344
+[#345]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/345
+[#346]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/346
+[#347]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/347
+[#348]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/348
+[#349]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/349
+[#350]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/350
+[#351]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/351
+[#352]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/352
+[#353]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/353
+[#354]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/354
+[#355]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/355
+[#356]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/356
+[#357]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/357
+[#358]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/358
+[#359]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/359
+[#360]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/360
+[#361]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/361
+[#362]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/362
+[#363]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/363
+[#364]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/364
+[#365]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/365
+[#366]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/366
+[#367]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/367
+[#368]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/368
+[#369]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/369
+[#370]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/370
+[#371]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/371
+[#372]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/372
+[#373]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/373
+[#374]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/374
+[#375]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/375
+[#376]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/376
+[#377]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/377
+[#379]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/379
+[#380]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/380
+[#381]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/381
+[#382]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/382
+[#383]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/383
+[#384]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/384
+[#385]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/385
+[#386]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/386
+[#387]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/387
+[#388]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/388
+[#389]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/389
+[#390]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/390
+[#391]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/391
+[#392]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/392
+[#393]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/393
+[#394]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/394
+[#395]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/395
+[#396]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/396
+[#397]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/397
+[#398]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/398
+[#399]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/399
+[#400]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/400
+[#401]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/401
+[#402]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/402
+[#403]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/403
+[#404]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/404
+[#405]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/405
+[#406]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/406
+[#407]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/407
+[#408]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/408
+[#409]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/409
+[#410]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/410
+[#411]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/411
+[#412]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/412
+[#413]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/413
+[#414]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/414
+[#415]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/415
+[#416]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/416
+[#417]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/417
+[#418]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/418
+[#419]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/419
+[#420]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/420
+[#421]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/421
+[#422]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/422
+[#423]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/423
+[#424]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/424
+[#425]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/425
+[#426]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/426
+[#427]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/427
+[#428]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/428
+[#429]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/429
+[#430]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/430
+[#431]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/431
+[#432]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/432
+[#433]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/433
+[#434]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/434
+[#435]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/435
+[#436]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/436
+[#437]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/437
+[#438]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/438
+[#439]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/439
+[#440]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/440
+[#441]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/441
+[#442]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/442
+[#443]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/443
+[#444]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/444
+[#446]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/446
+[#447]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/447
+[#448]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/448
+[#449]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/449
+[#450]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/450
+[#451]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/451
+[#452]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/452
+[#453]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/453
+[#454]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/454
+[#455]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/455
+[#456]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/456
+[#457]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/457
+[#458]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/458
+[#459]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/459
+[#460]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/460
+[#461]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/461
+[#462]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/462
+[#463]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/463
+[#464]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/464
+[#465]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/465
+[#466]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/466
+[#467]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/467
+[#468]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/468
+[#469]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/469
+[#470]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/470
+[#471]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/471
+[#472]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/472
+[#473]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/473
+[#474]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/474
+[#475]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/475
+[#476]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/476
+[#477]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/477
+[#478]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/478
+[#479]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/479
+[#480]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/480
+[#481]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/481
+[#482]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/482
+[#483]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/483
+[#484]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/484
+[#485]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/485
+[#486]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/486
+[#487]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/487
+[#488]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/488
+[#489]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/489
+[#490]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/490
+[#491]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/491
+[#492]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/492
+[#493]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/493
+[#494]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/494
+[#495]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/495
+[#496]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/496
+[#497]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/497
+[#498]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/498
+[#499]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/499
+[#500]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/500
+[#501]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/501
+[#502]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/502
+[#503]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/503
+[#504]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/504
+[#505]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/505
+[#506]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/506
+[#507]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/507
+[#508]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/508
+[#509]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/509
+[#510]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/510
+[#511]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/511
+[#512]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/512
+[#513]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/513
+[#514]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/514
+[#515]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/515
+[#516]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/516
+[#517]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/517
+[#518]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/518
+[#519]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/519
+[#520]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/520
+[#521]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/521
+[#522]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/522
+[#523]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/523
+[#524]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/524
+[#525]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/525
+[#526]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/526
+[#527]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/527
+[#528]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/528
+[#529]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/529
+[#530]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/530
+[#531]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/531
+[#532]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/532
+[#533]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/533
+[#534]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/534
+[#535]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/535
+[#536]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/536
+[#537]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/537
+[#538]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/538
+[#539]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/539
+[#541]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/541
+[#542]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/542
+[#543]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/543
+[#544]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/544
+[#547]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/547
+[#548]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/548
+[#549]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/549
+[#550]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/550
+[#551]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/551
+[#552]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/552
+[#553]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/553
+[#554]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/554
+[#555]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/555
+[#556]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/556
+[#557]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/557
+[#558]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/558
+[#559]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/559
+[#560]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/560
+[#561]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/561
+[#562]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/562
+[#563]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/563
+[#564]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/564
+[#565]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/565
+[#566]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/566
+[#567]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/567
+[#568]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/568
+[#569]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/569
+[#571]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/571
+[#572]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/572
+[#573]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/573
+[#574]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/574
+[#575]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/575
+[#576]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/576
+[#578]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/578
+[#581]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/581
+[#582]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/582
+[#583]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/583
+[#584]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/584
+[#585]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/585
+[#587]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/587
+[#588]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/588
+[#589]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/589
+[#590]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/590
+[#591]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/591
+[#592]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/592
+[#593]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/593
+[#594]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/594
+[#595]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/595
+[#596]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/596
+[#597]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/597
+[#598]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/598
+[#599]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/599
+[#600]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/600
+[#601]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/601
+[#602]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/602
+[#603]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/603
+[#604]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/604
+[#605]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/605
+[#606]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/606
+[#607]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/607
+[#608]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/608
+[#609]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/609
+[#610]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/610
+[#611]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/611
+[#612]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/612
+[#613]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/613
+[#614]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/614
+[#615]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/615
+[#616]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/616
+[#617]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/617
+[#618]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/618
+[#619]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/619
+[#620]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/620
+[#621]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/621
+[#622]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/622
+[#623]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/623
+[#624]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/624
+[#625]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/625
+[#626]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/626
+[#627]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/627
+[#628]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/628
+[#629]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/629
 [#630]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/630
 [#631]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/631
 [#632]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/632
