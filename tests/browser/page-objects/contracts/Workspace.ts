@@ -1,5 +1,7 @@
 export interface WorkspacePO {
   open(): Promise<void>;
+  /** Open the app at `path` (e.g. `/credit`) and wait until it mounts. */
+  openAt(path: string): Promise<void>;
   openFx(): Promise<void>;
   openCredit(): Promise<void>;
   openAdmin(): Promise<void>;
@@ -72,8 +74,8 @@ export interface WorkspacePO {
   browserBack(): Promise<void>;
   /** The browser's own Forward button. */
   browserForward(): Promise<void>;
-  /** Wait until the page URL's hash reads exactly `expected` (e.g. `#/fx`). */
-  waitUrlHash(expected: string, timeoutMs: number): Promise<void>;
+  /** Wait until the page URL's path reads exactly `expected` (e.g. `/fx`). */
+  waitUrlPath(expected: string, timeoutMs: number): Promise<void>;
   reload(): Promise<void>;
   setOffline(offline: boolean): Promise<void>;
   rootBackgroundColor(): Promise<string>;

@@ -4,13 +4,13 @@ type Tab = "fx" | "credit" | "admin" | "equities";
 
 const TAB_TIMEOUT_MS = 10_000;
 
-/** Assert `tab` is the active tab and the URL hash names it. */
+/** Assert `tab` is the active tab and the URL path names it. */
 export async function expectTabRouted(
   ctx: TestContext,
   tab: Tab,
 ): Promise<void> {
   await ctx.po.workspace.waitTabActive(tab, TAB_TIMEOUT_MS);
-  await ctx.po.workspace.waitUrlHash(`#/${tab}`, TAB_TIMEOUT_MS);
+  await ctx.po.workspace.waitUrlPath(`/${tab}`, TAB_TIMEOUT_MS);
 }
 
 /** Assert the FX workspace itself rendered (a live rate tile). */

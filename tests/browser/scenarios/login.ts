@@ -242,10 +242,10 @@ export async function registerAndConfirm(
   await takeNoticeAction(ctx);
 }
 
-/** Assert the URL hash reads `expected` within 5s. */
-export async function expectUrlHash(
+/** Assert the URL path reads `expected` within 5s. */
+export async function expectUrlPath(
   ctx: TestContext,
   expected: string,
 ): Promise<void> {
-  await loginScreenOf(ctx).waitUrlHash(expected, 5_000);
+  await loginScreenOf(ctx).waitUrlPath(expected, 5_000);
 }

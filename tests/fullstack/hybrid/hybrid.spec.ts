@@ -150,9 +150,9 @@ interface DocumentLoadCounter {
 }
 
 /** Counts document loads from now on — a `goto` or a reload each add one.
- * The app's hash routes (`#/sign-in`, `#/fx`, ...) change the URL within the
- * same document, which fires `framenavigated` but never `load`, so they are
- * not counted. */
+ * The app's path routes (`/sign-in`, `/fx`, ...) change the URL through
+ * `history.pushState` within the same document, which fires `framenavigated`
+ * but never `load`, so they are not counted. */
 function countDocumentLoads(page: Page): DocumentLoadCounter {
   let loads = 0;
   page.on("load", () => {
@@ -166,7 +166,7 @@ function countDocumentLoads(page: Page): DocumentLoadCounter {
 }
 
 /** Resolves on the next document load (the mode-change reload) — not on a
- * same-document hash-route change. */
+ * same-document route change. */
 async function waitForDocumentLoad(page: Page): Promise<void> {
   await page.waitForEvent("load", { timeout: SETTLE_TIMEOUT_MS });
 }

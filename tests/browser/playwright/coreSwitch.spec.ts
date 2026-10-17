@@ -93,8 +93,8 @@ test.describe("Application core switch", () => {
   });
 
   // Spec §5: a swap re-composes the core, not the page, so the route is
-  // untouched — the tab and the URL hash both survive it.
-  test("a swap on #/credit keeps the Credit tab and the URL hash", async ({
+  // untouched — the tab and the URL path both survive it.
+  test("a swap on /credit keeps the Credit tab and the URL path", async ({
     ctx,
   }) => {
     const buildDefault = resolveCoreImpl(process.env);
