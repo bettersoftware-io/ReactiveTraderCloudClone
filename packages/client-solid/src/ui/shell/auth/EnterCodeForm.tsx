@@ -6,13 +6,12 @@ import {
   type AccountField,
   checkCodeInput,
   checkEmailInput,
-  describeFieldError,
-  findFirstFailingField,
   type InputCheck,
 } from "@rtc/core-logic";
 
+import { createFieldReveal } from "./createFieldReveal";
 import { FieldError } from "./FieldError";
-import { fieldErrorId } from "./fieldErrorId";
+import { fieldAriaProps } from "./fieldErrorId";
 import { keepFieldFocus } from "./keepFieldFocus";
 import { PasswordChecklist } from "./PasswordChecklist";
 
@@ -31,20 +30,16 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
   const [email, setEmail] = createSignal("");
   const [code, setCode] = createSignal("");
   const [password, setPassword] = createSignal("");
-  const [revealed, setRevealed] =
-    createSignal<ReadonlySet<AccountField>>(NOTHING_REVEALED);
+  const fields = createFieldReveal();
   let emailInput: HTMLInputElement | undefined;
   let codeInput: HTMLInputElement | undefined;
 
   function emailError(): string | null {
-    return describeFieldError(
-      checkEmailInput(email()),
-      revealed().has("email"),
-    );
+    return fields.describeError("email", checkEmailInput(email()));
   }
 
   function codeError(): string | null {
-    return describeFieldError(checkCodeInput(code()), revealed().has("code"));
+    return fields.describeError("code", checkCodeInput(code()));
   }
 
   function asksEmail(): boolean {
@@ -61,14 +56,13 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
 
   function submitCode(event: SubmitEvent): void {
     event.preventDefault();
-    setRevealed(EVERY_FIELD_REVEALED);
     // Only the fields on screen: a held address is not the form's to check.
     const codeField: readonly [AccountField, InputCheck] = [
       "code",
       checkCodeInput(code()),
     ];
 
-    const failing = findFirstFailingField(
+    const failing = fields.revealAll(
       asksEmail()
         ? [["email", checkEmailInput(email())], codeField]
         : [codeField],
@@ -108,15 +102,11 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
   }
 
   function revealEmailError(): void {
-    setRevealed((shown) => {
-      return new Set(shown).add("email");
-    });
+    fields.reveal("email");
   }
 
   function revealCodeError(): void {
-    setRevealed((shown) => {
-      return new Set(shown).add("code");
-    });
+    fields.reveal("code");
   }
 
   function changeEmail(event: InputChangeEvent): void {
@@ -152,10 +142,7 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
                   class={styles.input}
                   type="email"
                   autocomplete="email"
-                  aria-invalid={emailError() !== null}
-                  aria-describedby={
-                    emailError() === null ? undefined : fieldErrorId("email")
-                  }
+                  {...fieldAriaProps("email", emailError())}
                   value={email()}
                   onInput={changeEmail}
                   onBlur={revealEmailError}
@@ -180,10 +167,7 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
             type="text"
             inputMode="numeric"
             autocomplete="one-time-code"
-            aria-invalid={codeError() !== null}
-            aria-describedby={
-              codeError() === null ? undefined : fieldErrorId("code")
-            }
+            {...fieldAriaProps("code", codeError())}
             value={code()}
             onInput={changeCode}
             onBlur={revealCodeError}
@@ -257,13 +241,6 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
     </>
   );
 }
-
-const NOTHING_REVEALED: ReadonlySet<AccountField> = new Set();
-
-const EVERY_FIELD_REVEALED: ReadonlySet<AccountField> = new Set([
-  "email",
-  "code",
-]);
 
 /** SENDING while a request is out; else the flow's own submit label. */
 function describeSubmit(busy: boolean, resetting: boolean): string {

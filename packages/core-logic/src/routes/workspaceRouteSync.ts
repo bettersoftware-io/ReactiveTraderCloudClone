@@ -19,8 +19,8 @@ export function createWorkspaceRouteSync({
   routes,
   switchTab,
 }: WorkspaceRouteSyncDeps): WorkspaceRouteSync {
+  /** The tab last observed — the one on screen. */
   let shown: WorkspaceTab | null = null;
-  let lastObserved: WorkspaceTab | null = null;
   const unsubscribe = routes.subscribe(followTraversal);
 
   /** Back/Forward: a tab route switches to it; anything else (a login
@@ -41,15 +41,13 @@ export function createWorkspaceRouteSync({
 
   return {
     observe: (tab: WorkspaceTab): void => {
-      if (tab === lastObserved) {
+      if (tab === shown) {
         return;
       }
 
-      // Before any write or switchTab: a switch can re-enter this call.
-      lastObserved = tab;
-
       const route = routes.current();
       const mounting = shown === null;
+      // Before any write or switchTab: a switch can re-enter this call.
       shown = tab;
 
       if (mounting) {

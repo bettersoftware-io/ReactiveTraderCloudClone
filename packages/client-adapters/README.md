@@ -27,7 +27,7 @@ tour in [§23](../../docs/architecture/23-application-cores-explained.md).
 | `src/adapters/` | The real-transport gateways: `WsAdapter` (WebSocket transport, implementing `@rtc/core-api`'s `IWsAdapter`), `WsConnectionEventsAdapter` (connection lifecycle), the Jarvis adapters, `HttpAuthAdapter` and `RoutingAuthPort`, the in-memory session and data-source stores, and `portFactory.ts` (`createSimulatorPorts` / `createWsRealPorts`, the two `AppPorts` assembly functions every platform port-builder calls). |
 | `src/wsUrl.ts` | `buildWsUrl` — appends the `?access=` token query param a browser WebSocket can't pass as a header. |
 | `src/index.ts` | The root barrel: everything above. It exports no name another package declares: a contract type is imported from `@rtc/core-api`, a shared rule from `@rtc/core-logic` (`tests/scripts/lib/packageSurfaces.test.ts`). |
-| `src/testing.ts` | The `@rtc/client-adapters/testing` entry: test scaffolding for anything that composes a core over these adapters (`FakeWsAdapter`, `awaitPendingRpc`, `createFakeConnectionPorts`). Not part of the root barrel, because a client's source has no use for a fake. |
+| `src/testing.ts` | The `@rtc/client-adapters/testing` entry: test scaffolding for anything that composes a core over these adapters (`FakeWsAdapter`, `awaitPendingRpc`, `createFakeConnectionPorts`, `createInertRouteHistory`). Not part of the root barrel, because a client's source has no use for a fake. |
 
 ## Where to start reading
 

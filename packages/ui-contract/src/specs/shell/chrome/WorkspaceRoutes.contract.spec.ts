@@ -7,10 +7,9 @@
  */
 
 import { AppShell } from "@ui-contract/components";
+import { DRIVE_SETTLE_MS } from "@ui-contract/harness/driveSettle";
 import { cleanupMounted, mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it, vi } from "vitest";
-
-import { DRIVE_STAGGER_MS } from "@rtc/domain";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -85,7 +84,3 @@ describe("Workspace routes — Back and Forward", () => {
     expect(app.routeHash()).toBe("#/credit");
   });
 });
-
-/** Long enough for a one-command drive batch to apply (the JarvisDriver
- * spec's own settle). */
-const DRIVE_SETTLE_MS: number = DRIVE_STAGGER_MS * 5 + 500;

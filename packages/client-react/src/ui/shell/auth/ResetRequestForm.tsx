@@ -7,15 +7,12 @@ import {
 } from "react";
 
 import type { AccountAccessState } from "@rtc/core-api";
-import {
-  ACCOUNT_ACCESS_COPY,
-  checkEmailInput,
-  describeFieldError,
-} from "@rtc/core-logic";
+import { ACCOUNT_ACCESS_COPY, checkEmailInput } from "@rtc/core-logic";
 
 import { FieldError } from "./FieldError";
-import { fieldErrorId } from "./fieldErrorId";
+import { fieldAriaProps } from "./fieldErrorId";
 import { keepFieldFocus } from "./keepFieldFocus";
+import { useFieldReveal } from "./useFieldReveal";
 
 import styles from "./LoginScreen.module.css";
 
@@ -31,17 +28,17 @@ export function ResetRequestForm({
   onBack,
 }: ResetRequestFormProps): ReactElement {
   const [email, setEmail] = useState("");
-  const [emailRevealed, setEmailRevealed] = useState(false);
+  const fields = useFieldReveal();
   const emailInput = useRef<HTMLInputElement>(null);
 
   const emailCheck = checkEmailInput(email);
-  const emailError = describeFieldError(emailCheck, emailRevealed);
+  const emailError = fields.describeError("email", emailCheck);
 
   function submitResetRequest(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    setEmailRevealed(true);
+    const failing = fields.revealAll([["email", emailCheck]]);
 
-    if (!emailCheck.ok) {
+    if (failing !== null) {
       emailInput.current?.focus();
 
       return;
@@ -51,7 +48,7 @@ export function ResetRequestForm({
   }
 
   function revealEmailError(): void {
-    setEmailRevealed(true);
+    fields.reveal("email");
   }
 
   function changeEmail(event: ChangeEvent<HTMLInputElement>): void {
@@ -69,10 +66,7 @@ export function ResetRequestForm({
             className={styles.input}
             type="email"
             autoComplete="email"
-            aria-invalid={emailError !== null}
-            aria-describedby={
-              emailError === null ? undefined : fieldErrorId("email")
-            }
+            {...fieldAriaProps("email", emailError)}
             value={email}
             onChange={changeEmail}
             onBlur={revealEmailError}

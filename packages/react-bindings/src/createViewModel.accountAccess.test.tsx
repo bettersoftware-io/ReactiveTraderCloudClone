@@ -5,13 +5,13 @@ import {
   createSimulatorPorts,
   InMemorySessionStore,
 } from "@rtc/client-adapters";
+import { createInertRouteHistory } from "@rtc/client-adapters/testing";
 import { createApp, createMachineFactories } from "@rtc/client-core-rxjs";
 import type {
   AppCommands,
   AppPorts,
   MachineFactories,
   Presenters,
-  RouteHistory,
 } from "@rtc/core-api";
 import {
   AuthSimulator,
@@ -47,7 +47,7 @@ describe("createViewModel — registrationAvailable", () => {
 
 describe("createViewModel — useRouteHistory", () => {
   it("returns the shell's routes", () => {
-    const routes = createRouteHistory();
+    const routes = createInertRouteHistory();
     const vm = createViewModelFor({ routes });
 
     expect(vm.useRouteHistory()).toBe(routes);
@@ -124,19 +124,6 @@ function createHooksInputs(): HooksInputs {
     presenters,
     machines: createMachineFactories(presenters),
     commands,
-  };
-}
-
-function createRouteHistory(): RouteHistory {
-  return {
-    current: () => {
-      return null;
-    },
-    push: () => {},
-    replace: () => {},
-    subscribe: () => {
-      return () => {};
-    },
   };
 }
 

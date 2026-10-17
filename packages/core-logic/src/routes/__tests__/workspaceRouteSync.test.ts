@@ -13,14 +13,14 @@ import {
 
 describe("createWorkspaceRouteSync", () => {
   it("mounts on no hash by replacing it with the active tab", () => {
-    const h = createHarness("", true);
+    const h = createHarness("");
     h.create().observe("fx");
 
     expect(h.history.writes).toEqual(["replace #/fx"]);
   });
 
   it("mounts on another tab's URL by switching to it, with no writes", () => {
-    const h = createHarness("#/credit", true);
+    const h = createHarness("#/credit");
     h.create().observe("fx");
 
     expect(h.switched).toEqual(["credit"]);
@@ -28,7 +28,7 @@ describe("createWorkspaceRouteSync", () => {
   });
 
   it("observing the tab last observed does nothing", () => {
-    const h = createHarness("#/credit", false);
+    const h = createHarness("#/credit", { reenter: false });
     const sync = h.create();
     sync.observe("fx");
     sync.observe("fx");
@@ -38,14 +38,14 @@ describe("createWorkspaceRouteSync", () => {
   });
 
   it("mounts on a login route by replacing it with the active tab", () => {
-    const h = createHarness("#/sign-in", true);
+    const h = createHarness("#/sign-in");
     h.create().observe("equities");
 
     expect(h.history.writes).toEqual(["replace #/equities"]);
   });
 
   it("pushes a later tab change", () => {
-    const h = createHarness("#/fx", true);
+    const h = createHarness("#/fx");
     const sync = h.create();
     sync.observe("fx");
     sync.observe("credit");
@@ -54,7 +54,7 @@ describe("createWorkspaceRouteSync", () => {
   });
 
   it("follows Back to a tab route by switching, without writing", () => {
-    const h = createHarness("#/fx", true);
+    const h = createHarness("#/fx");
     const sync = h.create();
     sync.observe("fx");
     sync.observe("credit");
@@ -66,7 +66,7 @@ describe("createWorkspaceRouteSync", () => {
   });
 
   it("rewrites a traversal onto a login route to the tab on screen", () => {
-    const h = createHarness("#/fx", true);
+    const h = createHarness("#/fx");
     const sync = h.create();
     sync.observe("fx");
     sync.observe("credit");
@@ -78,7 +78,7 @@ describe("createWorkspaceRouteSync", () => {
   });
 
   it("rewrites a traversal onto no route to the tab on screen", () => {
-    const h = createHarness("#/fx", true);
+    const h = createHarness("#/fx");
     h.create().observe("fx");
     h.history.writes.length = 0;
     h.history.traverse("");
@@ -87,7 +87,7 @@ describe("createWorkspaceRouteSync", () => {
   });
 
   it("survives a second mount over the same history", () => {
-    const h = createHarness("#/credit", false);
+    const h = createHarness("#/credit", { reenter: false });
     const first = h.create();
     first.observe("fx");
     first.dispose();
@@ -98,7 +98,7 @@ describe("createWorkspaceRouteSync", () => {
   });
 
   it("dispose stops listening", () => {
-    const h = createHarness("#/fx", true);
+    const h = createHarness("#/fx");
     const sync = h.create();
     sync.observe("fx");
     sync.dispose();
@@ -110,15 +110,22 @@ describe("createWorkspaceRouteSync", () => {
   });
 });
 
-/** `reenter` makes switchTab behave like Solid: the tab changes and the
- * observer hears it synchronously. */
 interface WorkspaceHarness {
   readonly history: FakeRouteHistory;
   readonly switched: WorkspaceTab[];
   create(): WorkspaceRouteSync;
 }
 
-function createHarness(hash: string, reenter: boolean): WorkspaceHarness {
+interface WorkspaceHarnessOptions {
+  /** Makes switchTab behave like Solid: the tab changes and the observer
+   * hears it synchronously. Off, a switch is only recorded. */
+  readonly reenter?: boolean;
+}
+
+function createHarness(
+  hash: string,
+  { reenter = true }: WorkspaceHarnessOptions = {},
+): WorkspaceHarness {
   const history = createFakeRouteHistory(hash);
   const switched: WorkspaceTab[] = [];
 

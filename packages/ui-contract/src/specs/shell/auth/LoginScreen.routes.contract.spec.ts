@@ -48,6 +48,7 @@ describe("LoginScreen routes — mount", () => {
   it("rewrites an account route to sign-in on a page without registration", () => {
     const page = mount(LoginScreen, {
       auth: { status: "unauthenticated" },
+      registrationAvailable: false,
       routeHash: "#/create-account",
     });
 
@@ -72,7 +73,7 @@ describe("LoginScreen routes — the links push", () => {
 
     expect(page.phase()).toBe("register");
     expect(page.routeWrites()).toEqual(["push #/create-account"]);
-    expect(page.navigations().at(-1)).toBe("startRegistration");
+    expect(page.navigations()).toEqual(["returnToSignIn", "startRegistration"]);
   });
 
   it("pushes the reset route from Forgot password?", async () => {
@@ -82,7 +83,7 @@ describe("LoginScreen routes — the links push", () => {
 
     expect(page.phase()).toBe("requestReset");
     expect(page.routeWrites()).toEqual(["push #/forgot-password"]);
-    expect(page.navigations().at(-1)).toBe("startReset");
+    expect(page.navigations()).toEqual(["returnToSignIn", "startReset"]);
   });
 
   it("pushes the code route from the sign-in form's code offer", async () => {
@@ -100,7 +101,7 @@ describe("LoginScreen routes — the links push", () => {
 
     expect(page.phase()).toBe("code");
     expect(page.routeWrites()).toEqual(["push #/enter-code"]);
-    expect(page.navigations().at(-1)).toBe("startCodeEntry");
+    expect(page.navigations()).toEqual(["returnToSignIn", "startCodeEntry"]);
   });
 
   it("pushes the code route from I already have a code", async () => {
@@ -110,16 +111,20 @@ describe("LoginScreen routes — the links push", () => {
 
     expect(page.phase()).toBe("code");
     expect(page.routeWrites()).toEqual(["push #/enter-code"]);
-    expect(page.navigations().at(-1)).toBe("startCodeEntry");
+    expect(page.navigations()).toEqual(["startRegistration", "startCodeEntry"]);
   });
 
   it.each([
-    { from: "#/create-account", phase: "register" },
-    { from: "#/enter-code", phase: "code" },
-    { from: "#/forgot-password", phase: "requestReset" },
+    {
+      from: "#/create-account",
+      phase: "register",
+      opened: "startRegistration",
+    },
+    { from: "#/enter-code", phase: "code", opened: "startCodeEntry" },
+    { from: "#/forgot-password", phase: "requestReset", opened: "startReset" },
   ])(
     "pushes the sign-in route from Back to sign in on $from",
-    async ({ from, phase }) => {
+    async ({ from, phase, opened }) => {
       const page = mountRouted(from);
 
       expect(page.phase()).toBe(phase);
@@ -128,7 +133,7 @@ describe("LoginScreen routes — the links push", () => {
 
       expect(page.phase()).toBe("signIn");
       expect(page.routeWrites()).toEqual(["push #/sign-in"]);
-      expect(page.navigations().at(-1)).toBe("returnToSignIn");
+      expect(page.navigations()).toEqual([opened, "returnToSignIn"]);
     },
   );
 });
@@ -141,7 +146,11 @@ describe("LoginScreen routes — Back and Forward", () => {
     await page.traverse("#/sign-in");
 
     expect(page.phase()).toBe("signIn");
-    expect(page.navigations().at(-1)).toBe("returnToSignIn");
+    expect(page.navigations()).toEqual([
+      "returnToSignIn",
+      "startRegistration",
+      "returnToSignIn",
+    ]);
     expect(page.routeWrites()).toEqual(["push #/create-account"]);
   });
 
@@ -151,7 +160,7 @@ describe("LoginScreen routes — Back and Forward", () => {
     await page.traverse("#/forgot-password");
 
     expect(page.phase()).toBe("requestReset");
-    expect(page.navigations().at(-1)).toBe("startReset");
+    expect(page.navigations()).toEqual(["returnToSignIn", "startReset"]);
     expect(page.routeWrites()).toEqual([]);
   });
 });
@@ -204,6 +213,16 @@ describe("LoginScreen routes — a page with no route history", () => {
       "returnToSignIn",
       "startReset",
     ]);
+  });
+
+  it("refuses to read a history it was never given, naming the mount option", () => {
+    const page = mount(LoginScreen, { auth: { status: "unauthenticated" } });
+
+    expect(() => {
+      return page.routeWrites();
+    }).toThrow(
+      "this mount has no route history: pass `routeHash` to mount(...)",
+    );
   });
 });
 

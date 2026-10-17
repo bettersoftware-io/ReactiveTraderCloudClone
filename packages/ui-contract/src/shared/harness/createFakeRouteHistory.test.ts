@@ -57,9 +57,17 @@ describe("createFakeRouteHistory", () => {
     expect(heard).toEqual([]);
   });
 
-  it("is seeded by its initial hash", () => {
+  it("is seeded by its initial hash, naming no route for an unknown one", () => {
     const seeded = createFakeRouteHistory("#/nowhere-known");
 
     expect(seeded.hash()).toBe("#/nowhere-known");
+    expect(seeded.current()).toBeNull();
+  });
+
+  it("reads a recognised seed as its route", () => {
+    const seeded = createFakeRouteHistory("#/fx");
+
+    expect(seeded.hash()).toBe("#/fx");
+    expect(seeded.current()).toEqual({ area: "workspace", tab: "fx" });
   });
 });

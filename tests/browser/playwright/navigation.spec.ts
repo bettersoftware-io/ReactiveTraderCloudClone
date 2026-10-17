@@ -21,11 +21,11 @@ test.describe("Browser history through workspace tabs", () => {
     await navigation.expectTabRouted(ctx, "credit");
     await navigation.expectCreditWorkspaceVisible(ctx);
 
-    await navigation.pressBrowserBack(ctx);
+    await common.pressBrowserBack(ctx, "app");
     await navigation.expectTabRouted(ctx, "fx");
     await navigation.expectFxWorkspaceVisible(ctx);
 
-    await navigation.pressBrowserForward(ctx);
+    await common.pressBrowserForward(ctx, "app");
     await navigation.expectTabRouted(ctx, "credit");
     await navigation.expectCreditWorkspaceVisible(ctx);
 

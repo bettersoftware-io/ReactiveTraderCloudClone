@@ -28,16 +28,13 @@
  */
 
 import { AppShell } from "@ui-contract/components";
+import { DRIVE_SETTLE_MS } from "@ui-contract/harness/driveSettle";
 import type { World } from "@ui-contract/harness/world";
 import { cleanupMounted, createWorld, mountWith } from "@ui-contract/mount";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { EqWorkspaceState } from "@rtc/core-api";
-import {
-  DRIVE_STAGGER_MS,
-  type DriveBatchV1,
-  type PanelSpecV1,
-} from "@rtc/domain";
+import type { DriveBatchV1, PanelSpecV1 } from "@rtc/domain";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -528,7 +525,3 @@ const SETUP_WORKSPACE_BATCH: DriveBatchV1 = {
     { kind: "eqPane", id: "rsi", on: true },
   ],
 };
-
-/** Generous settle time for a 5-command staggered batch (comfortably above
- * `4 * DRIVE_STAGGER_MS`, the worst case with the first command free). */
-const DRIVE_SETTLE_MS: number = DRIVE_STAGGER_MS * 5 + 500;

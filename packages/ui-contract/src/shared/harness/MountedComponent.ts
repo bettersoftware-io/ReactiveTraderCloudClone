@@ -264,7 +264,9 @@ export abstract class MountedComponent<P> {
   /** The fake page history this mount was seeded with (`routeHash`). */
   protected routeHistory(): FakeRouteHistory {
     if (this.ctx.routes === null) {
-      throw new Error("this mount has no route history: pass routeHash");
+      throw new Error(
+        "this mount has no route history: pass `routeHash` to mount(...)",
+      );
     }
 
     return this.ctx.routes;

@@ -12,15 +12,14 @@ import {
   type AccountField,
   checkCodeInput,
   checkEmailInput,
-  describeFieldError,
-  findFirstFailingField,
   type InputCheck,
 } from "@rtc/core-logic";
 
 import { FieldError } from "./FieldError";
-import { fieldErrorId } from "./fieldErrorId";
+import { fieldAriaProps } from "./fieldErrorId";
 import { keepFieldFocus } from "./keepFieldFocus";
 import { PasswordChecklist } from "./PasswordChecklist";
+import { useFieldReveal } from "./useFieldReveal";
 
 import styles from "./LoginScreen.module.css";
 
@@ -42,8 +41,7 @@ export function EnterCodeForm({
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
-  const [revealed, setRevealed] =
-    useState<ReadonlySet<AccountField>>(NOTHING_REVEALED);
+  const fields = useFieldReveal();
   const emailInput = useRef<HTMLInputElement>(null);
   const codeInput = useRef<HTMLInputElement>(null);
 
@@ -53,15 +51,14 @@ export function EnterCodeForm({
 
   const emailCheck = checkEmailInput(email);
   const codeCheck = checkCodeInput(code);
-  const emailError = describeFieldError(emailCheck, revealed.has("email"));
-  const codeError = describeFieldError(codeCheck, revealed.has("code"));
+  const emailError = fields.describeError("email", emailCheck);
+  const codeError = fields.describeError("code", codeCheck);
 
   function submitCode(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    setRevealed(EVERY_FIELD_REVEALED);
     // Only the fields on screen: a held address is not the form's to check.
     const codeField: readonly [AccountField, InputCheck] = ["code", codeCheck];
-    const failing = findFirstFailingField(
+    const failing = fields.revealAll(
       asksEmail ? [["email", emailCheck], codeField] : [codeField],
     );
 
@@ -99,15 +96,11 @@ export function EnterCodeForm({
   }
 
   function revealEmailError(): void {
-    setRevealed((shown) => {
-      return new Set(shown).add("email");
-    });
+    fields.reveal("email");
   }
 
   function revealCodeError(): void {
-    setRevealed((shown) => {
-      return new Set(shown).add("code");
-    });
+    fields.reveal("code");
   }
 
   function changeEmail(event: ChangeEvent<HTMLInputElement>): void {
@@ -140,10 +133,7 @@ export function EnterCodeForm({
               className={styles.input}
               type="email"
               autoComplete="email"
-              aria-invalid={emailError !== null}
-              aria-describedby={
-                emailError === null ? undefined : fieldErrorId("email")
-              }
+              {...fieldAriaProps("email", emailError)}
               value={email}
               onChange={changeEmail}
               onBlur={revealEmailError}
@@ -161,10 +151,7 @@ export function EnterCodeForm({
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
-            aria-invalid={codeError !== null}
-            aria-describedby={
-              codeError === null ? undefined : fieldErrorId("code")
-            }
+            {...fieldAriaProps("code", codeError)}
             value={code}
             onChange={changeCode}
             onBlur={revealCodeError}
@@ -251,13 +238,6 @@ function describeSubmit(busy: boolean, resetting: boolean): string {
     ? ACCOUNT_ACCESS_COPY.setPasswordSubmit
     : ACCOUNT_ACCESS_COPY.confirmSubmit;
 }
-
-const NOTHING_REVEALED: ReadonlySet<AccountField> = new Set();
-
-const EVERY_FIELD_REVEALED: ReadonlySet<AccountField> = new Set([
-  "email",
-  "code",
-]);
 
 interface EnterCodeFormProps {
   readonly state: CodePhase;

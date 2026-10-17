@@ -1,4 +1,9 @@
 import type { TestContext } from "../testContext.ts";
+import { loginScreenOf } from "./login.ts";
+
+/** Whose history a browser button steps: the app page's, or the login
+ *  screen's own page (`LoginScreenPO.open` opens it in a fresh context). */
+export type HistoryPage = "app" | "login";
 
 export async function openWorkspace(ctx: TestContext): Promise<void> {
   await ctx.po.workspace.open();
@@ -34,4 +39,33 @@ export async function waitSeconds(
   seconds: number,
 ): Promise<void> {
   await ctx.po.workspace.wait(seconds * 1_000);
+}
+
+/** Click the browser's Back button on `page`. */
+export async function pressBrowserBack(
+  ctx: TestContext,
+  page: HistoryPage,
+): Promise<void> {
+  await historyOf(ctx, page).browserBack();
+}
+
+/** Click the browser's Forward button on `page`. */
+export async function pressBrowserForward(
+  ctx: TestContext,
+  page: HistoryPage,
+): Promise<void> {
+  await historyOf(ctx, page).browserForward();
+}
+
+interface BrowserHistoryButtons {
+  browserBack(): Promise<void>;
+  browserForward(): Promise<void>;
+}
+
+function historyOf(ctx: TestContext, page: HistoryPage): BrowserHistoryButtons {
+  if (page === "app") {
+    return ctx.po.workspace;
+  }
+
+  return loginScreenOf(ctx);
 }

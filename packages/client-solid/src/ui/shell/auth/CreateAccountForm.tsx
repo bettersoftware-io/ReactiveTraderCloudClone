@@ -3,16 +3,14 @@ import { createSignal, type JSX, Show } from "solid-js";
 import type { AccountAccessState, RegistrationInput } from "@rtc/core-api";
 import {
   ACCOUNT_ACCESS_COPY,
-  type AccountField,
   checkDisplayNameInput,
   checkEmailInput,
-  describeFieldError,
-  findFirstFailingField,
   PRIVACY_NOTICE_URL,
 } from "@rtc/core-logic";
 
+import { createFieldReveal } from "./createFieldReveal";
 import { FieldError } from "./FieldError";
-import { fieldErrorId } from "./fieldErrorId";
+import { fieldAriaProps } from "./fieldErrorId";
 import { keepFieldFocus } from "./keepFieldFocus";
 import { PasswordChecklist } from "./PasswordChecklist";
 
@@ -31,29 +29,24 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
   const [email, setEmail] = createSignal("");
   const [displayName, setDisplayName] = createSignal("");
   const [password, setPassword] = createSignal("");
-  const [revealed, setRevealed] =
-    createSignal<ReadonlySet<AccountField>>(NOTHING_REVEALED);
+  const fields = createFieldReveal();
   let emailInput: HTMLInputElement | undefined;
   let displayNameInput: HTMLInputElement | undefined;
 
   function emailError(): string | null {
-    return describeFieldError(
-      checkEmailInput(email()),
-      revealed().has("email"),
-    );
+    return fields.describeError("email", checkEmailInput(email()));
   }
 
   function displayNameError(): string | null {
-    return describeFieldError(
+    return fields.describeError(
+      "display-name",
       checkDisplayNameInput(displayName()),
-      revealed().has("display-name"),
     );
   }
 
   function submitRegistration(event: SubmitEvent): void {
     event.preventDefault();
-    setRevealed(EVERY_FIELD_REVEALED);
-    const failing = findFirstFailingField([
+    const failing = fields.revealAll([
       ["email", checkEmailInput(email())],
       ["display-name", checkDisplayNameInput(displayName())],
     ]);
@@ -72,15 +65,11 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
   }
 
   function revealEmailError(): void {
-    setRevealed((shown) => {
-      return new Set(shown).add("email");
-    });
+    fields.reveal("email");
   }
 
   function revealDisplayNameError(): void {
-    setRevealed((shown) => {
-      return new Set(shown).add("display-name");
-    });
+    fields.reveal("display-name");
   }
 
   function changeEmail(event: InputChangeEvent): void {
@@ -114,10 +103,7 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
             class={styles.input}
             type="email"
             autocomplete="email"
-            aria-invalid={emailError() !== null}
-            aria-describedby={
-              emailError() === null ? undefined : fieldErrorId("email")
-            }
+            {...fieldAriaProps("email", emailError())}
             value={email()}
             onInput={changeEmail}
             onBlur={revealEmailError}
@@ -135,12 +121,7 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
             class={styles.input}
             type="text"
             autocomplete="nickname"
-            aria-invalid={displayNameError() !== null}
-            aria-describedby={
-              displayNameError() === null
-                ? undefined
-                : fieldErrorId("display-name")
-            }
+            {...fieldAriaProps("display-name", displayNameError())}
             value={displayName()}
             onInput={changeDisplayName}
             onBlur={revealDisplayNameError}
@@ -216,13 +197,6 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
     </>
   );
 }
-
-const NOTHING_REVEALED: ReadonlySet<AccountField> = new Set();
-
-const EVERY_FIELD_REVEALED: ReadonlySet<AccountField> = new Set([
-  "email",
-  "display-name",
-]);
 
 type InputChangeEvent = Event & { currentTarget: HTMLInputElement };
 

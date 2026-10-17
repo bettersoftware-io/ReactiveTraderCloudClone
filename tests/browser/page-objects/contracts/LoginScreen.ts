@@ -8,6 +8,11 @@
  * Playwright-only (like {@link InspectorPO}): this suite's ONE coverage test
  * for the real login form is Playwright.
  */
+/** A login-form field checked as the user types: its inline error's
+ *  `data-field`. Mirrors `@rtc/core-logic`'s `AccountField`, which this
+ *  package does not depend on. */
+export type AccountField = "email" | "display-name" | "code";
+
 export interface LoginScreenPO {
   /** Open a fresh, unauthenticated view of the app (no seeded session) and
    *  navigate to "/". Must be called before any other method. */
@@ -27,7 +32,7 @@ export interface LoginScreenPO {
   /** Wait until the inline error under `field` (its `data-field`) reads
    *  exactly `expected`. */
   waitFieldError(
-    field: string,
+    field: AccountField,
     expected: string,
     timeoutMs: number,
   ): Promise<void>;
