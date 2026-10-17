@@ -430,10 +430,15 @@ const scenarioActions: Record<string, ScenarioAction> = {
   // Account flows (B2b): each waits for text only its own screen prints.
   "login/live-links": { fullPage: true, waitForText: "Forgot password?" },
   "login/create-account": { fullPage: true, waitForText: "privacy notice" },
+  // An 8-character password, then the field left: the unmet length rule
+  // shows red in the checklist and as the field's own error, at once.
   "login/create-account-checklist": {
     fullPage: true,
-    steps: [{ type: "login-new-password", text: "Abc123!!" }],
-    waitForText: "privacy notice",
+    steps: [
+      { type: "login-new-password", text: "Abc123!!" },
+      { click: "login-email" },
+    ],
+    waitForText: "Password: at least 12 characters",
   },
   // Blurring a field shows its error and keeps it live: a malformed address,
   // then a one-character display name (below the two-character minimum).

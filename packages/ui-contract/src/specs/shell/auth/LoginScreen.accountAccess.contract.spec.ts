@@ -133,7 +133,7 @@ describe("LoginScreen account access — register phase", () => {
     expect(page.hasForgotPasswordLink()).toBe(false);
   });
 
-  it("renders the create-account fields and a checklist row per password rule", () => {
+  it("renders the create-account fields and a checklist row per password rule but the byte ceiling", () => {
     const page = mountAt(createRegisterState());
 
     expect(page.phase()).toBe("register");
@@ -145,16 +145,22 @@ describe("LoginScreen account access — register phase", () => {
         return row.label;
       }),
     ).toEqual(
-      PASSWORD_RULES.map((rule) => {
+      SHOWN_RULES.map((rule) => {
         return rule.label;
       }),
     );
   });
 
-  it("meets no rule but the byte ceiling before anything is typed", () => {
+  it("shows every rule as pending before anything is typed", () => {
     const page = mountAt(createRegisterState());
 
-    expect(metRules(page.checklist())).toEqual(["max-length"]);
+    expect(statuses(page.checklist())).toEqual([
+      "min-length:pending",
+      "uppercase:pending",
+      "lowercase:pending",
+      "digit:pending",
+      "special:pending",
+    ]);
   });
 
   it("meets every rule for a strong password", async () => {
@@ -162,19 +168,35 @@ describe("LoginScreen account access — register phase", () => {
 
     await page.typeNewPassword(STRONG);
 
-    expect(metRules(page.checklist())).toEqual(
-      PASSWORD_RULES.map((rule) => {
-        return rule.id;
-      }),
-    );
+    expect(statuses(page.checklist())).toEqual([
+      "min-length:met",
+      "uppercase:met",
+      "lowercase:met",
+      "digit:met",
+      "special:met",
+    ]);
   });
 
-  it("meets only the lowercase rule and the byte ceiling for a short lowercase password", async () => {
+  it("marks every rule a short lowercase password breaks as unmet, not pending", async () => {
     const page = mountAt(createRegisterState());
 
     await page.typeNewPassword("short");
 
-    expect(metRules(page.checklist())).toEqual(["max-length", "lowercase"]);
+    expect(statuses(page.checklist())).toEqual([
+      "min-length:unmet",
+      "uppercase:unmet",
+      "lowercase:met",
+      "digit:unmet",
+      "special:unmet",
+    ]);
+  });
+
+  it("shows the byte ceiling, as unmet, once a password breaks it", async () => {
+    const page = mountAt(createRegisterState());
+
+    await page.typeNewPassword(`${STRONG}${"x".repeat(60)}`);
+
+    expect(statuses(page.checklist())).toContain("max-length:unmet");
   });
 
   it("registers with exactly what was typed, leaving normalization to the machine", async () => {
@@ -254,7 +276,7 @@ describe("LoginScreen account access — code phase", () => {
     expect(page.phase()).toBe("code");
     expect(page.hasNewPasswordField()).toBe(true);
     expect(page.newPasswordLabel()).toBe(ACCOUNT_ACCESS_COPY.passwordLabel);
-    expect(page.checklist()).toHaveLength(PASSWORD_RULES.length);
+    expect(page.checklist()).toHaveLength(SHOWN_RULES.length);
 
     await page.typeCode(CODE);
     await page.typeNewPassword(STRONG);
@@ -505,11 +527,10 @@ function dataAttributesHolding(
 }
 
 /** The ids of the checklist rows marked met, in display order. */
-function metRules(rows: readonly PasswordChecklistRow[]): string[] {
-  return PASSWORD_RULES.filter((_rule, index) => {
-    return rows[index]?.met === true;
-  }).map((rule) => {
-    return rule.id;
+/** Each checklist row as `rule:status`, top to bottom. */
+function statuses(rows: readonly PasswordChecklistRow[]): string[] {
+  return rows.map((row) => {
+    return `${row.rule}:${row.status}`;
   });
 }
 
@@ -555,5 +576,11 @@ function createDemoAccounts(): DemoAccount[] {
 
 /** Meets every password rule. */
 const STRONG = "Correct-Horse-9x";
+
+/** The rules a checklist shows while the password is within the byte
+ * ceiling: every rule but that ceiling, in policy order. */
+const SHOWN_RULES = PASSWORD_RULES.filter((rule) => {
+  return rule.id !== "max-length";
+});
 
 const CODE = "12345678";

@@ -84,6 +84,12 @@
   border-radius: 4px;
 }
 
+/* A field whose error shows: its border takes the colour of the error line
+ * under it, so a failing field reads as failing before the line is read. */
+.input[aria-invalid="true"] {
+  border-color: var(--accent-negative, #ef4444);
+}
+
 .error {
   font-family: var(--font-mono, "JetBrains Mono", monospace);
   font-size: 11px;
@@ -173,6 +179,10 @@
 
 .ruleMet {
   color: var(--accent-positive, #22c55e);
+}
+
+.ruleUnmet {
+  color: var(--accent-negative, #ef4444);
 }
 
 .sentTo {

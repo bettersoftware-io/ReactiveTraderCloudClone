@@ -1,6 +1,7 @@
 /**
  * Live field validation on the account forms (spec §7): the address, the
- * display name and the code each show their check's error under the field —
+ * display name, the code and a new password each show their check's error
+ * under the field —
  * nothing while the field is first typed into, then from the first time it
  * is left, live as the value changes. A submit reveals every field and,
  * when one fails, sends nothing and focuses the first failing field. The
@@ -20,7 +21,9 @@ import type { AccountAccessState } from "@rtc/core-api";
 import {
   CODE_INPUT_ERROR,
   DISPLAY_NAME_INPUT_ERROR,
+  describePasswordRule,
   EMAIL_INPUT_ERROR,
+  PASSWORD_REQUIRED_ERROR,
 } from "@rtc/core-logic";
 
 afterEach(() => {
@@ -101,13 +104,44 @@ describe("LoginScreen field validation — when an error shows", () => {
     );
   });
 
-  it("gives the password no field error: its checklist is its feedback", async () => {
+  it("shows the password's first broken rule under it once it is left, and points the field at it", async () => {
     const page = mountAt(createRegisterState());
 
-    await page.typeNewPassword("x");
+    await page.typeNewPassword("Short1!");
+
+    expect(page.fieldError("password")).toBeNull();
+
     await page.blur("login-new-password");
 
-    expect(page.fieldErrorFields()).toEqual([]);
+    expect(page.fieldErrorFields()).toEqual(["password"]);
+    expect(page.fieldError("password")).toBe(SHORT_PASSWORD_ERROR);
+    expect(page.isMarkedInvalid("login-new-password")).toBe(true);
+    expect(page.describedBy("login-new-password")).toBe(SHORT_PASSWORD_ERROR);
+  });
+
+  it("asks for a password when the password field is left empty", async () => {
+    const page = mountAt(createRegisterState());
+
+    await page.blur("login-new-password");
+
+    expect(page.fieldError("password")).toBe(PASSWORD_REQUIRED_ERROR);
+  });
+
+  it("follows the password live once revealed: the next broken rule, then nothing", async () => {
+    const page = mountAt(createRegisterState());
+
+    await page.typeNewPassword("abcdefghijkl");
+    await page.blur("login-new-password");
+
+    expect(page.fieldError("password")).toBe(
+      describePasswordRule("uppercase"),
+    );
+
+    await page.typeNewPassword("A1!");
+
+    expect(page.fieldError("password")).toBeNull();
+    expect(page.isMarkedInvalid("login-new-password")).toBe(false);
+    expect(page.describedBy("login-new-password")).toBeNull();
   });
 
   it("leaves the sign-in form unchecked: its identifier may be a username", async () => {
@@ -146,9 +180,28 @@ describe("LoginScreen field validation — create account submit", () => {
     await page.submit();
 
     expect(page.registerArgs()).toEqual([]);
-    expect(page.fieldErrorFields()).toEqual(["email", "display-name"]);
+    expect(page.fieldErrorFields()).toEqual([
+      "email",
+      "display-name",
+      "password",
+    ]);
     expect(page.fieldError("email")).toBe(EMAIL_INPUT_ERROR);
     expect(page.focusedControl()).toBe("login-email");
+    expect(page.error()).toBe("");
+  });
+
+  it("sends nothing for a weak password, shows its error and focuses it", async () => {
+    const page = mountAt(createRegisterState());
+
+    await page.typeEmail("ann@desk.io");
+    await page.typeDisplayName("Ann Stark");
+    await page.typeNewPassword("Short1!");
+    await page.submit();
+
+    expect(page.registerArgs()).toEqual([]);
+    expect(page.fieldErrorFields()).toEqual(["password"]);
+    expect(page.fieldError("password")).toBe(SHORT_PASSWORD_ERROR);
+    expect(page.focusedControl()).toBe("login-new-password");
     expect(page.error()).toBe("");
   });
 
@@ -180,6 +233,29 @@ describe("LoginScreen field validation — code step", () => {
     expect(page.fieldError("code")).toBe(CODE_INPUT_ERROR);
     expect(page.focusedControl()).toBe("login-code");
     expect(page.error()).toBe("");
+  });
+
+  it("checks a new password when none is held: a weak one sends nothing and takes the focus", async () => {
+    const page = mountAt(createCodeState({ passwordHeld: false }));
+
+    await page.typeCode(CODE);
+    await page.typeNewPassword("Short1!");
+    await page.submit();
+
+    expect(page.codeArgs()).toEqual([]);
+    expect(page.fieldErrorFields()).toEqual(["password"]);
+    expect(page.fieldError("password")).toBe(SHORT_PASSWORD_ERROR);
+    expect(page.focusedControl()).toBe("login-new-password");
+  });
+
+  it("shows a new password's error once it is left, at the code step too", async () => {
+    const page = mountAt(createCodeState({ passwordHeld: false }));
+
+    await page.typeNewPassword("Short1!");
+    await page.blur("login-new-password");
+
+    expect(page.fieldErrorFields()).toEqual(["password"]);
+    expect(page.describedBy("login-new-password")).toBe(SHORT_PASSWORD_ERROR);
   });
 
   it("submits a good code when the address is held, with no address typed", async () => {
@@ -497,5 +573,8 @@ const CODE_INPUTS = [
 
 /** Meets every password rule. */
 const STRONG = "Correct-Horse-9x";
+
+/** The error a 7-character password shows: the first rule it breaks. */
+const SHORT_PASSWORD_ERROR = describePasswordRule("min-length");
 
 const CODE = "12345678";

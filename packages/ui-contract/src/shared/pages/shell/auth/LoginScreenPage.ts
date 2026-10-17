@@ -12,10 +12,13 @@ import type { LoginWaitVariant } from "@rtc/domain";
 
 import { waitVariantWithin } from "./AuthWaitPage";
 
-/** One row of the live password checklist. */
+/** One row of the live password checklist: its rule's id (`data-rule`),
+ * its label, and its status (`data-status`): `pending` before anything is
+ * typed, then `met` or `unmet`. */
 export interface PasswordChecklistRow {
+  readonly rule: string;
   readonly label: string;
-  readonly met: boolean;
+  readonly status: string;
 }
 
 /**
@@ -320,8 +323,9 @@ export class LoginScreenPage extends RoutedComponent<Record<string, never>> {
       .queryAllByTestId("login-password-rule")
       .map((row) => {
         return {
+          rule: row.getAttribute("data-rule") ?? "",
           label: spokenText(row),
-          met: row.getAttribute("data-met") === "true",
+          status: row.getAttribute("data-status") ?? "",
         };
       });
   }
