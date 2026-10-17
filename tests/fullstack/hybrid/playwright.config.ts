@@ -7,6 +7,11 @@ import { defineConfig, devices } from "@playwright/test";
  * data source. The client + server processes are started by
  * fullstack/hybrid-smoke.ts; this config only points Playwright at the client.
  */
+// The Solid smoke (RTC_CLIENT_PKG=@rtc/client-solid) runs beside the React one
+// under run-all.ts, so it writes to its own report/artifact dirs; empty for
+// React keeps that output path unchanged.
+const reportSuffix =
+  process.env.RTC_CLIENT_PKG === "@rtc/client-solid" ? "-solid" : "";
 const CLIENT_PORT = Number(process.env.FULLSTACK_CLIENT_PORT ?? 3101);
 
 export default defineConfig({
@@ -21,10 +26,13 @@ export default defineConfig({
     ["list"],
     [
       "html",
-      { outputFolder: "../../reports/fullstack/hybrid/report", open: "never" },
+      {
+        outputFolder: `../../reports/fullstack/hybrid${reportSuffix}/report`,
+        open: "never",
+      },
     ],
   ],
-  outputDir: "../../reports/fullstack/hybrid/artifacts",
+  outputDir: `../../reports/fullstack/hybrid${reportSuffix}/artifacts`,
   timeout: 30_000,
   use: {
     baseURL: `http://127.0.0.1:${CLIENT_PORT}`,

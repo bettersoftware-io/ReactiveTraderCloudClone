@@ -12,12 +12,17 @@
  * credentials are verified in the browser and never reach the server, while
  * server credentials reload once into the live composition.
  *
+ * Runs against the React client by default, or the Solid one with
+ * RTC_CLIENT_PKG=@rtc/client-solid (test:fullstack:hybrid:solid); run-all.ts
+ * runs both.
+ *
  * Exits non-zero if the server, client, or Playwright run fails.
  */
 import { spawn } from "node:child_process";
 
 import {
   MONOREPO_ROOT,
+  resolveSmokeClientPkg,
   startClient,
   startServer,
   stopProcess,
@@ -25,8 +30,17 @@ import {
 } from "./_orchestration.ts";
 
 const HOST = "127.0.0.1";
-const SERVER_PORT = Number(process.env.FULLSTACK_PORT ?? 4125);
-const CLIENT_PORT = Number(process.env.FULLSTACK_CLIENT_PORT ?? 3101);
+const CLIENT_PKG = resolveSmokeClientPkg();
+// The Solid run (test:fullstack:hybrid:solid) gets its own port pair so
+// run-all.ts can run it beside the React one: 4125/3101 React, 4128/3103 Solid.
+const isSolid = CLIENT_PKG === "@rtc/client-solid";
+const SERVER_PORT = Number(
+  process.env.FULLSTACK_PORT ?? (isSolid ? 4128 : 4125),
+);
+
+const CLIENT_PORT = Number(
+  process.env.FULLSTACK_CLIENT_PORT ?? (isSolid ? 3103 : 3101),
+);
 
 /**
  * The bundle's demo roster for this run. Deliberately ONLY `demo`, whose
@@ -73,11 +87,11 @@ function runPlaywright(): Promise<number> {
 }
 
 console.log(
-  `hybrid smoke (browser): server :${SERVER_PORT}, client :${CLIENT_PORT}`,
+  `hybrid smoke (browser): ${CLIENT_PKG}, server :${SERVER_PORT}, client :${CLIENT_PORT}`,
 );
 const server = startServer(SERVER_PORT, HOST);
 const client = startClient(
-  "@rtc/client-react",
+  CLIENT_PKG,
   CLIENT_PORT,
   `ws://${HOST}:${SERVER_PORT}`,
   {

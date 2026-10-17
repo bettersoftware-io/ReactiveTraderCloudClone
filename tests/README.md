@@ -153,7 +153,9 @@ server on port 4123 and drives it directly over a Node WebSocket;
 3100, then runs a Playwright spec against the live UI;
 `test:fullstack:browser:solid` runs the same specs against `@rtc/client-solid`
 on 4127/3102 (`RTC_CLIENT_PKG`, as for the browser suites). Neither uses mocks
-or simulators. `test:fullstack:hybrid` stays React-only.
+or simulators. `test:fullstack:hybrid` boots a hybrid page (server URL plus a
+demo roster) on 4125/3101, and `test:fullstack:hybrid:solid` the Solid one on
+4128/3103.
 
 ## What the browser suites drive: a build, or the dev server
 
