@@ -36,6 +36,10 @@ export class PlaywrightWorkspace implements WorkspacePO {
     await this.gotoMounted("/");
   }
 
+  async openAt(path: string): Promise<void> {
+    await this.gotoMounted(path);
+  }
+
   async openFx(): Promise<void> {
     await this.gotoMounted("/");
     await this.page.getByTestId(TESTIDS.shell.tab("fx")).click();
@@ -203,11 +207,11 @@ export class PlaywrightWorkspace implements WorkspacePO {
     await this.page.goForward();
   }
 
-  async waitUrlHash(expected: string, timeoutMs: number): Promise<void> {
+  async waitUrlPath(expected: string, timeoutMs: number): Promise<void> {
     await expect
       .poll(
         () => {
-          return new URL(this.page.url()).hash;
+          return new URL(this.page.url()).pathname;
         },
         { timeout: timeoutMs },
       )

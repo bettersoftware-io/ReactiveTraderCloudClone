@@ -77,8 +77,8 @@ export interface LoginScreenPO {
   browserBack(): Promise<void>;
   /** The browser's own Forward button. */
   browserForward(): Promise<void>;
-  /** Wait until the page URL's hash reads exactly `expected` (e.g. `#/sign-in`). */
-  waitUrlHash(expected: string, timeoutMs: number): Promise<void>;
+  /** Wait until the page URL's path reads exactly `expected` (e.g. `/sign-in`). */
+  waitUrlPath(expected: string, timeoutMs: number): Promise<void>;
   /** How many requests this page has made whose URL path ends with `path`. */
   countRequestsTo(path: string): number;
 }

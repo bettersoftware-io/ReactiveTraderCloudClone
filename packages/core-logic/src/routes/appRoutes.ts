@@ -37,7 +37,7 @@ const ROUTES_BY_SLUG: ReadonlyMap<string, AppRoute> = new Map<string, AppRoute>(
   ],
 );
 
-const HASH_PREFIX = "#/";
+const PATH_PREFIX = "/";
 
 export function isSameRoute(a: AppRoute | null, b: AppRoute | null): boolean {
   if (a === null || b === null) {
@@ -51,14 +51,14 @@ export function isSameRoute(a: AppRoute | null, b: AppRoute | null): boolean {
   return b.area === "account" && a.mode === b.mode;
 }
 
-/** The route a `location.hash` names; null for an empty, unknown or
- * malformed hash. */
-export function parseAppRoute(hash: string): AppRoute | null {
-  if (!hash.startsWith(HASH_PREFIX)) {
+/** The route a `location.pathname` names; null for the root, an unknown or
+ * a malformed path. */
+export function parseAppRoute(path: string): AppRoute | null {
+  if (!path.startsWith(PATH_PREFIX)) {
     return null;
   }
 
-  return ROUTES_BY_SLUG.get(hash.slice(HASH_PREFIX.length)) ?? null;
+  return ROUTES_BY_SLUG.get(path.slice(PATH_PREFIX.length)) ?? null;
 }
 
 export function formatAppRoute(route: AppRoute): string {
@@ -67,5 +67,5 @@ export function formatAppRoute(route: AppRoute): string {
       ? WORKSPACE_SLUGS[route.tab]
       : ACCOUNT_SLUGS[route.mode];
 
-  return `${HASH_PREFIX}${slug}`;
+  return `${PATH_PREFIX}${slug}`;
 }

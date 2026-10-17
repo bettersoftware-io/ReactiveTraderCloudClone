@@ -3,29 +3,29 @@ import type { AppRoute, RouteHistory } from "@rtc/core-api";
 import { formatAppRoute, parseAppRoute } from "#/routes/appRoutes";
 
 export interface FakeRouteHistory extends RouteHistory {
-  /** Every push and replace, in order, as `push #/x` / `replace #/x`. */
+  /** Every push and replace, in order, as `push /x` / `replace /x`. */
   readonly writes: string[];
-  /** Simulates Back/Forward (or an edited hash) landing on `hash`. */
-  traverse(hash: string): void;
+  /** Simulates Back/Forward landing on `path`. */
+  traverse(path: string): void;
 }
 
-export function createFakeRouteHistory(initialHash = ""): FakeRouteHistory {
-  let hash = initialHash;
+export function createFakeRouteHistory(initialPath = ""): FakeRouteHistory {
+  let path = initialPath;
   const writes: string[] = [];
   const listeners = new Set<(route: AppRoute | null) => void>();
 
   return {
     writes,
     current: (): AppRoute | null => {
-      return parseAppRoute(hash);
+      return parseAppRoute(path);
     },
     push: (route: AppRoute): void => {
-      hash = formatAppRoute(route);
-      writes.push(`push ${hash}`);
+      path = formatAppRoute(route);
+      writes.push(`push ${path}`);
     },
     replace: (route: AppRoute): void => {
-      hash = formatAppRoute(route);
-      writes.push(`replace ${hash}`);
+      path = formatAppRoute(route);
+      writes.push(`replace ${path}`);
     },
     subscribe: (listener: (route: AppRoute | null) => void): (() => void) => {
       listeners.add(listener);
@@ -35,7 +35,7 @@ export function createFakeRouteHistory(initialHash = ""): FakeRouteHistory {
       };
     },
     traverse: (next: string): void => {
-      hash = next;
+      path = next;
 
       for (const listener of [...listeners]) {
         listener(parseAppRoute(next));

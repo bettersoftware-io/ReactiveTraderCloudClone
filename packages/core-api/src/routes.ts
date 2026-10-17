@@ -15,13 +15,13 @@ export type AccountNavigation =
   | "startReset"
   | "startCodeEntry";
 
-/** What a hash route names: a workspace tab or a login-screen mode. */
+/** What a route names: a workspace tab or a login-screen mode. */
 export type AppRoute =
   | { readonly area: "workspace"; readonly tab: WorkspaceTab }
   | { readonly area: "account"; readonly mode: AccountRouteMode };
 
 /** The page's history, as routes. A subscriber hears history traversal
- * (Back, Forward, an edited hash) only — never this port's own push or
+ * (Back and Forward) only — never this port's own push or
  * replace. A host without one (React Native, most tests) has no routing. */
 export interface RouteHistory {
   /** The route the URL names now, or null for none. */

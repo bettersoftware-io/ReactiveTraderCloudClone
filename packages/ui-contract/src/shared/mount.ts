@@ -131,8 +131,8 @@ export interface MountOptions<P> {
    * defaults to false, where LoginScreen offers no account links. */
   registrationAvailable?: boolean;
   /** Seeds `useRouteHistory()` (World.routes) with a fake history at this
-   * hash; defaults to none, where the page is unrouted. */
-  routeHash?: string;
+   * path; defaults to none, where the page is unrouted. */
+  routePath?: string;
 }
 
 const mounted: MountedRoot[] = [];
@@ -333,7 +333,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     preferencesReopen: opts.preferencesReopen,
     accountAccess: opts.accountAccess,
     registrationAvailable: opts.registrationAvailable,
-    routeHash: opts.routeHash,
+    routePath: opts.routePath,
   });
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

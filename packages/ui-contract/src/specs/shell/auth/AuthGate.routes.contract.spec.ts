@@ -20,7 +20,7 @@ afterEach(() => {
 
 describe("AuthGate routes — signing in hands the URL to the workspace", () => {
   it("lands on the tab a signed-out visitor's URL names, writing nothing", () => {
-    const page = mountSignedOut("#/credit");
+    const page = mountSignedOut("/credit");
 
     expect(page.showsLogin()).toBe(true);
 
@@ -29,7 +29,7 @@ describe("AuthGate routes — signing in hands the URL to the workspace", () => 
     expect(page.showsLogin()).toBe(false);
     expect(page.header.isActive("credit")).toBe(true);
     expect(page.routeWrites()).toEqual([]);
-    expect(page.routeHash()).toBe("#/credit");
+    expect(page.routePath()).toBe("/credit");
   });
 
   it("replaces the sign-in route with the tab on screen", () => {
@@ -38,20 +38,20 @@ describe("AuthGate routes — signing in hands the URL to the workspace", () => 
     page.signIn();
 
     expect(page.header.isActive("fx")).toBe(true);
-    expect(page.routeWrites()).toEqual(["replace #/sign-in", "replace #/fx"]);
-    expect(page.routeHash()).toBe("#/fx");
+    expect(page.routeWrites()).toEqual(["replace /sign-in", "replace /fx"]);
+    expect(page.routePath()).toBe("/fx");
   });
 });
 
 describe("AuthGate routes — an unmounted hook leaves the history alone", () => {
   it("opens no login form when Back lands on a login route after sign-in", async () => {
-    const page = mountSignedOut("#/sign-in");
+    const page = mountSignedOut("/sign-in");
 
     page.signIn();
     const navigations = [...page.login.navigations()];
     const writesBefore = page.routeWrites().length;
 
-    await page.traverse("#/create-account");
+    await page.traverse("/create-account");
 
     expect(page.showsLogin()).toBe(false);
     // The discriminator: a leaked login hook would open the form here.
@@ -62,31 +62,32 @@ describe("AuthGate routes — an unmounted hook leaves the history alone", () =>
         .slice(writesBefore)
         .filter((write) => {
           return (
-            parseAppRoute(write.slice(write.indexOf("#")))?.area === "account"
+            parseAppRoute(write.slice(write.indexOf(" ") + 1))?.area ===
+            "account"
           );
         }),
     ).toEqual([]);
   });
 
   it("rewrites no login route to a tab after sign-out", async () => {
-    const page = mountSignedOut("#/credit");
+    const page = mountSignedOut("/credit");
 
     page.signIn();
     page.signOut();
-    await page.traverse("#/forgot-password");
+    await page.traverse("/forgot-password");
 
     expect(page.login.phase()).toBe("requestReset");
     expect(page.routeWrites()).toEqual([]);
-    expect(page.routeHash()).toBe("#/forgot-password");
+    expect(page.routePath()).toBe("/forgot-password");
   });
 });
 
 /** Mounts the gated app signed out, with registration, on a page whose
- * history holds `hash`. */
-function mountSignedOut(hash: string): AuthGatedAppPage {
+ * history holds `path`. */
+function mountSignedOut(path: string): AuthGatedAppPage {
   return mount(AuthGatedAppShell, {
     auth: { status: "unauthenticated" },
     registrationAvailable: true,
-    routeHash: hash,
+    routePath: path,
   });
 }

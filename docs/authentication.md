@@ -936,25 +936,31 @@ create-account form links the [privacy notice](privacy.md).
 | Shared core contract suite | `packages/core-contract/src/suites/accountAccess.ts` |
 | Login-screen forms | `packages/client-react/src/ui/shell/auth/`, `packages/client-solid/src/ui/shell/auth/` |
 | Routes: grammar and sync controllers; field feedback | `packages/core-logic/src/routes/`, `packages/core-logic/src/presenters/accountFieldFeedback.ts` |
-| Routes: hash adapter; the client hooks | `packages/web-boot/src/adapters/HashRouteHistory.ts`, `src/ui/shell/routes/` in each client |
+| Routes: path adapter; the client hooks | `packages/web-boot/src/adapters/PathRouteHistory.ts`, `src/ui/shell/routes/` in each client |
 | UI contract | `packages/ui-contract/src/specs/shell/auth/LoginScreen.accountAccess.contract.spec.ts` |
 | Visual scenarios (`login/live-links`, `create-account`, `create-account-checklist`, `enter-code`, `enter-code-reset`, `reset-request`, `pending-approval`, `password-unset`) | `packages/ui-contract/src/visual/scenarios.ts` |
 | Real-server e2e | `tests/fullstack/browser/accounts.spec.ts` |
 
 **Routes (browser Back and Forward).** Both web clients mirror the login mode
-and the workspace tab in the URL hash, so the browser's Back and Forward move
-between them instead of leaving the app. The hash is the only part of the URL a
-route touches: `?core=`, `?splash` and other paths (`/devtools/`) are never
-read or written. Anything else in the hash (empty, unknown, malformed) reads as
-no route.
+and the workspace tab in the URL path, so the browser's Back and Forward move
+between them instead of leaving the app. The path is the only part of the URL a
+route touches: `?core=`, `?splash` and any fragment are carried over
+untouched. A path that names no route (`/`, a trailing slash, an unknown
+name) is rewritten to the route of what is on screen. A path route needs the
+server to answer an unknown path with `index.html`. Both Vercel projects (`vercel.react.json` and
+`vercel.solid.json`) rewrite every path except `/api/` to it, serving real files
+such as `/devtools/` and `/popout.html` first. `vite dev` and `vite preview` do
+the same by default. An old `#/…` link is not redirected: it loads `/` and lands
+on the default route, and the fragment stays in the address bar, because a route
+write keeps the fragment.
 
-| Route | Hash | Area |
+| Route | Path | Area |
 |---|---|---|
-| FX, Credit, Equities, Admin tab | `#/fx`, `#/credit`, `#/equities`, `#/admin` | workspace |
-| Sign in | `#/sign-in` | account |
-| Create account | `#/create-account` | account |
-| Forgot password | `#/forgot-password` | account |
-| Enter a code ("I already have a code") | `#/enter-code` | account |
+| FX, Credit, Equities, Admin tab | `/fx`, `/credit`, `/equities`, `/admin` | workspace |
+| Sign in | `/sign-in` | account |
+| Create account | `/create-account` | account |
+| Forgot password | `/forgot-password` | account |
+| Enter a code ("I already have a code") | `/enter-code` | account |
 
 The machines stay the source of truth: the URL mirrors them, and Back or
 Forward becomes the mode's opening intent (`returnToSignIn`,
@@ -964,22 +970,22 @@ have a code, Back to sign in) push a history entry; a phase change that is a
 result (register answered, a code accepted, a reset requested) replaces the
 current entry, so Back from the code step lands where the user was before
 Create account, not on a form whose request already finished. The code step of
-a reset shows `#/forgot-password`, because no intent opens it with nothing
+a reset shows `/forgot-password`, because no intent opens it with nothing
 held; the three notices (`pendingApproval`, `passwordUnset`,
-`passwordChanged`) show `#/sign-in`. Nothing secret reaches the URL or the
+`passwordChanged`) show `/sign-in`. Nothing secret reaches the URL or the
 history state: a route is a mode name.
 
-Signed out on a tab route (`#/credit`), the URL is kept: the sign-in form
+Signed out on a tab route (`/credit`), the URL is kept: the sign-in form
 shows, and after sign-in the workspace lands on that tab, so a shared tab link
 works. Signed in, a login route reached by Back is replaced with the current
 tab. A reload keeps the tab, and so does a core swap from Preferences (the
 remounted view re-applies the URL's tab over a core that starts on FX). A page
-with no server offers no account links, so it honours `#/sign-in` only: any
+with no server offers no account links, so it honours `/sign-in` only: any
 other account route, on load or by Back, opens the sign-in form and is
-replaced with `#/sign-in`. The pieces: the route grammar and the two
+replaced with `/sign-in`. The pieces: the route grammar and the two
 route-sync controllers (`createAccountRouteSync`, `createWorkspaceRouteSync`)
 are pure code in `packages/core-logic/src/routes/`; the one browser adapter,
-`createHashRouteHistory`, is `packages/web-boot/src/adapters/HashRouteHistory.ts`,
+`createPathRouteHistory`, is `packages/web-boot/src/adapters/PathRouteHistory.ts`,
 built once per page by `startWebClient` and handed to the view as
 `page.routes`; each client's `src/ui/shell/routes/` holds the two hooks
 (`useAccountRoutes`, `useWorkspaceRoutes`). A host that passes no `routes`

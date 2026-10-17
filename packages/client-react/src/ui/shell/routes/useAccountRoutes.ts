@@ -12,13 +12,13 @@ type AccountRoutesSource = Pick<AccountAccessIntents, AccountNavigation> & {
   readonly state: AccountAccessState;
 };
 
-/** Keeps the page's hash route in step with the login screen (spec §6) and
+/** Keeps the page's route in step with the login screen (spec §6) and
  * returns the links' navigation: a new history entry, then the intent. A
  * host with no route history gets the bare intents.
  *
  * The four navigation intents must keep their identity across renders: a
  * changed identity rebuilds the sync, which re-runs its mount rule against
- * the current hash. Every real host meets this — they are `useMachine`'s
+ * the current route. Every real host meets this — they are `useMachine`'s
  * intents, stable for the machine's life. */
 export function useAccountRoutes(
   account: AccountRoutesSource,

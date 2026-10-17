@@ -114,33 +114,33 @@ test.describe("full-stack: a link under a focused field takes one click", () => 
 });
 
 // Browser Back/Forward through the login modes (spec §5): a mode link pushes
-// a history entry, Back/Forward drive the screen, the hash names the mode.
+// a history entry, Back/Forward drive the screen, the path names the mode.
 test.describe("full-stack: browser history through the login modes", () => {
   test("Back and Forward walk create-account and forgot-password", async ({
     ctx,
   }) => {
     await login.openLoginScreen(ctx);
-    await login.expectUrlHash(ctx, "#/sign-in");
+    await login.expectUrlPath(ctx, "/sign-in");
 
     await login.openCreateAccount(ctx);
-    await login.expectUrlHash(ctx, "#/create-account");
+    await login.expectUrlPath(ctx, "/create-account");
     await login.expectLoginTitle(ctx, `${TITLE}CREATE ACCOUNT`);
 
     await common.pressBrowserBack(ctx, "login");
-    await login.expectUrlHash(ctx, "#/sign-in");
+    await login.expectUrlPath(ctx, "/sign-in");
     await login.expectLoginTitle(ctx, `${TITLE}SIGN IN`);
 
     await common.pressBrowserForward(ctx, "login");
-    await login.expectUrlHash(ctx, "#/create-account");
+    await login.expectUrlPath(ctx, "/create-account");
     await login.expectLoginTitle(ctx, `${TITLE}CREATE ACCOUNT`);
 
     await common.pressBrowserBack(ctx, "login");
     await login.openForgotPassword(ctx);
-    await login.expectUrlHash(ctx, "#/forgot-password");
+    await login.expectUrlPath(ctx, "/forgot-password");
     await login.expectLoginPhase(ctx, "requestReset");
 
     await common.pressBrowserBack(ctx, "login");
-    await login.expectUrlHash(ctx, "#/sign-in");
+    await login.expectUrlPath(ctx, "/sign-in");
     await login.expectLoginTitle(ctx, `${TITLE}SIGN IN`);
   });
 });

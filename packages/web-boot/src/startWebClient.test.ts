@@ -49,7 +49,7 @@ afterEach(async () => {
   vi.restoreAllMocks();
   // jsdom has no `navigator.webdriver`; a case that sets it is undone here.
   Reflect.deleteProperty(navigator, "webdriver");
-  // A case that sets a path, query or hash route leaves none behind.
+  // A case that sets a path route or a query leaves neither behind.
   history.replaceState(null, "", "/");
 });
 
@@ -73,7 +73,7 @@ describe("startWebClient", () => {
   });
 
   it("boots the default core: logs it, hands the view the page, mounts and publishes", async () => {
-    history.replaceState(null, "", "/#/create-account");
+    history.replaceState(null, "", "/create-account");
     const client = createClient({
       env: { devAuth: JSON.stringify({ astark: "pw" }) },
     });

@@ -9,6 +9,14 @@ export async function openWorkspace(ctx: TestContext): Promise<void> {
   await ctx.po.workspace.open();
 }
 
+/** Open the app at `path` (e.g. `/credit`) — a cold load of a deep path. */
+export async function openWorkspaceAt(
+  ctx: TestContext,
+  path: string,
+): Promise<void> {
+  await ctx.po.workspace.openAt(path);
+}
+
 export async function openFxWorkspace(ctx: TestContext): Promise<void> {
   await ctx.po.workspace.openFx();
 }

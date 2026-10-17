@@ -241,13 +241,13 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
     await this.page().goForward();
   }
 
-  async waitUrlHash(expected: string, timeoutMs: number): Promise<void> {
+  async waitUrlPath(expected: string, timeoutMs: number): Promise<void> {
     const page = this.page();
 
     await expect
       .poll(
         () => {
-          return new URL(page.url()).hash;
+          return new URL(page.url()).pathname;
         },
         { timeout: timeoutMs },
       )
