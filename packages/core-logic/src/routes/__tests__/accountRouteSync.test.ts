@@ -121,32 +121,12 @@ describe("createAccountRouteSync", () => {
   });
 
   it("observing the state last observed does nothing", () => {
-    const history = createFakeRouteHistory("#/create-account");
-    const called: string[] = [];
-    const sync = createAccountRouteSync({
-      routes: history,
-      registrationAvailable: true,
-      intents: {
-        returnToSignIn: () => {
-          return called.push("returnToSignIn");
-        },
-        startRegistration: () => {
-          return called.push("startRegistration");
-        },
-        startReset: () => {
-          return called.push("startReset");
-        },
-        startCodeEntry: () => {
-          return called.push("startCodeEntry");
-        },
-      },
-    });
+    const h = createHarness("#/create-account", true, { reenter: false });
+    h.mount();
+    h.mount();
 
-    sync.observe(ACCOUNT_ACCESS_IDLE);
-    sync.observe(ACCOUNT_ACCESS_IDLE);
-
-    expect(called).toEqual(["startRegistration"]);
-    expect(history.writes).toEqual([]);
+    expect(h.called).toEqual(["startRegistration"]);
+    expect(h.history.writes).toEqual([]);
   });
 
   it("a link pushes its route, then runs the intent; the new state writes nothing", () => {
@@ -171,7 +151,7 @@ describe("createAccountRouteSync", () => {
   it("a signup result moves the URL to enter-code by replace", () => {
     const h = createHarness("#/create-account", true);
     h.mount();
-    h.sync.observe(SIGNUP_CODE);
+    h.enterState(SIGNUP_CODE);
 
     expect(h.history.writes).toEqual(["replace #/enter-code"]);
   });
@@ -180,7 +160,7 @@ describe("createAccountRouteSync", () => {
     const h = createHarness("#/sign-in", true);
     h.mount();
     h.sync.navigate("startReset");
-    h.sync.observe(RESET_CODE);
+    h.enterState(RESET_CODE);
 
     expect(h.history.writes).toEqual(["push #/forgot-password"]);
   });
@@ -188,7 +168,7 @@ describe("createAccountRouteSync", () => {
   it("a notice after enter-code replaces with sign-in", () => {
     const h = createHarness("#/enter-code", true);
     h.mount();
-    h.sync.observe({ phase: "pendingApproval", email: "a@b.co" });
+    h.enterState({ phase: "pendingApproval", email: "a@b.co" });
 
     expect(h.history.writes).toEqual(["replace #/sign-in"]);
   });
@@ -196,7 +176,7 @@ describe("createAccountRouteSync", () => {
   it("traversal opens the mode its URL names, even over a busy form", () => {
     const h = createHarness("#/create-account", true);
     h.mount();
-    h.sync.observe(REGISTER_BUSY);
+    h.enterState(REGISTER_BUSY);
     h.called.length = 0;
 
     h.history.traverse("#/sign-in");
@@ -268,11 +248,22 @@ interface AccountHarness {
   readonly called: AccountNavigation[];
   phase(): string;
   mount(): void;
+  /** Sets the machine's state, as a result from the server would, and
+   * lets the controller observe it. */
+  enterState(next: AccountAccessState): void;
+}
+
+interface AccountHarnessOptions {
+  /** Makes each intent behave like the real machine: the state steps and
+   * the controller observes it synchronously. Off, an intent is only
+   * recorded. */
+  readonly reenter?: boolean;
 }
 
 function createHarness(
   hash: string,
   registrationAvailable: boolean,
+  { reenter = true }: AccountHarnessOptions = {},
 ): AccountHarness {
   const history = createFakeRouteHistory(hash);
   const called: AccountNavigation[] = [];
@@ -280,7 +271,16 @@ function createHarness(
 
   function run(navigation: AccountNavigation): void {
     called.push(navigation);
-    state = stepAccountAccess(state, NOTHING_HELD, { kind: navigation }).state;
+
+    if (reenter) {
+      enterState(
+        stepAccountAccess(state, NOTHING_HELD, { kind: navigation }).state,
+      );
+    }
+  }
+
+  function enterState(next: AccountAccessState): void {
+    state = next;
     sync.observe(state);
   }
 
@@ -313,5 +313,6 @@ function createHarness(
     mount: (): void => {
       sync.observe(state);
     },
+    enterState,
   };
 }

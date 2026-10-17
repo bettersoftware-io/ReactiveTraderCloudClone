@@ -110,15 +110,18 @@ describe("createWorkspaceRouteSync", () => {
   });
 });
 
-/** `reenter` makes switchTab behave like Solid: the tab changes and the
- * observer hears it synchronously. */
 interface WorkspaceHarness {
   readonly history: FakeRouteHistory;
   readonly switched: WorkspaceTab[];
   create(): WorkspaceRouteSync;
 }
 
-function createHarness(hash: string, reenter: boolean): WorkspaceHarness {
+function createHarness(
+  hash: string,
+  /** Makes switchTab behave like Solid: the tab changes and the observer
+   * hears it synchronously. */
+  reenter: boolean,
+): WorkspaceHarness {
   const history = createFakeRouteHistory(hash);
   const switched: WorkspaceTab[] = [];
 

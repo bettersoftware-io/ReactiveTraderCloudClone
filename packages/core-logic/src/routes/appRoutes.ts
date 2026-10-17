@@ -8,18 +8,34 @@ export function accountRoute(mode: AccountRouteMode): AppRoute {
   return { area: "account", mode };
 }
 
-/** One table for both directions, so the reader and the writer cannot
- * disagree. */
-const ROUTE_SLUGS: readonly (readonly [string, AppRoute])[] = [
-  ["fx", workspaceRoute("fx")],
-  ["credit", workspaceRoute("credit")],
-  ["equities", workspaceRoute("equities")],
-  ["admin", workspaceRoute("admin")],
-  ["sign-in", accountRoute("signIn")],
-  ["create-account", accountRoute("register")],
-  ["forgot-password", accountRoute("requestReset")],
-  ["enter-code", accountRoute("enterCode")],
-];
+/** The slug of every tab and every login mode. Keyed by the unions, so a
+ * new `WorkspaceTab` or `AccountRouteMode` without a slug fails typecheck;
+ * the reader below is built from these same tables, so the reader and the
+ * writer cannot disagree. */
+const WORKSPACE_SLUGS: Readonly<Record<WorkspaceTab, string>> = {
+  fx: "fx",
+  credit: "credit",
+  equities: "equities",
+  admin: "admin",
+};
+
+const ACCOUNT_SLUGS: Readonly<Record<AccountRouteMode, string>> = {
+  signIn: "sign-in",
+  register: "create-account",
+  requestReset: "forgot-password",
+  enterCode: "enter-code",
+};
+
+const ROUTES_BY_SLUG: ReadonlyMap<string, AppRoute> = new Map<string, AppRoute>(
+  [
+    ...(Object.keys(WORKSPACE_SLUGS) as WorkspaceTab[]).map((tab) => {
+      return [WORKSPACE_SLUGS[tab], workspaceRoute(tab)] as const;
+    }),
+    ...(Object.keys(ACCOUNT_SLUGS) as AccountRouteMode[]).map((mode) => {
+      return [ACCOUNT_SLUGS[mode], accountRoute(mode)] as const;
+    }),
+  ],
+);
 
 const HASH_PREFIX = "#/";
 
@@ -42,19 +58,14 @@ export function parseAppRoute(hash: string): AppRoute | null {
     return null;
   }
 
-  const slug = hash.slice(HASH_PREFIX.length);
-  const entry = ROUTE_SLUGS.find(([candidate]) => {
-    return candidate === slug;
-  });
-
-  return entry === undefined ? null : entry[1];
+  return ROUTES_BY_SLUG.get(hash.slice(HASH_PREFIX.length)) ?? null;
 }
 
 export function formatAppRoute(route: AppRoute): string {
-  const entry = ROUTE_SLUGS.find(([, candidate]) => {
-    return isSameRoute(candidate, route);
-  });
+  const slug =
+    route.area === "workspace"
+      ? WORKSPACE_SLUGS[route.tab]
+      : ACCOUNT_SLUGS[route.mode];
 
-  // Every AppRoute has a row: the table covers both unions exhaustively.
-  return `${HASH_PREFIX}${entry?.[0] ?? ""}`;
+  return `${HASH_PREFIX}${slug}`;
 }

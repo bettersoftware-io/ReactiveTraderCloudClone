@@ -32,21 +32,42 @@ describe("app routes", () => {
     },
   );
 
-  it("compares routes by value", () => {
-    const routes: readonly (AppRoute | null)[] = [
-      null,
-      workspaceRoute("fx"),
-      workspaceRoute("credit"),
-      accountRoute("signIn"),
-      accountRoute("register"),
-    ];
+  it("compares routes by value: equal only for the same tab or mode", () => {
+    const left = createEveryRoute();
+    const right = createEveryRoute();
 
-    for (const a of routes) {
-      for (const b of routes) {
-        expect(isSameRoute(a, b)).toBe(a === b);
-      }
+    left.forEach((a, i) => {
+      right.forEach((b, j) => {
+        expect(a).not.toBe(b);
+        expect(
+          isSameRoute(a, b),
+          `${formatAppRoute(a)} vs ${formatAppRoute(b)}`,
+        ).toBe(i === j);
+      });
+    });
+  });
+
+  it("treats null as equal to null only", () => {
+    expect(isSameRoute(null, null)).toBe(true);
+
+    for (const route of createEveryRoute()) {
+      expect(isSameRoute(null, route)).toBe(false);
+      expect(isSameRoute(route, null)).toBe(false);
     }
-
-    expect(isSameRoute(workspaceRoute("fx"), workspaceRoute("fx"))).toBe(true);
   });
 });
+
+/** Fresh objects on every call, so a comparison by identity would fail
+ * the equal pairs in "compares routes by value". */
+function createEveryRoute(): readonly AppRoute[] {
+  return [
+    workspaceRoute("fx"),
+    workspaceRoute("credit"),
+    workspaceRoute("equities"),
+    workspaceRoute("admin"),
+    accountRoute("signIn"),
+    accountRoute("register"),
+    accountRoute("requestReset"),
+    accountRoute("enterCode"),
+  ];
+}
