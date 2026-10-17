@@ -91,10 +91,19 @@ describe("createHashRouteHistory (jsdom history)", () => {
     expect(listener).not.toHaveBeenCalled();
   });
 
-  it("stores nothing in history.state", () => {
+  it("push stores nothing in history.state", () => {
     const routes = createHashRouteHistory(window);
 
     routes.push({ area: "workspace", tab: "credit" });
+
+    expect(history.state).toBeNull();
+  });
+
+  it("replace stores nothing in history.state, clearing what the entry held", () => {
+    history.replaceState({ held: "before" }, "", "/?core=rxjs");
+    const routes = createHashRouteHistory(window);
+
+    routes.replace({ area: "workspace", tab: "credit" });
 
     expect(history.state).toBeNull();
   });

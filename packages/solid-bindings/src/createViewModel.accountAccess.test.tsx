@@ -5,8 +5,9 @@ import {
   createSimulatorPorts,
   InMemorySessionStore,
 } from "@rtc/client-adapters";
+import { createInertRouteHistory } from "@rtc/client-adapters/testing";
 import { createApp, createMachineFactories } from "@rtc/client-core-rxjs";
-import type { AppPorts, RouteHistory } from "@rtc/core-api";
+import type { AppPorts } from "@rtc/core-api";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,
@@ -41,7 +42,7 @@ describe("createViewModel — registrationAvailable", () => {
 
 describe("createViewModel — useRouteHistory", () => {
   it("returns the shell's routes", () => {
-    const routes = createRouteHistory();
+    const routes = createInertRouteHistory();
     const vm = createViewModelFor({ routes });
 
     expect(vm.useRouteHistory()).toBe(routes);
@@ -103,19 +104,6 @@ function createViewModelFor(shell: ViewModelShell | undefined): ViewModel {
     commands,
     shell,
   );
-}
-
-function createRouteHistory(): RouteHistory {
-  return {
-    current: () => {
-      return null;
-    },
-    push: () => {},
-    replace: () => {},
-    subscribe: () => {
-      return () => {};
-    },
-  };
 }
 
 function createSimPorts(): AppPorts {
