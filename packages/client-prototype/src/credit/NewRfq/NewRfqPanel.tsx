@@ -23,7 +23,7 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
   }
 
   return (
-    <div className={styles.body}>
+    <div className={styles.body} data-testid="new-rfq-form">
       <div className={styles.dirRow}>
         <DirButton
           dir="Buy"
