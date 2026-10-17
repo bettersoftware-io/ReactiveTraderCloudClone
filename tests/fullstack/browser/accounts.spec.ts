@@ -1,3 +1,4 @@
+import * as common from "#/browser/scenarios/common.js";
 import * as login from "#/browser/scenarios/login.js";
 
 import { unseededTest as test } from "./_context.js";
@@ -125,20 +126,20 @@ test.describe("full-stack: browser history through the login modes", () => {
     await login.expectUrlHash(ctx, "#/create-account");
     await login.expectLoginTitle(ctx, `${TITLE}CREATE ACCOUNT`);
 
-    await login.pressBrowserBack(ctx);
+    await common.pressBrowserBack(ctx, "login");
     await login.expectUrlHash(ctx, "#/sign-in");
     await login.expectLoginTitle(ctx, `${TITLE}SIGN IN`);
 
-    await login.pressBrowserForward(ctx);
+    await common.pressBrowserForward(ctx, "login");
     await login.expectUrlHash(ctx, "#/create-account");
     await login.expectLoginTitle(ctx, `${TITLE}CREATE ACCOUNT`);
 
-    await login.pressBrowserBack(ctx);
+    await common.pressBrowserBack(ctx, "login");
     await login.openForgotPassword(ctx);
     await login.expectUrlHash(ctx, "#/forgot-password");
     await login.expectLoginPhase(ctx, "requestReset");
 
-    await login.pressBrowserBack(ctx);
+    await common.pressBrowserBack(ctx, "login");
     await login.expectUrlHash(ctx, "#/sign-in");
     await login.expectLoginTitle(ctx, `${TITLE}SIGN IN`);
   });

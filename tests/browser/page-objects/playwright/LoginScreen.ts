@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
-import type { LoginScreenPO } from "../contracts/LoginScreen.ts";
+import type { AccountField, LoginScreenPO } from "../contracts/LoginScreen.ts";
 import { TESTIDS } from "../contracts/testids.ts";
 import { awaitAppMount } from "./appMount.ts";
 
@@ -128,7 +128,7 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
   }
 
   async waitFieldError(
-    field: string,
+    field: AccountField,
     expected: string,
     timeoutMs: number,
   ): Promise<void> {

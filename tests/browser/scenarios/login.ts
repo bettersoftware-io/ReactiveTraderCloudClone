@@ -1,4 +1,7 @@
-import type { LoginScreenPO } from "../page-objects/contracts/LoginScreen.ts";
+import type {
+  AccountField,
+  LoginScreenPO,
+} from "../page-objects/contracts/LoginScreen.ts";
 import type { TestContext } from "../testContext.ts";
 
 /** Narrow `ctx.po.login` (optional on the shared contract — Playwright-only)
@@ -68,7 +71,7 @@ export async function expectLoginError(
  *  a local refusal shows once, under its field. */
 export async function expectFieldError(
   ctx: TestContext,
-  field: string,
+  field: AccountField,
   expected: string,
 ): Promise<void> {
   await login(ctx).waitFieldError(field, expected, 5_000);
@@ -237,16 +240,6 @@ export async function registerAndConfirm(
   await submitLogin(ctx);
   await expectNotice(ctx, "administrator");
   await takeNoticeAction(ctx);
-}
-
-/** Click the browser's Back button. */
-export async function pressBrowserBack(ctx: TestContext): Promise<void> {
-  await login(ctx).browserBack();
-}
-
-/** Click the browser's Forward button. */
-export async function pressBrowserForward(ctx: TestContext): Promise<void> {
-  await login(ctx).browserForward();
 }
 
 /** Assert the URL hash reads `expected` within 5s. */

@@ -26,13 +26,3 @@ export async function expectCreditWorkspaceVisible(
 ): Promise<void> {
   await ctx.po.creditRfqForm.waitForSendButton(TAB_TIMEOUT_MS);
 }
-
-/** Click the browser's Back button. */
-export async function pressBrowserBack(ctx: TestContext): Promise<void> {
-  await ctx.po.workspace.browserBack();
-}
-
-/** Click the browser's Forward button. */
-export async function pressBrowserForward(ctx: TestContext): Promise<void> {
-  await ctx.po.workspace.browserForward();
-}
