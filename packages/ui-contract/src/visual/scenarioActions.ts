@@ -435,6 +435,18 @@ const scenarioActions: Record<string, ScenarioAction> = {
     steps: [{ type: "login-new-password", text: "Abc123!!" }],
     waitForText: "privacy notice",
   },
+  // Blurring a field shows its error and keeps it live: a malformed address,
+  // then a one-character display name (below the two-character minimum).
+  "login/create-account-field-errors": {
+    fullPage: true,
+    steps: [
+      { type: "login-email", text: "not-an-address" },
+      { click: "login-display-name" },
+      { type: "login-display-name", text: "x" },
+      { click: "login-new-password" },
+    ],
+    waitForText: "Enter a valid email address",
+  },
   "login/enter-code": { fullPage: true, waitForText: "Code sent to" },
   "login/enter-code-reset": { fullPage: true, waitForText: "Code sent to" },
   "login/reset-request": {

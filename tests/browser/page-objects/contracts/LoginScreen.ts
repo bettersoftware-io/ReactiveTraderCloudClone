@@ -24,6 +24,15 @@ export interface LoginScreenPO {
   submit(): Promise<void>;
   /** Wait until the rendered error text reads exactly `expected`. */
   waitErrorText(expected: string, timeoutMs: number): Promise<void>;
+  /** Wait until the inline error under `field` (its `data-field`) reads
+   *  exactly `expected`. */
+  waitFieldError(
+    field: string,
+    expected: string,
+    timeoutMs: number,
+  ): Promise<void>;
+  /** True when the form-level error line is on screen. */
+  hasLoginError(): Promise<boolean>;
   /** Wait until the login screen is no longer in the DOM (AuthGate let the
    *  app through). */
   waitGone(timeoutMs: number): Promise<void>;
@@ -59,6 +68,12 @@ export interface LoginScreenPO {
   takeNoticeAction(): Promise<void>;
   /** Click Back (to sign in). */
   goBack(): Promise<void>;
+  /** The browser's own Back button (history), not the form's Back link. */
+  browserBack(): Promise<void>;
+  /** The browser's own Forward button. */
+  browserForward(): Promise<void>;
+  /** Wait until the page URL's hash reads exactly `expected` (e.g. `#/sign-in`). */
+  waitUrlHash(expected: string, timeoutMs: number): Promise<void>;
   /** How many requests this page has made whose URL path ends with `path`. */
   countRequestsTo(path: string): number;
 }

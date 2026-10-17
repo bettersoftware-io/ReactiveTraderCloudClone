@@ -2,12 +2,24 @@ import {
   type ChangeEvent,
   type FormEvent,
   type ReactElement,
+  useRef,
   useState,
 } from "react";
 
 import type { AccountAccessState, CodeInput } from "@rtc/core-api";
-import { ACCOUNT_ACCESS_COPY } from "@rtc/core-logic";
+import {
+  ACCOUNT_ACCESS_COPY,
+  type AccountField,
+  checkCodeInput,
+  checkEmailInput,
+  describeFieldError,
+  findFirstFailingField,
+  type InputCheck,
+} from "@rtc/core-logic";
 
+import { FieldError } from "./FieldError";
+import { fieldErrorId } from "./fieldErrorId";
+import { keepFieldFocus } from "./keepFieldFocus";
 import { PasswordChecklist } from "./PasswordChecklist";
 
 import styles from "./LoginScreen.module.css";
@@ -15,9 +27,11 @@ import styles from "./LoginScreen.module.css";
 /**
  * The code step of either flow. It names the address the code went to when
  * the machine holds one (else asks for it), and asks for a password only when
- * the machine holds none. It submits exactly the fields it showed. Dumb
- * component: the code and password live in local state only and are never
- * logged.
+ * the machine holds none. The address (when asked for) and the code each
+ * show their check's error under the field once it has been left; a submit
+ * reveals them and sends nothing while one fails, focusing the first that
+ * does. It submits exactly the fields it showed. Dumb component: the code
+ * and password live in local state only and are never logged.
  */
 export function EnterCodeForm({
   state,
@@ -28,13 +42,35 @@ export function EnterCodeForm({
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
+  const [revealed, setRevealed] =
+    useState<ReadonlySet<AccountField>>(NOTHING_REVEALED);
+  const emailInput = useRef<HTMLInputElement>(null);
+  const codeInput = useRef<HTMLInputElement>(null);
 
   const asksEmail = state.email === null;
   const asksPassword = !state.passwordHeld;
   const resetting = state.flow === "reset";
 
+  const emailCheck = checkEmailInput(email);
+  const codeCheck = checkCodeInput(code);
+  const emailError = describeFieldError(emailCheck, revealed.has("email"));
+  const codeError = describeFieldError(codeCheck, revealed.has("code"));
+
   function submitCode(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
+    setRevealed(EVERY_FIELD_REVEALED);
+    // Only the fields on screen: a held address is not the form's to check.
+    const codeField: readonly [AccountField, InputCheck] = ["code", codeCheck];
+    const failing = findFirstFailingField(
+      asksEmail ? [["email", emailCheck], codeField] : [codeField],
+    );
+
+    if (failing !== null) {
+      (failing === "email" ? emailInput : codeInput).current?.focus();
+
+      return;
+    }
+
     onSubmit({
       ...(asksEmail ? { email } : {}),
       code,
@@ -42,9 +78,36 @@ export function EnterCodeForm({
     });
   }
 
-  /** A held address is the machine's to name; a typed one is passed on. */
+  /** A held address is the machine's to name. A typed one is gated like a
+   * submit, on the address alone: one that fails shows its error under the
+   * field, takes the focus and sends nothing; one that passes is passed on. */
   function resendCode(): void {
-    onResend(asksEmail ? email : undefined);
+    if (!asksEmail) {
+      onResend(undefined);
+
+      return;
+    }
+
+    if (!emailCheck.ok) {
+      revealEmailError();
+      emailInput.current?.focus();
+
+      return;
+    }
+
+    onResend(email);
+  }
+
+  function revealEmailError(): void {
+    setRevealed((shown) => {
+      return new Set(shown).add("email");
+    });
+  }
+
+  function revealCodeError(): void {
+    setRevealed((shown) => {
+      return new Set(shown).add("code");
+    });
   }
 
   function changeEmail(event: ChangeEvent<HTMLInputElement>): void {
@@ -72,28 +135,42 @@ export function EnterCodeForm({
               {ACCOUNT_ACCESS_COPY.emailLabel}
             </span>
             <input
+              ref={emailInput}
               data-testid="login-email"
               className={styles.input}
               type="email"
               autoComplete="email"
+              aria-invalid={emailError !== null}
+              aria-describedby={
+                emailError === null ? undefined : fieldErrorId("email")
+              }
               value={email}
               onChange={changeEmail}
+              onBlur={revealEmailError}
             />
           </label>
         )}
+        {asksEmail ? <FieldError field="email" error={emailError} /> : null}
 
         <label className={styles.field}>
           <span className={styles.label}>{ACCOUNT_ACCESS_COPY.codeLabel}</span>
           <input
+            ref={codeInput}
             data-testid="login-code"
             className={styles.input}
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
+            aria-invalid={codeError !== null}
+            aria-describedby={
+              codeError === null ? undefined : fieldErrorId("code")
+            }
             value={code}
             onChange={changeCode}
+            onBlur={revealCodeError}
           />
         </label>
+        <FieldError field="code" error={codeError} />
 
         {asksPassword ? (
           <>
@@ -131,6 +208,7 @@ export function EnterCodeForm({
         <button
           type="submit"
           data-testid="login-submit"
+          onMouseDown={keepFieldFocus}
           className={styles.submit}
           disabled={state.busy}
         >
@@ -142,6 +220,7 @@ export function EnterCodeForm({
         <button
           type="button"
           data-testid="login-resend"
+          onMouseDown={keepFieldFocus}
           className={styles.link}
           disabled={state.busy}
           onClick={resendCode}
@@ -151,6 +230,7 @@ export function EnterCodeForm({
         <button
           type="button"
           data-testid="login-back"
+          onMouseDown={keepFieldFocus}
           className={styles.link}
           onClick={onBack}
         >
@@ -171,6 +251,13 @@ function describeSubmit(busy: boolean, resetting: boolean): string {
     ? ACCOUNT_ACCESS_COPY.setPasswordSubmit
     : ACCOUNT_ACCESS_COPY.confirmSubmit;
 }
+
+const NOTHING_REVEALED: ReadonlySet<AccountField> = new Set();
+
+const EVERY_FIELD_REVEALED: ReadonlySet<AccountField> = new Set([
+  "email",
+  "code",
+]);
 
 interface EnterCodeFormProps {
   readonly state: CodePhase;

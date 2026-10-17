@@ -49,6 +49,7 @@ export type ShellSlice = Pick<
   | "usePowerSaver"
   | "useReconnect"
   | "useRegistrationAvailable"
+  | "useRouteHistory"
   | "useThemePreference"
   | "useThemeSkinPreference"
   | "useViewModePreference"

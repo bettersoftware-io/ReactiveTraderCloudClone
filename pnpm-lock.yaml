@@ -1381,6 +1381,9 @@ importers:
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
+      '@rtc/core-logic':
+        specifier: workspace:*
+        version: link:../core-logic
       '@rtc/devtools-core':
         specifier: workspace:*
         version: link:../devtools-core

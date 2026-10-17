@@ -49,6 +49,8 @@ afterEach(async () => {
   vi.restoreAllMocks();
   // jsdom has no `navigator.webdriver`; a case that sets it is undone here.
   Reflect.deleteProperty(navigator, "webdriver");
+  // A case that sets a path, query or hash route leaves none behind.
+  history.replaceState(null, "", "/");
 });
 
 describe("startWebClient", () => {
@@ -71,6 +73,7 @@ describe("startWebClient", () => {
   });
 
   it("boots the default core: logs it, hands the view the page, mounts and publishes", async () => {
+    history.replaceState(null, "", "/#/create-account");
     const client = createClient({
       env: { devAuth: JSON.stringify({ astark: "pw" }) },
     });
@@ -90,6 +93,10 @@ describe("startWebClient", () => {
         return account.username;
       }),
     ).toEqual(["astark"]);
+    expect(page.routes.current()).toEqual({
+      area: "account",
+      mode: "register",
+    });
     expect(client.view.mount).toHaveBeenCalledTimes(1);
     expect(client.composition(1).generation).toBe(1);
     expect(client.composition(1).impl).toBe("rxjs");

@@ -31,6 +31,7 @@ import {
   reuseRegistryEntries,
 } from "./shell/layout/engine/panelRegistry";
 import { LockScreen } from "./shell/lock/LockScreen";
+import { useWorkspaceRoutes } from "./shell/routes/useWorkspaceRoutes";
 import { StatusBar } from "./shell/status/StatusBar";
 
 import styles from "./App.module.css";
@@ -51,6 +52,10 @@ export function App(): JSX.Element {
   const { useWorkspaceNav } = useViewModel();
   const { state: navState, switchTab } = useWorkspaceNav();
   const pulse = useJarvisDrivenPulse();
+  // The URL follows the tab: Back/Forward walk the tabs visited.
+  useWorkspaceRoutes(() => {
+    return navState().activeTab;
+  }, switchTab);
 
   return (
     <div class={styles.app}>

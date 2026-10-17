@@ -127,6 +127,24 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
     );
   }
 
+  async waitFieldError(
+    field: string,
+    expected: string,
+    timeoutMs: number,
+  ): Promise<void> {
+    const page = this.page();
+
+    await expect(
+      page
+        .getByTestId(TESTIDS.auth.loginFieldError)
+        .and(page.locator(`[data-field="${field}"]`)),
+    ).toHaveText(expected, { timeout: timeoutMs });
+  }
+
+  async hasLoginError(): Promise<boolean> {
+    return (await this.page().getByTestId(TESTIDS.auth.loginError).count()) > 0;
+  }
+
   async waitGone(timeoutMs: number): Promise<void> {
     await expect(this.page().getByTestId(TESTIDS.auth.loginScreen)).toHaveCount(
       0,
@@ -213,6 +231,27 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
 
   async goBack(): Promise<void> {
     await this.page().getByTestId(TESTIDS.auth.loginBack).click();
+  }
+
+  async browserBack(): Promise<void> {
+    await this.page().goBack();
+  }
+
+  async browserForward(): Promise<void> {
+    await this.page().goForward();
+  }
+
+  async waitUrlHash(expected: string, timeoutMs: number): Promise<void> {
+    const page = this.page();
+
+    await expect
+      .poll(
+        () => {
+          return new URL(page.url()).hash;
+        },
+        { timeout: timeoutMs },
+      )
+      .toBe(expected);
   }
 
   countRequestsTo(path: string): number {

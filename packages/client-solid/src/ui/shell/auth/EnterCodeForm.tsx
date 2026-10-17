@@ -1,8 +1,19 @@
 import { createSignal, type JSX, Show } from "solid-js";
 
 import type { AccountAccessState, CodeInput } from "@rtc/core-api";
-import { ACCOUNT_ACCESS_COPY } from "@rtc/core-logic";
+import {
+  ACCOUNT_ACCESS_COPY,
+  type AccountField,
+  checkCodeInput,
+  checkEmailInput,
+  describeFieldError,
+  findFirstFailingField,
+  type InputCheck,
+} from "@rtc/core-logic";
 
+import { FieldError } from "./FieldError";
+import { fieldErrorId } from "./fieldErrorId";
+import { keepFieldFocus } from "./keepFieldFocus";
 import { PasswordChecklist } from "./PasswordChecklist";
 
 import styles from "./LoginScreen.module.css";
@@ -10,14 +21,31 @@ import styles from "./LoginScreen.module.css";
 /**
  * The code step of either flow. It names the address the code went to when
  * the machine holds one (else asks for it), and asks for a password only when
- * the machine holds none. It submits exactly the fields it showed. Dumb
- * component: the code and password live in local signals only and are never
- * logged.
+ * the machine holds none. The address (when asked for) and the code each
+ * show their check's error under the field once it has been left; a submit
+ * reveals them and sends nothing while one fails, focusing the first that
+ * does. It submits exactly the fields it showed. Dumb component: the code
+ * and password live in local signals only and are never logged.
  */
 export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
   const [email, setEmail] = createSignal("");
   const [code, setCode] = createSignal("");
   const [password, setPassword] = createSignal("");
+  const [revealed, setRevealed] =
+    createSignal<ReadonlySet<AccountField>>(NOTHING_REVEALED);
+  let emailInput: HTMLInputElement | undefined;
+  let codeInput: HTMLInputElement | undefined;
+
+  function emailError(): string | null {
+    return describeFieldError(
+      checkEmailInput(email()),
+      revealed().has("email"),
+    );
+  }
+
+  function codeError(): string | null {
+    return describeFieldError(checkCodeInput(code()), revealed().has("code"));
+  }
 
   function asksEmail(): boolean {
     return props.state.email === null;
@@ -33,6 +61,25 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
 
   function submitCode(event: SubmitEvent): void {
     event.preventDefault();
+    setRevealed(EVERY_FIELD_REVEALED);
+    // Only the fields on screen: a held address is not the form's to check.
+    const codeField: readonly [AccountField, InputCheck] = [
+      "code",
+      checkCodeInput(code()),
+    ];
+
+    const failing = findFirstFailingField(
+      asksEmail()
+        ? [["email", checkEmailInput(email())], codeField]
+        : [codeField],
+    );
+
+    if (failing !== null) {
+      (failing === "email" ? emailInput : codeInput)?.focus();
+
+      return;
+    }
+
     props.onSubmit({
       ...(asksEmail() ? { email: email() } : {}),
       code: code(),
@@ -40,9 +87,36 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
     });
   }
 
-  /** A held address is the machine's to name; a typed one is passed on. */
+  /** A held address is the machine's to name. A typed one is gated like a
+   * submit, on the address alone: one that fails shows its error under the
+   * field, takes the focus and sends nothing; one that passes is passed on. */
   function resendCode(): void {
-    props.onResend(asksEmail() ? email() : undefined);
+    if (!asksEmail()) {
+      props.onResend(undefined);
+
+      return;
+    }
+
+    if (!checkEmailInput(email()).ok) {
+      revealEmailError();
+      emailInput?.focus();
+
+      return;
+    }
+
+    props.onResend(email());
+  }
+
+  function revealEmailError(): void {
+    setRevealed((shown) => {
+      return new Set(shown).add("email");
+    });
+  }
+
+  function revealCodeError(): void {
+    setRevealed((shown) => {
+      return new Set(shown).add("code");
+    });
   }
 
   function changeEmail(event: InputChangeEvent): void {
@@ -67,17 +141,28 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
         <Show
           when={!asksEmail()}
           fallback={
-            <label class={styles.field}>
-              <span class={styles.label}>{ACCOUNT_ACCESS_COPY.emailLabel}</span>
-              <input
-                data-testid="login-email"
-                class={styles.input}
-                type="email"
-                autocomplete="email"
-                value={email()}
-                onInput={changeEmail}
-              />
-            </label>
+            <>
+              <label class={styles.field}>
+                <span class={styles.label}>
+                  {ACCOUNT_ACCESS_COPY.emailLabel}
+                </span>
+                <input
+                  ref={emailInput}
+                  data-testid="login-email"
+                  class={styles.input}
+                  type="email"
+                  autocomplete="email"
+                  aria-invalid={emailError() !== null}
+                  aria-describedby={
+                    emailError() === null ? undefined : fieldErrorId("email")
+                  }
+                  value={email()}
+                  onInput={changeEmail}
+                  onBlur={revealEmailError}
+                />
+              </label>
+              <FieldError field="email" error={emailError()} />
+            </>
           }
         >
           <div data-testid="login-code-email" class={styles.sentTo}>
@@ -89,15 +174,22 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
         <label class={styles.field}>
           <span class={styles.label}>{ACCOUNT_ACCESS_COPY.codeLabel}</span>
           <input
+            ref={codeInput}
             data-testid="login-code"
             class={styles.input}
             type="text"
             inputMode="numeric"
             autocomplete="one-time-code"
+            aria-invalid={codeError() !== null}
+            aria-describedby={
+              codeError() === null ? undefined : fieldErrorId("code")
+            }
             value={code()}
             onInput={changeCode}
+            onBlur={revealCodeError}
           />
         </label>
+        <FieldError field="code" error={codeError()} />
 
         <Show when={asksPassword()}>
           <label class={styles.field}>
@@ -133,6 +225,7 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
         <button
           type="submit"
           data-testid="login-submit"
+          onMouseDown={keepFieldFocus}
           class={styles.submit}
           disabled={props.state.busy}
         >
@@ -144,6 +237,7 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
         <button
           type="button"
           data-testid="login-resend"
+          onMouseDown={keepFieldFocus}
           class={styles.link}
           disabled={props.state.busy}
           onClick={resendCode}
@@ -153,6 +247,7 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
         <button
           type="button"
           data-testid="login-back"
+          onMouseDown={keepFieldFocus}
           class={styles.link}
           onClick={returnToSignIn}
         >
@@ -162,6 +257,13 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
     </>
   );
 }
+
+const NOTHING_REVEALED: ReadonlySet<AccountField> = new Set();
+
+const EVERY_FIELD_REVEALED: ReadonlySet<AccountField> = new Set([
+  "email",
+  "code",
+]);
 
 /** SENDING while a request is out; else the flow's own submit label. */
 function describeSubmit(busy: boolean, resetting: boolean): string {

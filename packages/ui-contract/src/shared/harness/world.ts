@@ -7,6 +7,7 @@ import {
 } from "@rtc/client-core-rxjs";
 import type {
   AccountAccessState,
+  AccountNavigation,
   ActivityEntry,
   AnimationIntent,
   AuthViewState,
@@ -95,6 +96,11 @@ import {
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
+
+import {
+  createFakeRouteHistory,
+  type FakeRouteHistory,
+} from "./createFakeRouteHistory";
 
 /** The value each NULLARY query hook yields. Parametric hooks (usePrice etc.)
  *  are modelled by the per-key subject maps below, not by this map. */
@@ -321,13 +327,6 @@ export interface CommandResults {
   requestRfqQuote?: RfqQuoteResult;
   requestRfqQuoteThrows?: boolean;
 }
-
-/** The four intents of useAccountAccess() that only change the screen. */
-export type AccountNavigation =
-  | "startRegistration"
-  | "startReset"
-  | "startCodeEntry"
-  | "returnToSignIn";
 
 /** Inputs captured from command hooks during a test. */
 export interface CommandLog {
@@ -689,6 +688,10 @@ export interface World {
   /** Backs useRegistrationAvailable; a plain value like `demoAccounts`, read
    * once at composition by the real shell. Defaults to false. */
   readonly registrationAvailable: boolean;
+  /** Backs useRouteHistory: the fake page history, which records every push
+   * and replace and offers `traverse(hash)` for Back/Forward. Null (the
+   * default) is a host without one, so every unrouted spec stays unrouted. */
+  readonly routes: FakeRouteHistory | null;
   /** Records one navigation intent and moves `accountAccess` to the phase it
    * opens, through the real fold — so a click on "Create account" re-renders
    * the create-account form. The four request intents only record: a spec
@@ -763,6 +766,9 @@ export interface WorldSeeds {
   accountAccess?: AccountAccessState;
   /** Seeds `World.registrationAvailable`; defaults to false. */
   registrationAvailable?: boolean;
+  /** Seeds `World.routes` with a fake history at this hash; defaults to
+   * none (null). */
+  routeHash?: string;
 }
 
 export function createWorld(seeds: WorldSeeds = {}): World {
@@ -797,6 +803,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     preferencesReopen = false,
     accountAccess: accountAccessSeed = ACCOUNT_ACCESS_IDLE,
     registrationAvailable = false,
+    routeHash,
   } = seeds;
 
   const merged: HookValues = { ...DEFAULTS, ...initial };
@@ -1242,6 +1249,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     demoAccounts,
     accountAccess,
     registrationAvailable,
+    routes: routeHash === undefined ? null : createFakeRouteHistory(routeHash),
     navigateAccountAccess,
     jarvisSkin,
     jarvis,

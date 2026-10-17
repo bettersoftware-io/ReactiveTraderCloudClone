@@ -230,10 +230,11 @@ const LIVE_SOURCE_PATTERN =
  * quote window (`EquitiesSlice`), then `useDemoAccounts` (→ 79) for the login
  * screen's demo-accounts hint (`ShellSlice` since RN's sign-in screen gained
  * the hint), then `useAccountAccess` and `useRegistrationAvailable` (→ 81)
- * for the login screen's account flows (`ShellSlice`). The compiler found every one of
+ * for the login screen's account flows (`ShellSlice`), then `useRouteHistory`
+ * (→ 82) for browser Back/Forward (`ShellSlice`, always null on RN). The compiler found every one of
  * these on the next catch-up merge, because `buildFakeViewModel` is typed
  * `ViewModel` with no cast — the same reason it caught `loadOlderCandles`,
  * the one member without a `use` prefix, which a hand-written census had
  * missed while reporting a confident 67 of 67.
  */
-const VIEW_MODEL_MEMBER_COUNT = 81;
+const VIEW_MODEL_MEMBER_COUNT = 82;

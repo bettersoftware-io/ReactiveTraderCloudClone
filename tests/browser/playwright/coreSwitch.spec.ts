@@ -26,8 +26,9 @@
 // whatever this run's build default actually is.
 import { resolveCoreImpl } from "#/scripts/lib/coreImpl.ts";
 
-import { reloadPage } from "../scenarios/common.ts";
+import { clickTab, reloadPage } from "../scenarios/common.ts";
 import * as coreSwitch from "../scenarios/coreSwitch.ts";
+import * as navigation from "../scenarios/navigation.ts";
 import { test } from "./_context.ts";
 
 test.describe("Application core switch", () => {
@@ -89,5 +90,26 @@ test.describe("Application core switch", () => {
       ctx,
       buildDefault,
     );
+  });
+
+  // Spec §5: a swap re-composes the core, not the page, so the route is
+  // untouched — the tab and the URL hash both survive it.
+  test("a swap on #/credit keeps the Credit tab and the URL hash", async ({
+    ctx,
+  }) => {
+    const buildDefault = resolveCoreImpl(process.env);
+    const { start } = coreSwitch.pickDistinctCores(buildDefault);
+
+    await coreSwitch.openWithCoreImplParam(ctx, start);
+    await coreSwitch.expectBootedCoreImpl(ctx, start, 10_000);
+    await clickTab(ctx, "credit");
+    await navigation.expectTabRouted(ctx, "credit");
+
+    await coreSwitch.openPreferences(ctx);
+    await coreSwitch.selectCoreImpl(ctx, buildDefault);
+    await coreSwitch.expectBootedCoreImpl(ctx, buildDefault, 10_000);
+
+    await navigation.expectTabRouted(ctx, "credit");
+    await navigation.expectCreditWorkspaceVisible(ctx);
   });
 });

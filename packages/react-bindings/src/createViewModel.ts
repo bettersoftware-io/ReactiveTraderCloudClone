@@ -43,6 +43,7 @@ import type {
   RfqSubmissionIntents,
   RfqSubmissionState,
   RfqTileIntents,
+  RouteHistory,
   SaveLayoutPresetOptions,
   SaveLayoutPresetResult,
   ThroughputView,
@@ -353,6 +354,10 @@ export interface ViewModelShell {
    * Omitted (false) on a simulator-only page, where the flows would only
    * ever answer unavailable. */
   readonly registrationAvailable?: boolean;
+  /** The page's history, as routes: what Back and Forward move through.
+   * Omitted by a host without routing (RN, most tests), where
+   * `useRouteHistory` answers null. */
+  readonly routes?: RouteHistory;
   /** True exactly once, for the composition a core swap produced: the
    * header opens Preferences again on the new core. Omitted by a host that
    * never swaps (RN). */
@@ -620,6 +625,8 @@ export interface ViewModel {
   useAccountAccess: () => UseAccountAccessResult;
   /** Not a hook: the shell's `registrationAvailable`, false by default. */
   useRegistrationAvailable: () => boolean;
+  /** Not a hook: the shell's `routes`, null by default. */
+  useRouteHistory: () => RouteHistory | null;
   /** Not a hook: consumes the shell's one-shot "reopen Preferences" signal
    * (true at most once per composition, false when the host offers none).
    * Optional so a hand-built ViewModel (RN's visual fake) may omit it;
@@ -640,6 +647,7 @@ export function createViewModel(
   const coreSelection = shell?.coreSelection ?? null;
   const demoAccounts = shell?.demoAccounts ?? NO_DEMO_ACCOUNTS;
   const registrationAvailable = shell?.registrationAvailable ?? false;
+  const routes = shell?.routes ?? null;
   const takePreferencesReopen =
     shell?.takePreferencesReopen ?? declinePreferencesReopen;
 
@@ -1617,6 +1625,9 @@ export function createViewModel(
     },
     useRegistrationAvailable: () => {
       return registrationAvailable;
+    },
+    useRouteHistory: () => {
+      return routes;
     },
     takePreferencesReopen,
     peekPreferencesReopen,

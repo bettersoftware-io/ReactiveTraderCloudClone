@@ -6,7 +6,7 @@ import {
   InMemorySessionStore,
 } from "@rtc/client-adapters";
 import { createApp, createMachineFactories } from "@rtc/client-core-rxjs";
-import type { AppPorts } from "@rtc/core-api";
+import type { AppPorts, RouteHistory } from "@rtc/core-api";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,
@@ -36,6 +36,27 @@ describe("createViewModel — registrationAvailable", () => {
     const vm = createViewModelFor(undefined);
 
     expect(vm.useRegistrationAvailable()).toBe(false);
+  });
+});
+
+describe("createViewModel — useRouteHistory", () => {
+  it("returns the shell's routes", () => {
+    const routes = createRouteHistory();
+    const vm = createViewModelFor({ routes });
+
+    expect(vm.useRouteHistory()).toBe(routes);
+  });
+
+  it("is null when the shell omits it", () => {
+    const vm = createViewModelFor({});
+
+    expect(vm.useRouteHistory()).toBeNull();
+  });
+
+  it("is null when there is no shell", () => {
+    const vm = createViewModelFor(undefined);
+
+    expect(vm.useRouteHistory()).toBeNull();
   });
 });
 
@@ -82,6 +103,19 @@ function createViewModelFor(shell: ViewModelShell | undefined): ViewModel {
     commands,
     shell,
   );
+}
+
+function createRouteHistory(): RouteHistory {
+  return {
+    current: () => {
+      return null;
+    },
+    push: () => {},
+    replace: () => {},
+    subscribe: () => {
+      return () => {};
+    },
+  };
 }
 
 function createSimPorts(): AppPorts {

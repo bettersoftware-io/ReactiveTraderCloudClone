@@ -810,6 +810,9 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useRegistrationAvailable: () => {
       return data.registrationAvailable ?? false;
     },
+    useRouteHistory: () => {
+      return null;
+    },
     // LoginScreen's demo-accounts hint: none unless the fixture seeds them,
     // so every scenario but login/demo-hint renders the plain live form.
     useDemoAccounts: () => {

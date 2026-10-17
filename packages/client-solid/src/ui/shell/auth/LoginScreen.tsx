@@ -12,6 +12,7 @@ import { describeAccountAccessTitle } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { HudLogo } from "../logo/HudLogo";
+import { useAccountRoutes } from "../routes/useAccountRoutes";
 import { AccountNotice } from "./AccountNotice";
 import { CreateAccountForm } from "./CreateAccountForm";
 import { EnterCodeForm } from "./EnterCodeForm";
@@ -42,6 +43,25 @@ export function LoginScreen(): JSX.Element {
   const demoAccounts = useDemoAccounts();
   const registrationAvailable = useRegistrationAvailable();
   const { state } = account;
+  const navigate = useAccountRoutes(account, registrationAvailable);
+
+  // The four links go through the route hook: each pushes its mode's route
+  // before calling the intent, so Back returns to where the user was.
+  function openCreateAccount(): void {
+    navigate("startRegistration");
+  }
+
+  function openForgotPassword(): void {
+    navigate("startReset");
+  }
+
+  function openCodeEntry(): void {
+    navigate("startCodeEntry");
+  }
+
+  function openSignIn(): void {
+    navigate("returnToSignIn");
+  }
 
   const reactorWaiting = createMemo((): boolean => {
     return (
@@ -111,9 +131,9 @@ export function LoginScreen(): JSX.Element {
               registrationAvailable={registrationAvailable}
               demoAccounts={demoAccounts}
               onLogin={auth.login}
-              onCreateAccount={account.startRegistration}
-              onForgotPassword={account.startReset}
-              onEnterCode={account.startCodeEntry}
+              onCreateAccount={openCreateAccount}
+              onForgotPassword={openForgotPassword}
+              onEnterCode={openCodeEntry}
             />
           </Match>
           <Match when={registerState()}>
@@ -122,8 +142,8 @@ export function LoginScreen(): JSX.Element {
                 <CreateAccountForm
                   state={current()}
                   onRegister={account.register}
-                  onHaveCode={account.startCodeEntry}
-                  onBack={account.returnToSignIn}
+                  onHaveCode={openCodeEntry}
+                  onBack={openSignIn}
                 />
               );
             }}
@@ -135,7 +155,7 @@ export function LoginScreen(): JSX.Element {
                   state={current()}
                   onSubmit={account.submitCode}
                   onResend={account.resendCode}
-                  onBack={account.returnToSignIn}
+                  onBack={openSignIn}
                 />
               );
             }}
@@ -146,7 +166,7 @@ export function LoginScreen(): JSX.Element {
                 <ResetRequestForm
                   state={current()}
                   onRequest={account.requestReset}
-                  onBack={account.returnToSignIn}
+                  onBack={openSignIn}
                 />
               );
             }}
@@ -157,7 +177,7 @@ export function LoginScreen(): JSX.Element {
                 <AccountNotice
                   state={current()}
                   onRequestReset={account.requestReset}
-                  onSignIn={account.returnToSignIn}
+                  onSignIn={openSignIn}
                 />
               );
             }}

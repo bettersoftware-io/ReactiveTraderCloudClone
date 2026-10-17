@@ -63,6 +63,23 @@ export async function expectLoginError(
   await login(ctx).waitErrorText(expected, 5_000);
 }
 
+/** Assert the inline error under `field` (`email`, `display-name`, `code`)
+ *  reads `expected` within 5s, and that the form-level error line is absent:
+ *  a local refusal shows once, under its field. */
+export async function expectFieldError(
+  ctx: TestContext,
+  field: string,
+  expected: string,
+): Promise<void> {
+  await login(ctx).waitFieldError(field, expected, 5_000);
+
+  if (await login(ctx).hasLoginError()) {
+    throw new Error(
+      `a local refusal of the ${field} field also shows at form level`,
+    );
+  }
+}
+
 /** Assert the login screen is gone (AuthGate let the app through) within 5s. */
 export async function expectLoginScreenGone(ctx: TestContext): Promise<void> {
   await login(ctx).waitGone(5_000);
@@ -123,13 +140,18 @@ export async function expectAccountLinksAbsent(
 }
 
 /** Click the create-account link. */
-async function openCreateAccount(ctx: TestContext): Promise<void> {
+export async function openCreateAccount(ctx: TestContext): Promise<void> {
   await login(ctx).openCreateAccount();
 }
 
 /** Click the forgot-password link. */
 export async function openForgotPassword(ctx: TestContext): Promise<void> {
   await login(ctx).openForgotPassword();
+}
+
+/** Click "Back to sign in" once, with a real pointer. */
+export async function returnToSignIn(ctx: TestContext): Promise<void> {
+  await login(ctx).goBack();
 }
 
 /** Type into the email field. */
@@ -215,4 +237,22 @@ export async function registerAndConfirm(
   await submitLogin(ctx);
   await expectNotice(ctx, "administrator");
   await takeNoticeAction(ctx);
+}
+
+/** Click the browser's Back button. */
+export async function pressBrowserBack(ctx: TestContext): Promise<void> {
+  await login(ctx).browserBack();
+}
+
+/** Click the browser's Forward button. */
+export async function pressBrowserForward(ctx: TestContext): Promise<void> {
+  await login(ctx).browserForward();
+}
+
+/** Assert the URL hash reads `expected` within 5s. */
+export async function expectUrlHash(
+  ctx: TestContext,
+  expected: string,
+): Promise<void> {
+  await login(ctx).waitUrlHash(expected, 5_000);
 }

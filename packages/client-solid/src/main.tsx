@@ -64,6 +64,7 @@ function createSolidView(page: WebClientPage): WebClientView {
             composition={composition}
             demoAccounts={page.demoAccounts}
             registrationAvailable={page.registrationAvailable}
+            routes={page.routes}
           >
             <App />
           </AppRoot>

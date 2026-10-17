@@ -39,6 +39,7 @@
     "@rtc/client-core-effect": "workspace:*",
     "@rtc/client-core-rxjs": "workspace:*",
     "@rtc/core-api": "workspace:*",
+    "@rtc/core-logic": "workspace:*",
     "@rtc/devtools-core": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rx-state/core": "^0.1.4",

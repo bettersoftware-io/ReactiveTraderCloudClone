@@ -11,7 +11,7 @@ import { StrictMode, Suspense } from "react";
 import { BehaviorSubject } from "rxjs";
 
 import { rxjsCore } from "@rtc/client-core-rxjs";
-import type { CoreSelection } from "@rtc/core-api";
+import type { CoreSelection, RouteHistory } from "@rtc/core-api";
 import type { DemoAccount } from "@rtc/domain";
 import {
   buildBrowserPorts,
@@ -88,6 +88,7 @@ export function appRootPage(): AppRootPage {
           composition={createComposition(false)}
           demoAccounts={readRunDemoAccounts()}
           registrationAvailable={false}
+          routes={createInertRoutes()}
         >
           <div data-testid="app-children" />
         </AppRoot>,
@@ -105,6 +106,7 @@ export function appRootPage(): AppRootPage {
             composition={createComposition(true)}
             demoAccounts={readRunDemoAccounts()}
             registrationAvailable={false}
+            routes={createInertRoutes()}
           >
             <Suspense fallback={<div data-testid="suspense-fallback" />}>
               <HeaderChrome activeTab="fx" onTabChange={selectNoTab} />
@@ -128,6 +130,7 @@ export function appRootPage(): AppRootPage {
             composition={createComposition(true)}
             demoAccounts={readRunDemoAccounts()}
             registrationAvailable={false}
+            routes={createInertRoutes()}
           >
             <HeaderChrome activeTab="fx" onTabChange={selectNoTab} />
           </AppRoot>
@@ -235,4 +238,18 @@ function readRunDemoAccounts(): readonly DemoAccount[] {
 
 function findDemoAccountRows(): HTMLElement[] {
   return screen.queryAllByTestId("login-demo-account");
+}
+
+/** A page with no history to speak of: nothing here navigates. */
+function createInertRoutes(): RouteHistory {
+  return {
+    current: () => {
+      return null;
+    },
+    push: () => {},
+    replace: () => {},
+    subscribe: () => {
+      return () => {};
+    },
+  };
 }

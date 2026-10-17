@@ -1,8 +1,6 @@
 import { within } from "@testing-library/dom";
-import {
-  MountedComponent,
-  type PageContext,
-} from "@ui-contract/harness/component";
+import type { PageContext } from "@ui-contract/harness/component";
+import { RoutedComponent } from "@ui-contract/harness/RoutedComponent";
 import { WatchlistPanelPage } from "@ui-contract/pages/equities/WatchlistPanelPage";
 
 import {
@@ -42,7 +40,7 @@ import { JarvisPanelLayerPage } from "./JarvisPanelLayerPage";
  * accessor is a DOM query), so passing this token's props-less context
  * through the cast below is safe.
  */
-export class JarvisDriverPage extends MountedComponent<Record<string, never>> {
+export class JarvisDriverPage extends RoutedComponent<Record<string, never>> {
   readonly header: HeaderChromePage;
 
   readonly overlay: JarvisOverlayPage;

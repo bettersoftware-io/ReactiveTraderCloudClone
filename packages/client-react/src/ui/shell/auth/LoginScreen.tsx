@@ -4,6 +4,7 @@ import { describeAccountAccessTitle } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { HudLogo } from "../logo/HudLogo";
+import { useAccountRoutes } from "../routes/useAccountRoutes";
 import { AccountNotice } from "./AccountNotice";
 import { CreateAccountForm } from "./CreateAccountForm";
 import { EnterCodeForm } from "./EnterCodeForm";
@@ -35,6 +36,25 @@ export function LoginScreen(): ReactElement {
   const demoAccounts = useDemoAccounts();
   const registrationAvailable = useRegistrationAvailable();
   const { state } = account;
+  const navigate = useAccountRoutes(account, registrationAvailable);
+
+  // The four links go through the route hook: each pushes its mode's route
+  // before calling the intent, so Back returns to where the user was.
+  function openCreateAccount(): void {
+    navigate("startRegistration");
+  }
+
+  function openForgotPassword(): void {
+    navigate("startReset");
+  }
+
+  function openCodeEntry(): void {
+    navigate("startCodeEntry");
+  }
+
+  function openSignIn(): void {
+    navigate("returnToSignIn");
+  }
 
   const reactorWaiting =
     auth.state.status === "authenticating" &&
@@ -71,17 +91,17 @@ export function LoginScreen(): ReactElement {
             registrationAvailable={registrationAvailable}
             demoAccounts={demoAccounts}
             onLogin={auth.login}
-            onCreateAccount={account.startRegistration}
-            onForgotPassword={account.startReset}
-            onEnterCode={account.startCodeEntry}
+            onCreateAccount={openCreateAccount}
+            onForgotPassword={openForgotPassword}
+            onEnterCode={openCodeEntry}
           />
         ) : null}
         {state.phase === "register" ? (
           <CreateAccountForm
             state={state}
             onRegister={account.register}
-            onHaveCode={account.startCodeEntry}
-            onBack={account.returnToSignIn}
+            onHaveCode={openCodeEntry}
+            onBack={openSignIn}
           />
         ) : null}
         {state.phase === "code" ? (
@@ -89,14 +109,14 @@ export function LoginScreen(): ReactElement {
             state={state}
             onSubmit={account.submitCode}
             onResend={account.resendCode}
-            onBack={account.returnToSignIn}
+            onBack={openSignIn}
           />
         ) : null}
         {state.phase === "requestReset" ? (
           <ResetRequestForm
             state={state}
             onRequest={account.requestReset}
-            onBack={account.returnToSignIn}
+            onBack={openSignIn}
           />
         ) : null}
         {state.phase === "pendingApproval" ||
@@ -105,7 +125,7 @@ export function LoginScreen(): ReactElement {
           <AccountNotice
             state={state}
             onRequestReset={account.requestReset}
-            onSignIn={account.returnToSignIn}
+            onSignIn={openSignIn}
           />
         ) : null}
       </div>

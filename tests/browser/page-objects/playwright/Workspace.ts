@@ -184,6 +184,36 @@ export class PlaywrightWorkspace implements WorkspacePO {
     );
   }
 
+  async waitTabActive(
+    tab: "fx" | "credit" | "admin" | "equities",
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(this.page.getByTestId(TESTIDS.shell.tab(tab))).toHaveAttribute(
+      "data-active",
+      "true",
+      { timeout: timeoutMs },
+    );
+  }
+
+  async browserBack(): Promise<void> {
+    await this.page.goBack();
+  }
+
+  async browserForward(): Promise<void> {
+    await this.page.goForward();
+  }
+
+  async waitUrlHash(expected: string, timeoutMs: number): Promise<void> {
+    await expect
+      .poll(
+        () => {
+          return new URL(this.page.url()).hash;
+        },
+        { timeout: timeoutMs },
+      )
+      .toBe(expected);
+  }
+
   async reload(): Promise<void> {
     await navigateAndAwaitMount(this.page, () => {
       return this.page.reload();
