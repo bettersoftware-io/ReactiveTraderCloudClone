@@ -7,16 +7,6 @@ import {
   type PasswordChecklistRow,
 } from "#/presenters/passwordChecklist";
 
-/** Meets every rule. */
-const STRONG = "Abcdefgh123!";
-
-/** Each shown row as `id:status`, top to bottom. */
-function summarize(rows: readonly PasswordChecklistRow[]): string[] {
-  return rows.map((row) => {
-    return `${row.id}:${row.status}`;
-  });
-}
-
 describe("password checklist", () => {
   it("shows every rule but the byte ceiling as pending before anything is typed", () => {
     expect(summarize(describePasswordChecklist(""))).toEqual([
@@ -84,3 +74,13 @@ describe("password checklist", () => {
     }
   });
 });
+
+/** Meets every rule. */
+const STRONG = "Abcdefgh123!";
+
+/** Each shown row as `id:status`, top to bottom. */
+function summarize(rows: readonly PasswordChecklistRow[]): string[] {
+  return rows.map((row) => {
+    return `${row.id}:${row.status}`;
+  });
+}

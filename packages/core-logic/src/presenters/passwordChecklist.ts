@@ -27,7 +27,9 @@ export function describePasswordChecklist(
       return [];
     }
 
-    return [{ id: rule.id, label: rule.label, status: statusOf(password, met) }];
+    return [
+      { id: rule.id, label: rule.label, status: statusOf(password, met) },
+    ];
   });
 }
 

@@ -133,9 +133,7 @@ describe("LoginScreen field validation — when an error shows", () => {
     await page.typeNewPassword("abcdefghijkl");
     await page.blur("login-new-password");
 
-    expect(page.fieldError("password")).toBe(
-      describePasswordRule("uppercase"),
-    );
+    expect(page.fieldError("password")).toBe(describePasswordRule("uppercase"));
 
     await page.typeNewPassword("A1!");
 
