@@ -14,7 +14,9 @@ with two local adaptations:
   remembering (with the ADR, spec or doc that records the reasoning), and
   `Under the hood` for tests, gates, tooling, docs and dependency bumps.
 
-Every merged PR is cited. The newest week is first. This file says
+Every merged PR is cited. Before 2026-W27 most work reached `main` as direct
+commits rather than PRs; those weeks are shorter, cite their key commits,
+and end with a link to the week's full commit list. The newest week is first. This file says
 what **landed**; what is still **pending** lives in
 [`docs/STATUS.md`](docs/STATUS.md), and the reasoning behind a decision lives in
 the [ADRs](docs/adr/) and the linked specs.
@@ -1558,8 +1560,763 @@ declarative WebSocket effects library and now serves equities too.
   libraries, and four GitHub Actions majors for cache and Pages. [#25] [#27]
   [#62] [#63] [#64] [#65] [#68] [#70] [#71] [#74]
 
+## 2026-W26 — 22 Jun – 28 Jun
+
+The HUD redesign began: a futuristic prototype was committed as the design
+reference, specced in seven phases, and its first three phases landed. Around
+it the repo grew a wall of blocking static-analysis gates, the clone's
+behaviour was synced to the original's, a first cloud deploy was wired up, and
+changes started shipping as PRs.
+
+### Added
+
+- **HUD redesign, first three stages.** Skin × mode theming, Motion One behind a
+  wrapper and an animation-intent seam, with the app defaulting to the `holo`
+  skin ([`9f11e10a3`]); an in-house layout engine behind a `LayoutPort` —
+  resizable splits, maximise, collapse, a pinned blotter ([#32]); the shell
+  chrome — boot sequence, lock screen, header, status bar and preferences
+  modal ([#35]), with the boot splash and a LOCK SESSION control then mounted
+  in the live app ([#38]).
+- **Behaviour synced to the original ReactiveTraderCloud** — 13 behaviours,
+  each golden-fixtured or cited to the original's source, among them the
+  blotter's sort order and 3× new-row flash, USD P&L formatting, per-currency
+  position bubbles, credit blotter sort/filter/CSV, live `quoteRejected`,
+  server-driven RFQ expiry, a 100M quantity cap, Buy/Sell disabled on a stale
+  tile, and an idle timeout that closes the socket. [`b7ff4cf58`] A follow-up
+  gave the idle overlay a Reconnect button. [`299f210cc`]
+- **Cloud deploy** — the React client on Vercel behind a password gate, the WS
+  server on Fly.io behind an access token; setup in
+  [`docs/DEPLOY.md`](docs/DEPLOY.md). [`25e4fcdb9`] [`1159f8456`]
+- **On-demand coverage report** — a `workflow_dispatch` job summary, readable
+  on a phone, of test results and per-file untested lines ([`5f64284de`]
+  [`a7ce2efdd`]), then whole files rendered as coloured diffs in five
+  per-tier sections ([#34]).
+
+### Changed
+
+- **Seven blocking static-analysis gates**, each at zero findings: actionlint,
+  manypkg + syncpack, knip, dependency-cruiser, an ESLint AST tier (1,901
+  findings swept) and a type-aware tier (24 real async and exhaustiveness bugs
+  fixed) ([`9ba180f4d`]), then stylelint for only what Biome cannot check
+  ([`cd88d0b1d`]). The type-aware tier now covers every file through one
+  umbrella program — it had silently skipped tests, configs and contract specs
+  ([`e37be8283`]) — the contract specs lost their ESLint exclusion ([#31]), and
+  chained `useHooks().useX()` calls are banned ([`e67b4695a`]).
+- **Stricter Biome:** four more rules, all six rule domains declared (an
+  undeclared domain leaves its rules silently inert), grouped import sorting,
+  and bans on default exports, implicit types and inline object types.
+  [`f42da63cb`] [`918867647`] [`5787ca2a0`] [`c74397dfe`] [`fb164244a`]
+  [`86a5e9e2b`]
+- **`#/` alias imports** replace relative imports two or more levels up, which
+  are now a lint error. [`f212a4d65`]
+- **React Compiler adopted** and every manual `useMemo`/`useCallback` removed;
+  its lint half surfaced two render-purity bugs, both fixed. [`ce5dd5231`]
+
+### Fixed
+
+- CI back to green after the behaviour-sync work — ESLint violations and the
+  x86 visual goldens ([#29] [`ab26b5795`]) — and a lock-screen golden
+  refreshed after the boot splash changed its component bundle ([#40]).
+- An RFQ countdown test flaked on the wall clock; `Date.now` is now frozen.
+  [`1edf3227c`]
+
+### Decisions
+
+- **Layout management is a swappable port**, Dockview or an in-house engine
+  behind it — [ADR-002](docs/adr/ADR-002-layout-management-port.md), with the
+  library survey in a
+  [research note](docs/research/2026-06-22-layout-management-landscape.md).
+- **React Compiler over manual memoisation** —
+  [ADR-003](docs/adr/ADR-003-react-compiler-and-manual-memoization.md).
+- **Biome owns formatting; ESLint runs only rules that do not overlap it**,
+  locally and in CI — [`docs/tooling-roadmap.md`](docs/tooling-roadmap.md) and
+  the [adoption design](docs/superpowers/specs/2026-06-22-dev-tooling-adoption-design.md).
+- **The layout engine was reverted, then relanded as a PR** — its direct merge
+  broke two CI checks no local run covered. [`924e4c1b8`] [#32] Changes now ship
+  through a worktree, a PR and a merge commit (the `shipping-repo-changes`
+  skill, [#37]), with worktree cleanup as its fifth rule ([#39]).
+- **Deploys are on demand only** while one-time setup is pending. [`ff6f4c234`]
+- **Idle recovery is button-only** ([`299f210cc`]); credit-limit handling stays
+  faithful to the original web build by design ([`b7ff4cf58`]).
+
+### Under the hood
+
+- **Design:** the HUD prototype committed as a living reference
+  ([`5482ffb64`]), its v2 added ([#33]) and the original moved beside it as
+  `v1/` ([#36]); the HUD design spec and its phase plans ([`a98cabece`]).
+- **Tests:** SetFilter and CurrencyFilter covered by interaction-driven visual
+  scenarios ([#30]); the provider guards and a sort arm covered in the
+  contract tier ([`7b2230a93`]); the darwin-arm64 goldens regenerated
+  ([`9462bba22`]); `@rtc/domain`'s coverage no longer counts JSON fixtures as
+  source ([`2f0b319de`]).
+- **Docs:** dependency-cruiser's rules explained with a diagram
+  ([`fe3b3fdd3`]); a
+  [retrospective](docs/research/2026-06-23-spec-driven-reimplementation-fidelity.md)
+  on spec-driven reimplementation fidelity ([`9e091d667`]).
+- **Dependencies:** `@types/node` 26 to match the runtime ([`cf18ecf5e`]),
+  Cypress 15.17 ([#23]) and pnpm 11.8 ([#21]).
+
+Every commit: [`2026-W25...2026-W26`](https://github.com/bettersoftware-io/ReactiveTraderCloudClone/compare/2026-W25...2026-W26).
+
+## 2026-W25 — 15 Jun – 21 Jun
+
+The React components went "dumb" — their logic moved into RxJS machines — and
+the visual tier filled in the render states that made reachable. The week
+ended with three repo-wide moves: `packages/client` became
+`packages/client-react`, inline styles became CSS Modules, and Biome arrived.
+
+### Changed
+
+- **Dumb UI.** Timer, transport, persistence and orchestration logic moved
+  into RxJS machines behind a `useMachine` bridge, with new `AdminPort` and
+  `PreferencesPort` ports; throughput travels over the WebSocket only. A gate
+  keeps `src/ui` free of `rxjs`, `localStorage`, `fetch` and timers.
+  [`044b06b1a`] [`8c860e857`] Design: [the Dumb-UI
+  spec](docs/superpowers/specs/2026-06-16-dumb-ui-rxjs-machines-design.md).
+- **`packages/client` renamed to `packages/client-react`**, preparing for
+  further UI layers. [`186255e4a`]
+- **Inline styles → CSS Modules** across the React client, with state carried
+  by semantic `data-*` attributes and the visual goldens as the unchanged
+  oracle. [`5cd7690e7`] [`6bff8ce08`] [`ff52402a1`]
+- **Biome 2.5 formatter + linter** — the repo reformatted, its findings fixed
+  (all 143 non-null assertions rewritten as guards), and a blocking CI step.
+  [`95798bdc8`] [`1e5740c40`] [`7230a4ebb`]
+- **Node 26** in CI, with `.nvmrc` as the source of truth.
+  [`d44e94cf9`] [`0c918415a`]
+
+### Fixed
+
+- **Four icon glyphs showed as literal `\uXXXX` text** — a bare escape in JSX
+  text is not interpreted. [`7eb630074`]
+- jsdom tests pass on Node 26, whose native `localStorage` shadowed jsdom's
+  ([`d44e94cf9`]); `test:e2e` uses whatever port Vite binds and always stops its
+  dev server ([`a9f59af4c`]); the visual runners run serially outside CI
+  ([`5d40f3256`]); tsc's build info lives inside `dist/` so it cannot leave an
+  empty one behind ([`1db68b3ee`]).
+
+### Decisions
+
+- **Guards, never `?.`, for non-null assertions** — an optional chain would
+  swallow the error. [`1e5740c40`]
+- **Standardise up to Node 26 rather than pin down.** [`d44e94cf9`]
+- **Drop the `form-data` override, keep `uuid@11`** (proven
+  required). [`065d70a84`]
+
+### Under the hood
+
+- **Coverage to its behavioural ceiling** — behaviour-only tests and new visual
+  scenarios across domain, server and client, plus batches of goldens for
+  missing render states; test-support files no longer count as source.
+  [`65f02b6a6`] [`dee3fb627`] [`293e0e2d9`] [`b15280013`]
+- **Goldens and scripts:** a darwin-arm64 golden set for macOS runs
+  ([`95a0d1b40`]); root `test:coverage`, `test:ui:coverage` and
+  `test:e2e:no-cypress` ([`b0ce6af61`] [`f05650e44`] [`3394f4496`]).
+- **Docs:** [`tests/STRATEGY.md`](tests/STRATEGY.md) for the e2e tier, the
+  three visual runners explained, and
+  [`docs/claude-sandbox.md`](docs/claude-sandbox.md) for the Linux dev
+  container. [`464cef75d`] [`27142a3d7`] [`33744d5a8`]
+- **Dependencies:** `undici` 7.28 and a `uuid` override for Dependabot alerts
+  ([`d38c7e2a7`] [`57a6f6dd3`]), the Playwright container synced to 1.61
+  ([`471c6ba2e`]), and Renovate ([#17] [#18] [#19] [#20]).
+
+Every commit: [`2026-W24...2026-W25`](https://github.com/bettersoftware-io/ReactiveTraderCloudClone/compare/2026-W24...2026-W25).
+
+## 2026-W24 — 8 Jun – 14 Jun
+
+A testing week. The web client (`@rtc/client`, now `@rtc/client-react`) gained
+a framework-neutral contract tier held to a 95% coverage gate in CI, the visual
+tier moved beside it under `tests/ui/`, and the server's wire protocol got
+contract tests of its own.
+
+### Added
+
+- **The `ui:contract` test tier** — sociable Testing Library specs over `src/ui`
+  that talk only to neutral page objects and a harness, so they should survive a
+  swap of UI framework. It started as a "behaviour" tier over four components
+  ([`3ff2934a7`]), gained v8 coverage ([`247dac6c0`]), was renamed `ui:contract`
+  with a focused `test:app` runner beside it, and now covers `src/ui` behind a
+  CI-enforced 95% gate ([`ff3341e6b`]).
+- **Server wire-protocol contract tests** for all 16 client message types,
+  checking emitted frames against the shared fixtures; `wsHandler.ts` line
+  coverage went from about 30% to about 90%. [`f29f1b8ea`]
+- **Report-only coverage** for domain, server and the client app tier, plus an
+  istanbul gap-finder over the Vitest browser-mode visual tier, with a one-time
+  inventory of gaps. No gates. [`11cab0d72`]
+- **`:headed` variants for every browser suite** ([`cc75c3e83`]) and a `:ui`
+  variant (Playwright UI mode) for the native Playwright suite ([`a0763f9a1`]).
+  Neither enters `test:e2e` or CI.
+
+### Changed
+
+- **The visual tier moved to `tests/ui/visual`** and its scripts were renamed
+  `test:visual-diff:*` → `test:ui:visual:*`, along with the report path, import
+  alias, tsconfig and Turbo task. The 102 goldens moved byte-for-byte. [#16]
+  ([spec](docs/superpowers/specs/2026-06-13-ui-visual-taxonomy-design.md))
+- **HTML reports for the visual tier** under `reports/visual-diff/`, and CI's
+  failure uploads collapsed onto `reports/` plus the golden-diff globs.
+  [`e95c5d0a1`] [`4e090869f`]
+
+### Fixed
+
+- **Vitest browser-mode failure screenshots now land next to their golden**, so
+  the gitignore and CI upload globs match them; before this they went into
+  `.vitest-attachments/` and were never uploaded. [`e95c5d0a1`]
+- The playwright-cucumber `:headed` run opens one browser window instead of two.
+  [`b0ec85c01`]
+- `clean` removes the leftover generated files (`.vitest-attachments`, the
+  Playwright CT host cache). [`c467afc2b`] [`79a6865ef`]
+
+### Decisions
+
+- **Cypress is CI-verified only for now.** Every Cypress suite hangs in the
+  arm64 dev container (Electron crashes on boot); the theories ruled out and the
+  interim rule, Playwright for local runs, are in
+  [`tests/README.md`](tests/README.md). [`a187b7680`]
+- **No `:ui` variant for the cucumber suites** — UI mode needs the native
+  Playwright runner to list the tests. [`a0763f9a1`]
+
+### Under the hood
+
+- **Docs:** one map of every report location, coverage included, across the
+  READMEs. [`211304d2a`]
+- **Dependencies:** esbuild 0.28.1, which patches two advisories ([#12],
+  [`409e01266`]); pnpm 11.6.0 ([#15], [`6171b8178`]); `@types/node` ([#13],
+  [`5e465a9c3`]) and turbo ([#14], [`0fbb3c0fd`]) patches.
+
+Every commit: [`2026-W23...2026-W24`](https://github.com/bettersoftware-io/ReactiveTraderCloudClone/compare/2026-W23...2026-W24).
+
+## 2026-W23 — 1 Jun – 7 Jun
+
+The repo went onto GitHub's machinery. The first CI workflow, the first merged
+pull requests (Renovate's, then two CI fixes) and the supply-chain defaults all
+landed on 7 June, in step with a toolchain upgrade. Alongside that came a
+screenshot-based visual test tier and a suite-first layout for the e2e tests.
+
+### Added
+
+- **A visual-diff test tier** for the web client: screenshots of components and
+  pages rendered against injected fake hooks, built on a React-free shared core
+  of fixtures, scenarios and goldens ([`bbf28e4b8`]). It was extended to Credit,
+  Admin, a populated FX blotter and the light theme ([`b8ebdd5ac`]), and split
+  into Playwright CT and plain-Playwright runners ([`184f94c03`]). A third
+  runner on Vitest browser mode followed once Vitest 4 had landed ([`e63544053`]
+  [`e8a7c9140`]).
+- **Per-arch local goldens** — a local run reads its own committed
+  `react-local/<platform>-<arch>/` set, so `test:visual` can pass on Apple
+  Silicon. [`371355280`] [`1e22c3eb8`]
+- **HTML reports for every test script**, at a path that mirrors the script's
+  name, with failure screenshots embedded where the runner allows it.
+  [`d1f76843f`] [`9420ed32b`] [`81f29800e`] [`dbe59f499`]
+
+### Changed
+
+- **First CI.** A GitHub Actions workflow with `checks` (typecheck, tests,
+  build, gates) and `visual` jobs ([`4e13abd94`]), then a full e2e job, actions
+  pinned to SHAs, and Renovate ([`5c1585dc9`]). The visual job now runs inside
+  the Playwright container its goldens are made in, a dispatch-only workflow
+  regenerates them ([`831df5b55`]), and e2e concurrency is capped on the 2-vCPU
+  runner. [#8]
+- **Toolchain upgrade:** Vite 8, Vitest 4, plugin-react 6, jsdom 29
+  ([`2a394a565`]); TypeScript 6.0.3 ([`5f3587787`]); cucumber 13 and
+  fake-timers 15 ([`23dd79093`]); Playwright 1.60 ([`9ad591129`]); pnpm 11.5.2,
+  which brings a 24-hour release cooldown and an install-script allowlist
+  ([`271734057`]).
+- **The e2e tests use a suite-first layout** under `tests/browser/` and
+  `tests/presenter/`: a bare name is the default variant, and a suffix such as
+  `-cucumber` or `-fake-timers` names the deviation. [`02ec08e88`]
+  [`7122fac57`] [`60a9c73b8`] The visual tier moved to
+  `packages/client/tests/visual-diff/` the same way. [`47df586c9`]
+
+### Fixed
+
+- **CI's first red runs:** workspace libraries are now built before the visual
+  and e2e jobs ([`d56cd4e88`]), and the Cypress suites get a 30 s command
+  timeout and retries on CI after a connection-settle flake. [#9]
+- **Security advisories:** a ws denial-of-service fix via override, with a
+  production `pnpm audit` gate and security-only Dependabot ([`3959c12dd`]); a
+  high-severity `serialize-javascript` RCE in a dev-only chain, fixed by
+  override ([`e60b15480`]).
+
+### Decisions
+
+- **Playwright CT for the visual tier, and the committed goldens, not the
+  runner, are the cross-framework contract.** See
+  [ADR-001](docs/adr/ADR-001-visual-diff-tooling.md). [`f0afd2d77`] The
+  Vitest browser runner was dropped from the first harness and recorded as a
+  comparison finding ([`184f94c03`]), then built once Vitest 4 removed its
+  blockers ([`e63544053`]).
+- **CI's x86 `react/` goldens stay canonical**; the per-arch local sets are for
+  feedback only. [`371355280`]
+- **Renovate owns routine bumps; Dependabot stays security-only**, so the two
+  never open the same PR. [`5c1585dc9`]
+- **The ws security override is not Renovate's to change.** Its ws@8 PR ([#6])
+  pushed a transitive dependency onto a major it does not declare, so the
+  override was restored and Renovate told to leave it alone. [`481a045a4`]
+
+### Under the hood
+
+- **Docs:** READMEs for the test suites and the client ([`0281b2a4e`]
+  [`975d8d089`] [`b12dd95c4`]), how turbo caching works and how to force a
+  fresh run ([`05ad81589`]), and the plans for the test restructure and the
+  report wiring.
+- **Dependencies:** a patch/minor sweep including Cypress 15.16 ([`c699d7136`]),
+  vitest-browser-react 2.2 ([`b59bf3d97`]), and Renovate's first wave of action
+  majors and ws ([#2] [#3] [#5] [#6] [#7]).
+
+Every commit: [`2026-W22...2026-W23`](https://github.com/bettersoftware-io/ReactiveTraderCloudClone/compare/2026-W22...2026-W23).
+
+## 2026-W22 — 25 May – 31 May
+
+The backend got tested for the first time, and the e2e suite went parallel —
+which flushed out a string of test-harness isolation bugs. The connection
+status also gained its long-described reconnecting transition.
+
+### Added
+
+- **Reconnecting connection state** — `WsAdapter` emits `reconnectAttempt`
+  when its retry timer fires (DISCONNECTED → CONNECTING), with
+  `docs/architecture.md` realigned to the code ([`ef5779556`]); a matching
+  scenario runs in all four presenter peers ([`ce10e73b2`] [`176bbef09`]).
+- **Backend coverage** — protocol tests drive the real connection handler
+  through a fake socket, and two full-stack smokes boot the real server, one
+  from Node and one with a Vite client rendering its prices. [`db91e8139`]
+
+### Changed
+
+- **The e2e suite runs in parallel**, each browser suite on its own port:
+  ~408 s → ~114 s ([`da429c3ee`]). Each Cypress suite now gets its own X
+  display ([`b814bee85`]) and dev servers die by process group, so Vite no
+  longer survives teardown holding its port ([`3be2c8d50`]).
+- **Runner scripts renamed** — `test:browser:*` for the UI against in-process
+  simulators, `test:fullstack:*` for the real backend ([`e45f6af27`]);
+  `pnpm clean` removes every artifact, `clean:deep` also `node_modules`
+  ([`936e5c043`]).
+
+### Fixed
+
+- **`WsAdapter` dropped messages sent before the socket opened** — a latent
+  production race; they are now buffered and flushed on open. [`f72777fce`]
+- **A false-passing blotter assertion** under Cucumber + Cypress leaked its
+  failure into the next scenario; it now retries inside the command queue.
+  [`f45ed106b`]
+- **Harness:** the dev-server guard refuses a server it did not start
+  ([`42db5ba98`]), with a cross-platform `port:free` helper ([`198433eae`]);
+  the presenter-only scenario is cleanly excluded from the browser peers
+  ([`17e52efc9`]).
+
+### Decisions
+
+- **`test:e2e` is never cached by Turbo** — a cached "pass" replays without
+  running anything, and had already hidden real failures. [`fa866dcf4`]
+
+### Under the hood
+
+- **README** rewritten as a full project page ([`22b39d629`]) and updated for
+  the parallel run ([`0cdd152d5`]).
+
+Every commit: [`2026-W21...2026-W22`](https://github.com/bettersoftware-io/ReactiveTraderCloudClone/compare/2026-W21...2026-W22).
+
+## 2026-W21 — 18 May – 24 May
+
+A testing week. A fourth presenter-level peer ran the shared scenarios in
+plain Vitest, every transport port got a contract suite run against both its
+simulator and its WebSocket adapter, and the synthetic "gateway connected"
+event gave way to real connection events.
+
+### Added
+
+- **A fourth presenter peer in plain Vitest** — the 19 `@presenter` scenarios
+  as `describe`/`it` blocks, no Gherkin loader ([`c78b93d68`] [`de0ef3906`]),
+  held to the `.feature` files by count-parity and naming gates ([`077386d69`]
+  [`df91926bc`]).
+- **Contract tests for all eight transport ports** — one describer per port in
+  `@rtc/domain`, run against the simulator and the WebSocket adapter (through
+  an in-memory `FakeWsAdapter`) alike ([`c7c990da3`] [`473771631`]
+  [`242a26147`]); nack paths tested on the WebSocket side only
+  ([`ce15ba3da`]); a gate keeps describers free of implementation imports
+  ([`79b948676`]).
+
+### Changed
+
+- **Real gateway connection events** — `WsAdapter` emits them from the socket
+  lifecycle, simulator mode has a `ConnectionEventsSimulator`, and
+  `withSyntheticGatewayConnected` is gone ([`1e16bbc85`] [`ff6ba31f9`]). A
+  server down at boot now reads DISCONNECTED, not CONNECTING forever
+  ([`45fe824ca`]). The reconnect delay is configurable ([`a92037ae9`]).
+
+### Fixed
+
+- **Simulator mode stuck at CONNECTING** after coming back online
+  ([`70e8e01f1`]) or after idle recovery ([`60a38e059`]).
+- A vacuously true analytics ordering invariant now actually runs
+  ([`d88be7271`]); a `WsAdapter` test no longer leaks a real timer
+  ([`211a09130`]).
+
+### Decisions
+
+- **Port contracts cover the happy path only, against a fake WebSocket** —
+  [design](docs/superpowers/specs/2026-05-18-phase-5c-port-contract-tests-design.md)
+  ([`af41e0b82`]).
+- **Gateway events come from a per-mode adapter** merged at the composition
+  root — [design](docs/superpowers/specs/2026-05-19-phase-5d-real-gateway-events-design.md)
+  ([`19b43eff1`]).
+- **Deferred to their own design rounds:** the connection lifecycle refactor,
+  a stronger workflow-port contract, and de-duplicating the presenter step
+  trees — [cleanup spec](docs/superpowers/specs/2026-05-19-phase-5e-cleanup-design.md)
+  ([`6d8656529`]).
+
+### Under the hood
+
+- **Cleanup sweep** — an `awaitPendingRpc` helper with an iteration cap
+  ([`dc142908d`]), a barrel-completeness gate ([`a3b955a80`]), an
+  `IWsAdapter` interface ([`769a47b00`]), dead fields and factories pruned
+  ([`b41e5e53e`] [`3aff596ed`]), test idioms and step names tidied.
+- **Docs:** `docs/architecture.md` gains the contract-test layer, the full
+  list of 23 gates and the gateway adapter pair ([`23db8c77a`] [`d365ca81b`]).
+
+Every commit: [`2026-W20...2026-W21`](https://github.com/bettersoftware-io/ReactiveTraderCloudClone/compare/2026-W20...2026-W21).
+
+## 2026-W20 — 11 May – 17 May
+
+The test-stack comparison grew from three peers to seven: one set of Gherkin
+scenarios, run by more and more stacks. Raw Cypress reached parity only after
+its test-body shape had been fought out, and a new family of browser-less
+"presenter" peers bound the same `.feature` files straight to the RxJS
+presenters, first in real time and then under fake timers.
+
+### Added
+
+- **Raw Cypress, the fourth e2e peer.** All 40 Cucumber scenarios as plain
+  Cypress specs, built on a forked, synchronous scenarios layer that drives the
+  Cypress command queue directly. `pnpm test:e2e` runs it after the other three,
+  with exit codes OR-ed so every failure shows. ([`1c56bdb1e`], [`46e3a29a5`],
+  [`5f89424a0`])
+- **Presenter-direct peer (the fifth).** The `.feature` files bound to the
+  RxJS presenters with no browser: 19 scenarios tagged `@presenter`, part
+  existing and part new business-behaviour ones (notional on executed trades,
+  deterministic rejections, blotter accumulation, RFQ). The new scenarios run on
+  the four browser peers too, taking the feature set from 40 to 48 scenarios.
+  `@rtc/client` gained a package API and emits `.d.ts` for the tests workspace.
+  ([`eecc786ed`], [`778386298`], [`d447f6f6f`], [`6a60fa8e5`])
+- **Fake-timer presenter peers.** The same 19 scenarios under Cucumber with
+  `@sinonjs/fake-timers` (about 1 s against ~18.6 s in real time), then under
+  Vitest with the `quickpickle` Gherkin plugin and `vi.useFakeTimers` (~2 s).
+  Shared presenter scenarios moved to a runner-neutral `_shared/` folder.
+  ([`112e02d47`], [`49d9d9696`], [`9c3bfc273`], [`ff5f67ae1`])
+
+### Fixed
+
+- **The RFQ scenario** needed an explicit "Initiate RFQ" step on the browser
+  peers (setting a notional alone starts no countdown), and the presenter
+  request now uses the pair's `pipsPosition`, as production does. ([`2178563be`],
+  [`1012197b7`])
+- **"Prices update"** re-reads the live price stream instead of checking a
+  snapshot taken two steps earlier. ([`ece0d656c`])
+- **Currency pairs arrive after a simulated 1 s delay**, not on subscribe, so
+  a bare read deadlocks under fake timers; those reads now go through the
+  World's timed await. ([`0f85701c5`])
+
+### Decisions
+
+- **Raw Cypress gets its own scenarios layer.** Four combinations of test-body
+  shape and page-object implementation failed, because the shared scenarios are
+  Promise-shaped and Cypress is queue-native. A native-Promise page-object
+  rewrite was applied, reverted, re-applied and reverted again (no net change).
+  The reasoning is §3.1–§3.3 of the
+  [raw Cypress spec](docs/superpowers/specs/2026-05-11-phase-5a-4-raw-cypress-po-contracts-design.md).
+  ([`0609ad812`], [`6a99871bc`], [`93a9eece1`], [`8047ce1de`])
+- **Real- and fake-time presenter runners share scenarios and steps** through
+  an `AwaitHelpers` interface on the World, overriding the earlier "mirror,
+  don't share" guidance —
+  [fake-timers spec](docs/superpowers/specs/2026-05-17-phase-5b-2-cucumber-fake-timers-design.md).
+  ([`1665b6744`])
+
+### Under the hood
+
+- **Grep gates 9–19** pin what a test body may touch: driver imports,
+  `ctx.po.*` and `page.*` / `cy.*` calls stay in the fixture files (raw
+  Playwright, raw Cypress); presenter tests import no browser driver, touch no
+  DOM and build the app in one place; no rxjs `timeout` in shared presenter
+  scenarios (it deadlocks under fake timers); no Vitest imports outside the
+  Vitest peer. ([`55a5fe702`], [`936408f97`],
+  [`3caa5b3d8`], [`47c43df0b`], [`cf753765e`])
+- **Docs:** `docs/architecture.md` §9.5 followed the stack from three runners to
+  seven ([`cf7700ee0`], [`2b99843df`], [`d4617c6c7`]); a design spec and plan
+  per peer, including a Vitest-without-Gherkin peer designed but not yet built
+  ([`e27242f16`]); STATUS rows and follow-ups as each peer closed.
+
+Every commit: [`2026-W19...2026-W20`](https://github.com/bettersoftware-io/ReactiveTraderCloudClone/compare/2026-W19...2026-W20).
+
+## 2026-W19 — 4 May – 10 May
+
+The client got a real composition root: presenters over the domain's use
+cases, bound to React through react-rxjs, then split into a React-free `app/`
+layer and a `ui/` layer grouped by trading domain. The second half of the week
+rebuilt e2e: one set of Gherkin features behind driver-free page objects, run
+by Cucumber + Playwright, Cucumber + Cypress and raw Playwright.
+
+### Added
+
+- **Presenters and a composition root.** Five new use cases, a
+  `ConnectionEventsPort` with its status use case, a
+  `BrowserConnectionEventsAdapter` (activity, online/offline, idle timer), and
+  eleven presenters exposing shared Observables; `createApp()` builds the tree
+  and `HooksProvider` binds it via `@react-rxjs/core`
+  ([`256750262`], [`fda1be966`], [`1293b0386`], [`838765a38`], [`c4d74abf5`]).
+- **A `tests/` workspace with Gherkin and page objects.** The eight Playwright
+  specs became `.feature` files run by Cucumber-JS, backed by driver-free
+  page-object contracts and one source for every `data-testid`; the old
+  `packages/client/e2e` was deleted ([`49e576405`], [`600f65e10`],
+  [`3a14022d3`]).
+- **Two more e2e runners on the same 40 scenarios.** Cucumber + Cypress shares
+  the step tree through a bundler alias and reaches 40/40 ([`81487c2b1`],
+  [`7969e724f`]); a raw `@playwright/test` suite reuses the page objects
+  through a fixture ([`f26ae7243`], [`4716841e8`]). `pnpm test:e2e` runs all
+  three against one dev server ([`761be50cc`]).
+
+### Changed
+
+- **The domain's boundary is Observable throughout** — the credit RFQ workflow
+  port migrated and the `delay` helper deleted, closing that phase
+  ([`7cf0d1e03`], [`285e19e0c`]). The RFQ quote's artificial delay moved from
+  the hook into the simulator ([`a2dc789a3`]).
+- **UI consumes only `useHooks()`.** FX, credit, blotter and analytics
+  migrated off the pass-through hooks, and `ServiceProvider` and
+  `ConnectionProvider` were retired ([`a27fb4058`], [`87645a1f0`],
+  [`b5c94453b`]); `createApp()` no longer imports React ([`3434bd7dd`]).
+- **`packages/client` (today's `client-react`) split into `app/` and `ui/`**
+  — the react-rxjs bridge moved out of `app/`, and the React files regrouped
+  under `ui/fx`, `ui/credit`, `ui/admin` and `ui/shell` ([`8ab1e64a4`],
+  [`da50337a5`], [`e25e952cd`]).
+
+### Fixed
+
+- After the browser comes back online the connection reaches CONNECTED, not
+  just CONNECTING. [`b5c94453b`]
+- The e2e dev server binds to `127.0.0.1`, so the harness reaches it on hosts
+  where `localhost` resolves to IPv6 ([`ad481397b`]); stopping it waits for
+  the process to exit ([`e55a695a9`]).
+
+### Decisions
+
+- **Presenters and a react-rxjs bridge, with the boundary type now
+  Observable** — `docs/superpowers/specs/2026-05-01-phase-3-presenters-react-rxjs-design.md`,
+  amended in [`1da239b26`].
+- **A React-free `app/` beside a `ui/` grouped by trading domain** —
+  `docs/superpowers/specs/2026-05-07-phase-4-app-ui-reorg-design.md` ([`3aaf3cd61`]).
+- **One behaviour spec, many drivers** — features and page-object contracts as
+  the single sources of truth, with seams for Cypress and raw runners
+  ([`53e6a9c4e`], [`a1cb6739c`], [`94db1671c`]).
+- **Cypress goes offline by dispatching DOM events, not through CDP**, whose
+  promises resolve outside Cypress's command queue. [`7969e724f`]
+
+### Under the hood
+
+- **E2e gates and scripts:** eight grep gates for the test stack's invariants
+  ([`22281ad68`]) and umbrella scripts that share one dev server across
+  runners ([`a6d8ba1b1`]).
+- **Docs:** implementation plans for each phase, `docs/architecture.md`
+  updated for the new layout and the dual-runner stack ([`05ecee4bf`]), and
+  STATUS kept current.
+- Claude Code settings split into a shared, committed allow-list and a
+  git-ignored per-machine file. [`6cc48140a`]
+
+Every commit: [`2026-W18...2026-W19`](https://github.com/bettersoftware-io/ReactiveTraderCloudClone/compare/2026-W18...2026-W19).
+
+## 2026-W18 — 27 Apr – 3 May
+
+Work resumed after a three-week gap with an architecture document, and the
+week went into bringing the code in line with it: mocks became simulators,
+business logic left the React hooks for domain use cases, every file got a
+camelCase or PascalCase name, and the domain ports began moving from
+`AsyncIterable`/`Promise` to RxJS `Observable`. No feature changed.
+
+### Added
+
+- **[`docs/architecture.md`](docs/architecture.md)** — written, then revised
+  around the Dependency Rule and "defer commitment": explicit use-case and
+  presenter tiers, a replaceability matrix and a layered test strategy, with
+  the gaps between the code and the target flagged. [`b9aa66807`]
+  [`71ebb4d43`]
+- **Domain use cases** extracted from the React hooks — price stream, price
+  history, trade execution, analytics, RFQ creation, and the RFQ event fold as
+  a pure reducer — each hook keeping its signature and delegating.
+  [`6cebdc53d`] [`498a0226c`] [`356188ed7`]
+
+### Changed
+
+- **Mocks renamed to simulators** — `domain/src/mock/` became `simulators/`
+  and every `Mock*` engine and service got a `*Simulator` name
+  (`MockPricingEngine` → `PricingSimulator`, …; `MOCK_INSTRUMENTS` →
+  `INSTRUMENTS_CATALOG`). [`a67b8f92a`] [`4389d0f90`] [`12b6a527f`]
+- **No more kebab-case file names** — about 126 files and 5 folders across
+  every package renamed: PascalCase for one-class or one-component modules,
+  camelCase for everything else. 106 unit and 40 e2e tests still passed.
+  [`007b6b325`] [`cd2a07b58`]
+- **Domain ports moving to `Observable`** — reference data, pricing, execution
+  and blotter, and analytics migrated, one port group per commit with the
+  build green throughout; the workflow port was still to go at week's end.
+  [`1f3a34859`] [`1929f222d`] [`c626903e0`] [`26035815f`]
+
+### Decisions
+
+- **RxJS is the one runtime dependency `@rtc/domain` may take**, and
+  `Observable` the boundary type for ports and use cases — the
+  [Observable-boundary design](docs/superpowers/specs/2026-05-03-phase-2-6-rxjs-observable-boundary-design.md).
+  Port methods named `subscribe()` were renamed (`WorkflowPort.events()`,
+  `getInstruments()`, `getDealers()`) so they do not collide with
+  `Observable.subscribe()`. [`9a0838a61`] [`e3a27f83e`] [`edb1f95b1`]
+  [`da7cc7fb1`]
+- **"Simulators", not "mocks"**, for the in-process backends — set in the
+  architecture revision. [`71ebb4d43`]
+- **Presenters, `react-rxjs` and a composition root** for the next step —
+  seven decisions (presenter shape, a factory plus a hooks Context, deleting
+  pass-through wrapper hooks, no module singletons, …) in the
+  [presenters design](docs/superpowers/specs/2026-05-01-phase-3-presenters-react-rxjs-design.md).
+  Design only; not yet built. [`8f3ed0f17`]
+
+### Under the hood
+
+- **Plans and tracking** — the clean-architecture alignment plan, the
+  use-case extraction, file-rename and Observable-boundary plans, and
+  [`docs/superpowers/STATUS.md`](docs/superpowers/STATUS.md) recording what
+  was done, what remained and the lessons from the extraction work.
+  [`cb5278ddd`] [`f32cc94bc`] [`e638072e2`]
+- A Mermaid parse error in the Credit RFQ sequence diagram fixed
+  ([`740b7bc88`]); the server's WebSocket abort path cleans up its
+  subscription entry like the error and complete paths do ([`6ff4f6afa`]).
+
+Every commit: [`2026-W17...2026-W18`](https://github.com/bettersoftware-io/ReactiveTraderCloudClone/compare/2026-W17...2026-W18).
+
+## 2026-W17 — 20 Apr – 26 Apr
+
+Nothing reached `main` this week.
+
+## 2026-W16 — 13 Apr – 19 Apr
+
+Nothing reached `main` this week.
+
+## 2026-W15 — 6 Apr – 12 Apr
+
+Nothing reached `main` this week.
+
+## 2026-W14 — 30 Mar – 5 Apr
+
+Specs first, then the whole first app in two days. A behavioural spec suite
+and a twelve-phase plan were written, and the plan was worked through to the
+end: FX tiles, execution, blotter, RFQs, analytics, credit trading, a
+WebSocket server and an end-to-end suite — all on in-browser mock backends,
+with a real server one environment variable away.
+
+### Added
+
+- **Behavioural specifications** in [`specs/`](specs/README.md) — 40 files of
+  domain models, service contracts, Gherkin features and mock-backend
+  algorithms, written to drive the build. [`715790d86`]
+- **Domain types, shared wire DTOs and mock backend engines** (pricing,
+  execution, trade store, analytics, credit RFQ), with 79 tests. Ports were
+  `AsyncIterable`/`Promise` at this point. [`ebb4456e6`]
+- **The client shell** — dark/light theme persisted to `localStorage`, a
+  connection state machine with idle/offline detection, and the
+  header/footer/workspace layout. [`0bfeb0da5`]
+- **FX live rates** — a 9-tile streaming grid with movement indicators,
+  sparklines, currency filter tabs, a chart/price toggle and notional input
+  with `k`/`m` parsing ([`9ea486e85`]); **trade execution and the blotter** —
+  a tile execution state machine with confirmation overlays, and a 10-column
+  blotter with sort, column and quick filters, new-trade highlight and CSV
+  export ([`5bbdc1342`]).
+- **FX RFQ and the analytics panel** — an RFQ state machine with countdown and
+  widened quotes; a P&L chart, position bubbles and per-pair P&L bars.
+  [`207377cf2`]
+- **Credit trading** — the New RFQ form (instrument search, direction,
+  quantity, dealer multi-select), RFQ tiles with filter tabs and quote
+  acceptance, a credit blotter, a sell-side panel, and FX/Credit tabs in the
+  header. [`4f42fa9b0`]
+- **WebSocket server and real-mode client** — an HTTP+WS server on port 4000
+  with every service handler and a throughput admin endpoint; a client
+  `WsAdapter` with auto-reconnect; mock or real mode chosen by
+  `VITE_SERVER_URL`; and an admin panel with a throughput control.
+  [`7091c5067`]
+- **Stale-data indicator** over tiles and analytics after a reconnect, and a
+  **Playwright end-to-end suite** of 8 spec files across FX, credit,
+  connection, analytics and theme. [`4f6df2fe3`]
+
+### Fixed
+
+- **E2E suite stabilised** — a dedicated port, strict locators, and waiting
+  for the execution result before dismissing a confirmation ([`6ef23e1a1`]);
+  the dev server port now comes from a `PORT` variable that Playwright sets,
+  so both share one constant ([`819133a4c`] [`34813fb28`]).
+
+### Under the hood
+
+- **The build plan** —
+  [`docs/implementation-plan.md`](docs/implementation-plan.md), twelve phases
+  from domain types to e2e, with status tracking. [`3d8336ec2`]
+- **Typecheck covers the e2e tests and config files** through a separate
+  `tsconfig.node.json` ([`538e81ffc`]); Playwright output is git-ignored
+  ([`510bffd3b`]); spec and plan formatting fixes ([`93ca05e1e`]).
+
+Every commit: [`2026-W13...2026-W14`](https://github.com/bettersoftware-io/ReactiveTraderCloudClone/compare/2026-W13...2026-W14).
+
+## 2026-W13 — 23 Mar – 29 Mar
+
+Nothing reached `main` this week.
+
+## 2026-W12 — 16 Mar – 22 Mar
+
+The repo begins: an empty project to recreate ReactiveTraderCloud, the
+real-time FX trading platform, from specifications under clean-architecture
+rules, and the monorepo it would be built in.
+
+### Added
+
+- **The repository** — licence and a one-line README. [`6deec95ee`]
+- **Monorepo scaffold** on pnpm workspaces and Turborepo, with four packages:
+  `@rtc/domain` (no runtime dependencies), `@rtc/shared`, `@rtc/client` (React
+  and Vite; today's `client-react`) and `@rtc/server` (Marble.js), plus the
+  first `CLAUDE.md`. [`9a4950929`]
+
+### Decisions
+
+- **Turborepo config stays framework-blind** — task names and the dependency
+  graph only, so swapping a framework needs no monorepo config change.
+  Recorded in the scaffold commit and `CLAUDE.md`. [`9a4950929`]
+
+Every commit: [`2026-W12`](https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commits/2026-W12).
+
+[#2]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/2
+[#3]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/3
+[#5]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/5
+[#6]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/6
+[#7]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/7
+[#8]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/8
+[#9]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/9
+[#12]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/12
+[#13]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/13
+[#14]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/14
+[#15]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/15
+[#16]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/16
+[#17]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/17
+[#18]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/18
+[#19]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/19
+[#20]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/20
+[#21]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/21
+[#23]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/23
 [#25]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/25
 [#27]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/27
+[#29]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/29
+[#30]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/30
+[#31]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/31
+[#32]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/32
+[#33]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/33
+[#34]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/34
+[#35]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/35
+[#36]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/36
+[#37]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/37
+[#38]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/38
+[#39]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/39
+[#40]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/40
 [#41]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/41
 [#42]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/42
 [#43]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/43
@@ -2483,3 +3240,266 @@ declarative WebSocket effects library and now serves equities too.
 [#993]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/993
 [#994]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/994
 [#995]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/995
+
+[`007b6b325`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/007b6b32551f3d35184f10389c57a2529b122401
+[`0281b2a4e`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/0281b2a4e8c218a63eeb77e8c29c9a93accc1f9b
+[`02ec08e88`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/02ec08e88469171cc78fd13bec8235759a121168
+[`044b06b1a`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/044b06b1a51900a667260f62e871a35be07d4acc
+[`05ad81589`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/05ad81589afd458346fd05cdef0abcaf9400da3f
+[`05ecee4bf`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/05ecee4bf946b9594347c8de444ad33a741e0f20
+[`0609ad812`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/0609ad812e8f3e39f90eb06c44d42d6d9db7c598
+[`065d70a84`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/065d70a844f580318a2cb1beaeb3e51ff27fa5eb
+[`077386d69`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/077386d69050d1402e84bd2626af54ccd0185f2d
+[`0bfeb0da5`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/0bfeb0da5cd07c32298b840f54f81d2e536e02ab
+[`0c918415a`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/0c918415a2e43ca0817f92031574da9189e8cd45
+[`0cdd152d5`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/0cdd152d5e2a5b94f014f27e182f1dac883c38c6
+[`0f85701c5`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/0f85701c53cca2dcfc4e203415f9b92f747ebf0b
+[`0fbb3c0fd`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/0fbb3c0fd74813398faf1a9d4b6c9d0bd5005eb2
+[`1012197b7`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/1012197b78214e5a206b73ea6b796022064784e4
+[`112e02d47`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/112e02d473eec4832962699aca52d86a5c805b80
+[`1159f8456`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/1159f845637cb613292783ec670916363fd4e898
+[`11cab0d72`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/11cab0d722cfdef941d397e8bf0724ab817dd886
+[`1293b0386`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/1293b038622583beef16957465781e0f54424a8b
+[`12b6a527f`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/12b6a527f9c0a96e408c4aa78805068f3fabef71
+[`1665b6744`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/1665b67443f47551a7901423d6e75dcbf7c88fe6
+[`176bbef09`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/176bbef091f426a282160b39e0eb6e2243c03dad
+[`17e52efc9`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/17e52efc950eccc591b51fb68459b881ba30a7d6
+[`184f94c03`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/184f94c036f3255aa0cf38c365f7ea7379fb67c0
+[`186255e4a`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/186255e4abd90c63b426a5231a3310f3ce21920e
+[`1929f222d`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/1929f222da5a1e4d3dcd49f3015420e931bc6ff2
+[`198433eae`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/198433eaee15791200653e9736bfc661b2e06af2
+[`19b43eff1`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/19b43eff1b0226c3e0189564218d221eed4155aa
+[`1c56bdb1e`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/1c56bdb1e7617a0bfa73b06d677816e2fc36bdb8
+[`1da239b26`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/1da239b26d3d1048c26c7d61089154c5b779c951
+[`1db68b3ee`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/1db68b3eee6b5d48439e8c3cf41fa4a055dd2966
+[`1e16bbc85`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/1e16bbc85a40fa4c496b42eb00bdbb680f4bdb59
+[`1e22c3eb8`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/1e22c3eb8153aefdfc14b1fa949f1ed57e3d3817
+[`1e5740c40`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/1e5740c402f8d654ccb091e1f18b1384b16971ea
+[`1edf3227c`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/1edf3227c8732e9c9cde8c07b28ab5d227313677
+[`1f3a34859`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/1f3a348590ddb2ae5be08394ea1d5f289152e964
+[`207377cf2`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/207377cf2bd6658344189a4fc060bb506d3ff3cf
+[`211304d2a`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/211304d2abf9aaff129a7bb4a2726ad01dbbb34a
+[`211a09130`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/211a09130bb54c93d6e89bdad026c6e1ac9e8f64
+[`2178563be`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/2178563bed610aadb1abb8eeb22ea305fd274a1a
+[`22281ad68`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/22281ad68a87e9cc069a46999953b43dc6d25f37
+[`22b39d629`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/22b39d6293eb75c701c28db70b38850558d817a3
+[`23db8c77a`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/23db8c77a457d12df100c9a05d8896630060471e
+[`23dd79093`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/23dd790935f56fd20a2deed574a24045cb93f651
+[`242a26147`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/242a261478bb20af00e08a274a39ea2083ef6f77
+[`247dac6c0`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/247dac6c00ed1da69a6b3e27fbba6d015040e7d3
+[`256750262`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/2567502622a693910f1d66486cd7ded706664230
+[`25e4fcdb9`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/25e4fcdb9e4c6baaa61372a09dc819332f3d3456
+[`26035815f`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/26035815f9c7da7768a7ad40853b80911e4bddf8
+[`27142a3d7`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/27142a3d716a602055f63fc65aa7c1f50e079717
+[`271734057`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/2717340578cc01bb906ede09fcdb645f97cbedc4
+[`285e19e0c`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/285e19e0caefdeb64f7f1309a66f7ff12ee39f4d
+[`293e0e2d9`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/293e0e2d91d9a5fc15201d9f378144866d2787d7
+[`299f210cc`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/299f210cc947f81642831b7fee430aef78424e5a
+[`2a394a565`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/2a394a565f033870345390f46d411bdea93c720e
+[`2b99843df`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/2b99843df3d6c98e7dec6816f7edfefe82e1ec5b
+[`2f0b319de`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/2f0b319decc0f3e629d169c03c123bfb1bd7c10d
+[`33744d5a8`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/33744d5a8789d97ab4af467ba1c1baecce771a5b
+[`3394f4496`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/3394f4496adb31e4123e62d382f840a7a3d2ab8a
+[`3434bd7dd`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/3434bd7dd97b380b7c80c9f9714aa3c42446d5b2
+[`34813fb28`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/34813fb287428a271b258c30c87102a2bce0021e
+[`356188ed7`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/356188ed7c16d2522551ac81078bb238a1564d6e
+[`371355280`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/3713552809c922f2c132df1d788b9ff69d048c2e
+[`3959c12dd`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/3959c12ddb3938403269169445582a4d35b5aca0
+[`3a14022d3`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/3a14022d315d5158d95320907b9f8e02168623df
+[`3aaf3cd61`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/3aaf3cd617f5f419c53744a1037d7f647b6e4734
+[`3aff596ed`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/3aff596ed443e933bf1fd8df6efa5adee90f2b2e
+[`3be2c8d50`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/3be2c8d500170b90dddfcd271a1e9f1eeefd2471
+[`3caa5b3d8`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/3caa5b3d8826bead9ea01f7f5b05d2f311a0a5c0
+[`3d8336ec2`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/3d8336ec25e8e52f4b9e194665ebcac7948fbf7a
+[`3ff2934a7`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/3ff2934a765a326eb3a351c25c26435372f2b282
+[`409e01266`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/409e01266b2ea179557760535d785f69ae21e3ce
+[`42db5ba98`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/42db5ba984b82bad6623e119da560a038d5ebd48
+[`4389d0f90`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/4389d0f90dcc62c5ed87f100a0ec3b4795e793f4
+[`45fe824ca`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/45fe824ca8308a48c74cb12eb6d5c091565166c9
+[`464cef75d`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/464cef75df15c6b652f08592b4d5c3a77bbb41d2
+[`46e3a29a5`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/46e3a29a506134b15df40e5c07f7a15a30fb0544
+[`4716841e8`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/4716841e856e79449e5bd3761d434dee432aad7f
+[`471c6ba2e`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/471c6ba2e1b3eaa72dab0eaf3daf01aa39acd5b6
+[`473771631`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/473771631fa3319b7ae9e01d740cb0d9128e8dca
+[`47c43df0b`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/47c43df0bb1462712dd1c205bb098b83854962c6
+[`47df586c9`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/47df586c90cafb855d8eccf04405ae21061ce688
+[`481a045a4`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/481a045a4446cd55ad37a358a0683788db18fd2a
+[`498a0226c`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/498a0226c692217c085d173b01996ce6839a3ea8
+[`49d9d9696`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/49d9d96967c2cee6004a356b9fe99634dcbbbb10
+[`49e576405`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/49e576405598e5ed93789d007761ecff345de51a
+[`4e090869f`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/4e090869ff2c7766ab66283c51e377e69ef4a0b6
+[`4e13abd94`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/4e13abd94abae1fdc7f4bdb9dfb84661097c31c1
+[`4f42fa9b0`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/4f42fa9b05271c02fe1591bd0d65c28a4d919639
+[`4f6df2fe3`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/4f6df2fe314bd6eefa127f4a43b6be46f93aea2d
+[`510bffd3b`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/510bffd3b9ab6542fba4d61f50e46bfaade96d4e
+[`538e81ffc`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/538e81ffcc497c639b6f7123b597b466ea77307b
+[`53e6a9c4e`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/53e6a9c4ef2cf08e6d6ad69694188dbd15871495
+[`5482ffb64`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/5482ffb647f91c4c202bf4cc296ce0310719c278
+[`55a5fe702`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/55a5fe70281d99d41e7db70d771adaa56b2f1443
+[`5787ca2a0`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/5787ca2a0122891df411e835a70858db348691f7
+[`57a6f6dd3`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/57a6f6dd3897a4c0e851a74c65c2b62f9be88743
+[`5bbdc1342`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/5bbdc13429eca5afbc783b3a3f97868c02e4b78b
+[`5c1585dc9`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/5c1585dc90d44c2a44886048478938b9577d4048
+[`5cd7690e7`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/5cd7690e76cb439a355a9c1a6913621d850c1ab9
+[`5d40f3256`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/5d40f32568023f732d1082552d760a66be53803d
+[`5e465a9c3`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/5e465a9c33713664b7840d26aac98fd6e6676292
+[`5f3587787`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/5f35877878db97d77e540b89df0eccb3d47938d8
+[`5f64284de`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/5f64284de32676c4ec9898af50dfc98426c9f8af
+[`5f89424a0`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/5f89424a04710e53145b7c4fd2fd9ab270bf4890
+[`600f65e10`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/600f65e106237777fd754610699e4948e047d993
+[`60a38e059`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/60a38e059b3bdb981993b9b3485f4ace72c8835d
+[`60a9c73b8`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/60a9c73b889c385a42dcded3b2e74147bec1e23d
+[`6171b8178`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/6171b8178083910ace169b31a868d0f1f4c66ee4
+[`65f02b6a6`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/65f02b6a6f4f5fa321d259948b7ef76b063e2e71
+[`6a60fa8e5`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/6a60fa8e519190f79c6644c4f7eff4c7767cd77a
+[`6a99871bc`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/6a99871bcb61622410f4ed4a1d81ff63f7f06473
+[`6bff8ce08`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/6bff8ce082df427ad363df313abdf82936dba770
+[`6cc48140a`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/6cc48140a1f5a730dbb1338d8c7cdd9975e5c9f0
+[`6cebdc53d`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/6cebdc53dee5f308350988177397d0323e7e6e89
+[`6d8656529`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/6d86565291ae84433376aaab60d5dee3b3066cf5
+[`6deec95ee`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/6deec95ee59e89e986b20ed2af3d4a9841e9c600
+[`6ef23e1a1`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/6ef23e1a193024e3a7115219c803f760892771cb
+[`6ff4f6afa`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/6ff4f6afa867ef2a85092617a89e8757234587ac
+[`7091c5067`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/7091c50679e77da282cf73ae28967cdeaf0f6cc4
+[`70e8e01f1`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/70e8e01f1ad2e12445991eb95f240b069302a68a
+[`7122fac57`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/7122fac57ac2a2a9ae28a1b0fcd819b510961ebe
+[`715790d86`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/715790d86662bbe044bf1d88c4c332b814c3900f
+[`71ebb4d43`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/71ebb4d437746426a3f461d8aefee86f0e4228b2
+[`7230a4ebb`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/7230a4ebb87e765d73069bbc855de3a62df6a1ef
+[`740b7bc88`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/740b7bc8898ea2de05b965cae698719f83e84d35
+[`761be50cc`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/761be50cc4630ca955414c3bdff1b353203b9a53
+[`769a47b00`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/769a47b005d33d393adc3759a1e6bd67af3dd705
+[`778386298`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/778386298c449ebc9712bdd5e0ff7f5f2cf126ae
+[`7969e724f`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/7969e724fc0903f8fa1f129f4dd6175a413e57d6
+[`79a6865ef`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/79a6865efcb0100209fdfd059af16ddae94fcdaf
+[`79b948676`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/79b948676e5fbeb89bfcfcbdc950b3b2aa2849fc
+[`7b2230a93`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/7b2230a932a7158125dd5601b73f2e53bc1e52bd
+[`7cf0d1e03`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/7cf0d1e031f3d404b6cb0bca57d01801e94c2c07
+[`7eb630074`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/7eb630074468fc653e77b27aed3e8c9a7f1abad4
+[`8047ce1de`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/8047ce1de36c7f1134a6e5e6061b448a3a7ebfc6
+[`81487c2b1`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/81487c2b1196bfbb53acc35929ad3b19c983d192
+[`819133a4c`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/819133a4c1695612552ca586f5da67f599b2f18b
+[`81f29800e`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/81f29800e4b854b9091fd0000b6a6f2414a60a60
+[`831df5b55`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/831df5b55aa6ae36ec1127d5f99882b38d9c4699
+[`838765a38`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/838765a387682cd424575bae85dbd91f60d5c762
+[`86a5e9e2b`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/86a5e9e2ba075c0850f40a6898d7c5a2209acbce
+[`87645a1f0`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/87645a1f0280d84bf3e72786843937e59c0e636d
+[`8ab1e64a4`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/8ab1e64a4e74098d585d997921a2eec3ea76a2ac
+[`8c860e857`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/8c860e857aa9593c0c6740fe663f3190c727f1bf
+[`8f3ed0f17`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/8f3ed0f176e7165d7ff8f60907c277a3a756346f
+[`918867647`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/918867647e4315e3ea6da9a9f23dfb800d88d9ff
+[`924e4c1b8`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/924e4c1b80599c08aa150f44c9af0c3760c6525b
+[`936408f97`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/936408f97b4c8b621603b6f27e9eecf408b33c3f
+[`936e5c043`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/936e5c043848d100e54a664de64d8d18c903f2b8
+[`93a9eece1`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/93a9eece153c5f2dbc4c76782d70ff1a9981980a
+[`93ca05e1e`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/93ca05e1e66469de37235a9a91755d69127f4f96
+[`9420ed32b`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/9420ed32b3257b391fd95d683cafda836225a8ea
+[`9462bba22`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/9462bba229cb8f26b3d8b367388a28c09ac60eeb
+[`94db1671c`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/94db1671cc886717b5f1b7aed5771d0134bf10b3
+[`95798bdc8`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/95798bdc859e2fbc7de1a05e64fd443df8557cba
+[`95a0d1b40`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/95a0d1b40e934eea60d3b078a5f4cee6cdbdeee9
+[`975d8d089`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/975d8d08969765e6acc65fe0dd3c8e59ada42921
+[`9a0838a61`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/9a0838a61db931908c95cadfc5e8d1b4d85a2db5
+[`9a4950929`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/9a4950929b3eaf634c7e5a977c0a7b9fa0953fe5
+[`9ad591129`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/9ad5911299810d4e317c88f0e79790c15b2e2a31
+[`9ba180f4d`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/9ba180f4dbc7b7bda805d4b72319b302d10da3e3
+[`9c3bfc273`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/9c3bfc273c992d23d3098aefa6beef29ca3a8317
+[`9e091d667`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/9e091d667765d32bfae14c40a3d25d87365d1dec
+[`9ea486e85`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/9ea486e854d4017f59e1ca06ea21442b0cd000a1
+[`9f11e10a3`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/9f11e10a3c653891bc143d1ae9132010a9a989a4
+[`a0763f9a1`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/a0763f9a18705f1e9843410c5a0bb7a851404f2d
+[`a187b7680`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/a187b7680d1357e33da72740dd5201ed88e3ca9f
+[`a1cb6739c`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/a1cb6739cb857fc56c7b6ac9e3f3b51b724cb67e
+[`a27fb4058`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/a27fb405861cce81a402a3c3530f6cc5cd269950
+[`a2dc789a3`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/a2dc789a3b2ad2ea1ea5283f75fd5a614815aeed
+[`a3b955a80`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/a3b955a80283b5d66f0ff80f518227738edbf38e
+[`a67b8f92a`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/a67b8f92a11bdd5014e08c50e73dacc1eeaf92b8
+[`a6d8ba1b1`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/a6d8ba1b159470a62b484968f309ebdf649eae05
+[`a7ce2efdd`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/a7ce2efdd1e6641923ceb2a4d0f4f8689f47706e
+[`a92037ae9`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/a92037ae9cf1356d05273f3f306d42aa6a91da52
+[`a98cabece`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/a98cabeceea9c66c72d502e3cb1c1d9b4543b5cc
+[`a9f59af4c`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/a9f59af4c5f71311099a24ba1bdaed86f730f6b9
+[`ab26b5795`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/ab26b57950862c42850acc7b206efd33f0168951
+[`ad481397b`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/ad481397bb155e502b6059f9d5f78b1af1b2fc16
+[`af41e0b82`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/af41e0b8253817f968b7de6fdead92389c8ca776
+[`b0ce6af61`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/b0ce6af614a07e347292747eea0d424835a2edc6
+[`b0ec85c01`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/b0ec85c017f4f5ed39cbc18d43bc2402be910945
+[`b12dd95c4`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/b12dd95c4408fb3dc32b7fd027097544481db920
+[`b15280013`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/b15280013726697488b8c10d20eba23cbc61f254
+[`b41e5e53e`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/b41e5e53ec371db1cdb7b2a47f1f3b1c992cdde3
+[`b59bf3d97`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/b59bf3d970620f08983a8c22543a5eb986555233
+[`b5c94453b`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/b5c94453bf66b18e8efa3a1c935738f56725542e
+[`b7ff4cf58`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/b7ff4cf5802779cd5a28764f2cc138d8fa637884
+[`b814bee85`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/b814bee8538695d2b92a905042f3f36338d71291
+[`b8ebdd5ac`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/b8ebdd5ac01445c616d2482821faa80b0eeeba42
+[`b9aa66807`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/b9aa668077fe73b9ab7ec524eb2925690e8fdee2
+[`bbf28e4b8`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/bbf28e4b8f49db416926d0f0a3b70fa7bbf0bf61
+[`c467afc2b`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/c467afc2b7e34dc8cf8c9c4ed97f1f3b70c36fb7
+[`c4d74abf5`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/c4d74abf5ec01839e68b7bcc17bd8c0a786519d3
+[`c626903e0`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/c626903e0428916925c77fb9cd8354de381246d1
+[`c699d7136`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/c699d7136f7ae4fbc7b6c49e4e2720d55f005229
+[`c74397dfe`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/c74397dfe34a072a830f8d393dc6782a120d992a
+[`c78b93d68`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/c78b93d688bf06361faccfc78f690ee961ee6612
+[`c7c990da3`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/c7c990da3b899fe35befd935d635e706c372a8d5
+[`cb5278ddd`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/cb5278ddd872e655a558e25dd2eddbb92aadb8c8
+[`cc75c3e83`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/cc75c3e838f10079add2b0794a3c0d9c9247d1f6
+[`cd2a07b58`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/cd2a07b581bc68b70dbadbbaaf0bf3fdc8bce49c
+[`cd88d0b1d`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/cd88d0b1d0925e502a6e04b8a7329abcce58218d
+[`ce10e73b2`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/ce10e73b2985bc13e93ff6361f9dcd371e66217f
+[`ce15ba3da`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/ce15ba3da3eab727b6fe0bc07bf943e656fd453d
+[`ce5dd5231`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/ce5dd523129d06069e719e913ca434e39303b062
+[`cf18ecf5e`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/cf18ecf5e568a21d4711715cf2a7505de01c433e
+[`cf753765e`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/cf753765e2558aad09940a37a7bc00fbfced04ab
+[`cf7700ee0`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/cf7700ee04f069bd125d386f8ba72e202a8e50a0
+[`d1f76843f`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/d1f76843f906b4483aa86328e74286f9cbe15b7d
+[`d365ca81b`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/d365ca81b8df80dbf981d55abc2d6662e2dda3bd
+[`d38c7e2a7`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/d38c7e2a73f7786ca91b910eeb666be05c9ac38f
+[`d447f6f6f`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/d447f6f6fa1b6d205e9837325fdffb835e4d1e36
+[`d44e94cf9`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/d44e94cf943db51715a9c46227634d0d07570c1d
+[`d4617c6c7`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/d4617c6c7f0d95c9391ab65f61ff7ba1572a3666
+[`d56cd4e88`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/d56cd4e88bad3471ac15a8e4a727445afd891d7f
+[`d88be7271`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/d88be727122862533fa50252553a64d63762c4e0
+[`da429c3ee`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/da429c3ee004cbb963eff8ba403ee35f91b96d4b
+[`da50337a5`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/da50337a56023f57c399d78f219785610e6009e0
+[`da7cc7fb1`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/da7cc7fb18cd52c21749a0ea0f992490f26e0dda
+[`db91e8139`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/db91e8139d3d17262577ce746a60a5e34dbb15be
+[`dbe59f499`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/dbe59f4990383db31fb80c38ba7db34af343699c
+[`dc142908d`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/dc142908df6390e4c2e0a059e74b68598ccaa7b4
+[`de0ef3906`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/de0ef3906a00e14c80452bddc0602924392db42c
+[`dee3fb627`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/dee3fb627146dc7dc9939c5a5cbffa12dc9f409e
+[`df91926bc`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/df91926bc2266bf9b13867e9c65776419079d264
+[`e25e952cd`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/e25e952cd7f08b5f950e0ed0e5d07de18030a5b1
+[`e27242f16`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/e27242f1694a31d5d6fde545068af8ee0ba8bb09
+[`e37be8283`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/e37be82831b1fe223598fd7018abbbef39bc59d9
+[`e3a27f83e`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/e3a27f83e232ea1c2ebea4a4f83bff42a5b412b1
+[`e45f6af27`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/e45f6af27e87e3b3aac957ed57dd99a7296cc4aa
+[`e55a695a9`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/e55a695a9461e168373631ad9674b3cbe6ba2f09
+[`e60b15480`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/e60b15480d051cefaeba2b52e813a3fd455cac8c
+[`e63544053`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/e63544053cd37e96d20b49f5927944227599ac15
+[`e638072e2`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/e638072e2ca63344e82873978ec1ccb2584bed19
+[`e67b4695a`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/e67b4695acab78793d9af7443a6462593b25160a
+[`e8a7c9140`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/e8a7c9140b640d0885d9001857d3868b48e20d4f
+[`e95c5d0a1`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/e95c5d0a1d56b281adc8de77565e2b221af18158
+[`ebb4456e6`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/ebb4456e63fad7c3e5e74f1597746a7f9c88ce43
+[`ece0d656c`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/ece0d656cfd96c1feb904e51be25892c29493160
+[`edb1f95b1`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/edb1f95b1867f8d2e941b6c1d095055ec859d784
+[`eecc786ed`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/eecc786ed996dbde613d219c5a0db86fb38d4418
+[`ef5779556`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/ef57795569d0acd3a450a750539b36c59c0e19e7
+[`f05650e44`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/f05650e440ff2d3dc36cbfbd515147691189aa40
+[`f0afd2d77`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/f0afd2d774b079888caf74ba48284f13c6841fd3
+[`f212a4d65`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/f212a4d658de3c1bc6a0d6bac99b3138ffba2a0f
+[`f26ae7243`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/f26ae72436ae54605ac2a55241310a9210d27f11
+[`f29f1b8ea`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/f29f1b8ea1a3d1e2803f3239918e94c503239783
+[`f32cc94bc`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/f32cc94bca02d9ecdab4644e102d385aeafea38c
+[`f42da63cb`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/f42da63cb51c05ae8b65f8900f4d2057b911d6ed
+[`f45ed106b`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/f45ed106bf703c797b46891369d071b4fdd3bc8f
+[`f72777fce`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/f72777fce23e994c240a8da26fc785698db7a1e6
+[`fa866dcf4`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/fa866dcf497029ec86fda7413c93f06a166ebc2a
+[`fb164244a`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/fb164244a35e3e6f8e423483a6b0a3af3ad07811
+[`fda1be966`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/fda1be966144732297ba8e786640e0a01993d407
+[`fe3b3fdd3`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/fe3b3fdd3bfbe6c96025fb5762d6ecbe0fa1e485
+[`ff3341e6b`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/ff3341e6b94034fbab8933fc75188ae4307721fb
+[`ff52402a1`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/ff52402a15683de7674784ff4e1bfb24093c71b6
+[`ff5f67ae1`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/ff5f67ae16d7d0b5c8c08a9e250fcd0fb1b1bf7b
+[`ff6ba31f9`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/ff6ba31f9b54f90f530ac5a5a39cd8c77d973be6
+[`ff6f4c234`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/ff6f4c234c9fcedc15d5738568b8c24521be9e1c
