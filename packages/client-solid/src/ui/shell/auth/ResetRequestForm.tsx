@@ -1,14 +1,11 @@
 import { createSignal, type JSX, Show } from "solid-js";
 
 import type { AccountAccessState } from "@rtc/core-api";
-import {
-  ACCOUNT_ACCESS_COPY,
-  checkEmailInput,
-  describeFieldError,
-} from "@rtc/core-logic";
+import { ACCOUNT_ACCESS_COPY, checkEmailInput } from "@rtc/core-logic";
 
+import { createFieldReveal } from "./createFieldReveal";
 import { FieldError } from "./FieldError";
-import { fieldErrorId } from "./fieldErrorId";
+import { fieldAriaProps } from "./fieldErrorId";
 import { keepFieldFocus } from "./keepFieldFocus";
 
 import styles from "./LoginScreen.module.css";
@@ -21,18 +18,18 @@ import styles from "./LoginScreen.module.css";
  */
 export function ResetRequestForm(props: ResetRequestFormProps): JSX.Element {
   const [email, setEmail] = createSignal("");
-  const [emailRevealed, setEmailRevealed] = createSignal(false);
+  const fields = createFieldReveal();
   let emailInput: HTMLInputElement | undefined;
 
   function emailError(): string | null {
-    return describeFieldError(checkEmailInput(email()), emailRevealed());
+    return fields.describeError("email", checkEmailInput(email()));
   }
 
   function submitResetRequest(event: SubmitEvent): void {
     event.preventDefault();
-    setEmailRevealed(true);
+    const failing = fields.revealAll([["email", checkEmailInput(email())]]);
 
-    if (!checkEmailInput(email()).ok) {
+    if (failing !== null) {
       emailInput?.focus();
 
       return;
@@ -42,7 +39,7 @@ export function ResetRequestForm(props: ResetRequestFormProps): JSX.Element {
   }
 
   function revealEmailError(): void {
-    setEmailRevealed(true);
+    fields.reveal("email");
   }
 
   function changeEmail(event: InputChangeEvent): void {
@@ -64,10 +61,7 @@ export function ResetRequestForm(props: ResetRequestFormProps): JSX.Element {
             class={styles.input}
             type="email"
             autocomplete="email"
-            aria-invalid={emailError() !== null}
-            aria-describedby={
-              emailError() === null ? undefined : fieldErrorId("email")
-            }
+            {...fieldAriaProps("email", emailError())}
             value={email()}
             onInput={changeEmail}
             onBlur={revealEmailError}

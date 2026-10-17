@@ -206,6 +206,22 @@ describe("LoginScreen field validation — code step", () => {
     expect(page.describedBy("login-code")).toBe(CODE_INPUT_ERROR);
   });
 
+  it("removes the code error as the code is fixed, with no second blur", async () => {
+    const page = mountAt(createCodeState());
+
+    await page.typeCode("1234");
+    await page.blur("login-code");
+
+    expect(page.fieldError("code")).toBe(CODE_INPUT_ERROR);
+
+    await page.typeCode("5678");
+
+    expect(page.focusedControl()).toBe("login-code");
+    expect(page.fieldError("code")).toBeNull();
+    expect(page.isMarkedInvalid("login-code")).toBe(false);
+    expect(page.describedBy("login-code")).toBeNull();
+  });
+
   it("puts an empty address first when no address is held", async () => {
     const page = mountAt(createCodeState({ email: null, passwordHeld: false }));
 
@@ -338,6 +354,22 @@ describe("LoginScreen field validation — reset request", () => {
     expect(page.fieldError("email")).toBe(EMAIL_INPUT_ERROR);
     expect(page.isMarkedInvalid("login-email")).toBe(true);
     expect(page.describedBy("login-email")).toBe(EMAIL_INPUT_ERROR);
+  });
+
+  it("removes the address error as the address is fixed, with no second blur", async () => {
+    const page = mountAt(createRequestResetState());
+
+    await page.typeEmail("ann");
+    await page.blur("login-email");
+
+    expect(page.fieldError("email")).toBe(EMAIL_INPUT_ERROR);
+
+    await page.typeEmail("@desk.io");
+
+    expect(page.focusedControl()).toBe("login-email");
+    expect(page.fieldError("email")).toBeNull();
+    expect(page.isMarkedInvalid("login-email")).toBe(false);
+    expect(page.describedBy("login-email")).toBeNull();
   });
 
   it("sends nothing for a bad address, shows its error and focuses it", async () => {
