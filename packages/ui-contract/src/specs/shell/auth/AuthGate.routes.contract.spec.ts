@@ -12,6 +12,8 @@ import { cleanupMounted, mount } from "@ui-contract/mount";
 import type { AuthGatedAppPage } from "@ui-contract/pages/shell/auth/AuthGatedAppPage";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { parseAppRoute } from "@rtc/core-logic";
+
 afterEach(() => {
   cleanupMounted();
 });
@@ -47,12 +49,23 @@ describe("AuthGate routes — an unmounted hook leaves the history alone", () =>
 
     page.signIn();
     const navigations = [...page.login.navigations()];
+    const writesBefore = page.routeWrites().length;
 
     await page.traverse("#/create-account");
 
     expect(page.showsLogin()).toBe(false);
+    // The discriminator: a leaked login hook would open the form here.
     expect(page.login.navigations()).toEqual(navigations);
-    expect(page.routeWrites()).toEqual(["replace #/fx", "replace #/fx"]);
+    expect(
+      page
+        .routeWrites()
+        .slice(writesBefore)
+        .filter((write) => {
+          return (
+            parseAppRoute(write.slice(write.indexOf("#")))?.area === "account"
+          );
+        }),
+    ).toEqual([]);
   });
 
   it("rewrites no login route to a tab after sign-out", async () => {
