@@ -5,7 +5,7 @@ import {
 } from "@rtc/devtools-core";
 import type { DemoAccount } from "@rtc/domain";
 
-import { createHashRouteHistory } from "./adapters/HashRouteHistory";
+import { createPathRouteHistory } from "./adapters/PathRouteHistory";
 import {
   bootCore,
   formatBootedMessage,
@@ -54,7 +54,7 @@ export interface WebClientPage {
   /** Whether the page has a server to register with: the login screen
    * offers the account flows only then. */
   readonly registrationAvailable: boolean;
-  /** The page's history as hash routes: the login screen and the
+  /** The page's history as path routes: the login screen and the
    * workspace tabs mirror themselves into it. */
   readonly routes: RouteHistory;
 }
@@ -166,7 +166,7 @@ export function startWebClient(options: WebClientOptions): Promise<void> {
         overlayEl,
         demoAccounts: readDemoAccounts(env),
         registrationAvailable: offersRegistration(env),
-        routes: createHashRouteHistory(window),
+        routes: createPathRouteHistory(window),
       });
       // The timings of the swap under way: the host asks for them as each
       // swap starts, and the overlay's two fades take the same numbers.
