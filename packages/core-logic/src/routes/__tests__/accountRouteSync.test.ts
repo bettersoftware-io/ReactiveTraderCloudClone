@@ -87,8 +87,8 @@ describe("accountRouteShows", () => {
 });
 
 describe("createAccountRouteSync", () => {
-  it("mounts on no path by replacing it with sign-in", () => {
-    const h = createHarness("", true);
+  it("mounts on the root path by replacing it with sign-in", () => {
+    const h = createHarness("/", true);
     h.mount();
 
     expect(h.history.writes).toEqual(["replace /sign-in"]);

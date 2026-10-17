@@ -24,7 +24,7 @@ describe("createFakeRouteHistory", () => {
     });
 
     history.traverse(history.path());
-    history.traverse("");
+    history.traverse("/");
 
     expect(heard).toEqual([{ area: "account", mode: "register" }, null]);
     expect(history.current()).toBeNull();
@@ -52,7 +52,7 @@ describe("createFakeRouteHistory", () => {
     });
 
     unsubscribe();
-    history.traverse("");
+    history.traverse("/");
 
     expect(heard).toEqual([]);
   });

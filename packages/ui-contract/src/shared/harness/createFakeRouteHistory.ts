@@ -7,7 +7,7 @@ export interface FakeRouteHistory extends RouteHistory {
   readonly writes: string[];
   /** The path the history holds now (what the address bar would show). */
   path(): string;
-  /** Simulates Back/Forward (or an edited address) landing on `path`. */
+  /** Simulates Back/Forward landing on `path`. */
   traverse(path: string): void;
 }
 

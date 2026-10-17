@@ -17,8 +17,8 @@ afterEach(() => {
 });
 
 describe("Workspace routes — mount", () => {
-  it("replaces an empty path with the tab on screen", () => {
-    const app = mount(AppShell, { routePath: "" });
+  it("replaces the root path with the tab on screen", () => {
+    const app = mount(AppShell, { routePath: "/" });
 
     expect(app.header.isActive("fx")).toBe(true);
     expect(app.routeWrites()).toEqual(["replace /fx"]);

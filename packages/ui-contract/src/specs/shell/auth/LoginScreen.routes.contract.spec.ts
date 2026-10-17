@@ -24,8 +24,8 @@ afterEach(() => {
 });
 
 describe("LoginScreen routes — mount", () => {
-  it("replaces an empty path with the sign-in route", () => {
-    const page = mountRouted("");
+  it("replaces the root path with the sign-in route", () => {
+    const page = mountRouted("/");
 
     expect(page.phase()).toBe("signIn");
     expect(page.routeWrites()).toEqual(["replace /sign-in"]);

@@ -947,10 +947,12 @@ between them instead of leaving the app. The path is the only part of the URL a
 route touches: `?core=`, `?splash` and any fragment are carried over
 untouched. A path that names no route (`/`, a trailing slash, an unknown
 name) is rewritten to the route of what is on screen. A path route needs the
-server to answer an unknown path with `index.html`. Both Vercel projects
-rewrite every path except `/api/` to it, serving real files such as
-`/devtools/` and `/popout.html` first. `vite dev` and `vite preview` do the
-same by default.
+server to answer an unknown path with `index.html`. Both Vercel projects (`vercel.react.json` and
+`vercel.solid.json`) rewrite every path except `/api/` to it, serving real files
+such as `/devtools/` and `/popout.html` first. `vite dev` and `vite preview` do
+the same by default. An old `#/…` link is not redirected: it loads `/` and lands
+on the default route, and the fragment stays in the address bar, because a route
+write keeps the fragment.
 
 | Route | Path | Area |
 |---|---|---|

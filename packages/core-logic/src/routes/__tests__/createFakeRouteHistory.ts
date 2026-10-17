@@ -5,7 +5,7 @@ import { formatAppRoute, parseAppRoute } from "#/routes/appRoutes";
 export interface FakeRouteHistory extends RouteHistory {
   /** Every push and replace, in order, as `push /x` / `replace /x`. */
   readonly writes: string[];
-  /** Simulates Back/Forward (or an edited address) landing on `path`. */
+  /** Simulates Back/Forward landing on `path`. */
   traverse(path: string): void;
 }
 

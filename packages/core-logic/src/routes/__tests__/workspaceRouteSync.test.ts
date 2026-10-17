@@ -12,8 +12,8 @@ import {
 } from "#/routes/workspaceRouteSync";
 
 describe("createWorkspaceRouteSync", () => {
-  it("mounts on no path by replacing it with the active tab", () => {
-    const h = createHarness("");
+  it("mounts on the root path by replacing it with the active tab", () => {
+    const h = createHarness("/");
     h.create().observe("fx");
 
     expect(h.history.writes).toEqual(["replace /fx"]);
@@ -81,7 +81,7 @@ describe("createWorkspaceRouteSync", () => {
     const h = createHarness("/fx");
     h.create().observe("fx");
     h.history.writes.length = 0;
-    h.history.traverse("");
+    h.history.traverse("/");
 
     expect(h.history.writes).toEqual(["replace /fx"]);
   });
