@@ -98,12 +98,16 @@ configs (`"/((?!api/).*)" → /index.html`, with real files served first). A new
 case in `tests/browser/playwright/navigation.spec.ts`, which runs on both
 clients, covers it:
 
-1. `page.goto("/credit")` on a fresh page, then sign in. The Credit tab is
-   active and the path stays `/credit`.
+1. `page.goto("/credit")` on a fresh page, which already holds a session
+   because the suite seeds one. The Credit tab is active and the path stays
+   `/credit`.
 2. `page.reload()` on `/equities`. The page comes back on Equities.
-3. `page.goto("/devtools/")` still serves the devtools inspector, not the app.
-   This proves the real file wins over the fallback. Assert on something
-   only the inspector's page has, such as its `<title>`.
+3. `page.goto("/nowhere-known")` on a fresh page. The server answers with the
+   app, and D4's rewrite lands it on `/fx`.
+
+The existing `devtools.spec.ts` already opens `/devtools/` against the same
+`vite preview` build. It is the witness that the real file wins over the
+fallback, so the new case doesn't repeat it.
 
 Vercel's rewrite cannot run in CI. After the deploy, opening `/credit`
 directly on both Vercel sites is the user's check (§6).
@@ -144,7 +148,7 @@ These are named here so the PR can show them untouched:
 
 | Risk | Check |
 |---|---|
-| The dev server's `/devtools` middleware loses to the `index.html` fallback. | Open `/devtools/` on `vite dev` during the browser eyeball. On `vite preview`, the §3.4 case covers it. |
+| The dev server's `/devtools` middleware loses to the `index.html` fallback. | Open `/devtools/` on `vite dev` during the browser eyeball. On `vite preview`, `devtools.spec.ts` covers it. |
 | A dockview popout opened from `/credit` resolves its URL wrongly. | `popoutUrl` is absolute. The existing popout e2e cases now run from a path URL and stay green. |
 | The hybrid smoke's "no reload" proof breaks. | `pushState` stays within the same document, so the `load` counter still proves it. The smoke runs on both clients. |
 | A stale `#/credit` in someone's address bar. | D2: no redirect. It loads `/` and lands on the default route, as any unknown URL does. |
