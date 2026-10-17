@@ -159,8 +159,19 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # Capped: 4 turbo tasks × 2 workers each. The defaults (10 tasks × 3
+      # vitest workers) queued ~28 processes on this 4-vCPU runner and
+      # stretched every test toward its 5 s timeout — client-prototype's
+      # suite took ~200 s here against 5 s locally, and two CPU-bound tests
+      # timed out (#615, #1016). Measured 2026-10-17 (3 runners, every config
+      # on the same runner, builds included): same wall time, worst test at
+      # 0.30 of its timeout instead of 0.53–0.81, no test over 2 s instead of
+      # 5–20. The cores are saturated either way, so the cap moves no
+      # throughput. Turbo forwards `--maxWorkers` to every `test` script;
+      # vitest and jest both read it (RN's chained `vitest && jest` caps only
+      # its jest half).
       - name: Tests (unit)
-        run: pnpm test
+        run: pnpm test --concurrency=4 -- --maxWorkers=2
 
       - name: Pages tooling unit tests
         run: pnpm --filter @rtc/tests test:pages
