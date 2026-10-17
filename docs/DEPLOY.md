@@ -8,10 +8,16 @@ three independent targets via checkboxes — `deploy_react` (→
 `rtc-clone-react.vercel.app`), `deploy_solid` (→ `rtc-clone-solid.vercel.app`),
 and `deploy_server` (→ Fly) — plus `include_sourcemaps` to ship a debuggable
 client build. Each ticked target is smoke-checked. Nothing auto-deploys on a
-push or merge, on any branch: Vercel's Git integration is turned off by
-`"git": { "deploymentEnabled": false }` in each client's `vercel.<client>.json`
-(`vercel.react.json` / `vercel.solid.json`), so the workflow is the only path.
-Access is gated by genuine
+push or merge: the workflow is the only path. Two switches keep it that way.
+The root `vercel.json` carries only `"git": { "deploymentEnabled": false }` —
+Vercel's Git integration reads that key from a file named exactly `vercel.json`
+in the pushed commit, so the copies in `vercel.react.json` / `vercel.solid.json`
+only ever reach the CLI. And because that file lives on `main`, it cannot cover
+a branch whose tree lacks it: `gh-pages` (an orphan branch holding the
+published reports) built and failed as a Preview on every push until
+`rtc-clone-react` was disconnected from Git in its dashboard (2026-10-17). A
+Vercel project need not be Git-connected at all here — `deploy.yml` deploys
+through the CLI with a token. Access is gated by genuine
 per-user login, not a shared password or token. The deployed web build is
 **hybrid** ([`docs/authentication.md` §6](authentication.md#6-hybrid-data-source-one-deployment-two-modes)):
 credentials matching the committed demo roster are verified in the browser

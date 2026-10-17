@@ -126,3 +126,58 @@ are Claude-only, so hook-enforced guardrails (e.g.
 
 Zero-change trial: set the fallback plus `project_doc_max_bytes = 65536` in the
 user's own Codex config — no repo edit needed.
+
+
+### Shrink the repository (screenshot history)
+
+The GitHub repo is **1.96 GB** and nearly all of it is old PNG versions, not
+code. Measured 2026-10-17 (on-disk, delta-compressed sizes from
+`git rev-list --objects <ref> | git cat-file --batch-check='%(objecttype) %(objectsize:disk) %(rest)'`):
+
+| History of | Size |
+|---|---|
+| `packages/ui-contract/goldens` (visual goldens) | 1,291 MB |
+| `packages/client-react/tests/ui` — **path no longer exists** (goldens moved) | 419 MB |
+| `packages/client-react-native/tests` (RN goldens) | 134 MB |
+| all code, docs, lockfiles | ~50 MB |
+| `gh-pages` branch (547 commits of published reports) | 266 MB |
+
+The current tree is only ~360 MB of images, so ~1.5 GB is dead history. PNGs
+are already compressed, so git cannot delta them: every regeneration stores
+every changed golden whole. Two full sets are committed — `react/` (2,012
+files, the CI x86 set) and `react-local/darwin-arm64/` (2,107 files) — so each
+visual change is paid twice. Since August the goldens churn at ~2,600 PNG
+writes a month (~80 KB each, so very roughly ~200 MB/month).
+
+Options, cheapest first. Not urgent — GitHub's guidance is under 1 GB ideal,
+under 5 GB strongly recommended — but the first three stop the growth:
+
+1. **Partial clone** (no repo change): `git clone --filter=blob:none` fetches
+   old blobs on demand, so a fresh clone costs about the current tree. CI
+   already checks out shallow.
+2. **Publish `gh-pages` as a single orphan commit** (force-push) instead of
+   appending — Pages serves only the tip, so its history is worthless and
+   grows on every push to `main` (`visual.yml`, `publish-site.yml`,
+   `coverage-report.yml`).
+3. **Cut golden churn.** Decide whether `react-local/darwin-arm64` needs to be
+   committed at all (git-ignored or regenerated on demand would roughly halve
+   future growth); losslessly recompress PNGs (`oxipng`) in
+   `update-visual-goldens.yml` — Playwright compares decoded pixels, so
+   results are unchanged.
+4. **Move goldens out of the repo** (separate repo/submodule or object
+   storage keyed by a committed hash manifest) — stops screenshot growth
+   entirely; a real project.
+5. **One-time history rewrite** (`git filter-repo`): drop the dead
+   `client-react/tests/ui` path and superseded golden versions — likely well
+   under 1 GB. Costs: every SHA changes (`CHANGELOG.md`, `STATUS.md`, docs and
+   the weekly tags cite them), every open PR and worktree breaks, and GitHub
+   keeps old objects reachable via `refs/pull/*` until Support purges them.
+   Only worth doing once, after 2–4, or it regrows.
+
+**Not LFS.** Moving goldens to Git LFS looks like the fix but is worse here:
+`visual.yml` needs the full ~330 MB set on every push to `main`, and LFS
+downloads from Actions are metered against the account's LFS bandwidth quota,
+while a plain shallow checkout is free; LFS storage also keeps every version;
+and any checkout without `lfs: true` gets pointer files, which fail the pixel
+comparisons with misleading errors. LFS stays scoped to rarely-changing design
+media and decks (`.gitattributes`).
