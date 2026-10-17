@@ -7,7 +7,7 @@ import {
 } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/react-bindings";
 
-/** Keeps the page's hash route in step with the workspace tab (spec §5):
+/** Keeps the page's route in step with the workspace tab (spec §5):
  * the URL's tab wins on mount, each later tab is a new history entry, and
  * Back/Forward switches to the tab it lands on. A host with no route
  * history does nothing.

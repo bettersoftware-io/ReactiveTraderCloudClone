@@ -12,7 +12,7 @@ type AccountRoutesSource = Pick<AccountAccessIntents, AccountNavigation> & {
   readonly state: Accessor<AccountAccessState>;
 };
 
-/** Keeps the page's hash route in step with the login screen (spec §6) and
+/** Keeps the page's route in step with the login screen (spec §6) and
  * returns the links' navigation: a new history entry, then the intent. A
  * host with no route history gets the bare intents. Runs once per mount,
  * like every Solid component body. */
