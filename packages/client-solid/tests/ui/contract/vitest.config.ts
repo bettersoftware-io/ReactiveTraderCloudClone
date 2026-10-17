@@ -59,6 +59,10 @@ export default defineConfig({
     },
   },
   test: {
+    // One VM context per test file, modules loaded once: ~3x less CPU than
+    // re-importing jsdom and every module per file. See
+    // docs/architecture/09-test-strategy.md §"The test pool".
+    pool: "vmThreads",
     // Pin root to the package dir (THREE levels up from tests/ui/contract)
     // so include/setup/report paths are stable regardless of invocation cwd.
     root: fileURLToPath(new URL("../../..", import.meta.url)),

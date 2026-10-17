@@ -13,6 +13,11 @@ interface RootManifest {
   };
 }
 
+/** The field of a package's package.json that gate 54 reads. */
+interface PackageManifest {
+  scripts?: { test?: string };
+}
+
 interface Gate {
   name: string;
   pattern: string;
@@ -823,7 +828,75 @@ const GATES: Gate[] = [
     paths: ["../packages/client-react/src/", "../packages/client-solid/src/"],
     excludes: ["/node_modules/", "/src/main.tsx", ".test.", ".spec."],
   },
+  {
+    // Vitest's default pool re-imports the environment and every module for
+    // each test file; with jsdom that import alone is ~250 ms, and it was
+    // 50–75% of the jsdom packages' test time. vmThreads loads modules once
+    // and gives each file a fresh VM context: ~3x less CPU over the unit
+    // suites, ~1.8x over the contract coverage gates, identical coverage
+    // (measured 2026-10-17). A package that forgets the line is not wrong,
+    // only several times slower — exactly what no other check would notice.
+    name: "54. Every package's vitest config declares the vmThreads pool (server: threads, for Node's realm)",
+    pattern: "",
+    paths: [],
+    customCheck: checkVitestPools,
+  },
 ];
+
+/**
+ * Gate 54's exceptions: a package whose tests must run outside VM contexts,
+ * and the pool it declares instead. `server`'s tests drive Node built-ins
+ * (http, streams), whose errors come from Node's realm, so its own
+ * `instanceof Error` reads false inside a VM context.
+ */
+const POOL_EXCEPTIONS: Readonly<Record<string, string>> = { server: "threads" };
+
+/** The contract-tier configs: standalone, they extend no package config. */
+const CONTRACT_VITEST_CONFIGS = [
+  "../packages/client-react/tests/ui/contract/vitest.config.ts",
+  "../packages/client-solid/tests/ui/contract/vitest.config.ts",
+];
+
+function checkVitestPools(): string[] {
+  const failures: string[] = [];
+
+  function requirePool(configPath: string, pool: string): void {
+    if (!existsSync(configPath)) {
+      failures.push(
+        `${configPath.slice(3)}: missing — a package whose test script runs vitest needs a vitest.config.ts that declares its pool`,
+      );
+    } else if (!readFileSync(configPath, "utf8").includes(`pool: "${pool}"`)) {
+      failures.push(
+        `${configPath.slice(3)}: does not declare pool: "${pool}" (docs/architecture/09-test-strategy.md §"The test pool")`,
+      );
+    }
+  }
+
+  for (const entry of readdirSync("../packages", { withFileTypes: true })) {
+    const manifestPath = `../packages/${entry.name}/package.json`;
+
+    if (!entry.isDirectory() || !existsSync(manifestPath)) {
+      continue;
+    }
+
+    const manifest = JSON.parse(
+      readFileSync(manifestPath, "utf8"),
+    ) as PackageManifest;
+
+    if (manifest.scripts?.test?.includes("vitest") === true) {
+      requirePool(
+        `../packages/${entry.name}/vitest.config.ts`,
+        POOL_EXCEPTIONS[entry.name] ?? "vmThreads",
+      );
+    }
+  }
+
+  for (const configPath of CONTRACT_VITEST_CONFIGS) {
+    requirePool(configPath, "vmThreads");
+  }
+
+  return failures;
+}
 
 function checkDockerfileRunsAsNode(): string[] {
   const lines = readFileSync("../packages/server/Dockerfile", "utf8").split(

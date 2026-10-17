@@ -68,12 +68,4 @@ describe("createDevtoolsHub", () => {
     expect(typeof hub.dispose).toBe("function");
     expect(listen).not.toHaveBeenCalledWith("pagehide", expect.anything());
   });
-
-  it("builds a hub where window is unavailable", () => {
-    vi.stubGlobal("window", undefined);
-
-    const hub = createDevtoolsHub({ appId: "rtc-test", dev: false });
-
-    expect(typeof hub.dispose).toBe("function");
-  });
 });

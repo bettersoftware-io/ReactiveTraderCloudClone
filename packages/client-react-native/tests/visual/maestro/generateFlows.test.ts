@@ -120,7 +120,10 @@ describe("committed flows", () => {
       })
       .sort();
 
-    expect(committed).toStrictEqual(SCENARIO_IDS.map(flowFileName).sort());
+    // toEqual, not toStrictEqual: `readdirSync` builds its array in Node's
+    // realm, and under the vmThreads pool strict equality also compares that
+    // Array prototype with the test context's. The file names are what matter.
+    expect(committed).toEqual(SCENARIO_IDS.map(flowFileName).sort());
   });
 
   it("matches byte-for-byte what the generator emits today", () => {
