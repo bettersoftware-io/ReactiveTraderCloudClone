@@ -1,4 +1,5 @@
 import type { TestContext } from "../testContext.ts";
+import { loginScreenOf } from "./login.ts";
 
 /** Whose history a browser button steps: the app page's, or the login
  *  screen's own page (`LoginScreenPO.open` opens it in a fresh context). */
@@ -66,11 +67,5 @@ function historyOf(ctx: TestContext, page: HistoryPage): BrowserHistoryButtons {
     return ctx.po.workspace;
   }
 
-  if (ctx.po.login === undefined) {
-    throw new Error(
-      "login page object is not available under this driver (Playwright-only)",
-    );
-  }
-
-  return ctx.po.login;
+  return loginScreenOf(ctx);
 }

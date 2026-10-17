@@ -25,12 +25,21 @@ describe("app routes", () => {
     expect(formatAppRoute(route)).toBe(hash);
   });
 
-  it.each(["", "#", "#/", "#fx", "#/FX", "#/fx/", "#/fx?x=1", "#/nope", "/fx"])(
-    "reads %j as no route",
-    (hash) => {
-      expect(parseAppRoute(hash)).toBeNull();
-    },
-  );
+  it.each([
+    "",
+    "#",
+    "#/",
+    "#fx",
+    "#/FX",
+    "#/fx/",
+    "#/fx?x=1",
+    "#/nope",
+    "/fx",
+    "#/constructor",
+    "#/__proto__",
+  ])("reads %j as no route", (hash) => {
+    expect(parseAppRoute(hash)).toBeNull();
+  });
 
   it("compares routes by value: equal only for the same tab or mode", () => {
     const left = createEveryRoute();
