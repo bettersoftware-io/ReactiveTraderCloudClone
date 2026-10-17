@@ -2,7 +2,7 @@ import type { InputCheck } from "#/presenters/accountAccessFold";
 
 /** A login-form field checked as the user types; the value is its
  * `data-field` attribute. */
-export type AccountField = "email" | "display-name" | "code";
+export type AccountField = "email" | "display-name" | "code" | "password";
 
 /** A field's error as the form shows it: nothing until the field is
  * revealed (left once, or a submit was tried), then its check's error for

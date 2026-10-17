@@ -9,8 +9,10 @@ import {
 import type { AccountAccessState, RegistrationInput } from "@rtc/core-api";
 import {
   ACCOUNT_ACCESS_COPY,
+  type AccountField,
   checkDisplayNameInput,
   checkEmailInput,
+  checkPasswordInput,
   PRIVACY_NOTICE_URL,
 } from "@rtc/core-logic";
 
@@ -24,9 +26,9 @@ import styles from "./LoginScreen.module.css";
 
 /**
  * The create-account form: email, display name and a new password with its
- * live checklist. The address and the display name each show their check's
- * error under the field once it has been left; a submit reveals both and
- * sends nothing while either fails, focusing the first that does. It
+ * live checklist. Each field shows its check's error under it once it has
+ * been left; a submit reveals all three and sends nothing while one fails,
+ * focusing the first that does. It
  * registers with exactly what was typed — normalizing is the machine's job.
  * Dumb component: the fields live in local state only and are never logged.
  */
@@ -42,29 +44,43 @@ export function CreateAccountForm({
   const fields = useFieldReveal();
   const emailInput = useRef<HTMLInputElement>(null);
   const displayNameInput = useRef<HTMLInputElement>(null);
+  const passwordInput = useRef<HTMLInputElement>(null);
 
   const emailCheck = checkEmailInput(email);
   const displayNameCheck = checkDisplayNameInput(displayName);
+  const passwordCheck = checkPasswordInput(password);
   const emailError = fields.describeError("email", emailCheck);
   const displayNameError = fields.describeError(
     "display-name",
     displayNameCheck,
   );
+  const passwordError = fields.describeError("password", passwordCheck);
 
   function submitRegistration(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     const failing = fields.revealAll([
       ["email", emailCheck],
       ["display-name", displayNameCheck],
+      ["password", passwordCheck],
     ]);
 
     if (failing !== null) {
-      (failing === "email" ? emailInput : displayNameInput).current?.focus();
+      focusField(failing);
 
       return;
     }
 
     onRegister({ email, displayName, password });
+  }
+
+  function focusField(field: AccountField): void {
+    const inputs: Partial<Record<AccountField, HTMLInputElement | null>> = {
+      email: emailInput.current,
+      "display-name": displayNameInput.current,
+      password: passwordInput.current,
+    };
+
+    inputs[field]?.focus();
   }
 
   function revealEmailError(): void {
@@ -73,6 +89,10 @@ export function CreateAccountForm({
 
   function revealDisplayNameError(): void {
     fields.reveal("display-name");
+  }
+
+  function revealPasswordError(): void {
+    fields.reveal("password");
   }
 
   function changeEmail(event: ChangeEvent<HTMLInputElement>): void {
@@ -129,14 +149,18 @@ export function CreateAccountForm({
             {ACCOUNT_ACCESS_COPY.passwordLabel}
           </span>
           <input
+            ref={passwordInput}
             data-testid="login-new-password"
             className={styles.input}
             type="password"
             autoComplete="new-password"
+            {...fieldAriaProps("password", passwordError)}
             value={password}
             onChange={changePassword}
+            onBlur={revealPasswordError}
           />
         </label>
+        <FieldError field="password" error={passwordError} />
         <PasswordChecklist password={password} />
 
         {state.error !== null ? (

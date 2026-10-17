@@ -52,6 +52,7 @@ export * from "#/presenters/notionalView";
 export * from "#/presenters/orderTicketFold";
 export * from "#/presenters/panelFrames";
 export * from "#/presenters/panelStreamDeps";
+export * from "#/presenters/passwordChecklist";
 export * from "#/presenters/shallowArrayEquals";
 export * from "#/presenters/shellFolds";
 export * from "#/presenters/staleFlagFold";

@@ -3,8 +3,10 @@ import { createSignal, type JSX, Show } from "solid-js";
 import type { AccountAccessState, RegistrationInput } from "@rtc/core-api";
 import {
   ACCOUNT_ACCESS_COPY,
+  type AccountField,
   checkDisplayNameInput,
   checkEmailInput,
+  checkPasswordInput,
   PRIVACY_NOTICE_URL,
 } from "@rtc/core-logic";
 
@@ -18,9 +20,9 @@ import styles from "./LoginScreen.module.css";
 
 /**
  * The create-account form: email, display name and a new password with its
- * live checklist. The address and the display name each show their check's
- * error under the field once it has been left; a submit reveals both and
- * sends nothing while either fails, focusing the first that does. It
+ * live checklist. Each field shows its check's error under it once it has
+ * been left; a submit reveals all three and sends nothing while one fails,
+ * focusing the first that does. It
  * registers with exactly what was typed — normalizing is the machine's job.
  * Dumb component: the fields live in local signals only and are never
  * logged.
@@ -32,6 +34,7 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
   const fields = createFieldReveal();
   let emailInput: HTMLInputElement | undefined;
   let displayNameInput: HTMLInputElement | undefined;
+  let passwordInput: HTMLInputElement | undefined;
 
   function emailError(): string | null {
     return fields.describeError("email", checkEmailInput(email()));
@@ -44,15 +47,20 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
     );
   }
 
+  function passwordError(): string | null {
+    return fields.describeError("password", checkPasswordInput(password()));
+  }
+
   function submitRegistration(event: SubmitEvent): void {
     event.preventDefault();
     const failing = fields.revealAll([
       ["email", checkEmailInput(email())],
       ["display-name", checkDisplayNameInput(displayName())],
+      ["password", checkPasswordInput(password())],
     ]);
 
     if (failing !== null) {
-      (failing === "email" ? emailInput : displayNameInput)?.focus();
+      focusField(failing);
 
       return;
     }
@@ -68,8 +76,23 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
     fields.reveal("email");
   }
 
+  function focusField(field: AccountField): void {
+    const inputs: Partial<Record<AccountField, HTMLInputElement | undefined>> =
+      {
+        email: emailInput,
+        "display-name": displayNameInput,
+        password: passwordInput,
+      };
+
+    inputs[field]?.focus();
+  }
+
   function revealDisplayNameError(): void {
     fields.reveal("display-name");
+  }
+
+  function revealPasswordError(): void {
+    fields.reveal("password");
   }
 
   function changeEmail(event: InputChangeEvent): void {
@@ -132,14 +155,18 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
         <label class={styles.field}>
           <span class={styles.label}>{ACCOUNT_ACCESS_COPY.passwordLabel}</span>
           <input
+            ref={passwordInput}
             data-testid="login-new-password"
             class={styles.input}
             type="password"
             autocomplete="new-password"
+            {...fieldAriaProps("password", passwordError())}
             value={password()}
             onInput={changePassword}
+            onBlur={revealPasswordError}
           />
         </label>
+        <FieldError field="password" error={passwordError()} />
         <PasswordChecklist password={password()} />
 
         <Show when={props.state.error !== null}>

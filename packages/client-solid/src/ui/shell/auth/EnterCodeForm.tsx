@@ -6,6 +6,7 @@ import {
   type AccountField,
   checkCodeInput,
   checkEmailInput,
+  checkPasswordInput,
   type InputCheck,
 } from "@rtc/core-logic";
 
@@ -20,10 +21,10 @@ import styles from "./LoginScreen.module.css";
 /**
  * The code step of either flow. It names the address the code went to when
  * the machine holds one (else asks for it), and asks for a password only when
- * the machine holds none. The address (when asked for) and the code each
- * show their check's error under the field once it has been left; a submit
- * reveals them and sends nothing while one fails, focusing the first that
- * does. It submits exactly the fields it showed. Dumb component: the code
+ * the machine holds none. Each field on screen (the address and the
+ * password only when asked for) shows its check's error under it once it
+ * has been left; a submit reveals them and sends nothing while one fails,
+ * focusing the first that does. It submits exactly the fields it showed. Dumb component: the code
  * and password live in local signals only and are never logged.
  */
 export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
@@ -33,6 +34,7 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
   const fields = createFieldReveal();
   let emailInput: HTMLInputElement | undefined;
   let codeInput: HTMLInputElement | undefined;
+  let passwordInput: HTMLInputElement | undefined;
 
   function emailError(): string | null {
     return fields.describeError("email", checkEmailInput(email()));
@@ -40,6 +42,10 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
 
   function codeError(): string | null {
     return fields.describeError("code", checkCodeInput(code()));
+  }
+
+  function passwordError(): string | null {
+    return fields.describeError("password", checkPasswordInput(password()));
   }
 
   function asksEmail(): boolean {
@@ -56,20 +62,19 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
 
   function submitCode(event: SubmitEvent): void {
     event.preventDefault();
-    // Only the fields on screen: a held address is not the form's to check.
-    const codeField: readonly [AccountField, InputCheck] = [
-      "code",
-      checkCodeInput(code()),
+    // Only the fields on screen: a held address or password is not the
+    // form's to check.
+    const checks: (readonly [AccountField, InputCheck])[] = [
+      ...(asksEmail() ? [["email", checkEmailInput(email())] as const] : []),
+      ["code", checkCodeInput(code())],
+      ...(asksPassword()
+        ? [["password", checkPasswordInput(password())] as const]
+        : []),
     ];
-
-    const failing = fields.revealAll(
-      asksEmail()
-        ? [["email", checkEmailInput(email())], codeField]
-        : [codeField],
-    );
+    const failing = fields.revealAll(checks);
 
     if (failing !== null) {
-      (failing === "email" ? emailInput : codeInput)?.focus();
+      focusField(failing);
 
       return;
     }
@@ -105,8 +110,23 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
     fields.reveal("email");
   }
 
+  function focusField(field: AccountField): void {
+    const inputs: Partial<Record<AccountField, HTMLInputElement | undefined>> =
+      {
+        email: emailInput,
+        code: codeInput,
+        password: passwordInput,
+      };
+
+    inputs[field]?.focus();
+  }
+
   function revealCodeError(): void {
     fields.reveal("code");
+  }
+
+  function revealPasswordError(): void {
+    fields.reveal("password");
   }
 
   function changeEmail(event: InputChangeEvent): void {
@@ -183,14 +203,18 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
                 : ACCOUNT_ACCESS_COPY.passwordLabel}
             </span>
             <input
+              ref={passwordInput}
               data-testid="login-new-password"
               class={styles.input}
               type="password"
               autocomplete="new-password"
+              {...fieldAriaProps("password", passwordError())}
               value={password()}
               onInput={changePassword}
+              onBlur={revealPasswordError}
             />
           </label>
+          <FieldError field="password" error={passwordError()} />
           <PasswordChecklist password={password()} />
         </Show>
 

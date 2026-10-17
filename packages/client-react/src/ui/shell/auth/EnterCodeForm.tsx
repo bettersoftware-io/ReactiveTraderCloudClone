@@ -12,6 +12,7 @@ import {
   type AccountField,
   checkCodeInput,
   checkEmailInput,
+  checkPasswordInput,
   type InputCheck,
 } from "@rtc/core-logic";
 
@@ -26,10 +27,10 @@ import styles from "./LoginScreen.module.css";
 /**
  * The code step of either flow. It names the address the code went to when
  * the machine holds one (else asks for it), and asks for a password only when
- * the machine holds none. The address (when asked for) and the code each
- * show their check's error under the field once it has been left; a submit
- * reveals them and sends nothing while one fails, focusing the first that
- * does. It submits exactly the fields it showed. Dumb component: the code
+ * the machine holds none. Each field on screen (the address and the
+ * password only when asked for) shows its check's error under it once it
+ * has been left; a submit reveals them and sends nothing while one fails,
+ * focusing the first that does. It submits exactly the fields it showed. Dumb component: the code
  * and password live in local state only and are never logged.
  */
 export function EnterCodeForm({
@@ -44,6 +45,7 @@ export function EnterCodeForm({
   const fields = useFieldReveal();
   const emailInput = useRef<HTMLInputElement>(null);
   const codeInput = useRef<HTMLInputElement>(null);
+  const passwordInput = useRef<HTMLInputElement>(null);
 
   const asksEmail = state.email === null;
   const asksPassword = !state.passwordHeld;
@@ -52,18 +54,23 @@ export function EnterCodeForm({
   const emailCheck = checkEmailInput(email);
   const codeCheck = checkCodeInput(code);
   const emailError = fields.describeError("email", emailCheck);
+  const passwordCheck = checkPasswordInput(password);
   const codeError = fields.describeError("code", codeCheck);
+  const passwordError = fields.describeError("password", passwordCheck);
 
   function submitCode(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    // Only the fields on screen: a held address is not the form's to check.
-    const codeField: readonly [AccountField, InputCheck] = ["code", codeCheck];
-    const failing = fields.revealAll(
-      asksEmail ? [["email", emailCheck], codeField] : [codeField],
-    );
+    // Only the fields on screen: a held address or password is not the
+    // form's to check.
+    const checks: (readonly [AccountField, InputCheck])[] = [
+      ...(asksEmail ? [["email", emailCheck] as const] : []),
+      ["code", codeCheck],
+      ...(asksPassword ? [["password", passwordCheck] as const] : []),
+    ];
+    const failing = fields.revealAll(checks);
 
     if (failing !== null) {
-      (failing === "email" ? emailInput : codeInput).current?.focus();
+      focusField(failing);
 
       return;
     }
@@ -99,8 +106,22 @@ export function EnterCodeForm({
     fields.reveal("email");
   }
 
+  function focusField(field: AccountField): void {
+    const inputs: Partial<Record<AccountField, HTMLInputElement | null>> = {
+      email: emailInput.current,
+      code: codeInput.current,
+      password: passwordInput.current,
+    };
+
+    inputs[field]?.focus();
+  }
+
   function revealCodeError(): void {
     fields.reveal("code");
+  }
+
+  function revealPasswordError(): void {
+    fields.reveal("password");
   }
 
   function changeEmail(event: ChangeEvent<HTMLInputElement>): void {
@@ -168,14 +189,18 @@ export function EnterCodeForm({
                   : ACCOUNT_ACCESS_COPY.passwordLabel}
               </span>
               <input
+                ref={passwordInput}
                 data-testid="login-new-password"
                 className={styles.input}
                 type="password"
                 autoComplete="new-password"
+                {...fieldAriaProps("password", passwordError)}
                 value={password}
                 onChange={changePassword}
+                onBlur={revealPasswordError}
               />
             </label>
+            <FieldError field="password" error={passwordError} />
             <PasswordChecklist password={password} />
           </>
         ) : null}

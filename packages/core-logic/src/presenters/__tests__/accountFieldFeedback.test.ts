@@ -9,6 +9,7 @@ import {
   checkCodeInput,
   checkDisplayNameInput,
   checkEmailInput,
+  checkPasswordInput,
   type InputCheck,
 } from "#/presenters/accountAccessFold";
 import {
@@ -29,6 +30,13 @@ const FIELDS: readonly (readonly [
   ["email", checkEmailInput, "nope", "a@b.co", EMAIL_INPUT_ERROR],
   ["display-name", checkDisplayNameInput, "", "Ada", DISPLAY_NAME_INPUT_ERROR],
   ["code", checkCodeInput, "1", "12345678", CODE_INPUT_ERROR],
+  [
+    "password",
+    checkPasswordInput,
+    "Short1!",
+    "Abcdefgh123!",
+    "Password: at least 12 characters",
+  ],
 ];
 
 describe("field feedback", () => {

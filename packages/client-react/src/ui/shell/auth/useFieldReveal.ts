@@ -52,4 +52,5 @@ const EVERY_FIELD_REVEALED: ReadonlySet<AccountField> = new Set([
   "email",
   "display-name",
   "code",
+  "password",
 ]);

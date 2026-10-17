@@ -993,18 +993,30 @@ built once per page by `startWebClient` and handed to the view as
 [the spec](superpowers/specs/2026-10-16-browser-history-and-live-validation-design.md).
 
 **Live field checks.** The address (create account, forgot password), the
-display name and the code are checked as the user types, with the fold's own
-checks (`checkEmailInput`, `checkDisplayNameInput`, `checkCodeInput`) and
-their copy. A field shows nothing while the user first types into it; once it
+display name, the code and a new password (create account, and the code step
+when the machine holds no password) are checked as the user types, with the
+fold's own checks (`checkEmailInput`, `checkDisplayNameInput`,
+`checkCodeInput`, `checkPasswordInput`) and their copy. A password's error is
+its first broken rule ("Password: at least 12 characters"). A field shows nothing while the user first types into it; once it
 has been left (blur) its error shows under it and then follows the value, so it
 clears the moment the value is fixed. A submit reveals every error, moves focus
 to the first failing field in form order and sends nothing, so a local refusal
 shows once, under its field. The error is `data-testid="login-field-error"`
-with `data-field` set to `email`, `display-name` or `code`, and the input gets
+with `data-field` set to `email`, `display-name`, `code` or `password`, and the input gets
 `aria-invalid` and `aria-describedby`. The server's refusals stay at form level
 (`login-error`), and the fold still checks on submit. What to show when is one
 pure helper, `describeFieldError` / `findFirstFailingField` in
 `packages/core-logic/src/presenters/accountFieldFeedback.ts`.
+
+**The password checklist.** Under every new-password field, one row per
+rule, from `describePasswordChecklist` in
+`packages/core-logic/src/presenters/passwordChecklist.ts`. Every row is
+neutral (`·`, `data-status="pending"`) until something is typed, then green
+`✓` when met and red `✗` when not, so a rule still to meet reads as a
+failure rather than a hint. The 72-byte ceiling is a row only once it is
+broken: every shorter password meets it. The checklist and the field error
+show together; the field error names the first broken rule, the checklist
+all of them.
 
 **Driving it locally.** `pnpm dev:react:fs` (or `dev:solid:fs`) starts the
 server with the in-memory directory and the client together. Seeds:
