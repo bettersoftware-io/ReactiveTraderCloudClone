@@ -76,9 +76,14 @@ console.log(
   `hybrid smoke (browser): server :${SERVER_PORT}, client :${CLIENT_PORT}`,
 );
 const server = startServer(SERVER_PORT, HOST);
-const client = startClient(CLIENT_PORT, `ws://${HOST}:${SERVER_PORT}`, {
-  VITE_DEMO_AUTH: JSON.stringify(DEMO_ROSTER),
-});
+const client = startClient(
+  "@rtc/client-react",
+  CLIENT_PORT,
+  `ws://${HOST}:${SERVER_PORT}`,
+  {
+    VITE_DEMO_AUTH: JSON.stringify(DEMO_ROSTER),
+  },
+);
 let exitCode = 0;
 
 try {

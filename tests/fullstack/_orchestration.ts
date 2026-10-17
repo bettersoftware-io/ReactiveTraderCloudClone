@@ -10,6 +10,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { CLIENT_PKG } from "../scripts/clientServer.ts";
 import { LEAN_DEPS_ENV } from "../scripts/lib/leanDeps.ts";
 
 /** The smoke server's fixed, test-only signing secret (never a real one; at
@@ -24,6 +25,28 @@ export const MONOREPO_ROOT = join(
   "..",
   "..",
 );
+
+/** The web clients a full-stack browser smoke can drive. */
+export type SmokeClientPkg = "@rtc/client-react" | "@rtc/client-solid";
+
+/**
+ * The client package this run drives: `RTC_CLIENT_PKG` (default
+ * `@rtc/client-react`), the same convention the browser suites use — resolved
+ * once in scripts/clientServer.ts. Anything else is an error rather than a
+ * silent fall back to React, which would report a Solid run that never ran.
+ */
+export function resolveSmokeClientPkg(): SmokeClientPkg {
+  if (
+    CLIENT_PKG === "@rtc/client-react" ||
+    CLIENT_PKG === "@rtc/client-solid"
+  ) {
+    return CLIENT_PKG;
+  }
+
+  throw new Error(
+    `RTC_CLIENT_PKG must be @rtc/client-react or @rtc/client-solid, got ${CLIENT_PKG}`,
+  );
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => {
@@ -86,16 +109,18 @@ export function startServer(
  * Start the Vite client dev server with VITE_SERVER_URL set, so the client
  * connects to the real backend instead of running its in-process simulators.
  *
- * `extraEnv` is spread LAST, like `startServer`'s: the hybrid smoke adds
+ * `clientPkg` picks which web client's dev server runs. `extraEnv` is spread
+ * LAST, like `startServer`'s: the hybrid smoke adds
  * `VITE_DEMO_AUTH` so the client composes the HYBRID data source (hardening
  * spec §8.2) instead of the plain WS-real one.
  */
 export function startClient(
+  clientPkg: SmokeClientPkg,
   clientPort: number,
   serverUrl: string,
   extraEnv: Record<string, string> = {},
 ): ChildProcess {
-  return spawn("pnpm", ["--filter", "@rtc/client-react", "dev"], {
+  return spawn("pnpm", ["--filter", clientPkg, "dev"], {
     cwd: MONOREPO_ROOT,
     stdio: "ignore",
     // Detached so stopProcess can kill the whole group (Vite is a grandchild of

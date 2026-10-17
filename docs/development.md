@@ -302,7 +302,8 @@ pnpm --filter @rtc/tests test:presenter:vitest-fake-timers             # plain v
 
 # Full-stack smokes (real server + real client)
 pnpm --filter @rtc/tests test:fullstack:node     # real socket, no browser
-pnpm --filter @rtc/tests test:fullstack:browser  # real browser via VITE_SERVER_URL
+pnpm --filter @rtc/tests test:fullstack:browser  # real browser via VITE_SERVER_URL (React client)
+pnpm --filter @rtc/tests test:fullstack:browser:solid  # same specs, Solid client
 
 # Watch any browser suite live (:headed) — dev tools, not part of test:e2e
 pnpm --filter @rtc/tests test:browser:playwright:headed          # Playwright --headed (runs once)
