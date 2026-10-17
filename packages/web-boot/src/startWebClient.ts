@@ -88,6 +88,10 @@ export interface WebClientOptions {
   /** Slot: how a core is loaded. Defaults to the package's three `import()`
    * calls; tests inject cores they can track or break. */
   readonly load?: (impl: CoreImpl) => Promise<CoreFactory>;
+  /** Slot: how the boot-error screen's reset leaves the page. Defaults to
+   * `location.assign`; tests inject a spy (jsdom's `location` cannot be
+   * replaced). */
+  readonly navigate?: (href: string) => void;
 }
 
 /**
@@ -117,12 +121,13 @@ export function startWebClient(options: WebClientOptions): Promise<void> {
   const devtoolsHub = createDevtoolsHub({ appId: options.appId, dev: env.dev });
   const storage = safeLocalStorage();
   const load = options.load ?? loadCore;
+  const navigate = options.navigate ?? assignPage;
 
   /** Clears the stored choice and reloads onto the RxJS core: the boot-error
    * screen's "Load the default core" action. */
   function reloadOntoDefaultCore(): void {
     clearCoreChoice(storage, warnCore);
-    location.assign(defaultCoreResetHref(location.href));
+    navigate(defaultCoreResetHref(location.href));
   }
 
   /** Applies the devtools decorators to one composition (the core host calls
@@ -255,6 +260,10 @@ export function startWebClient(options: WebClientOptions): Promise<void> {
  * diagnosed from the console. */
 function warnCore(message: string): void {
   console.warn(`[core] ${message}`);
+}
+
+function assignPage(href: string): void {
+  location.assign(href);
 }
 
 /** What decides how a swap's cover moves, as it is right now. The

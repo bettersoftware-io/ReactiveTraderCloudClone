@@ -423,6 +423,47 @@ Two traps when a UI test goes fake:
 A converted test still has to fail when the code is wrong: mutation-check it
 on fake timers exactly as on real ones.
 
+### The test pool — vmThreads, and what a VM context changes
+
+**Every package's vitest config declares `pool: "vmThreads"`; `server`
+declares `pool: "threads"`** (grep gate 54 holds both). Vitest's default pool
+re-imports the test environment and every module for each test file. With
+jsdom that import alone is ~250 ms (creating the window afterwards is 3–4
+ms), and it was 50–75% of every jsdom package's test time. `vmThreads` loads
+modules once per worker and runs each file in a fresh VM context, so files
+stay isolated from each other. Measured 2026-10-17, CPU-seconds at 2 workers:
+
+| suite | default pool | vmThreads |
+|---|---|---|
+| all 27 unit suites | 385 | 117 (3.3x) |
+| `client-prototype` / `client-react` / `client-solid` | 51 / 45 / 39 | 7.3 / 9.5 / 10.5 |
+| React / Solid UI-contract coverage gate | 212 / 194 | 111 / 114 |
+
+Coverage under the gates came out identical to the hundredth of a percent.
+On CI this matters twice over: the 4-vCPU runner is saturated, so the
+`Tests (unit)` step's wall time is its CPU divided by four, and every
+CPU-second spent stretches the tests that share the runner toward their
+5 s timeout (the step also caps itself at 4 turbo tasks × 2 workers — see
+its comment in `ci.yml`).
+
+A VM context changes two things a test can notice:
+
+- **`window` is the context's global object, and `window` / `location`
+  cannot be replaced** (`Cannot redefine property`). Stub the property
+  you mean instead — `vi.stubGlobal("matchMedia", …)` is
+  `window.matchMedia`, because under jsdom they are one object
+  (`MediaQueryColorSchemeAdapter.test.ts`); give the code a slot for
+  what it does to `location` (`startWebClient`'s `navigate`, like
+  `buildBrowserPorts`'s `relaunch`); and test "no window at all" in a
+  `*.noWindow.test.ts` file under `// @vitest-environment node`, where the
+  window is absent for real rather than stubbed away.
+- **Values built by Node's own modules come from Node's realm**, not the
+  test context's. An array from `readdirSync` fails `toStrictEqual` against
+  a local one (it compares prototypes; `toEqual` does not), and an error
+  thrown inside `http` is not `instanceof` the context's `Error`. That is
+  why `server`, whose tests drive `http` and streams and whose code
+  branches on `instanceof Error`, stays on `threads`.
+
 ### 9.9 React Native testing
 
 The RN package runs a **dual runner** (`vitest run && jest`):

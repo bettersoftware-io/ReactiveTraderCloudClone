@@ -2,6 +2,11 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
+    // threads, not vmThreads like every other package: these tests drive Node
+    // built-ins (http, streams), whose errors come from Node's realm, so
+    // `instanceof Error` reads false inside a VM context. See
+    // docs/architecture/09-test-strategy.md §"The test pool".
+    pool: "threads",
     include: ["src/**/*.test.ts"],
     passWithNoTests: true,
     // HTML report (additive; terminal output unchanged). Bare `test` maps to

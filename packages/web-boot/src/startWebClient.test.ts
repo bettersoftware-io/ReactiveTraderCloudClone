@@ -210,15 +210,16 @@ describe("startWebClient", () => {
 
   it("the boot-error screen's reset clears the stored choice and reloads onto the default core", async () => {
     localStorage.setItem(CORE_CHOICE_KEY, "effect");
-    const assign = vi.fn();
-    vi.stubGlobal("location", { href: "http://localhost:3000/?x=1", assign });
+    history.replaceState(null, "", "/?x=1");
     const client = createClient({ loadError: new Error("chunk gone") });
 
     await client.start();
     bootErrorPage().clickReset(client.rootEl());
 
     expect(localStorage.getItem(CORE_CHOICE_KEY)).toBeNull();
-    expect(assign).toHaveBeenCalledWith("http://localhost:3000/?x=1&core=rxjs");
+    expect(client.navigate).toHaveBeenCalledWith(
+      `${location.origin}/?x=1&core=rxjs`,
+    );
   });
 
   it("a first mount that throws destroys the view and shows the boot-error screen", async () => {
@@ -362,6 +363,8 @@ interface Client {
   readonly view: RecordingView;
   readonly createView: Mock<(page: WebClientPage) => WebClientView>;
   readonly load: Mock<(impl: CoreImpl) => Promise<CoreFactory>>;
+  /** Where the page was sent; nothing navigates for real. */
+  readonly navigate: Mock<(href: string) => void>;
   /** The page the view was built over. */
   page(): WebClientPage;
   /** The nth composition the view mounted, from 1. */
@@ -420,6 +423,7 @@ function createClient(options: ClientOptions = {}): Client {
 
     return Promise.resolve(createTrackedCore(core, mayCompose));
   });
+  const navigate = vi.fn((_href: string): void => {});
 
   return {
     start: (): Promise<void> => {
@@ -428,12 +432,14 @@ function createClient(options: ClientOptions = {}): Client {
         rootId: "root",
         env: createWebBootEnv(options.env),
         createView,
+        navigate,
         ...(options.realLoader === true ? {} : { load }),
       });
     },
     view,
     createView,
     load,
+    navigate,
     page: (): WebClientPage => {
       const page = createView.mock.calls[0]?.[0];
 

@@ -54,7 +54,9 @@ describe("MediaQueryColorSchemeAdapter", () => {
   it("reports light and never changes where matchMedia is unavailable", async () => {
     // `window` exists under jsdom but matchMedia may not; the adapter guards on
     // the FUNCTION, not just the global, so remove it rather than the window.
-    vi.stubGlobal("window", { ...globalThis.window, matchMedia: undefined });
+    // (Stubbing the global stubs `window.matchMedia`: under jsdom `window` IS
+    // the global object — and in a vmThreads context it cannot be replaced.)
+    vi.stubGlobal("matchMedia", undefined);
 
     const adapter = new MediaQueryColorSchemeAdapter();
 
@@ -71,21 +73,18 @@ interface StubbedMedia {
 function createStubMatchMedia(initialMatches: boolean): StubbedMedia {
   const listeners: ((e: MediaQueryListEvent) => void)[] = [];
 
-  vi.stubGlobal("window", {
-    ...globalThis.window,
-    matchMedia: (media: string) => {
-      return {
-        matches: initialMatches,
-        media,
-        addEventListener: (
-          _type: string,
-          listener: (e: MediaQueryListEvent) => void,
-        ) => {
-          listeners.push(listener);
-        },
-        removeEventListener: () => {},
-      };
-    },
+  vi.stubGlobal("matchMedia", (media: string) => {
+    return {
+      matches: initialMatches,
+      media,
+      addEventListener: (
+        _type: string,
+        listener: (e: MediaQueryListEvent) => void,
+      ) => {
+        listeners.push(listener);
+      },
+      removeEventListener: () => {},
+    };
   });
 
   return {
