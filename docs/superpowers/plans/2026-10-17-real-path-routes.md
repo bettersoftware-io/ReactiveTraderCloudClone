@@ -10,6 +10,8 @@
 
 **Spec:** [docs/superpowers/specs/2026-10-17-real-path-routes-design.md](../specs/2026-10-17-real-path-routes-design.md)
 
+**Rulings:** [2026-10-17-real-path-routes-rulings.md](2026-10-17-real-path-routes-rulings.md) holds the controller's decisions during execution, the review fixes, and the triage of deferred findings.
+
 ## Global Constraints
 
 - The route spelling is exactly `/fx`, `/credit`, `/equities`, `/admin`, `/sign-in`, `/create-account`, `/forgot-password`, `/enter-code`.
