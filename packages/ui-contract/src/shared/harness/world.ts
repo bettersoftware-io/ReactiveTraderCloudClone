@@ -689,7 +689,7 @@ export interface World {
    * once at composition by the real shell. Defaults to false. */
   readonly registrationAvailable: boolean;
   /** Backs useRouteHistory: the fake page history, which records every push
-   * and replace and offers `traverse(hash)` for Back/Forward. Null (the
+   * and replace and offers `traverse(path)` for Back/Forward. Null (the
    * default) is a host without one, so every unrouted spec stays unrouted. */
   readonly routes: FakeRouteHistory | null;
   /** Records one navigation intent and moves `accountAccess` to the phase it
@@ -766,9 +766,9 @@ export interface WorldSeeds {
   accountAccess?: AccountAccessState;
   /** Seeds `World.registrationAvailable`; defaults to false. */
   registrationAvailable?: boolean;
-  /** Seeds `World.routes` with a fake history at this hash; defaults to
+  /** Seeds `World.routes` with a fake history at this path; defaults to
    * none (null). */
-  routeHash?: string;
+  routePath?: string;
 }
 
 export function createWorld(seeds: WorldSeeds = {}): World {
@@ -803,7 +803,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     preferencesReopen = false,
     accountAccess: accountAccessSeed = ACCOUNT_ACCESS_IDLE,
     registrationAvailable = false,
-    routeHash,
+    routePath,
   } = seeds;
 
   const merged: HookValues = { ...DEFAULTS, ...initial };
@@ -1249,7 +1249,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     demoAccounts,
     accountAccess,
     registrationAvailable,
-    routes: routeHash === undefined ? null : createFakeRouteHistory(routeHash),
+    routes: routePath === undefined ? null : createFakeRouteHistory(routePath),
     navigateAccountAccess,
     jarvisSkin,
     jarvis,

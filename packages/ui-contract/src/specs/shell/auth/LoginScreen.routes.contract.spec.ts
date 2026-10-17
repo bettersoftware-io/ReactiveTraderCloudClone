@@ -1,8 +1,8 @@
 /**
- * LoginScreen hash routes (spec §6): the URL follows the login screen's
+ * LoginScreen path routes (spec §6): the URL follows the login screen's
  * mode, the four links push, a result replaces, and Back/Forward reopens
  * the mode the URL names. Every mount but the last is seeded with a fake
- * page history (`routeHash`); the world's fake `accountAccess` moves to the
+ * page history (`routePath`); the world's fake `accountAccess` moves to the
  * phase each navigation intent opens, so the hook sees the same states a
  * real machine would emit.
  */
@@ -24,22 +24,22 @@ afterEach(() => {
 });
 
 describe("LoginScreen routes — mount", () => {
-  it("replaces an empty hash with the sign-in route", () => {
+  it("replaces an empty path with the sign-in route", () => {
     const page = mountRouted("");
 
     expect(page.phase()).toBe("signIn");
-    expect(page.routeWrites()).toEqual(["replace #/sign-in"]);
+    expect(page.routeWrites()).toEqual(["replace /sign-in"]);
   });
 
   it("opens the create-account form the URL names, writing nothing", () => {
-    const page = mountRouted("#/create-account");
+    const page = mountRouted("/create-account");
 
     expect(page.phase()).toBe("register");
     expect(page.routeWrites()).toEqual([]);
   });
 
   it("opens the reset request the URL names", () => {
-    const page = mountRouted("#/forgot-password");
+    const page = mountRouted("/forgot-password");
 
     expect(page.phase()).toBe("requestReset");
     expect(page.routeWrites()).toEqual([]);
@@ -49,40 +49,40 @@ describe("LoginScreen routes — mount", () => {
     const page = mount(LoginScreen, {
       auth: { status: "unauthenticated" },
       registrationAvailable: false,
-      routeHash: "#/create-account",
+      routePath: "/create-account",
     });
 
     expect(page.phase()).toBe("signIn");
-    expect(page.routeWrites()).toEqual(["replace #/sign-in"]);
+    expect(page.routeWrites()).toEqual(["replace /sign-in"]);
   });
 
   it("keeps a workspace route, showing the sign-in form", () => {
-    const page = mountRouted("#/credit");
+    const page = mountRouted("/credit");
 
     expect(page.phase()).toBe("signIn");
     expect(page.routeWrites()).toEqual([]);
-    expect(page.routeHash()).toBe("#/credit");
+    expect(page.routePath()).toBe("/credit");
   });
 });
 
 describe("LoginScreen routes — the links push", () => {
   it("pushes the create-account route from Create account", async () => {
-    const page = mountRouted("#/sign-in");
+    const page = mountRouted("/sign-in");
 
     await page.openCreateAccount();
 
     expect(page.phase()).toBe("register");
-    expect(page.routeWrites()).toEqual(["push #/create-account"]);
+    expect(page.routeWrites()).toEqual(["push /create-account"]);
     expect(page.navigations()).toEqual(["returnToSignIn", "startRegistration"]);
   });
 
   it("pushes the reset route from Forgot password?", async () => {
-    const page = mountRouted("#/sign-in");
+    const page = mountRouted("/sign-in");
 
     await page.openForgotPassword();
 
     expect(page.phase()).toBe("requestReset");
-    expect(page.routeWrites()).toEqual(["push #/forgot-password"]);
+    expect(page.routeWrites()).toEqual(["push /forgot-password"]);
     expect(page.navigations()).toEqual(["returnToSignIn", "startReset"]);
   });
 
@@ -94,34 +94,34 @@ describe("LoginScreen routes — the links push", () => {
         failure: "unconfirmed",
       },
       registrationAvailable: true,
-      routeHash: "#/sign-in",
+      routePath: "/sign-in",
     });
 
     await page.openCodeEntry();
 
     expect(page.phase()).toBe("code");
-    expect(page.routeWrites()).toEqual(["push #/enter-code"]);
+    expect(page.routeWrites()).toEqual(["push /enter-code"]);
     expect(page.navigations()).toEqual(["returnToSignIn", "startCodeEntry"]);
   });
 
   it("pushes the code route from I already have a code", async () => {
-    const page = mountRouted("#/create-account");
+    const page = mountRouted("/create-account");
 
     await page.openCodeEntry();
 
     expect(page.phase()).toBe("code");
-    expect(page.routeWrites()).toEqual(["push #/enter-code"]);
+    expect(page.routeWrites()).toEqual(["push /enter-code"]);
     expect(page.navigations()).toEqual(["startRegistration", "startCodeEntry"]);
   });
 
   it.each([
     {
-      from: "#/create-account",
+      from: "/create-account",
       phase: "register",
       opened: "startRegistration",
     },
-    { from: "#/enter-code", phase: "code", opened: "startCodeEntry" },
-    { from: "#/forgot-password", phase: "requestReset", opened: "startReset" },
+    { from: "/enter-code", phase: "code", opened: "startCodeEntry" },
+    { from: "/forgot-password", phase: "requestReset", opened: "startReset" },
   ])(
     "pushes the sign-in route from Back to sign in on $from",
     async ({ from, phase, opened }) => {
@@ -132,18 +132,18 @@ describe("LoginScreen routes — the links push", () => {
       await page.goBack();
 
       expect(page.phase()).toBe("signIn");
-      expect(page.routeWrites()).toEqual(["push #/sign-in"]);
+      expect(page.routeWrites()).toEqual(["push /sign-in"]);
       expect(page.navigations()).toEqual([opened, "returnToSignIn"]);
     },
   );
 });
 
 describe("LoginScreen routes — Back and Forward", () => {
-  it("returns to sign-in when the history lands on #/sign-in, writing nothing", async () => {
-    const page = mountRouted("#/sign-in");
+  it("returns to sign-in when the history lands on /sign-in, writing nothing", async () => {
+    const page = mountRouted("/sign-in");
 
     await page.openCreateAccount();
-    await page.traverse("#/sign-in");
+    await page.traverse("/sign-in");
 
     expect(page.phase()).toBe("signIn");
     expect(page.navigations()).toEqual([
@@ -151,13 +151,13 @@ describe("LoginScreen routes — Back and Forward", () => {
       "startRegistration",
       "returnToSignIn",
     ]);
-    expect(page.routeWrites()).toEqual(["push #/create-account"]);
+    expect(page.routeWrites()).toEqual(["push /create-account"]);
   });
 
-  it("opens the reset request when the history lands on #/forgot-password", async () => {
-    const page = mountRouted("#/sign-in");
+  it("opens the reset request when the history lands on /forgot-password", async () => {
+    const page = mountRouted("/sign-in");
 
-    await page.traverse("#/forgot-password");
+    await page.traverse("/forgot-password");
 
     expect(page.phase()).toBe("requestReset");
     expect(page.navigations()).toEqual(["returnToSignIn", "startReset"]);
@@ -170,7 +170,7 @@ describe("LoginScreen routes — results replace", () => {
     const world = createWorld({
       auth: { status: "unauthenticated" },
       registrationAvailable: true,
-      routeHash: "#/sign-in",
+      routePath: "/sign-in",
     });
     const page = mountWith(world, LoginScreen);
 
@@ -183,11 +183,11 @@ describe("LoginScreen routes — results replace", () => {
 
     expect(page.phase()).toBe("code");
     expect(page.routeWrites()).toEqual([
-      "push #/create-account",
-      "replace #/enter-code",
+      "push /create-account",
+      "replace /enter-code",
     ]);
 
-    await page.traverse("#/sign-in");
+    await page.traverse("/sign-in");
 
     expect(page.phase()).toBe("signIn");
     expect(page.routeWrites()).toHaveLength(2);
@@ -221,18 +221,18 @@ describe("LoginScreen routes — a page with no route history", () => {
     expect(() => {
       return page.routeWrites();
     }).toThrow(
-      "this mount has no route history: pass `routeHash` to mount(...)",
+      "this mount has no route history: pass `routePath` to mount(...)",
     );
   });
 });
 
 /** Mounts LoginScreen signed out, with registration, on a page whose
- * history holds `hash`. */
-function mountRouted(hash: string): LoginScreenPage {
+ * history holds `path`. */
+function mountRouted(path: string): LoginScreenPage {
   return mount(LoginScreen, {
     auth: { status: "unauthenticated" },
     registrationAvailable: true,
-    routeHash: hash,
+    routePath: path,
   });
 }
 

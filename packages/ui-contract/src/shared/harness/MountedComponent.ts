@@ -261,11 +261,11 @@ export abstract class MountedComponent<P> {
     this.ctx.selectInstrument(symbol);
   }
 
-  /** The fake page history this mount was seeded with (`routeHash`). */
+  /** The fake page history this mount was seeded with (`routePath`). */
   protected routeHistory(): FakeRouteHistory {
     if (this.ctx.routes === null) {
       throw new Error(
-        "this mount has no route history: pass `routeHash` to mount(...)",
+        "this mount has no route history: pass `routePath` to mount(...)",
       );
     }
 

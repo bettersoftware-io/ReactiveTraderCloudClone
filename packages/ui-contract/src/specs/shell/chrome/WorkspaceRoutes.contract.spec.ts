@@ -1,9 +1,9 @@
 /**
- * Workspace hash routes (spec §5), over the real `App` shell (`AppShell`,
+ * Workspace path routes (spec §5), over the real `App` shell (`AppShell`,
  * as the HeaderChrome and JarvisDriver specs mount it): the URL's tab wins
  * on mount, every later tab change pushes its route, and Back/Forward
  * switches to the tab the history lands on. Every mount is seeded with a
- * fake page history (`routeHash`).
+ * fake page history (`routePath`).
  */
 
 import { AppShell } from "@ui-contract/components";
@@ -17,15 +17,15 @@ afterEach(() => {
 });
 
 describe("Workspace routes — mount", () => {
-  it("replaces an empty hash with the tab on screen", () => {
-    const app = mount(AppShell, { routeHash: "" });
+  it("replaces an empty path with the tab on screen", () => {
+    const app = mount(AppShell, { routePath: "" });
 
     expect(app.header.isActive("fx")).toBe(true);
-    expect(app.routeWrites()).toEqual(["replace #/fx"]);
+    expect(app.routeWrites()).toEqual(["replace /fx"]);
   });
 
   it("switches to the tab the URL names, writing nothing", () => {
-    const app = mount(AppShell, { routeHash: "#/credit" });
+    const app = mount(AppShell, { routePath: "/credit" });
 
     expect(app.header.isActive("credit")).toBe(true);
     expect(app.routeWrites()).toEqual([]);
@@ -34,16 +34,16 @@ describe("Workspace routes — mount", () => {
 
 describe("Workspace routes — tab changes push", () => {
   it("pushes the tab a click opens", async () => {
-    const app = mount(AppShell, { routeHash: "#/fx" });
+    const app = mount(AppShell, { routePath: "/fx" });
 
     await app.header.clickTab("equities");
 
     expect(app.header.isActive("equities")).toBe(true);
-    expect(app.routeWrites()).toEqual(["push #/equities"]);
+    expect(app.routeWrites()).toEqual(["push /equities"]);
   });
 
   it("pushes the tab a Jarvis switchTab command opens", async () => {
-    const app = mount(AppShell, { routeHash: "#/fx" });
+    const app = mount(AppShell, { routePath: "/fx" });
 
     await app.overlay.pressHotkey();
     await app.overlay.send("switch to admin");
@@ -59,28 +59,28 @@ describe("Workspace routes — tab changes push", () => {
     await vi.advanceTimersByTimeAsync(DRIVE_SETTLE_MS);
 
     expect(app.header.isActive("admin")).toBe(true);
-    expect(app.routeWrites()).toEqual(["push #/admin"]);
+    expect(app.routeWrites()).toEqual(["push /admin"]);
   });
 });
 
 describe("Workspace routes — Back and Forward", () => {
   it("switches to the tab the history lands on, writing nothing", async () => {
-    const app = mount(AppShell, { routeHash: "#/fx" });
+    const app = mount(AppShell, { routePath: "/fx" });
 
     await app.header.clickTab("credit");
-    await app.traverse("#/fx");
+    await app.traverse("/fx");
 
     expect(app.header.isActive("fx")).toBe(true);
-    expect(app.routeWrites()).toEqual(["push #/credit"]);
+    expect(app.routeWrites()).toEqual(["push /credit"]);
   });
 
   it("rewrites a login route the history lands on to the tab on screen", async () => {
-    const app = mount(AppShell, { routeHash: "#/credit" });
+    const app = mount(AppShell, { routePath: "/credit" });
 
-    await app.traverse("#/create-account");
+    await app.traverse("/create-account");
 
     expect(app.header.isActive("credit")).toBe(true);
-    expect(app.routeWrites()).toEqual(["replace #/credit"]);
-    expect(app.routeHash()).toBe("#/credit");
+    expect(app.routeWrites()).toEqual(["replace /credit"]);
+    expect(app.routePath()).toBe("/credit");
   });
 });
