@@ -47,6 +47,7 @@ The **visual** (pixel-golden) tier has its own home under `client-react`:
 | `test:presenter:cucumber-fake-timers` | the same `@presenter` `.feature` corpus driven by Cucumber.js over the live presenters, virtual time (`@sinonjs/fake-timers`) | none | `presenter/cucumber-fake-timers/` + `presenter/steps/` | **parked — weekly** |
 | `test:fullstack:node` | smoke against the REAL server via a Node WebSocket (no browser) | own server | — (bare node script, no framework — the one exception) | gating |
 | `test:fullstack:browser` | smoke against the REAL server + client, Playwright drives the browser | own server + client | `fullstack/browser/` | gating |
+| `test:fullstack:browser:solid` | same config + specs, driven against `@rtc/client-solid` (`RTC_CLIENT_PKG=@rtc/client-solid`), server 4127 / client 3102 | own server + client | `fullstack/browser/` | gating |
 | `test:fullstack:browser:headed` | ↑ in a visible browser (`--headed`) | own server + client | `fullstack/browser/` | dev tool |
 | `test:hooks` | unit tests for the cucumber-js hooks' teardown policy (`browser/playwright-cucumber/__tests__`), plain vitest | none | — | CI `checks` ("Cucumber hooks unit tests") |
 | `test:pages` | unit tests for the gh-pages tooling (`scripts/pages/`: index, visual report, publish) | none | — | CI `checks` ("Pages tooling unit tests") |
@@ -149,8 +150,10 @@ and `STRATEGY.md` §7.1.
 Full-stack smokes are self-contained: `test:fullstack:node` boots the real
 server on port 4123 and drives it directly over a Node WebSocket;
 `test:fullstack:browser` boots the real server on 4124 and the Vite client on
-3100, then runs a Playwright spec against the live UI. Neither uses mocks or
-simulators.
+3100, then runs a Playwright spec against the live UI;
+`test:fullstack:browser:solid` runs the same specs against `@rtc/client-solid`
+on 4127/3102 (`RTC_CLIENT_PKG`, as for the browser suites). Neither uses mocks
+or simulators. `test:fullstack:hybrid` stays React-only.
 
 ## What the browser suites drive: a build, or the dev server
 

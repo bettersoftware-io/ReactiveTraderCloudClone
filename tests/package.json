@@ -25,6 +25,7 @@
     "test:browser:playwright:ui": "RTC_E2E_SERVE=dev node scripts/with-server.ts playwright test --ui --config browser/playwright/playwright.config.ts",
     "test:e2e": "pnpm gates && node scripts/run-all.ts",
     "test:fullstack:browser": "node fullstack/browser-smoke.ts",
+    "test:fullstack:browser:solid": "RTC_CLIENT_PKG=@rtc/client-solid node fullstack/browser-smoke.ts",
     "test:fullstack:browser:headed": "FULLSTACK_HEADED=1 node fullstack/browser-smoke.ts",
     "test:fullstack:hybrid": "node fullstack/hybrid-smoke.ts",
     "test:fullstack:hybrid:headed": "FULLSTACK_HEADED=1 node fullstack/hybrid-smoke.ts",

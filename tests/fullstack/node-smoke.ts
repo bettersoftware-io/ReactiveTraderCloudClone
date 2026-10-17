@@ -284,9 +284,10 @@ function postLogin(
 // (every `createWsRealPorts` call constructs a real `WsJarvisAdapter`)
 // without needing the concrete class.
 
-// Distinct from THREE neighbors also claiming a port in this dir: this
+// Distinct from the neighbors also claiming a port in this dir: this
 // file's own `PORT` (4123, default), `browser-smoke.ts`'s `SERVER_PORT`
-// (4124, default — both run concurrently under run-all.ts's e2e suite) and
+// (4124 React, 4127 Solid — all concurrent under run-all.ts's e2e suite; 4126
+// is THIS file's own gated port, which the Solid run once collided with) and
 // `../scripts/jarvis-live-smoke.ts`'s hardcoded 4125 (manual-only, not part
 // of run-all.ts, but still a live claim worth staying clear of).
 const GATED_PORT: number = PORT + 3;

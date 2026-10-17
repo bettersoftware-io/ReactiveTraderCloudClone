@@ -6,8 +6,12 @@
  * VITE_SERVER_URL pointed at the server, so the client's composition root wires
  * its WsReal adapters instead of the simulators), then runs the Playwright spec
  * in fullstack/browser/ which asserts that live prices render in the UI. This is
- * the most faithful test — browser → React → presenter → socket → server →
+ * the most faithful test — browser → web client → presenter → socket → server →
  * domain — and the only one that puts the real backend behind the real DOM.
+ *
+ * Runs against the React client by default, or the Solid one with
+ * RTC_CLIENT_PKG=@rtc/client-solid (test:fullstack:browser:solid); run-all.ts
+ * runs both.
  *
  * Exits non-zero if the server, client, or Playwright run fails.
  */
@@ -15,6 +19,7 @@ import { spawn } from "node:child_process";
 
 import {
   MONOREPO_ROOT,
+  resolveSmokeClientPkg,
   startClient,
   startServer,
   stopProcess,
@@ -22,8 +27,17 @@ import {
 } from "./_orchestration.ts";
 
 const HOST = "127.0.0.1";
-const SERVER_PORT = Number(process.env.FULLSTACK_PORT ?? 4124);
-const CLIENT_PORT = Number(process.env.FULLSTACK_CLIENT_PORT ?? 3100);
+const CLIENT_PKG = resolveSmokeClientPkg();
+// The Solid run (test:fullstack:browser:solid) gets its own port pair so
+// run-all.ts can run it beside the React one: 4124/3100 React, 4127/3102 Solid.
+const isSolid = CLIENT_PKG === "@rtc/client-solid";
+const SERVER_PORT = Number(
+  process.env.FULLSTACK_PORT ?? (isSolid ? 4127 : 4124),
+);
+
+const CLIENT_PORT = Number(
+  process.env.FULLSTACK_CLIENT_PORT ?? (isSolid ? 3102 : 3100),
+);
 
 function runPlaywright(): Promise<number> {
   return new Promise((resolve) => {
@@ -62,10 +76,14 @@ function runPlaywright(): Promise<number> {
 }
 
 console.log(
-  `full-stack smoke (browser): server :${SERVER_PORT}, client :${CLIENT_PORT}`,
+  `full-stack smoke (browser): ${CLIENT_PKG}, server :${SERVER_PORT}, client :${CLIENT_PORT}`,
 );
 const server = startServer(SERVER_PORT, HOST);
-const client = startClient(CLIENT_PORT, `ws://${HOST}:${SERVER_PORT}`);
+const client = startClient(
+  CLIENT_PKG,
+  CLIENT_PORT,
+  `ws://${HOST}:${SERVER_PORT}`,
+);
 let exitCode = 0;
 
 try {
