@@ -5,7 +5,7 @@
 // github-slugger, the same slugger GitHub itself uses). External links
 // (anything with a URL scheme, e.g. `https:`) are skipped.
 //
-// Scope: README.md, CLAUDE.md, docs/*.md, docs/architecture/**/*.md,
+// Scope: README.md, CLAUDE.md, CHANGELOG.md, docs/*.md, docs/architecture/**/*.md,
 // docs/adr/*.md, docs/research/*.md, docs/superpowers/specs/*.md,
 // tests/**/*.md, packages/*/README.md.
 //
@@ -25,6 +25,7 @@ const root = process.cwd();
 const patterns = [
   "README.md",
   "CLAUDE.md",
+  "CHANGELOG.md",
   "docs/*.md",
   "docs/architecture/**/*.md",
   "docs/adr/*.md",
