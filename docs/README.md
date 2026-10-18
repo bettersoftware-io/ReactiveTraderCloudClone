@@ -49,7 +49,9 @@ flowchart TD
 - [`adr/`](adr/) — Architecture Decision Records (e.g.
   [ADR-005 UI-logic placement](adr/ADR-005-ui-logic-placement.md),
   [ADR-007 CI security tooling](adr/ADR-007-ci-security-tooling.md) — what
-  runs, and why Snyk / SonarCloud were declined).
+  runs, and why Snyk / SonarCloud were declined;
+  [ADR-008 CI's turbo cache](adr/ADR-008-ci-turbo-remote-cache.md) — Vercel
+  Remote Cache over OIDC, the five options weighed, and how to switch).
 - [`security-scorecard.md`](security-scorecard.md) — reading the OpenSSF
   Scorecard: what each open check measures, why `Code-Review` /
   `Branch-Protection` are capped for a single maintainer, the property-based

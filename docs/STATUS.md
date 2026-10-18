@@ -9,7 +9,7 @@
 > they move here once they earn a spec or plan. See [README.md](README.md) for
 > the full document map.
 >
-> Maintained via the `tracking-workstream-status` skill. **Last updated: 2026-10-17**
+> Maintained via the `tracking-workstream-status` skill. **Last updated: 2026-10-18**
 
 ## 🟡 In progress
 
@@ -35,6 +35,7 @@
 
 ## 🟠 Planned but gated / not executed
 
+- **CI turbo remote cache — wired, dormant until the operator's Vercel setup** (gated on the maintainer: two steps only they can do). `ci.yml`'s `checks` job trades its GitHub OIDC token for a cache-only Turborepo token, but the step stays skipped until (1) a Turborepo CLI OIDC policy exists in the Vercel team (repository + `ci.yml`) and (2) the `TURBO_TEAM` repository variable is set. Then: verify the next `main` push writes the cache and later PRs hit it, and record the real `Tests (unit)` / `Typecheck` saving against the ~1.5–2 min estimate. Decision, options and steps: [ADR-008](adr/ADR-008-ci-turbo-remote-cache.md#setup).
 - **vitest 5 follow-ups** — the upgrade itself LANDED 2026-10-04 (4.1.x → 5.0.3; write-up in [vitest-5.md](vitest-5.md)). Three things stay open. (1) **Report the mock regression upstream.** vitest 5.0.0–5.0.3 gives only the first of several concurrent re-imports the mock after a setup-file preload and `vi.resetModules()`. It is unreported, and vitest's rules require a person, not an agent, to open the issue: [vitest-5-upstream-bug-report.md](vitest-5-upstream-bug-report.md) has the steps and the text. (2) **Remove the workaround once upstream fixes it**: one `await import("../app{Head,Panel}Registry")` line in each of `client-solid`'s two registry tests; the same page says how to verify. (3) **Drop the `peerDependencyRules` override** in `pnpm-workspace.yaml` once a `vitest-browser-solid` release peers on vitest `^5` (upstream PR advancedtw/vitest-browser-solid#6, open since 2026-09-06; the adapter has had no commit since 2025-10-31)
 - **Expo SDK 58 cascade — react-native 0.87 / `@react-native/jest-preset` 0.87 / jest 30 / react-native-gesture-handler 3** — standing policy (#67/#546): the SDK drives `react-native`, never bump it alone. **Measured 2026-09-16** by taking Renovate's #732 (`react-native` ^0.86 → ^0.87) all the way to a green-or-red answer; it is red, and the hard stop is the bundler, not the types:
   - **BLOCKER (no workaround from this repo): Metro cannot bundle.** `@expo/metro-config@57.0.12` — the LAST SDK 57 release — does `require(path.join(reactNativeHostPath, "rn-get-polyfills"))` at `ExpoMetroConfig.js:298`, and 0.87 deleted that file along with its `@react-native/js-polyfills` dependency. `pnpm --filter @rtc/client-react-native export` (CI's "Expo bundle smoke") dies with `Cannot find module …/react-native/rn-get-polyfills`. It is a path-require into react-native's own directory from inside `@expo/metro-config`, so no user `metro.config.mts` can intervene; only `pnpm patch` or SDK 58 fixes it. **This is why the bump cannot land, and it is invisible to every gate that runs locally** — `/rtc:gauntlet full` skips the Expo bundle smoke by design.
