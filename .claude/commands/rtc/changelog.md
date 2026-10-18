@@ -78,6 +78,11 @@ when it tags a finished week. If one is open for the week you wrote
 (`gh issue list --search "in:title Changelog: write"`), put `Closes #<n>` in
 the PR body.
 
+Merging publishes the week as a GitHub Release by itself: `sync-releases.yml`
+regenerates the notes from the section on every change to this file (and
+waits for the week's tag if it does not exist yet). Never edit a release by
+hand — the next sync overwrites it.
+
 Do not create or move a week tag here: `weekly-tag.yml` owns them, and tags
 the last commit on `main` before Monday 00:00 UTC — which is by design
 *earlier* than the PR that writes the week up.

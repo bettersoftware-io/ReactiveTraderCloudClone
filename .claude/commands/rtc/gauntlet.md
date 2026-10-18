@@ -48,6 +48,7 @@ otherwise one line ("all N CI steps mapped").
 | React Compiler coverage | fast |
 | Worklet capture safety (RN + motion-core) | fast |
 | Pages tooling unit tests | fast |
+| Changelog release-sync unit tests | fast |
 | E2E harness tooling + deployed-file guards (unit) | fast |
 | Cucumber hooks unit tests | fast |
 | Dead code (knip) | fast |
@@ -85,7 +86,7 @@ exactly the failure it exists to prevent.
 
 > **Adding or removing a gate below?** `CLAUDE.md`'s `/rtc:gauntlet` row states
 > the fast-gate count in prose and nothing verifies it — it has already gone
-> stale twice (14 → 15 → 18 → 19 → 20 → 21). Update it in the same commit.
+> stale twice (14 → 15 → 18 → 19 → 20 → 21 → 22). Update it in the same commit.
 
 Run in this order and stop reporting nothing until all have run (run them all
 even if one fails — a single command's failure is not a reason to skip the rest):
@@ -107,6 +108,7 @@ pnpm check:react-policies               # compiler / memo-ban / react-hooks poli
 pnpm check:compiler                     # React Compiler coverage (de-memoized files)
 pnpm check:worklet-order                # worklet capture safety (RN + motion-core)
 pnpm --filter @rtc/tests test:pages     # pages tooling units
+pnpm --filter @rtc/tests test:changelog # CHANGELOG.md → releases sync units
 pnpm --filter @rtc/tests test:report    # e2e harness tooling units (report render, core selection) + the web clients' deployed-file guards
 pnpm --filter @rtc/tests test:hooks     # cucumber hooks units
 pnpm lint:dead                          # knip

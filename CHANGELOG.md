@@ -25,6 +25,9 @@ Each finished week is also a **git tag** of the same name, on the last commit
 that reached `main` before Monday 00:00 UTC — so `git diff 2026-W39 2026-W40`
 is exactly the change the W40 section describes. The `Weekly tag` workflow
 creates the tag and opens a reminder issue; `/rtc:changelog` writes the entry.
+Each tagged week is also a [GitHub Release](https://github.com/bettersoftware-io/ReactiveTraderCloudClone/releases)
+whose notes are generated from its section here, so edit this file, never a
+release.
 
 ## 2026-W41 — 5 Oct – 11 Oct
 
