@@ -31,6 +31,7 @@
     "test:fullstack:hybrid:solid": "RTC_CLIENT_PKG=@rtc/client-solid node fullstack/hybrid-smoke.ts",
     "test:fullstack:hybrid:headed": "FULLSTACK_HEADED=1 node fullstack/hybrid-smoke.ts",
     "test:fullstack:node": "node fullstack/node-smoke.ts",
+    "test:changelog": "vitest run scripts/changelog",
     "test:hooks": "vitest run browser/playwright-cucumber",
     "test:pages": "vitest run scripts/pages",
     "test:presenter:cucumber-fake-timers": "cucumber-js --config presenter/cucumber-fake-timers/cucumber.mts",

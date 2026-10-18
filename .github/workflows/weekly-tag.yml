@@ -7,7 +7,8 @@ name: Weekly tag
 #      changelog's W40 section describes;
 #   2. opens a reminder issue to write that week's entry with `/rtc:changelog`.
 # Writing the entry needs judgement (grouping, the Decisions section), so it is
-# NOT done here — only the two steps a script can get right.
+# NOT done here — only the two steps a script can get right. Once the entry
+# lands, sync-releases.yml publishes it as this tag's GitHub Release.
 #
 # Idempotent: the tag is the "this week is closed" marker, so a run that finds
 # it does nothing. A manual dispatch (which targets the most recently FINISHED

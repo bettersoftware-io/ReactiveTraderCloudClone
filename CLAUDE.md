@@ -44,7 +44,7 @@ so every worktree and session gets them):
 
 | Command | What it does |
 |---|---|
-| `/rtc:gauntlet [full]` | Local mirror of CI's `checks` job. Bare = the 21 fast gates (~50s, no build). `full` adds typecheck, unit tests, the eight ≥95% coverage gates (both UI contracts, devtools core + app, both alternative cores, `@rtc/web-boot`, the React Native client's merged lines), type-aware ESLint, build, and the post-build `/devtools/` and core-bundle checks (~9 min). `e2e` is excluded — it's a separate CI job; run `pnpm test:e2e` explicitly. |
+| `/rtc:gauntlet [full]` | Local mirror of CI's `checks` job. Bare = the 22 fast gates (~50s, no build). `full` adds typecheck, unit tests, the eight ≥95% coverage gates (both UI contracts, devtools core + app, both alternative cores, `@rtc/web-boot`, the React Native client's merged lines), type-aware ESLint, build, and the post-build `/devtools/` and core-bundle checks (~9 min). `e2e` is excluded — it's a separate CI job; run `pnpm test:e2e` explicitly. |
 | `/rtc:status [live\|backlog]` | Live branch/PR/CI position plus a summary of `docs/STATUS.md` (never inlined — it is well over 100 KB). |
 | `/rtc:docs [keywords]` | Capture a session's findings into `docs/` — surveys the ~430-file corpus, routes by finding type (STATUS.md goes via its own skill), proposes placement, then ships a PR through merge. |
 | `/rtc:changelog [week]` | Write the week's entry in the root `CHANGELOG.md` from the PRs merged that week (ISO-week "versions", grouped by theme with a `Decisions` section), prove every merged PR is cited, then ship a PR. The changelog says what **landed**; `docs/STATUS.md` says what is **pending**. |
@@ -82,6 +82,7 @@ and dozens of merges old.
 | `publish-site.yml` | push to main | — |
 | `e2e-gherkin-weekly.yml` | weekly cron (Mon 06:00) | up to 7 days of Gherkin drift |
 | `weekly-tag.yml` | weekly cron (Mon 00:05 UTC) | — (tags the finished ISO week `2026-Wnn` and opens a "write the changelog" issue; the entry itself is written by `/rtc:changelog`, so `CHANGELOG.md` lags until someone runs it) |
+| `sync-releases.yml` | push to main touching `CHANGELOG.md` + cron (Mon 00:30 UTC) | — (one GitHub Release per tagged week, its notes generated from that week's `CHANGELOG.md` section; a release edited by hand is overwritten, so edit the changelog) |
 | `accounts-keepalive.yml` | cron (Mon + Thu 07:17 UTC) | — (reads the deployed server's `/health/accounts`, which keeps a free-plan Supabase project from pausing; fails when the account store reads `down`, e.g. a paused project) |
 
 **Before trusting the coverage report, refresh it and wait** (~7 min):
