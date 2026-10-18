@@ -201,6 +201,9 @@ jobs:
       - name: Pages tooling unit tests
         run: pnpm --filter @rtc/tests test:pages
 
+      - name: Changelog release-sync unit tests
+        run: pnpm --filter @rtc/tests test:changelog
+
       - name: E2E harness tooling + deployed-file guards (unit)
         run: pnpm --filter @rtc/tests test:report
 
