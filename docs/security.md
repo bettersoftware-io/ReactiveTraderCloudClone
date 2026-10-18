@@ -274,11 +274,18 @@ address); the demo roster a production build inlines comes from the committed
 `.env.production`, not from Vercel. The deploy workflow refuses a build in
 which either is missing from the bundle ([`DEPLOY.md`](DEPLOY.md#deploying)).
 
+One team setting serves CI rather than the clients: a **Turborepo CLI OIDC
+policy** (Settings → Build and Deployment → OIDC Policies for CLI Access) that
+lets this repository's `ci.yml` trade its GitHub OIDC token for a short-lived,
+cache-only Turborepo token. It stores nothing; deleting it turns the remote
+cache off ([ADR-008](adr/ADR-008-ci-turbo-remote-cache.md)).
+
 ### 5.5 GitHub repository
 
 | Item | Purpose |
 |---|---|
 | Actions secrets `FLY_API_TOKEN`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, the `VERCEL_*_PROJECT_ID`s | Deploy tokens only; no runtime secret and no account-store key is reachable from CI. |
+| Actions variable `TURBO_TEAM` (not a secret) and `id-token: write` on `ci.yml`'s `checks` job | The remote cache: the job trades its OIDC token for a cache-only token that is revoked when the job ends; PR runs read the cache and only `main` writes it ([ADR-008](adr/ADR-008-ci-turbo-remote-cache.md)). |
 | The `main` ruleset, secret scanning with push protection, read-only default workflow token | Changes land only through a PR; a pasted key is rejected at push. |
 | `deploy.yml`, `update-visual-goldens.yml`, `coverage-report.yml` on `workflow_dispatch` only | Nothing deploys or publishes on a merge. |
 | `accounts-keepalive.yml` (Monday and Thursday) | Reads `/health/accounts`, which keeps a free-plan project from pausing, and fails on `down`. |

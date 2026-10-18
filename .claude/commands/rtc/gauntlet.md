@@ -68,8 +68,9 @@ otherwise one line ("all N CI steps mapped").
 | Expo bundle smoke (Metro monorepo resolution) | CI-only — Metro monorepo resolution belongs on a clean runner |
 
 Setup steps (Enable Corepack, Resolve pnpm store path, Cache the pnpm store,
-Install dependencies, checkout, setup-node) are **infra** — the `!` block above
-already filters them out, so they never appear and never false-flag.
+Install dependencies, Cache the turbo tasks remotely, checkout, setup-node) are
+**infra** — the `!` block above already filters them out, so they never appear
+and never false-flag.
 
 Only one step may be skipped locally: **Expo bundle smoke**. The fast tier
 skips the `full` rows by design. Anything else unmapped is drift, not a
