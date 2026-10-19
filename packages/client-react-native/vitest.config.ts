@@ -36,6 +36,7 @@ export default defineConfig({
       "src/**/*.test.ts",
       "tests/**/*.test.ts",
       "scripts/**/*.test.ts",
+      "plugins/**/*.test.ts",
       "*.test.ts",
     ],
     // `tests/visual/owl/` stays excluded even though the owl TEST is gone (the

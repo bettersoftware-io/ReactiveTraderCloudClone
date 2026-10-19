@@ -23,6 +23,7 @@ Runs on **Expo SDK 57 / React Native 0.86** (see
 | `src/app/adapters/` | `AsyncStoragePreferencesAdapter`, `AsyncStorageSessionStore`, `AppearanceColorSchemeAdapter` — the native-specific gateways this app supplies |
 | `src/app/devtools/` | The RTC DevTools wiring (`nativeDevtoolsHub`, presenter manifest, relay URL), applied under `__DEV__` only |
 | `src/ui/` | Dumb RN screens and components, grouped by trading domain (`rates/`, `blotter/`, `credit/`, `equities/`, `analytics/`) plus shared chrome (`shell/`, `theme/`, `ambient/`) |
+| `plugins/` | Expo config plugins applied at prebuild (`app.config.ts` `plugins`): `withSceneLifecycle` makes the generated iOS project adopt the UIKit scene life cycle, which Xcode 27 requires |
 | `tests/visual/` | The RN visual tier: simctl/Maestro drivers and committed RN goldens (see its [README](tests/visual/README.md)) |
 
 Note the two `app` directories are not the same thing: package-root `app/` is
@@ -101,6 +102,27 @@ compile the dev build, install it in an emulator and start Metro. See
   xcodebuild) and takes ~10–15 min; later runs are incremental and fast.
 - Once it launches, flip the in-app **Simulator** switch for instant
   deterministic tiles — no server or token needed.
+
+**Xcode 27.** An app built with the iOS 27 SDK must adopt the UIKit scene
+life cycle. Otherwise it builds green, installs, and is killed at launch: a
+`SIGTRAP` with no crash report, and only "UIScene life cycle is required for
+apps built with this SDK" in the device log. The SDK 57 template still has
+the app delegate own the window, so
+[`plugins/withSceneLifecycle.ts`](plugins/withSceneLifecycle.ts) rewrites
+the generated `ios/` at every prebuild. It adds `UIApplicationSceneManifest`
+to `Info.plist` and a `SceneDelegate` built on `expo@57`'s own
+`ExpoAppSceneDelegate`, and hands the app delegate's React Native factory over
+to it. These are the three edits the SDK 58 template makes, so the plugin goes
+when the app moves to SDK 58. `expo run:ios` prebuilds only when `ios/` is
+missing, so an `ios/` generated before the plugin landed keeps the old app
+delegate. Regenerate it once with
+`pnpm --filter @rtc/client-react-native exec expo prebuild --platform ios --clean`
+(or delete `ios/`), then `pnpm dev:ios`.
+
+Checked on 2026-10-19 with Xcode 27.1 on an iOS 27.1 simulator: `dev:ios`
+builds, launches and reaches the sign-in screen, with no scene error in the
+log (`xcrun simctl spawn booted log show --last 10m --predicate
+'process == "RTCMobile" AND messageType == error'`).
 
 <details>
 <summary>Force deterministic simulator data without tapping the toggle</summary>
