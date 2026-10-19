@@ -4,10 +4,13 @@ import { argv, env, exit } from "node:process";
 
 import type { VisualDriver } from "../driver.ts";
 import { SCENARIO_IDS } from "../scenarioIds.ts";
-import { resolveBootedUdid } from "../shared/bootedUdid.ts";
 import { hideDevMenuFab, restoreDevMenuFab } from "../shared/devMenuFab.ts";
 import { compareToGolden, toleranceFor, verdictLine } from "../shared/diff.ts";
 import { goldenPath } from "../shared/goldens.ts";
+import {
+  refuseMissingDevClient,
+  resolvePinnedSimulator,
+} from "../shared/pinnedSimulator.ts";
 import { refuseDeviceInUse } from "../shared/refuseDeviceInUse.ts";
 import { parseSkinFlag, type SkinOverride } from "../skinOverride.ts";
 import { createSimctlDriver } from "./capture.ts";
@@ -56,9 +59,10 @@ interface RunOptions {
  *
  *   node tests/visual/simctl/run.ts --scratch --skin=neon:light rates/tiles
  *
- * Config via env: `RTC_VISUAL_UDID` (defaults to the booted simulator's real
- * UDID, resolved via `simctl` — NOT the literal `"booted"` alias, which `idb`
- * rejects; see `resolveBootedUdid`), `RTC_VISUAL_METRO_PORT` (default `8083`),
+ * Config via env: `RTC_VISUAL_UDID` (which pinned simulator to drive when
+ * there are several; refused when it is not the device the goldens were shot
+ * on — by default the run finds and boots that device itself, see
+ * `resolvePinnedSimulator`), `RTC_VISUAL_METRO_PORT` (default `8083`),
  * `RTC_VISUAL_IDB` (path to the `idb` binary, default resolves via `PATH`).
  */
 async function main(): Promise<void> {
@@ -109,9 +113,10 @@ async function main(): Promise<void> {
           return idFilter.has(id);
         });
 
-  const udid = env.RTC_VISUAL_UDID ?? (await resolveBootedUdid());
+  const udid = await resolvePinnedSimulator(env.RTC_VISUAL_UDID);
 
   await refuseDeviceInUse(udid, "ios");
+  await refuseMissingDevClient(udid);
 
   const driver = createSimctlDriver({
     udid,

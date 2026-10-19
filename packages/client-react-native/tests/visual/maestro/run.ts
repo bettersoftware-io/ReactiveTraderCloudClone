@@ -7,11 +7,10 @@ import { promisify } from "node:util";
 import { SCENARIO_IDS } from "../scenarioIds.ts";
 import {
   hideAndroidDevMenu,
-  resolveAndroidSerial,
+  resolvePinnedEmulator,
   restoreAndroidDevMenu,
   reverseMetroPort,
 } from "../shared/androidDevice.ts";
-import { resolveBootedUdid } from "../shared/bootedUdid.ts";
 import { hideDevMenuFab, restoreDevMenuFab } from "../shared/devMenuFab.ts";
 import { compareToGolden, toleranceFor, verdictLine } from "../shared/diff.ts";
 import {
@@ -20,6 +19,10 @@ import {
 } from "../shared/emulatorWindow.ts";
 import { goldenPath } from "../shared/goldens.ts";
 import { failedFlowLines, noShotLine } from "../shared/maestroOutcome.ts";
+import {
+  refuseMissingDevClient,
+  resolvePinnedSimulator,
+} from "../shared/pinnedSimulator.ts";
 import { type Platform, resolvePlatform } from "../shared/platform.ts";
 import { refuseDeviceInUse } from "../shared/refuseDeviceInUse.ts";
 import { maskTopRows, STATUS_BAR_ROWS } from "../shared/statusBarMask.ts";
@@ -40,9 +43,11 @@ const exec = promisify(execFile);
  * prepares around them and the golden set it compares against.
  *
  * Env: `RTC_VISUAL_PLATFORM` (`ios`, the default, or `android`),
- * `RTC_VISUAL_UDID` (the simulator — or Android serial — to drive; defaults to
- * the single running one, and refuses to guess between two), `RTC_VISUAL_ADB`
- * (Android only: the `adb` binary, when it is not on `PATH`), `MAESTRO_METRO_PORT` (default `8083`, injected into the flow's
+ * `RTC_VISUAL_UDID` (which pinned simulator — or emulator serial — to drive
+ * when there are several; refused when it is not the device the goldens were
+ * shot on, see `shared/devicePin.ts`), `RTC_VISUAL_ADB` and
+ * `RTC_VISUAL_EMULATOR` (Android only: the `adb` and `emulator` binaries, when
+ * not on `PATH` / under `ANDROID_HOME`), `MAESTRO_METRO_PORT` (default `8083`, injected into the flow's
  * dev-client link — the `MAESTRO_` prefix is what makes Maestro interpolate
  * `${MAESTRO_METRO_PORT}`), `RTC_VISUAL_MAESTRO_SHOTS` (where the flows'
  * `takeScreenshot: shots/<id>` PNGs land). Maestro writes a relative
@@ -188,7 +193,7 @@ async function prepareDevice(
   metroPort: string,
 ): Promise<PreparedDevice> {
   if (platform === "android") {
-    const serial = env.RTC_VISUAL_UDID ?? (await resolveAndroidSerial());
+    const serial = await resolvePinnedEmulator(env.RTC_VISUAL_UDID);
 
     await refuseDeviceInUse(serial, "android");
 
@@ -209,9 +214,10 @@ async function prepareDevice(
 
   // The same UDID is what `hideDevMenuFab` needs — which is why this tier's
   // goldens carried the dev-menu gear until 2026-10-01.
-  const udid = env.RTC_VISUAL_UDID ?? (await resolveBootedUdid());
+  const udid = await resolvePinnedSimulator(env.RTC_VISUAL_UDID);
 
   await refuseDeviceInUse(udid, "ios");
+  await refuseMissingDevClient(udid);
   await hideDevMenuFab(udid);
 
   return {

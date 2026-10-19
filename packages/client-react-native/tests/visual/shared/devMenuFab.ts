@@ -87,7 +87,7 @@ const FAB_PREFERENCE_KEY = "EXDevMenuShowFloatingActionButton";
  * than imported so this module owes nothing to a specific driver.
  *
  * Wired into BOTH iOS tiers (the Maestro runner since 2026-10-02, once it
- * learned its UDID via `shared/bootedUdid.ts`); iOS-only besides. Until then
+ * learned its UDID, now via `shared/pinnedSimulator.ts`); iOS-only besides. Until then
  * Maestro's three committed goldens carried the bubble — it was a
  * near-constant ~12,670 px in every Maestro shot — and they were re-pinned
  * without it the same day.
