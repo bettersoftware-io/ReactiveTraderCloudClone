@@ -67,7 +67,7 @@ whole set, because the set's folder name is derived from it.
 ## Prerequisites
 
 - macOS + Xcode with an **iOS 26** simulator runtime and an **iPhone 17** on it (the golden pin). Xcode 27 still runs iOS 26 simulators: `xcodebuild -downloadPlatform iOS -buildVersion 26.5`. Installing the runtime creates the iPhone 17; otherwise `xcrun simctl create "iPhone 17" com.apple.CoreSimulator.SimDeviceType.iPhone-17 com.apple.CoreSimulator.SimRuntime.iOS-26-5`.
-- A **dev client** installed on that simulator — the runner refuses a pinned simulator without one, and prints the command: `pnpm --filter @rtc/client-react-native exec expo run:ios --device <udid>`. Built with Xcode 27, it must include the scene life cycle plugin (`plugins/withSceneLifecycle.ts`), or it dies at launch.
+- A **dev client** installed on that simulator — the runner refuses a pinned simulator without one, and prints the command: `pnpm --filter @rtc/client-react-native ios --device <udid>`. Built with Xcode 27, it must include the scene life cycle plugin (`plugins/withSceneLifecycle.ts`), or it dies at launch.
 - **Metro** running from this worktree with the harness flag:
   `EXPO_PUBLIC_VISUAL_HARNESS=1 npx expo start --dev-client --port 8083`
 - **idb** (Tier 1) for the in-app "Open?" confirmation tap: `pipx install --python python3.13 fb-idb` + `brew install facebook/fb/idb-companion` (fb-idb needs Python ≤3.13).
