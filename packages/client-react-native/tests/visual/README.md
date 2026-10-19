@@ -11,8 +11,10 @@ Real iOS-simulator pixel-screenshot regression tests for `@rtc/client-react-nati
 ## What's here
 
 - `shared/diff.ts` — `pixelmatch`/`pngjs` golden-diff core (exact reproduction by default, with a per-scenario allowance via `toleranceFor` — no longer a global `0.06`; the rationale is in the file's header comment).
-- `shared/goldens.ts` — golden path resolver + the device pins (`ios-iphone17-26`, `android-pixel10a-37`).
-- `shared/androidDevice.ts`, `shared/statusBarMask.ts` — what an Android run does around the flows: resolve the one device, forward the Metro port, keep the dev menu out of the shots, and black out the status bar rows.
+- `shared/devicePin.ts` — the device each platform's goldens were shot on (iPhone 17 on iOS 26, Pixel 10a on API 37) and how a run recognises it. See "Which device a run drives" below.
+- `shared/goldens.ts` — golden path resolver; the set folders (`ios-iphone17-26`, `android-pixel10a-37`) are derived from the pins.
+- `shared/pinnedSimulator.ts` — find (and boot) the pinned simulator, and refuse one without the dev client.
+- `shared/androidDevice.ts`, `shared/statusBarMask.ts` — what an Android run does around the flows: find (or start) the pinned emulator, forward the Metro port, keep the dev menu out of the shots, and black out the status bar rows.
 - `shared/emulatorWindow.ts`, `shared/maestroOutcome.ts` — the runner's two diagnostics: a warning when the Android emulator has a window, and the per-flow failure lines of a `maestro test` that exited non-zero.
 - `shared/deviceInUse.ts` (+ `refuseDeviceInUse.ts`), `simctl/bareApplication.ts` — the two start-of-run checks: refuse a device another run is already driving, and recognise the tree `idb` returns for a simulator Maestro has driven. See "Before a run" below.
 - `scenarioIds.ts` — the pure, Node-safe list of scenario ids (the runner iterates this; importing the RN registry would crash a Node runner).
@@ -46,10 +48,26 @@ unauthenticated cold start. The harness is inert unless **both**
 `__DEV__` is hard-`false` in any release build, so a mis-set flag can never
 activate it in production.
 
+## Which device a run drives
+
+Always the device the goldens were shot on — never whatever happens to be
+running. A shot from another device cannot match a single golden, so before
+this rule a stray booted simulator turned a run into a wall of failures, and an
+`:update` from it would have re-pinned the whole set onto it.
+
+| platform | the pin (`shared/devicePin.ts`) | if it is not running | if it does not exist |
+|---|---|---|---|
+| iOS | an **iPhone 17** simulator on any **iOS 26** runtime (the goldens: 26.5) | booted (`simctl bootstatus -b`); other booted simulators are left alone | refused, with the `xcodebuild -downloadPlatform` + `simctl create` commands |
+| Android | an AVD with the **`pixel_10a`** hardware profile on an **API 37** image, read from its `config.ini` | started headless and cold (`-no-window -no-snapshot`), and left running | refused, with the `sdkmanager` + `avdmanager create avd` commands |
+
+`RTC_VISUAL_UDID` only chooses between several pinned devices; naming any other
+device is refused. Moving a pin means re-shooting and reviewing that platform's
+whole set, because the set's folder name is derived from it.
+
 ## Prerequisites
 
-- macOS + Xcode iOS **26** simulator, device **iPhone 17** (the golden pin).
-- A **dev client** installed on that sim. Fast path: reuse any recent `RTCMobile.app` from `~/Library/Developer/Xcode/DerivedData/` (Phase 0+ branches share native deps) — or `pnpm dev:ios` once.
+- macOS + Xcode with an **iOS 26** simulator runtime and an **iPhone 17** on it (the golden pin). Xcode 27 still runs iOS 26 simulators: `xcodebuild -downloadPlatform iOS -buildVersion 26.5`. Installing the runtime creates the iPhone 17; otherwise `xcrun simctl create "iPhone 17" com.apple.CoreSimulator.SimDeviceType.iPhone-17 com.apple.CoreSimulator.SimRuntime.iOS-26-5`.
+- A **dev client** installed on that simulator — the runner refuses a pinned simulator without one, and prints the command: `pnpm --filter @rtc/client-react-native exec expo run:ios --device <udid>`. Built with Xcode 27, it must include the scene life cycle plugin (`plugins/withSceneLifecycle.ts`), or it dies at launch.
 - **Metro** running from this worktree with the harness flag:
   `EXPO_PUBLIC_VISUAL_HARNESS=1 npx expo start --dev-client --port 8083`
 - **idb** (Tier 1) for the in-app "Open?" confirmation tap: `pipx install --python python3.13 fb-idb` + `brew install facebook/fb/idb-companion` (fb-idb needs Python ≤3.13).
@@ -58,10 +76,10 @@ activate it in production.
 ## Run
 
 ```bash
-# from repo root, with the sim booted + dev client + Metro (8083) up:
+# from repo root, with Metro (8083) up; the runner boots the pinned simulator:
 
 # Tier 1 — simctl + idb
-RTC_VISUAL_UDID=<iphone17-udid> RTC_VISUAL_METRO_PORT=8083 RTC_VISUAL_IDB=$(command -v idb) \
+RTC_VISUAL_METRO_PORT=8083 RTC_VISUAL_IDB=$(command -v idb) \
   pnpm --filter @rtc/client-react-native test:rn:visual:simctl          # verify vs goldens
 … pnpm --filter @rtc/client-react-native test:rn:visual:simctl:update   # regenerate
 
@@ -75,25 +93,28 @@ PATH="$HOME/.maestro/bin:$PATH" JAVA_HOME="$(brew --prefix openjdk@21)" MAESTRO_
 ### Android (Maestro only)
 
 ```bash
-# once: a dev build on the emulator — `pnpm dev:android` from the repo root
-# builds and installs one (it also removes an EAS preview build, which is
-# signed with another key and cannot be replaced in place)
+# once: the pinned AVD (Android SDK Command-line Tools, Java 17 for avdmanager)
+#   sdkmanager "system-images;android-37.0;google_apis_playstore;arm64-v8a"
+#   avdmanager create avd -n Pixel_10a -k "system-images;android-37.0;google_apis_playstore;arm64-v8a" -d pixel_10a
+# once: a dev build on it — `RTC_ANDROID_AVD=Pixel_10a pnpm dev:android` from
+# the repo root builds and installs one (it also removes an EAS preview build,
+# which is signed with another key and cannot be replaced in place)
 
-# each run: emulator `Pixel_10a` (API 37) cold-booted WITHOUT a window, Metro
-# (8083) up as above:
-#   ~/Library/Android/sdk/emulator/emulator -avd Pixel_10a -no-snapshot -no-window
-PATH="$HOME/.maestro/bin:$HOME/Library/Android/sdk/platform-tools:$PATH" \
+# each run, Metro (8083) up as above; the runner starts the pinned AVD headless
+# when it is not running, and finds adb/emulator under ANDROID_HOME:
+PATH="$HOME/.maestro/bin:$PATH" \
   JAVA_HOME="$(brew --prefix openjdk@21)" MAESTRO_METRO_PORT=8083 \
   pnpm --filter @rtc/client-react-native test:rn:visual:maestro:android          # verify
 … pnpm --filter @rtc/client-react-native test:rn:visual:maestro:android:update   # regenerate
 ```
 
-The flows are the same files iOS runs. Boot the emulator with `-no-snapshot`: a resumed snapshot lost its package
-service mid-run. Boot it with `-no-window` too: macOS throttles a windowed
+The flows are the same files iOS runs. The runner starts the emulator with `-no-snapshot`: a resumed snapshot lost its package
+service mid-run. And with `-no-window`: macOS throttles a windowed
 emulator once its window is covered (6–8 times slower), which shows up as
 launch timeouts and unsettled frames, never as its cause — the runner warns
-when it sees a window. An emulator started by `pnpm dev:android` has one;
-close it and start a headless one before a run. A scenario reported as
+when it sees a window. An emulator started by `pnpm dev:android` has one, and
+the runner reuses a running pinned emulator as it finds it, so close that
+window first and let the runner start a headless one. A scenario reported as
 `NO SHOT` had its flow fail before the screenshot: that is a capture failure,
 and the `[Failed]` line above it carries Maestro's reason. The top 142 rows (the status bar) are blacked out in every
 Android shot because that bar does not reproduce between boots.
