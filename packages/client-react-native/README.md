@@ -75,7 +75,16 @@ From the repo root (with Xcode + an iOS simulator runtime installed):
 ```bash
 pnpm build          # build the workspace libs (client-adapters, client-core-rxjs → dist)
 pnpm dev:ios        # simulator mode — builds a dev client, launches the simulator, starts Metro
+pnpm dev:ios --device "iPhone Duo"   # any other simulator (name or UDID)
 ```
+
+**Which simulator.** Without `--device`, `dev:ios` builds for **iPhone 17 on
+iOS 26** — the simulator the visual goldens are shot on — so the dev client
+lands where the visual runners need it, rather than on whichever simulator
+happens to be booted (what `expo run:ios` alone picks). With no such
+simulator on the machine, Expo picks one and the script says how to create
+it. `dev:ios` also opens Simulator.app: a simulator booted from the command
+line has no window, and the app would otherwise run where nobody can see it.
 
 `dev:ios` selects a **data-source mode** the same way the web clients do (bare = simulator):
 
@@ -366,10 +375,11 @@ Studio's Device Manager (an arm64 system image on Apple silicon), then:
 
 ```bash
 pnpm preview:android:run                          # from the repo root
-RTC_ANDROID_AVD=Pixel_8 pnpm preview:android:run  # a named device, when there are several
+RTC_ANDROID_AVD=Pixel_8 pnpm preview:android:run  # any other AVD
 ```
 
-It starts the emulator if none is running, waits for Android to finish
+It starts the same emulator `dev:android` would choose (below) if it is not
+running, waits for Android to finish
 booting, then installs and opens the latest cloud build. It builds nothing
 itself. The SDK is taken from `ANDROID_HOME`, defaulting to
 `~/Library/Android/sdk`, so the Android tools need not be on `PATH`.
@@ -387,7 +397,7 @@ pnpm dev:android            # a) simulator — in-process fake data (alias of de
 pnpm dev:android:ws:local   # b) a local server — needs `pnpm dev:ws` in another terminal
 pnpm dev:android:ws:remote  # c) the deployed server
 pnpm dev:android:fs         #    full stack — the local server and the app together
-RTC_ANDROID_AVD=Pixel_8 pnpm dev:android   # a named device, when there are several
+pnpm dev:android --device Pixel_8          # any other AVD (RTC_ANDROID_AVD=Pixel_8 also works)
 ```
 
 Each runs `scripts/runAndroidDev.ts`, which wraps `expo run:android` with what
@@ -399,8 +409,13 @@ Expo leaves to the machine:
   the script uses Homebrew's (`brew install openjdk@17`). The Java that
   Android Studio bundles (25) fails the native `configureCMake` step on a
   warning Java 24 introduced.
-- **An emulator** is started if none is running, as for `preview:android:run`.
-  A virtual device must exist already.
+- **The emulator** is the AVD the visual goldens are shot on (`Pixel_10a`:
+  the `pixel_10a` profile on API 37, matched from its `config.ini`), unless
+  `--device` names another. It is started if it is not running, even when a
+  different emulator is, and its serial is exported as `ANDROID_SERIAL` so
+  `adb` and Expo both target it. With no pinned AVD on the machine, a running
+  emulator is used, else the first AVD. A virtual device must exist already;
+  `tests/visual/README.md` has the commands that create the pinned one.
 - **`adb reverse`** forwards the server's port when the app is pointed at this
   machine (`:ws:local`, `:fs`). Inside the emulator `localhost` is the emulator
   itself, so `ws://localhost:4000` reaches nothing without it. Expo forwards

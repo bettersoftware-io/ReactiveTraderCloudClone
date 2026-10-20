@@ -1,6 +1,6 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { env, exit } from "node:process";
+import { argv, env, exit } from "node:process";
 
 import {
   bootEmulator,
@@ -8,6 +8,7 @@ import {
   uninstallOtherBuildKind,
 } from "./androidDevice.ts";
 import { readLocalServerPort } from "./androidEmulator.ts";
+import { takeDeviceArgument } from "./devDevice.ts";
 import { refreshStaleNativeProject } from "./nativeProject.ts";
 
 /**
@@ -16,7 +17,11 @@ import { refreshStaleNativeProject } from "./nativeProject.ts";
  * run, each with its own `EXPO_PUBLIC_SERVER_URL`:
  *
  *   pnpm dev:android                              # from the repo root
- *   RTC_ANDROID_AVD=Pixel_8 pnpm dev:android
+ *   pnpm dev:android --device Pixel_8             # any other AVD
+ *
+ * The emulator is the AVD the visual goldens are shot on unless `--device`
+ * (or the older `RTC_ANDROID_AVD`) names another; see `bootEmulator`. Other
+ * arguments pass through to `expo run:android`.
  *
  * Around `expo run:android` it does five things Expo leaves to the machine:
  * finds the SDK, picks a Java that can build, regenerates `android/` when its
@@ -32,7 +37,11 @@ async function main(): Promise<void> {
 
   await refreshStaleNativeProject("android");
 
-  await bootEmulator(tools);
+  const { device, rest } = takeDeviceArgument(argv.slice(2));
+  const emulator = await bootEmulator(
+    tools,
+    device ?? (env.RTC_ANDROID_AVD || undefined),
+  );
   uninstallOtherBuildKind(tools, "debug");
 
   const serverPort = readLocalServerPort(env.EXPO_PUBLIC_SERVER_URL);
@@ -46,10 +55,16 @@ async function main(): Promise<void> {
     );
   }
 
-  const run = spawnSync("pnpm", ["exec", "expo", "run:android"], {
-    stdio: "inherit",
-    env: { ...env, ANDROID_HOME: tools.sdk, JAVA_HOME: javaHome },
-  });
+  // `--device` with the AVD name: with several emulators running, Expo would
+  // otherwise pick one itself.
+  const run = spawnSync(
+    "pnpm",
+    ["exec", "expo", "run:android", "--device", emulator.avd, ...rest],
+    {
+      stdio: "inherit",
+      env: { ...env, ANDROID_HOME: tools.sdk, JAVA_HOME: javaHome },
+    },
+  );
 
   exit(run.status ?? 1);
 }

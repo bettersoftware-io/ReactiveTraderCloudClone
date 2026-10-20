@@ -67,7 +67,7 @@ whole set, because the set's folder name is derived from it.
 ## Prerequisites
 
 - macOS + Xcode with an **iOS 26** simulator runtime and an **iPhone 17** on it (the golden pin). Xcode 27 still runs iOS 26 simulators: `xcodebuild -downloadPlatform iOS -buildVersion 26.5`. Installing the runtime creates the iPhone 17; otherwise `xcrun simctl create "iPhone 17" com.apple.CoreSimulator.SimDeviceType.iPhone-17 com.apple.CoreSimulator.SimRuntime.iOS-26-5`.
-- A **dev client** installed on that simulator — the runner refuses a pinned simulator without one, and prints the command: `pnpm --filter @rtc/client-react-native ios --device <udid>`. Built with Xcode 27, it must include the scene life cycle plugin (`plugins/withSceneLifecycle.ts`), or it dies at launch.
+- A **dev client** installed on that simulator — the runner refuses a pinned simulator without one, and prints the command. `pnpm dev:ios` installs it there by default, since it builds for the pinned simulator unless told otherwise. Built with Xcode 27, it must include the scene life cycle plugin (`plugins/withSceneLifecycle.ts`), or it dies at launch.
 - **Metro** running from this worktree with the harness flag:
   `EXPO_PUBLIC_VISUAL_HARNESS=1 npx expo start --dev-client --port 8083`
 - **idb** (Tier 1) for the in-app "Open?" confirmation tap: `pipx install --python python3.13 fb-idb` + `brew install facebook/fb/idb-companion` (fb-idb needs Python ≤3.13).
@@ -96,9 +96,9 @@ PATH="$HOME/.maestro/bin:$PATH" JAVA_HOME="$(brew --prefix openjdk@21)" MAESTRO_
 # once: the pinned AVD (Android SDK Command-line Tools, Java 17 for avdmanager)
 #   sdkmanager "system-images;android-37.0;google_apis_playstore;arm64-v8a"
 #   avdmanager create avd -n Pixel_10a -k "system-images;android-37.0;google_apis_playstore;arm64-v8a" -d pixel_10a
-# once: a dev build on it — `RTC_ANDROID_AVD=Pixel_10a pnpm dev:android` from
-# the repo root builds and installs one (it also removes an EAS preview build,
-# which is signed with another key and cannot be replaced in place)
+# once: a dev build on it — `pnpm dev:android` from the repo root builds and
+# installs one on the pinned AVD by default (it also removes an EAS preview
+# build, which is signed with another key and cannot be replaced in place)
 
 # each run, Metro (8083) up as above; the runner starts the pinned AVD headless
 # when it is not running, and finds adb/emulator under ANDROID_HOME:

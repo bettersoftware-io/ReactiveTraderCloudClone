@@ -32,20 +32,6 @@ export function listVirtualDevices(listAvdsOutput: string): string[] {
     });
 }
 
-/** Which virtual device to start: the one asked for, or the first there is.
- * `null` when there is none to start, or the one asked for does not exist —
- * starting a different device from the one named would be a surprise. */
-export function chooseVirtualDevice(
-  available: readonly string[],
-  preferred: string | undefined,
-): string | null {
-  if (preferred !== undefined && preferred !== "") {
-    return available.includes(preferred) ? preferred : null;
-  }
-
-  return available[0] ?? null;
-}
-
 /** Whether the build of the app installed on a device is a debug build, read
  * from `adb shell dumpsys package <id>`: `true` for the dev build, `false` for
  * a release build such as the EAS preview APK, `null` when the app is not
