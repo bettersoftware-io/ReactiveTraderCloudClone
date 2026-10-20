@@ -8,6 +8,7 @@ import {
   uninstallOtherBuildKind,
 } from "./androidDevice.ts";
 import { readLocalServerPort } from "./androidEmulator.ts";
+import { refreshStaleNativeProject } from "./nativeProject.ts";
 
 /**
  * The Android counterpart of `expo run:ios`: compiles the dev build, installs
@@ -17,15 +18,19 @@ import { readLocalServerPort } from "./androidEmulator.ts";
  *   pnpm dev:android                              # from the repo root
  *   RTC_ANDROID_AVD=Pixel_8 pnpm dev:android
  *
- * Around `expo run:android` it does four things Expo leaves to the machine:
- * finds the SDK, picks a Java that can build, makes sure an emulator has
- * booted, and — when the app is pointed at a server on this machine — forwards
- * that port into the emulator, where `localhost` is otherwise the emulator
- * itself. A preview build left by `pnpm preview:android:run` is removed first.
+ * Around `expo run:android` it does five things Expo leaves to the machine:
+ * finds the SDK, picks a Java that can build, regenerates `android/` when its
+ * native inputs changed (`expo run:android` only prebuilds a missing one),
+ * makes sure an emulator has booted, and — when the app is pointed at a
+ * server on this machine — forwards that port into the emulator, where
+ * `localhost` is otherwise the emulator itself. A preview build left by
+ * `pnpm preview:android:run` is removed first.
  */
 async function main(): Promise<void> {
   const tools = resolveAndroidTools();
   const javaHome = resolveJavaHome();
+
+  await refreshStaleNativeProject("android");
 
   await bootEmulator(tools);
   uninstallOtherBuildKind(tools, "debug");

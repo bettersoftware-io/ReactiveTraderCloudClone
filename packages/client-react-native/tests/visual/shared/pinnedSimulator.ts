@@ -55,7 +55,7 @@ export async function refuseMissingDevClient(udid: string): Promise<void> {
     throw new Error(
       `The dev client (${APP_BUNDLE_ID}) is not installed on the pinned simulator ${udid}. ` +
         "Build and install it there once:\n" +
-        `  pnpm --filter @rtc/client-react-native exec expo run:ios --device ${udid}`,
+        `  pnpm --filter @rtc/client-react-native ios --device ${udid}`,
     );
   }
 }

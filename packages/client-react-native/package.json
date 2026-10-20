@@ -18,9 +18,11 @@
   },
   "scripts": {
     "start": "expo start",
-    "ios": "expo run:ios",
+    "ios": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/runIosDev.ts",
     "android": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/runAndroidDev.ts",
-    "dev": "expo run:ios",
+    "dev": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/runIosDev.ts",
+    "native:regenerate:ios": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/regenerateNativeProject.ts ios",
+    "native:regenerate:android": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/regenerateNativeProject.ts android",
     "dev:android": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/runAndroidDev.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests && jest",
@@ -86,6 +88,7 @@
     "rxjs": "^7.8"
   },
   "devDependencies": {
+    "@expo/fingerprint": "~0.20.13",
     "@jest/globals": "^29.7.0",
     "@react-native/jest-preset": "^0.86.2",
     "@rtc/devtools-relay": "workspace:*",

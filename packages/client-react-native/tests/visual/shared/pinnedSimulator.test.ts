@@ -53,7 +53,7 @@ test("a simulator without the dev client is refused with the install command", a
   createStubSimctl({ listing: createListing("Booted"), noApp: true });
 
   await expect(refuseMissingDevClient(PINNED)).rejects.toThrow(
-    `expo run:ios --device ${PINNED}`,
+    `pnpm --filter @rtc/client-react-native ios --device ${PINNED}`,
   );
 });
 
