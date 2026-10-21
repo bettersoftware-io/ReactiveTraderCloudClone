@@ -18,6 +18,31 @@ test("renders the emblem under the lock-emblem testID", async () => {
   expect(page.exists("lock-emblem")).toBe(true);
 });
 
+// react-native-svg redraws a whole <Svg> when any child changes. With the
+// animated orbit in the filtered <Svg>, Core Image re-ran the drop shadow on
+// every frame and logged a CoreGraphics error burst each time (~250 lines a
+// second while the sign-in screen was up).
+test("the glow filter and the animated orbit are drawn in separate layers", async () => {
+  await page.mount();
+  const layers = page.layers();
+
+  expect(
+    layers.filter((layer) => {
+      return layer.holdsGlowFilter && layer.holdsOrbit;
+    }),
+  ).toEqual([]);
+  expect(
+    layers.some((layer) => {
+      return layer.holdsGlowFilter;
+    }),
+  ).toBe(true);
+  expect(
+    layers.some((layer) => {
+      return layer.holdsOrbit;
+    }),
+  ).toBe(true);
+});
+
 test("with motion enabled, the orbit runs an endless linear spin", async () => {
   const withRepeatSpy = jest.spyOn(Reanimated, "withRepeat");
   await page.mount();
