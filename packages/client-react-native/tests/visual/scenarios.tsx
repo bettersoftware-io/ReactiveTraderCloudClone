@@ -514,7 +514,14 @@ export const SCENARIOS: readonly Scenario[] = [
     mode: "dark",
     build: (): ReactNode => {
       return (
-        <VisualScenarioHost skin="holo3d" mode="dark">
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          // `freeze` rests the lock emblem's orbit at 0°. `forceReduceMotion`
+          // does not reach `useShellMotionEnabled`, and the orbit only held
+          // still before because its rotation never applied on iOS.
+          powerSaverLevel="freeze"
+        >
           <LoginFixture />
         </VisualScenarioHost>
       );

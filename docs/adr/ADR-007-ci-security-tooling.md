@@ -198,16 +198,27 @@ package onto its patched line (`tar`, `undici`, `js-yaml`, `minimatch`,
 0**. Seven are same-major bumps; `undici` 5.x → 6.x is the one major jump (the
 5.x line has no patched release).
 
-**One exception since 2026-10-04: `braces`.** GHSA-vfj7-8cjw-p6xm (high) covers
-every release up to 3.0.3, which is the latest, and names no patched version. An
-override lifts a package onto its patched line, so there is nothing to lift it
-to. The CLI reaches it as `fast-glob` > `micromatch` > `braces`, and `npm audit`
-reports it as **21 high**, one per package that inherits it; all 21 are this one
-advisory. The flaw is a stack exhaustion on a deeply nested brace pattern. The
-CLI runs only in the dispatch-only deploy workflows, where a pattern would have
-to come from a file already in this repo. The Dependabot alert stays open on
-purpose: it closes itself when a patched `braces` ships and the lockfile takes
-it.
+**One exception since 2026-10-24: zod 3.** GHSA-mrhx-c7xc-m3w5 (high) covers
+`zod <4.6.6`, which takes in the whole 3.x line, and zod 3 has no patched
+release (3.25.76 is its last). Four of the CLI's builders (`@vercel/backends`,
+`@vercel/express`, `@vercel/hono`, `@vercel/python-analysis`) exact-pin zod
+3.22.4. An override that forced zod 4 into them would swap their validation
+library for a different API in a path CI never runs, so there is nothing safe
+to lift them to; the `zod@4` override covers the one 4.x copy. `npm audit`
+reports it as **8 high**, one per package that inherits it; all 8 are this one
+advisory. The CLI runs only in the dispatch-only deploy workflows, and those
+builders validate this repo's own config. The exception ends when the CLI moves
+them to zod >=4.6.6.
+
+The same 2026-10-24 pass added range-scoped overrides for `undici` 6 and 7
+(→ 6.29.1 / 7.30.1, GHSA-xjj6-f33q-929c and two moderates) and `fast-uri` 3
+(→ 3.1.9). The `undici` key widened from `<6.28.0` to `<6.29.1`, so it still
+lifts the 5.x copies.
+
+The exception before it, `braces` (GHSA-vfj7-8cjw-p6xm, from 2026-10-04), had
+no patched release either. It ended when GitHub withdrew the advisory on
+2026-10-23. The Dependabot alert for it (number 37) stayed open after the
+withdrawal and was dismissed as inaccurate.
 
 Verification, and its limit: an **A/B smoke test** ran a real `vercel build` on
 a small static project with the stock tree and with the overridden tree — both
@@ -341,8 +352,8 @@ lighter-weight first try).
 - **The `overrides` in `scripts/ci-tooling/vercel/package.json` are debt with an
   exit**: delete each one when the Vercel CLI ships the patched dependency
   itself, and re-run `npm audit --package-lock-only` there after any bump. It
-  should report only the `braces` exception above until that advisory has a
-  patched release.
+  should report only the zod 3 exception above until the CLI's builders move
+  to zod >=4.6.6.
 
 ## Open items
 
