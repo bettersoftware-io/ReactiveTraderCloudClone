@@ -3,8 +3,8 @@
 **Status:** Accepted 2026-10-18; **active since 2026-10-24**, when the Vercel
 OIDC policy and the `TURBO_TEAM` repository variable were created
 ([Setup](#setup)) and a dispatched `ci.yml` run on `main` traded its token,
-reported "Remote caching enabled" and revoked the token at the end. The real
-saving is still to be measured against the estimate below. Reversible in one
+reported "Remote caching enabled" and revoked the token at the end. First
+measured the same day ([Measured](#measured-2026-10-24)). Reversible in one
 step ([Reversing or switching](#reversing-or-switching)).
 
 > This record exists so the next look at CI caching starts from here, not
@@ -219,6 +219,29 @@ package and are left uncached for now (unmeasured), become worth caching.
    unchanged tasks. Measure `Tests (unit)` and `Typecheck` against the
    [estimate](#what-a-cache-would-skip-measured) and record the real numbers
    here.
+
+## Measured (2026-10-24)
+
+The first push to `main` with the cache on (#1048's merge, run 40124250584)
+ran uncached and wrote every result; the docs-only PR after it (#1049, run
+40125163221) replayed them. Same runner class (the uncached type-aware ESLint
+step took 66 s and 68 s):
+
+| step | `main`, uncached | #1049, from the cache |
+|---|---|---|
+| `Typecheck` | 36 s | 2 s |
+| `Tests (unit)` | 139 s | 3 s |
+| whole `checks` job | 682 s | 527 s (−155 s, −23%) |
+| turbo tasks | 109 executed, 23 replayed from the job's own local cache | 132 cache hits, 0 misses |
+
+That is the **best case**: a PR that changes no package replays every task.
+A PR that touches packages re-runs those packages and everything that
+depends on them, so expect the median PR's saving to sit below this. The
+30-merge replay above put the skippable share at a median 87%: applied to
+today's 175 s of turbo-driven steps, that is roughly 2.5 min. That figure is an
+inference, not a measurement; replace it with real PR runs as they
+accumulate. The steps the cache cannot reach (the two UI-contract
+coverage gates, type-aware ESLint, the e2e jobs) are now most of the job.
 
 ## Related
 
