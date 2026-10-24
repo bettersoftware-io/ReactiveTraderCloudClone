@@ -35,25 +35,27 @@ minimumReleaseAge: 1440
 # DROP CONDITION: when node-forge publishes a patched release (> 1.4.0), delete
 # this entry and add a range-scoped `"node-forge@<=1.4.0": ^<patched>` to
 # `overrides` below like every other advisory fix.
-# TEMPORARY suppression (added 2026-10-03): HIGH GHSA-vfj7-8cjw-p6xm (braces:
-# stack-exhaustion DoS through deeply nested brace patterns, CVE-2026-93687)
-# reports `braces <= 3.0.3` with NO patched version — 3.0.3 IS the latest
-# release on npm (published 2024), so there is nothing to override to. The
-# advisory dates from 2026-09-18 but was updated on 2026-10-02 22:36 UTC, which
-# is when it began redding CI gate 25 (`pnpm audit --prod`) on every branch
-# (main's last run, five hours earlier, was green).
-# Reach: client-react-native only, through micromatch in build/test tooling
-# (metro-file-map, @expo/metro-file-map, jest-haste-map, @jest/transform,
-# jest-message-util) — never the server, never a browser bundle, and not the
-# RN app's runtime. Triggering it needs a hostile glob pattern, and the only
-# patterns that reach these tools are the repo's own config.
-# DROP CONDITION: when braces publishes a patched release (> 3.0.3), delete
-# this entry and add a range-scoped `"braces@<=3.0.3": ^<patched>` to
-# `overrides` below like every other advisory fix.
+# GHSA-vfj7-8cjw-p6xm (braces stack-exhaustion DoS, CVE-2026-93687, reported
+# `braces <= 3.0.3` with no patched release) was suppressed here from
+# 2026-10-03. GitHub WITHDREW the advisory on 2026-10-23, so `pnpm audit` no
+# longer reports it and the suppression is gone.
+# TEMPORARY suppression (added 2026-10-24): HIGH GHSA-mrhx-c7xc-m3w5 (zod can
+# exhaust memory while validating oversized constrained collections) reports
+# `zod <4.6.6`, which takes in the WHOLE 3.x line, and zod 3 has NO patched
+# release: 3.25.76 (2025-07-08) is its last. The 4.x copies (server >
+# @anthropic-ai/sdk, server > @modelcontextprotocol/sdk) are forced to 4.6.7 by
+# the `"zod@4"` override below. What this entry still covers is the one 3.x
+# copy, client-react-native > expo > @expo/cli (the Expo dev/build CLI, which
+# asks zod `^3.25.76` up to and including @expo/cli 58.1.15). It runs on a
+# developer machine, never in a browser bundle, the RN app's runtime or the
+# server, and it validates the repo's own config, not untrusted input.
+# Forcing zod 4 into it would swap its validation library for a different
+# API. DROP CONDITION: when @expo/cli depends on zod >=4.6.6, or zod
+# publishes a patched 3.x, delete this entry (the `"zod@4"` override stays).
 auditConfig:
   ignoreGhsas:
     - GHSA-86w9-cpqp-85rv
-    - GHSA-vfj7-8cjw-p6xm
+    - GHSA-mrhx-c7xc-m3w5
 
 overrides:
   # Force the transitive brace-expansion 1.x line (arrives via minimatch/glob
@@ -395,6 +397,17 @@ overrides:
   # >=1.8.4 <1.11.0). 1.11.0 published 2026-09-29. Reach: React Native's
   # devtools tooling only, never the server or a browser bundle.
   "shell-quote@<1.11.0": ^1.11.0
+  # body-parser (server > @modelcontextprotocol/sdk > express > body-parser):
+  # HIGH GHSA-27r3-jxmh-p828 (denial of service through trailing bytes after
+  # a compressed request body; >=2.0.0 <2.4.0). 2.4.0 published 2026-10-22,
+  # inside express 5's `^2.2.1`. Keyed to major 2, the only line in the tree.
+  "body-parser@2": ^2.4.0
+  # zod 4.x (server > @anthropic-ai/sdk and > @modelcontextprotocol/sdk):
+  # HIGH GHSA-mrhx-c7xc-m3w5 (memory exhaustion validating oversized
+  # constrained collections; <4.6.6). 4.6.7 published 2026-10-12. Keyed to
+  # major 4 so the 3.x copy inside @expo/cli is not dragged across a major;
+  # see the matching TEMPORARY suppression above `auditConfig`.
+  "zod@4": ^4.6.7
 
 packageExtensions:
   "@expo/metro-config":
