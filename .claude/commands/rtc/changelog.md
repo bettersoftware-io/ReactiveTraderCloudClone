@@ -1,7 +1,7 @@
 ---
 description: Write the week's entry in CHANGELOG.md from the PRs merged that week, then ship it as a PR
 argument-hint: [ISO week, e.g. 2026-W41 — default: every week not yet in the file]
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(grep:*), Bash(sort:*), Bash(comm:*), Bash(pnpm:*), Read, Write, Edit
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(node:*), Bash(grep:*), Bash(sort:*), Bash(comm:*), Bash(pnpm:*), Read, Write, Edit
 ---
 
 Bring `CHANGELOG.md` up to date. Requested week: `$ARGUMENTS` (empty = every
@@ -13,12 +13,25 @@ trap" in the `authoring-slash-commands` skill. Run each step yourself.
 
 ## 1. Find the gap
 
-Read the top of `CHANGELOG.md`: its intro states the format, and the first
-`## 2026-Wnn` heading is the newest week on file. A week runs Monday–Sunday,
-and a PR belongs to the week of its **merge time in UTC**.
+Read the top of `CHANGELOG.md`: its intro states the format. A week runs
+Monday–Sunday, and a PR belongs to the week of its **merge time in UTC**.
 
-If the newest week on file is the current week, it is a partial entry: extend
-it in place rather than adding a second heading.
+Then ask the checker what is outstanding — do not infer it from the newest
+heading:
+
+```bash
+node scripts/changelog/check-changelog.mts --repo bettersoftware-io/ReactiveTraderCloudClone
+```
+
+It prints one line per week that needs work:
+
+- `unwritten` — a finished week with merged PRs and no section: write it.
+- `leaves out N PR(s)` — a section written before its week ended (2026-W40
+  was written on its Sunday afternoon and missed 30 PRs). Extend that section
+  in place; the newest heading being "done" is exactly how this hides.
+- `partial` — the current week. Writing it now is allowed, but it will be
+  reported as `leaves out` once the week ends, until someone extends it.
+- `cites #N, which merged in …` / `definitions: …` — a wrong statement; fix it.
 
 ## 2. List what merged
 
@@ -63,10 +76,12 @@ in ascending order:
 
 ## 5. Prove completeness
 
-Every merged PR in the range must be cited, and every citation must have a
-definition. Compare the number list from step 2 against
-`grep -o '\[#[0-9]*\]' CHANGELOG.md | sort -u`; both differences must be
-empty. Then run `pnpm check:doc-links`.
+Run the checker from step 1 again. It must report **0 errors**, and the
+weeks you wrote must no longer be listed: every week cites exactly the PRs
+merged in it (no fewer, and none from another week), and the `[#n]` /
+``[`sha`]`` definitions match the citations one to one, PRs in ascending
+order. Then run `pnpm check:doc-links`. The `Changelog check` workflow runs
+the same checker on the PR.
 
 ## 6. Ship
 

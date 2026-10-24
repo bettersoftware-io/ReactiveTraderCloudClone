@@ -1,0 +1,44 @@
+name: Changelog check
+
+# Proves a PR that edits CHANGELOG.md leaves it complete against what merged
+# (scripts/changelog/check-changelog.mts): every week cites exactly the PRs
+# merged in it — a finished week all of them, the current week only its own —
+# and the link definitions match the citations. A week still to write is
+# reported, never a failure. Runs only on PRs that touch the file or the
+# script, so a week going stale on Monday never reddens unrelated PRs; the
+# Monday reminder issue (weekly-tag.yml) lists those instead.
+on:
+  pull_request:
+    paths:
+      - CHANGELOG.md
+      - scripts/changelog/**
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: changelog complete against merged PRs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Lists the merged PRs the changelog is checked against.
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # The check needs two paths and no dependencies (plain `node`).
+          sparse-checkout: |
+            CHANGELOG.md
+            scripts/changelog
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+
+      - name: Check CHANGELOG.md against the merged PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/changelog/check-changelog.mts --repo "$GITHUB_REPOSITORY"

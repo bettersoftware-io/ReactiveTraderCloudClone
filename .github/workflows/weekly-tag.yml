@@ -44,6 +44,12 @@ jobs:
           # .git/config (zizmor `artipacked`; see docs/adr/ADR-007).
           persist-credentials: false
 
+      # Runs scripts/changelog/check-changelog.mts for the reminder's list of
+      # weeks still to write or fix.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+
       - name: Tag the finished week and open the changelog reminder
         env:
           GH_TOKEN: ${{ github.token }}
@@ -66,8 +72,14 @@ jobs:
 
           sha=$(git rev-list -1 --first-parent --before="${week_end}T00:00:00Z" HEAD)
           message="$tag - main as of the end of $week_start .. $week_last (UTC). See CHANGELOG.md."
+          # The tag is dated when its week ended, not when this job ran: GitHub
+          # orders releases by their tag's date, so a week tagged late (a
+          # delayed cron, a manual dispatch, a backfill) still sorts in place.
           tag_object=$(gh api "repos/$REPO/git/tags" \
             -f tag="$tag" -f message="$message" -f object="$sha" -f type=commit \
+            -f 'tagger[name]=github-actions[bot]' \
+            -f 'tagger[email]=41898299+github-actions[bot]@users.noreply.github.com' \
+            -f "tagger[date]=${week_end}T00:05:00Z" \
             --jq .sha)
           gh api "repos/$REPO/git/refs" -f ref="refs/tags/$tag" -f sha="$tag_object" --silent
           echo "Tagged $sha as $tag"
@@ -79,6 +91,12 @@ jobs:
             exit 0
           fi
 
+          # Every week still to write or fix, not just this one, so an ignored
+          # reminder resurfaces in the next. The check exits 1 on an error, which
+          # is exactly what the list should show, so its exit code is ignored.
+          outstanding=$(node scripts/changelog/check-changelog.mts --repo "$REPO" \
+            | grep -v '^check-changelog:' | sed 's/^/- /' || true)
+
           body=$(printf '%s\n' \
             "**$merged PRs** merged in $tag ($week_start to $week_last, UTC) and the week is now tagged \`$tag\`." \
             "" \
@@ -86,5 +104,9 @@ jobs:
             "" \
             "    /rtc:changelog $tag" \
             "" \
-            "The command's PR closes this issue.")
+            "The command's PR closes this issue." \
+            "" \
+            "Still outstanding in \`CHANGELOG.md\` (\`node scripts/changelog/check-changelog.mts\`):" \
+            "" \
+            "${outstanding:-- nothing else}")
           gh issue create --repo "$REPO" --title "Changelog: write $tag" --body "$body"
