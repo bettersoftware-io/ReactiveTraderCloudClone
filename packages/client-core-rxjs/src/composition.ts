@@ -387,11 +387,6 @@ export function createApp(givenPorts: AppPorts): App {
     }),
   );
 
-  // Hoisted (rather than built inline in the `presenters` literal below,
-  // unlike eqWorkspace) so JarvisDriverMachine — composed here beside
-  // jarvisPanels, same scope — can target this singleton's switchTab intent
-  // from a "switchTab" DriveCommand. Takes no deps, unlike eqWorkspace/
-  // incident, so it needs nothing else built first.
   const authDeps = createAuthDeps(ports, {
     readNow: readPreferenceNow,
     delayAuth: withLoginDelay,
@@ -406,6 +401,11 @@ export function createApp(givenPorts: AppPorts): App {
     authDeps.cycle,
   );
 
+  // Hoisted (rather than built inline in the `presenters` literal below,
+  // unlike eqWorkspace) so JarvisDriverMachine — composed here beside
+  // jarvisPanels, same scope — can target this singleton's switchTab intent
+  // from a "switchTab" DriveCommand. Unlike eqWorkspace/incident it depends
+  // on `auth`: it folds the signed-in user's access, so it is built after it.
   const workspaceNav = createWorkspaceNavMachine(
     auth.state$.pipe(
       map((authState): AccessLevel | null => {

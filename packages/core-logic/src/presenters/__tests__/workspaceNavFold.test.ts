@@ -47,6 +47,7 @@ describe("workspaceNavFold", () => {
     });
 
     expect(admin.visibleTabs).toContain("admin");
+    expect(admin.activeTab).toBe("fx");
     expect(
       stepWorkspaceNav(admin, { type: "switchTab", tab: "admin" }).activeTab,
     ).toBe("admin");

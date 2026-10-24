@@ -399,11 +399,15 @@ export function describeAuthContract(
     it("a sessionEnded connection event signs an authenticated user out with the reason and the copy, and clears the store", async () => {
       await withFakeClock(async (clock) => {
         vi.setSystemTime(NOW);
-        const h = makeHarness({ session: createSession(NOW + 1_000) });
+        const h = makeHarness({
+          session: createSession(NOW + 1_000),
+          transport: true,
+        });
 
         try {
           const c = collect(h.app.presenters.auth.state$);
           expect(c.values.at(-1)?.status).toBe("authenticated");
+          expect(h.driver.transportCalls()).toEqual(["connect"]);
           h.driver.emitConnection({ type: "sessionEnded" });
           await clock.settle();
           expect(c.values.at(-1)).toEqual({
@@ -412,6 +416,8 @@ export function describeAuthContract(
             failure: "session_ended",
           });
           expect(h.driver.storedSession()).toBeNull();
+          // The transport gate then closes the socket.
+          expect(h.driver.transportCalls()).toEqual(["connect", "disconnect"]);
           c.unsubscribe();
         } finally {
           await h.teardown();

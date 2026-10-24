@@ -108,9 +108,38 @@ export function describeWorkspaceNavContract(
             ...EVERY_USER_TABS,
             "admin",
           ]);
+          // Gaining access never switches the tab by itself.
+          expect(c.values.at(-1)?.activeTab).toBe("fx");
           h.app.presenters.workspaceNav.intents.switchTab("admin");
           await clock.settle();
           expect(c.values.at(-1)?.activeTab).toBe("admin");
+          c.unsubscribe();
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("a RESUMED administrator session shows the admin tab synchronously: one value, no settle", async () => {
+      await withFakeClock(async () => {
+        vi.setSystemTime(NOW);
+        const h = makeHarness({
+          session: {
+            token: "stored",
+            user: { ...ROSTER[0].user, access: "admin" },
+            username: ROSTER[0].username,
+            exp: NOW + 1_000,
+          },
+        });
+
+        try {
+          const c = collect(h.app.presenters.workspaceNav.state$);
+          expect(c.values).toEqual([
+            {
+              activeTab: "fx",
+              visibleTabs: [...EVERY_USER_TABS, "admin"],
+            },
+          ]);
           c.unsubscribe();
         } finally {
           await h.teardown();
