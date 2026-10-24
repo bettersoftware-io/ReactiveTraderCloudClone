@@ -108,11 +108,63 @@ describe("createWorkspaceRouteSync", () => {
     expect(h.switched).toEqual([]);
     expect(h.history.writes).toEqual([]);
   });
+
+  it("mounts on a hidden tab's URL by replacing it with the active tab, never switching", () => {
+    const h = createHarness("/admin", { hidden: ["admin"] });
+    h.create().observe("fx");
+
+    expect(h.history.writes).toEqual(["replace /fx"]);
+    expect(h.switched).toEqual([]);
+  });
+
+  it("mounts on a shown tab's URL by switching to it, as ever", () => {
+    const h = createHarness("/admin");
+    h.create().observe("fx");
+
+    expect(h.switched).toEqual(["admin"]);
+    expect(h.history.writes).toEqual([]);
+  });
+
+  it("rewrites a traversal onto a hidden tab to the tab on screen, never switching", () => {
+    const h = createHarness("/fx", { hidden: ["admin"] });
+    const sync = h.create();
+    sync.observe("fx");
+    sync.observe("credit");
+    h.history.writes.length = 0;
+    h.history.traverse("/admin");
+
+    expect(h.history.writes).toEqual(["replace /credit"]);
+    expect(h.switched).toEqual([]);
+  });
+
+  it("follows a traversal onto a shown tab, admin included", () => {
+    const h = createHarness("/fx");
+    const sync = h.create();
+    sync.observe("fx");
+    h.history.writes.length = 0;
+    h.history.traverse("/admin");
+
+    expect(h.switched).toEqual(["admin"]);
+    expect(h.history.writes).toEqual([]);
+  });
+
+  it("reads canShow at call time: a tab shown at mount and hidden later is refused", () => {
+    const h = createHarness("/fx");
+    const sync = h.create();
+    sync.observe("fx");
+    h.hidden.add("admin");
+    h.history.traverse("/admin");
+
+    expect(h.switched).toEqual([]);
+    expect(h.history.writes).toEqual(["replace /fx"]);
+  });
 });
 
 interface WorkspaceHarness {
   readonly history: FakeRouteHistory;
   readonly switched: WorkspaceTab[];
+  /** The tabs canShow refuses; edit it to change who may see what. */
+  readonly hidden: Set<WorkspaceTab>;
   create(): WorkspaceRouteSync;
 }
 
@@ -120,18 +172,24 @@ interface WorkspaceHarnessOptions {
   /** Makes switchTab behave like Solid: the tab changes and the observer
    * hears it synchronously. Off, a switch is only recorded. */
   readonly reenter?: boolean;
+  /** The tabs the signed-in user may not see. */
+  readonly hidden?: readonly WorkspaceTab[];
 }
 
 function createHarness(
   path: string,
-  { reenter = true }: WorkspaceHarnessOptions = {},
+  { reenter = true, hidden = [] }: WorkspaceHarnessOptions = {},
 ): WorkspaceHarness {
   const history = createFakeRouteHistory(path);
   const switched: WorkspaceTab[] = [];
+  const hiddenTabs = new Set<WorkspaceTab>(hidden);
 
   function create(): WorkspaceRouteSync {
     const sync = createWorkspaceRouteSync({
       routes: history,
+      canShow: (tab: WorkspaceTab): boolean => {
+        return !hiddenTabs.has(tab);
+      },
       switchTab: (tab: WorkspaceTab): void => {
         switched.push(tab);
 
@@ -147,6 +205,7 @@ function createHarness(
   return {
     history,
     switched,
+    hidden: hiddenTabs,
     create,
   };
 }

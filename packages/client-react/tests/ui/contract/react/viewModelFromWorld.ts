@@ -115,6 +115,8 @@ import { useMachine, type ViewModel } from "@rtc/react-bindings";
  * spec asserts, instead of redirecting instantly. */
 const REDIRECT_DELAY_MS = 1500;
 
+function noop(): void {}
+
 /** Subscribe a React component to a BehaviorSubject; re-render on each emission. */
 function useSubject<T>(subject: BehaviorSubject<T>): T {
   return useSyncExternalStore(
@@ -1933,6 +1935,30 @@ export function reactViewModel(world: World): ViewModel {
       return {
         state: useSubject(world.accountAccess),
         ...getAccountIntents(world),
+      };
+    },
+    // Inert until the World's admin support lands.
+    useAccountList: () => {
+      return {
+        state: { status: "loading", rows: [], pendingCount: 0 },
+        refresh: noop,
+      };
+    },
+    useAccountAction: () => {
+      return {
+        state: { phase: "idle" },
+        intents: {
+          approve: noop,
+          block: noop,
+          unblock: noop,
+          startRename: noop,
+          editName: noop,
+          submitRename: noop,
+          requestDelete: noop,
+          confirmDelete: noop,
+          cancel: noop,
+          dismiss: noop,
+        },
       };
     },
     useRegistrationAvailable: () => {

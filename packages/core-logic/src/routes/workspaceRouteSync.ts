@@ -4,6 +4,10 @@ import { isSameRoute, workspaceRoute } from "#/routes/appRoutes";
 
 export interface WorkspaceRouteSyncDeps {
   readonly routes: RouteHistory;
+  /** Whether the signed-in user may see a tab. Read at each call, never
+   * captured: the visible tabs change when the user signs in or out. A URL,
+   * a mount or a Back/Forward step never shows a tab this refuses. */
+  readonly canShow: (tab: WorkspaceTab) => boolean;
   readonly switchTab: (tab: WorkspaceTab) => void;
 }
 
@@ -17,16 +21,17 @@ export interface WorkspaceRouteSync {
 
 export function createWorkspaceRouteSync({
   routes,
+  canShow,
   switchTab,
 }: WorkspaceRouteSyncDeps): WorkspaceRouteSync {
   /** The tab last observed — the one on screen. */
   let shown: WorkspaceTab | null = null;
   const unsubscribe = routes.subscribe(followTraversal);
 
-  /** Back/Forward: a tab route switches to it; anything else (a login
-   * route, none) is rewritten to the tab on screen. */
+  /** Back/Forward: a tab route the user may see switches to it; a hidden
+   * tab, a login route or none is rewritten to the tab on screen. */
   function followTraversal(route: AppRoute | null): void {
-    if (route?.area === "workspace") {
+    if (route?.area === "workspace" && canShow(route.tab)) {
       if (route.tab !== shown) {
         switchTab(route.tab);
       }
@@ -52,6 +57,8 @@ export function createWorkspaceRouteSync({
 
       if (mounting) {
         if (route?.area !== "workspace") {
+          routes.replace(workspaceRoute(tab));
+        } else if (!canShow(route.tab)) {
           routes.replace(workspaceRoute(tab));
         } else if (route.tab !== tab) {
           switchTab(route.tab);

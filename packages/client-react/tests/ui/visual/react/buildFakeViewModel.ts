@@ -725,6 +725,30 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         resendCode: noop,
       };
     },
+    // Inert until the admin panel's World and fixture support land.
+    useAccountList: () => {
+      return {
+        state: { status: "loading", rows: [], pendingCount: 0 },
+        refresh: noop,
+      };
+    },
+    useAccountAction: () => {
+      return {
+        state: { phase: "idle" },
+        intents: {
+          approve: noop,
+          block: noop,
+          unblock: noop,
+          startRename: noop,
+          editName: noop,
+          submitRename: noop,
+          requestDelete: noop,
+          confirmDelete: noop,
+          cancel: noop,
+          dismiss: noop,
+        },
+      };
+    },
     useRegistrationAvailable: () => {
       return data.registrationAvailable ?? false;
     },

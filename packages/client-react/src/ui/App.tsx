@@ -42,7 +42,7 @@ export function App(): ReactElement {
   const { state: navState, switchTab } = useWorkspaceNav();
   const activeTab = navState.activeTab;
   // The URL follows the tab: Back/Forward walk the tabs visited.
-  useWorkspaceRoutes(activeTab, switchTab);
+  useWorkspaceRoutes(navState, switchTab);
   const { pulsing, clearPulse } = useJarvisDrivenPulse();
 
   return (

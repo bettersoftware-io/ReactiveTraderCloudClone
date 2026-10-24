@@ -136,6 +136,8 @@ interface UseTicketSubmissionFake {
   pass: (quoteId: number) => void;
 }
 
+function noop(): void {}
+
 /** Wrap a warm (BehaviorSubject-backed) World stream as a Solid accessor.
  * `state()` (from `@rx-state/core`) turns any Observable into the
  * `StateObservable` `@rtc/solid-bindings/toSignal` requires — the same
@@ -1851,6 +1853,34 @@ export function solidViewModel(world: World): ViewModel {
         },
         resendCode: (email?: string) => {
           world.commands.accountResendCode.push(email);
+        },
+      };
+    },
+    // Inert until the World's admin support lands.
+    useAccountList: () => {
+      return {
+        state: () => {
+          return { status: "loading", rows: [], pendingCount: 0 };
+        },
+        refresh: noop,
+      };
+    },
+    useAccountAction: () => {
+      return {
+        state: () => {
+          return { phase: "idle" };
+        },
+        intents: {
+          approve: noop,
+          block: noop,
+          unblock: noop,
+          startRename: noop,
+          editName: noop,
+          submitRename: noop,
+          requestDelete: noop,
+          confirmDelete: noop,
+          cancel: noop,
+          dismiss: noop,
         },
       };
     },
