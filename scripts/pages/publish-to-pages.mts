@@ -2,9 +2,16 @@
 // Publishes a staging directory into the gh-pages branch WITHOUT disturbing
 // sibling subtrees owned by other producers. Each top-level entry of <source>
 // replaces the same-named entry on the branch; every other branch entry is
-// preserved. Orphan-initialises the branch if it does not exist. Pushes with a
-// fetch+rebase retry loop so two producers racing on the branch serialise
-// cleanly (they touch disjoint entries, so the rebase never conflicts).
+// preserved.
+//
+// The branch keeps NO history: every publish replaces it with one parentless
+// commit of the merged tree. GitHub Pages serves only the tip, and appending a
+// commit per publish grew the repository by ~266 MB of report snapshots nobody
+// could use (docs/IDEAS.md, "Shrink the repository"). Because that push is a
+// force-push, it carries a lease on the tip the tree was built from: if another
+// producer published in between, the push is refused, and the tree is rebuilt
+// on the new tip and pushed again — so a racing producer's subtree is never
+// overwritten with a stale copy.
 //
 // Zero dependencies (Node built-ins only). Git credentials come from the ambient
 // checkout (actions/checkout persists them on `origin`).
@@ -79,64 +86,82 @@ function main(): void {
 
   const remoteRef = `refs/remotes/${remote}/${branch}`;
   const work = mkdtempSync(join(tmpdir(), "pages-"));
-  let branchExists = false;
 
-  try {
-    git(["fetch", "--no-tags", remote, `+refs/heads/${branch}:${remoteRef}`]);
-    git(["rev-parse", "--verify", "--quiet", remoteRef]);
-    branchExists = true;
-  } catch {
-    branchExists = false;
+  /** The branch's current tip on the remote, or undefined if it does not exist yet. */
+  function fetchTip(): string | undefined {
+    try {
+      git(["fetch", "--no-tags", remote, `+refs/heads/${branch}:${remoteRef}`]);
+
+      return git(["rev-parse", "--verify", "--quiet", remoteRef]);
+    } catch {
+      return undefined;
+    }
   }
 
-  try {
-    if (branchExists) {
-      git(["worktree", "add", "-B", branch, work, remoteRef]);
-    } else {
-      git(["worktree", "add", "--detach", work]);
-      git(["checkout", "--orphan", branch], work);
-
+  /** Rebuilds the worktree as `tip`'s tree with `from`'s entries swapped in, and stages it. */
+  function stageOnto(tip: string | undefined, from: string): void {
+    if (tip === undefined) {
       try {
         git(["rm", "-rf", "--quiet", "."], work);
       } catch {
-        // Orphan index already empty — nothing to clear.
+        // Index already empty — nothing to clear.
       }
+    } else {
+      git(["checkout", "--detach", "--force", tip], work);
+      git(["clean", "-fdxq"], work);
     }
 
     for (const entry of owned) {
       rmSync(join(work, entry), { recursive: true, force: true });
-      cpSync(join(source, entry), join(work, entry), { recursive: true });
+      cpSync(join(from, entry), join(work, entry), { recursive: true });
     }
 
+    git(["add", "-A"], work);
+  }
+
+  let tip = fetchTip();
+
+  try {
+    git(["worktree", "add", "--detach", work, tip ?? "HEAD"]);
     git(
       ["config", "user.email", "github-actions[bot]@users.noreply.github.com"],
       work,
     );
     git(["config", "user.name", "github-actions[bot]"], work);
-    git(["add", "-A"], work);
-
-    if (git(["status", "--porcelain"], work) === "") {
-      console.log("no changes to publish");
-      return;
-    }
-
-    git(["commit", "-m", message], work);
 
     let pushed = false;
 
     for (let attempt = 1; attempt <= 5 && !pushed; attempt++) {
+      stageOnto(tip, source);
+
+      if (
+        tip !== undefined &&
+        git(["diff", "--cached", "--name-only", tip], work) === ""
+      ) {
+        console.log("no changes to publish");
+        return;
+      }
+
+      const tree = git(["write-tree"], work);
+      const commit = git(["commit-tree", tree, "-m", message], work);
+
       try {
-        git(["push", remote, branch], work);
+        // An empty lease value means "the branch must not exist yet".
+        git(
+          [
+            "push",
+            `--force-with-lease=refs/heads/${branch}:${tip ?? ""}`,
+            remote,
+            `${commit}:refs/heads/${branch}`,
+          ],
+          work,
+        );
         pushed = true;
       } catch {
         console.log(
-          `push rejected (attempt ${attempt}); rebasing on ${branch}`,
+          `push rejected (attempt ${attempt}); rebuilding on the new ${branch} tip`,
         );
-        git(
-          ["fetch", "--no-tags", remote, `+refs/heads/${branch}:${remoteRef}`],
-          work,
-        );
-        git(["rebase", remoteRef], work);
+        tip = fetchTip();
       }
     }
 
@@ -144,7 +169,9 @@ function main(): void {
       throw new Error(`failed to push ${branch} after retries`);
     }
 
-    console.log(`published [${owned.join(", ")}] to ${branch}`);
+    console.log(
+      `published [${owned.join(", ")}] to ${branch} as a single commit`,
+    );
   } finally {
     try {
       git(["worktree", "remove", "--force", work]);

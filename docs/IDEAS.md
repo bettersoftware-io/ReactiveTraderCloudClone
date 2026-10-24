@@ -155,10 +155,10 @@ under 5 GB strongly recommended — but the first three stop the growth:
 1. **Partial clone** (no repo change): `git clone --filter=blob:none` fetches
    old blobs on demand, so a fresh clone costs about the current tree. CI
    already checks out shallow.
-2. **Publish `gh-pages` as a single orphan commit** (force-push) instead of
-   appending — Pages serves only the tip, so its history is worthless and
-   grows on every push to `main` (`visual.yml`, `publish-site.yml`,
-   `coverage-report.yml`).
+2. ~~Publish `gh-pages` as a single orphan commit~~ — **done 2026-10-24**:
+   `publish-to-pages.mts` now force-pushes one parentless commit under a lease
+   ([`docs/pages/README.md`](pages/README.md)). The old ~266 MB of `gh-pages`
+   history stops being reachable; GitHub reclaims it on its own schedule.
 3. **Cut golden churn.** Decide whether `react-local/darwin-arm64` needs to be
    committed at all (git-ignored or regenerated on demand would roughly halve
    future growth); losslessly recompress PNGs (`oxipng`) in
