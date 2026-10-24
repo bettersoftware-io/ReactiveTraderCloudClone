@@ -1,10 +1,11 @@
 # ADR-008: CI's turbo cache — Vercel Remote Cache over OIDC
 
-**Status:** Accepted 2026-10-18. Wired into `ci.yml`'s `checks` job, and
-**dormant until the operator creates the Vercel OIDC policy and the
-`TURBO_TEAM` repository variable** ([Setup](#setup)). Until then the step is
-skipped and CI runs uncached, exactly as before. Reversible in one step
-([Reversing or switching](#reversing-or-switching)).
+**Status:** Accepted 2026-10-18; **active since 2026-10-24**, when the Vercel
+OIDC policy and the `TURBO_TEAM` repository variable were created
+([Setup](#setup)) and a dispatched `ci.yml` run on `main` traded its token,
+reported "Remote caching enabled" and revoked the token at the end. First
+measured the same day ([Measured](#measured-2026-10-24)). Reversible in one
+step ([Reversing or switching](#reversing-or-switching)).
 
 > This record exists so the next look at CI caching starts from here, not
 > from scratch: the measurements, all five options with their trade-offs, and
@@ -187,16 +188,60 @@ package and are left uncached for now (unmeasured), become worth caching.
 
 1. **Vercel** (team dashboard): Settings → Build and Deployment → **OIDC
    Policies for CLI Access** → *Add* next to *Turborepo CLI Policies*. Select
-   GitHub, the `bettersoftware-io/ReactiveTraderCloudClone` repository, and
-   restrict it to the workflow `ci.yml`.
+   GitHub, the `bettersoftware-io` account (a user account, not an
+   organisation) and the `ReactiveTraderCloudClone` repository. Leave the
+   issuer (`https://token.actions.githubusercontent.com`) and the audience
+   (`https://github.com/bettersoftware-io`, GitHub's default for the owner) as
+   the form fills them, and **leave the workflow and branch restrictions
+   empty**. Done 2026-10-24 as policy `rtc-ci`. A workflow restriction of
+   `ci.yml` made Vercel refuse every token ("Not authorized."). GitHub's
+   `workflow` claim holds the display name `CI`, not the file name, and the
+   form's expected format was not established. The repository restriction is
+   what matters: in this repo only `ci.yml`'s `checks` job is granted
+   `id-token: write`, so no other job can request a token without a reviewed
+   change.
 2. **GitHub**: `gh variable set TURBO_TEAM --body "<team-slug>"` (the slug is
    the part after `vercel.com/` in the team URL). A variable, not a secret, so
-   logs show it.
-3. **Verify**: the next push to `main` should log the step's success and
-   turbo's remote-cache uploads, and the PR runs after it should report cache
-   hits. Measure `Tests (unit)` and `Typecheck` against the
+   logs show it. Set 2026-10-24 to `nasantsogt-baasanjavs-projects`, the
+   team's only slug.
+3. **Verify from the log, never from the step's tick.** The step is
+   `continue-on-error`, so it shows green even when Vercel refuses the token —
+   which is what the first attempt did on 2026-10-24 (`Failed to exchange OIDC
+   token for Vercel access token (HTTP 400 …"Not authorized.")`, then turbo's
+   "Remote caching disabled" and a cache miss on every task). Dispatch `ci.yml`
+   on `main` (a dispatch only reads the cache, so it tests the exchange without
+   writing; check first that no `main` run is in progress, because the
+   workflow's concurrency group cancels it) and read the `checks` job's log
+   once it completes: it must contain no `Failed to exchange`, turbo must not
+   say "Remote caching disabled", and the post step must log "Revoked the
+   Turborepo access token". Then the next push to `main` fills the cache, and
+   the PR runs after it should report `cache hit, replaying logs` for
+   unchanged tasks. Measure `Tests (unit)` and `Typecheck` against the
    [estimate](#what-a-cache-would-skip-measured) and record the real numbers
    here.
+
+## Measured (2026-10-24)
+
+The first push to `main` with the cache on (#1048's merge, run 40124250584)
+ran uncached and wrote every result; the docs-only PR after it (#1049, run
+40125163221) replayed them. Same runner class (the uncached type-aware ESLint
+step took 66 s and 68 s):
+
+| step | `main`, uncached | #1049, from the cache |
+|---|---|---|
+| `Typecheck` | 36 s | 2 s |
+| `Tests (unit)` | 139 s | 3 s |
+| whole `checks` job | 682 s | 527 s (−155 s, −23%) |
+| turbo tasks | 109 executed, 23 replayed from the job's own local cache | 132 cache hits, 0 misses |
+
+That is the **best case**: a PR that changes no package replays every task.
+A PR that touches packages re-runs those packages and everything that
+depends on them, so expect the median PR's saving to sit below this. The
+30-merge replay above put the skippable share at a median 87%: applied to
+today's 175 s of turbo-driven steps, that is roughly 2.5 min. That figure is an
+inference, not a measurement; replace it with real PR runs as they
+accumulate. The steps the cache cannot reach (the two UI-contract
+coverage gates, type-aware ESLint, the e2e jobs) are now most of the job.
 
 ## Related
 
