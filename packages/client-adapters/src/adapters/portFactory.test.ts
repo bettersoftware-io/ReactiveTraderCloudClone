@@ -28,6 +28,38 @@ describe("createSimulatorPorts dependency injection", () => {
   });
 });
 
+describe("createSimulatorPorts :: accountAdmin", () => {
+  it("answers unavailable to a list and to an action", async () => {
+    const ports = createSimulatorPorts(createAdminDeps());
+
+    await expect(
+      firstValueFrom(ports.accountAdmin.listAccounts()),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "unavailable",
+    });
+    await expect(
+      firstValueFrom(ports.accountAdmin.actOn("id", { kind: "block" })),
+    ).resolves.toEqual({ ok: false, reason: "unavailable" });
+  });
+});
+
+describe("createWsRealPorts :: accountAdmin", () => {
+  it("speaks the admin rpc over the socket", async () => {
+    const ws = new FakeWsAdapter();
+    const ports = createWsRealPorts(ws, createAdminDeps());
+    const promise = firstValueFrom(ports.accountAdmin.listAccounts());
+    await awaitPendingRpc(ws, CLIENT_MSG.ADMIN_ACCOUNTS_LIST);
+    ws.nextRpcResponse(CLIENT_MSG.ADMIN_ACCOUNTS_LIST, rpcNack());
+
+    await expect(promise).resolves.toEqual({
+      ok: false,
+      reason: "unavailable",
+    });
+    ws.dispose();
+  });
+});
+
 describe("createSimulatorPorts", () => {
   it("wires all nine transport ports with their port methods", () => {
     const ports = createSimulatorPorts(createDeps());
@@ -236,3 +268,11 @@ describe("wsReal ops.getThroughput :: null-payload guard (line 625)", () => {
 
   const fakePreferences = {} as PreferencesPort;
 });
+
+function createAdminDeps(): PortFactoryDeps {
+  return {
+    preferences: {} as PreferencesPort,
+    auth: new AuthSimulator({}),
+    sessionStore: new InMemorySessionStore(),
+  };
+}

@@ -11,6 +11,7 @@ import {
   type CreateRfqRequest,
   CreditRfqSimulator,
   type CurrencyPair,
+  createUnavailableAccountAdmin,
   DEALERS_CATALOG,
   type Dealer,
   type DealerPort,
@@ -75,6 +76,7 @@ import {
 } from "@rtc/shared";
 
 import { ScriptedJarvisAdapter } from "./ScriptedJarvisAdapter";
+import { createWsAccountAdminAdapter } from "./WsAccountAdminAdapter";
 import { WsJarvisAdapter } from "./WsJarvisAdapter";
 import { WsJarvisUsageAdapter } from "./WsJarvisUsageAdapter";
 
@@ -138,6 +140,7 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
     workflow: new CreditRfqSimulator(DEALERS_CATALOG),
     ops,
     preferences: deps.preferences,
+    accountAdmin: createUnavailableAccountAdmin(),
     jarvis: new ScriptedJarvisAdapter({
       referenceData,
       pricing,
@@ -1138,6 +1141,7 @@ export function createWsRealPorts(
     preferences: deps.preferences,
     jarvis: new WsJarvisAdapter(ws),
     jarvisUsage: new WsJarvisUsageAdapter(ws),
+    accountAdmin: createWsAccountAdminAdapter(ws),
     marketData: createMarketDataPort(ws),
     orders: createOrderPort(ws),
     positions: createPositionPort(ws),

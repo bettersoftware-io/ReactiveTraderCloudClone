@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ConnectionEvent } from "@rtc/domain";
+import { type ConnectionEvent, RECONNECT_INTERVAL_MS } from "@rtc/domain";
 
 import { lastMock, MockWebSocket } from "./MockWebSocket.testHelpers";
 import { WsAdapter } from "./WsAdapter";
@@ -821,3 +821,71 @@ describe("WsAdapter auth gating", () => {
     adapter.dispose();
   });
 });
+
+describe("WsAdapter :: a session the server ended (close 4401)", () => {
+  it("emits sessionEnded, not gatewayDisconnected, and opens no new socket", async () => {
+    const { adapter, events } = createEndedSession();
+    lastMock.onopen?.(new Event("open"));
+    lastMock.onclose?.(new CloseEvent("close", { code: 4401 }));
+
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS * 3);
+
+    expect(events).toEqual([
+      { type: "gatewayConnected" },
+      { type: "sessionEnded" },
+    ]);
+    expect(MockWebSocket.constructed).toBe(1);
+    adapter.dispose();
+  });
+
+  it("still reconnects after a 1006 drop (the witness the reconnect path runs)", async () => {
+    const { adapter, events } = createEndedSession();
+    lastMock.onopen?.(new Event("open"));
+    lastMock.onclose?.(new CloseEvent("close", { code: 1006 }));
+
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS * 3);
+
+    expect(events).toContainEqual({ type: "gatewayDisconnected" });
+    expect(events).toContainEqual({ type: "reconnectAttempt" });
+    expect(MockWebSocket.constructed).toBeGreaterThan(1);
+    adapter.dispose();
+  });
+
+  it("opens a socket on connect() after a new sign-in", () => {
+    const { adapter } = createEndedSession();
+    lastMock.onclose?.(new CloseEvent("close", { code: 4401 }));
+    expect(MockWebSocket.constructed).toBe(1);
+
+    adapter.connect();
+
+    expect(MockWebSocket.constructed).toBe(2);
+    adapter.dispose();
+  });
+
+  it("rejects an rpc still waiting when the session ends", async () => {
+    const { adapter } = createEndedSession();
+    lastMock.readyState = MockWebSocket.OPEN;
+    const pending = adapter.rpc("admin.accounts.list");
+    lastMock.onclose?.(new CloseEvent("close", { code: 4401 }));
+
+    await expect(pending).rejects.toThrow(/session ended/);
+    adapter.dispose();
+  });
+
+  function createEndedSession(): EndedSession {
+    const adapter = new WsAdapter("ws://test", () => {
+      return "tok";
+    });
+    const events: ConnectionEvent[] = [];
+    adapter.connectionEvents().subscribe((e) => {
+      return events.push(e);
+    });
+
+    return { adapter, events };
+  }
+});
+
+interface EndedSession {
+  readonly adapter: WsAdapter;
+  readonly events: ConnectionEvent[];
+}

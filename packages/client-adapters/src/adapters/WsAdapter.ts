@@ -7,6 +7,7 @@ import { type Observable, ReplaySubject } from "rxjs";
 
 import type { IWsAdapter, MessageHandler } from "@rtc/core-api";
 import type { ConnectionEvent } from "@rtc/domain";
+import { SESSION_ENDED_CLOSE_CODE } from "@rtc/shared";
 
 import { buildWsUrl } from "#/wsUrl";
 
@@ -198,8 +199,22 @@ export class WsAdapter implements IWsAdapter {
       }
     };
 
-    socket.onclose = (): void => {
+    socket.onclose = (event: CloseEvent): void => {
       if (this.disposed || isReleased()) {
+        return;
+      }
+
+      // The server ended this session (4401): final. Report it once, with no
+      // gatewayDisconnected and no reconnect — a retry would only meet the
+      // same refusal. The adapter lets go of the socket and goes quiet, so a
+      // connect() after a new sign-in opens a fresh one.
+      if (event.code === SESSION_ENDED_CLOSE_CODE) {
+        this.ws = null;
+        this.suspended = true;
+        this.closedForIdle = false;
+        this.sendQueue.length = 0;
+        this.rejectPendingRpcs("WsAdapter session ended");
+        this.connectionEvents$.next({ type: "sessionEnded" });
         return;
       }
 
@@ -388,8 +403,12 @@ export class WsAdapter implements IWsAdapter {
     this.ws?.close();
     this.handlers.clear();
 
+    this.rejectPendingRpcs("WsAdapter disposed");
+  }
+
+  private rejectPendingRpcs(reason: string): void {
     for (const rpc of this.pendingRpcs.values()) {
-      rpc.reject(new Error("WsAdapter disposed"));
+      rpc.reject(new Error(reason));
     }
 
     this.pendingRpcs.clear();

@@ -41,6 +41,21 @@ function isStoredSession(value: unknown): value is StoredSession {
   );
 }
 
+interface MaybeAccess {
+  readonly access?: unknown;
+}
+
+/** A session written before `access` existed (or by a server that omits it)
+ * reads as an ordinary user; only the exact word `"admin"` grants more. */
+function withTolerantAccess(session: StoredSession): StoredSession {
+  const stored = (session.user as MaybeAccess).access;
+
+  return {
+    ...session,
+    user: { ...session.user, access: stored === "admin" ? "admin" : "user" },
+  };
+}
+
 /**
  * localStorage-backed SessionStore. Modelled on LocalStoragePreferencesAdapter:
  * best-effort persistence, tolerant of corrupt/missing/malformed storage (private
@@ -62,7 +77,7 @@ export class LocalStorageSessionStore implements SessionStore {
         return null;
       }
 
-      return parsed;
+      return withTolerantAccess(parsed);
     } catch {
       return null;
     }

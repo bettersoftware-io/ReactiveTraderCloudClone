@@ -25,7 +25,11 @@ import type {
   WorkspaceTab,
 } from "@rtc/core-api";
 import {
+  type AccountActionOutcome,
+  type AccountAdminAction,
+  type AccountAdminPort,
   type AccountFlowOutcome,
+  type AccountListOutcome,
   type AnalyticsPort,
   type AnomalyDetectorConfig,
   type AuthOutcome,
@@ -127,7 +131,9 @@ export type PortMethodName =
   | "jarvis.confirm"
   | "jarvis.availability$"
   | "jarvis.setHistorySource"
-  | "jarvisUsage.usage$";
+  | "jarvisUsage.usage$"
+  | "accountAdmin.listAccounts"
+  | "accountAdmin.actOn";
 
 /** What `pricing.getRfqQuote` was asked for. */
 export interface RfqQuoteRequest {
@@ -180,6 +186,12 @@ export interface HarnessSeed {
 
 /** One call the core made on the scripted `ports.transport`. */
 type TransportCall = "connect" | "disconnect";
+
+/** One `accountAdmin.actOn(accountId, action)` the core has subscribed. */
+export interface AccountActionCall {
+  readonly accountId: string;
+  readonly action: AccountAdminAction;
+}
 
 /** One `auth.login(username, password)` the core has subscribed. */
 interface LoginCall {
@@ -456,6 +468,18 @@ export interface ScriptedDriver {
   /** Every call the core has made against a `metricControls` entry (three
    * recording controls, index 0..2), in order. */
   controlCalls(): readonly ControlCall[];
+  /** How many `accountAdmin.listAccounts()` subscriptions the core holds
+   * that the driver has not yet answered. */
+  pendingAccountLists(): number;
+  /** Answer the OLDEST pending `listAccounts()` (next + complete). A no-op
+   * when nothing is pending. */
+  emitAccountList(outcome: AccountListOutcome): void;
+  /** Every `accountAdmin.actOn` the core has subscribed and the driver has
+   * not answered, oldest first. */
+  pendingAccountActions(): readonly AccountActionCall[];
+  /** Answer the OLDEST pending `actOn` (next + complete). A no-op when
+   * nothing is pending. */
+  answerAction(outcome: AccountActionOutcome): void;
   /** Every `auth.login` the core has subscribed and the driver has not
    * settled, oldest first. */
   pendingLogins(): readonly LoginCall[];
@@ -600,6 +624,11 @@ export function scriptPorts(
   const sessionsList$ = new Subject<readonly SessionInfo[]>();
   const throughputLoads = createPendingQueue<void, number>();
   const throughputWrites = createPendingQueue<number, void>();
+  const accountLists = createPendingQueue<void, AccountListOutcome>();
+  const accountActions = createPendingQueue<
+    AccountActionCall,
+    AccountActionOutcome
+  >();
   const logins = createPendingQueue<LoginCall, AuthOutcome>();
   const accountCalls = createPendingQueue<AccountCall, AccountFlowOutcome>();
   const asks = createPendingQueue<string, JarvisEvent>();
@@ -946,6 +975,22 @@ export function scriptPorts(
     "ops.",
   );
 
+  const accountAdmin = countCalls<AccountAdminPort>(
+    {
+      listAccounts: (): Observable<AccountListOutcome> => {
+        return accountLists.open(undefined);
+      },
+      actOn: (
+        accountId: string,
+        action: AccountAdminAction,
+      ): Observable<AccountActionOutcome> => {
+        return accountActions.open({ accountId, action });
+      },
+    },
+    calls,
+    "accountAdmin.",
+  );
+
   const auth = countCalls<AuthPort>(
     {
       login: (username: string, password: string): Observable<AuthOutcome> => {
@@ -1073,6 +1118,7 @@ export function scriptPorts(
     bootSplash,
     jarvis,
     jarvisUsage,
+    accountAdmin,
     narratorConfig: seed.narratorConfig ?? base.narratorConfig,
     transport,
     dockLayoutStore,
@@ -1270,6 +1316,12 @@ export function scriptPorts(
       controlCalls: () => {
         return controlCallLog.slice();
       },
+      pendingAccountLists: () => {
+        return accountLists.pending().length;
+      },
+      emitAccountList: accountLists.resolve,
+      pendingAccountActions: accountActions.pending,
+      answerAction: accountActions.resolve,
       pendingLogins: logins.pending,
       resolveLogin: logins.resolve,
       pendingAccountCalls: accountCalls.pending,
@@ -1403,6 +1455,8 @@ export function scriptPorts(
       sessionsList$.complete();
       throughputLoads.drain();
       throughputWrites.drain();
+      accountLists.drain();
+      accountActions.drain();
       logins.drain();
       accountCalls.drain();
       asks.drain();

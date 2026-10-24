@@ -17,6 +17,7 @@ import {
   AuthSimulator,
   type ConnectionEventsPort,
   ConnectionEventsSimulator,
+  createUnavailableAccountAdmin,
   type PreferencesPort,
 } from "@rtc/domain";
 
@@ -113,6 +114,8 @@ export function buildNativePorts(
     return {
       ports: {
         ...createWsRealPorts(ws, { preferences, auth, sessionStore }),
+        // The native client has no administrator surface.
+        accountAdmin: createUnavailableAccountAdmin(),
         connectionEvents,
         connectionIntents: paired.connectionIntents,
         colorScheme,
@@ -130,6 +133,7 @@ export function buildNativePorts(
   return {
     ports: {
       ...createSimulatorPorts({ preferences, auth, sessionStore }),
+      accountAdmin: createUnavailableAccountAdmin(),
       // Rendered "connected-only" — unlike the web simulator branches, the
       // RN simulator's reconnect handling has never passed the raw intent
       // through, only the synthesized `gatewayConnected` that resumes the

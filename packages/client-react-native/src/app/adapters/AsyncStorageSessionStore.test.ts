@@ -24,6 +24,28 @@ describe("AsyncStorageSessionStore", () => {
     expect(session.read()).toEqual(SESSION);
   });
 
+  it.each([
+    ["no access", undefined, "user"],
+    ["admin", "admin", "admin"],
+    ["an unknown word", "root", "user"],
+  ])(
+    "hydrate() reads a stored session with %s as access %s",
+    async (_label, stored, expected) => {
+      const { access: _drop, ...bare } = SESSION.user;
+      await AsyncStorage.setItem(
+        SESSION_STORAGE_KEY,
+        JSON.stringify({
+          ...SESSION,
+          user: stored === undefined ? bare : { ...bare, access: stored },
+        }),
+      );
+
+      const session = await AsyncStorageSessionStore.hydrate();
+
+      expect(session.read()?.user.access).toBe(expected);
+    },
+  );
+
   it("hydrate() returns an empty store when nothing is persisted", async () => {
     const session = await AsyncStorageSessionStore.hydrate();
 

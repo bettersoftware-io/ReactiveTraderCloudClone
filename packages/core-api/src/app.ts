@@ -1,4 +1,5 @@
 import type {
+  AccountAdminPort,
   AnalyticsPort,
   AnomalyDetectorConfig,
   AuthPort,
@@ -119,6 +120,10 @@ export interface AppPorts {
    * `jarvis` above. Simulator mode gets an always-empty snapshot; WS-real
    * mode streams `SERVER_MSG.OPS_JARVIS_USAGE` (`WsJarvisUsageAdapter`). */
   jarvisUsage: JarvisUsagePort;
+  /** The administrator's account list and actions. Simulator and native
+   * builders supply the unavailable port; WS-real speaks the
+   * `admin.accounts.*` RPCs (`createWsAccountAdminAdapter`). */
+  accountAdmin: AccountAdminPort;
   connectionEvents: ConnectionEventsPort;
   /** The pushes into `connectionEvents` that originate INSIDE the app — the
    * Reconnect button (`commands.reconnect`) and the ops console's incident

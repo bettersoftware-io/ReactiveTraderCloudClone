@@ -14,6 +14,10 @@ const FLOW_UNAVAILABLE: AccountFlowOutcome = {
   reason: "unavailable",
 };
 
+interface MaybeAccess {
+  readonly access?: unknown;
+}
+
 /**
  * AuthPort backed by the server's `POST /login` HTTP endpoint. Used in WS-real
  * mode; AuthSimulator (`@rtc/domain`) plays the same role in simulator mode.
@@ -136,7 +140,15 @@ export class HttpAuthAdapter implements AuthPort {
 
     if (response.status === 200) {
       const dto: LoginResponseDto = await response.json();
-      return { ok: true, token: dto.token, user: dto.user, exp: dto.exp };
+      // Pass `access` through; a server that omits it names an ordinary user.
+      const access = (dto.user as MaybeAccess).access;
+
+      return {
+        ok: true,
+        token: dto.token,
+        user: { ...dto.user, access: access === "admin" ? "admin" : "user" },
+        exp: dto.exp,
+      };
     }
 
     if (response.status === 401) {
