@@ -253,6 +253,7 @@ describe("HeaderChrome — the Admin tab", () => {
 
     expect(app.header.hasTab("admin")).toBe(true);
     expect(app.header.tabLabel("admin")).toBe("Admin");
+    expect(app.header.tabOrder().at(-1)).toBe("admin");
   });
 
   it("opens the Admin tab for an administrator's click", async () => {

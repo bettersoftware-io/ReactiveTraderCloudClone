@@ -43,6 +43,22 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
     });
   }
 
+  /** The workspace tabs the header offers, in document order. */
+  tabOrder(): string[] {
+    const known = ["fx", "credit", "equities", "ops", "admin"];
+
+    return Array.from(this.root.querySelectorAll<HTMLElement>("[data-testid]"))
+      .map((el) => {
+        return el.dataset.testid ?? "";
+      })
+      .filter((id) => {
+        return id.startsWith("tab-") && known.includes(id.slice(4));
+      })
+      .map((id) => {
+        return id.slice(4);
+      });
+  }
+
   /** The visible label of one tab button. */
   tabLabel(tab: WorkspaceTab): string {
     return (

@@ -77,47 +77,55 @@ describe("UsersPanel — the list", () => {
 });
 
 describe("UsersPanel — the actions each status offers", () => {
-  it("offers a pending row Approve, Rename and Delete, and wires Approve to its id", async () => {
-    const panel = mount(UsersPanel, {
-      accountList: { status: "ready", rows: [createAccount("a1", "pending")] },
-    });
-
-    expect(panel.hasButton("a1", "approve")).toBe(true);
-    expect(panel.buttonLabel("a1", "approve")).toBe(ACCOUNT_ADMIN_COPY.approve);
-    expect(panel.hasButton("a1", "rename")).toBe(true);
-    expect(panel.buttonLabel("a1", "rename")).toBe(ACCOUNT_ADMIN_COPY.rename);
-    expect(panel.hasButton("a1", "delete")).toBe(true);
-    expect(panel.buttonLabel("a1", "delete")).toBe(ACCOUNT_ADMIN_COPY.delete);
-    expect(panel.hasButton("a1", "block")).toBe(false);
-
-    await panel.click("a1", "approve");
-
-    expect(panel.actionCalls()).toEqual([
-      { accountId: "a1", intent: "approve" },
-    ]);
-  });
-
-  it("offers an active row Block, and a blocked row Unblock", async () => {
+  it("offers a pending row Approve, Rename and Delete, and wires Approve to its own id", async () => {
     const panel = mount(UsersPanel, {
       accountList: {
         status: "ready",
-        rows: [createAccount("a1", "active"), createAccount("a2", "blocked")],
+        rows: [createAccount("a1", "pending"), createAccount("a2", "pending")],
       },
     });
 
-    expect(panel.hasButton("a1", "block")).toBe(true);
-    expect(panel.buttonLabel("a1", "block")).toBe(ACCOUNT_ADMIN_COPY.block);
-    expect(panel.hasButton("a1", "unblock")).toBe(false);
-    expect(panel.hasButton("a2", "unblock")).toBe(true);
-    expect(panel.buttonLabel("a2", "unblock")).toBe(ACCOUNT_ADMIN_COPY.unblock);
+    expect(panel.hasButton("a2", "approve")).toBe(true);
+    expect(panel.buttonLabel("a2", "approve")).toBe(ACCOUNT_ADMIN_COPY.approve);
+    expect(panel.hasButton("a2", "rename")).toBe(true);
+    expect(panel.buttonLabel("a2", "rename")).toBe(ACCOUNT_ADMIN_COPY.rename);
+    expect(panel.hasButton("a2", "delete")).toBe(true);
+    expect(panel.buttonLabel("a2", "delete")).toBe(ACCOUNT_ADMIN_COPY.delete);
     expect(panel.hasButton("a2", "block")).toBe(false);
 
-    await panel.click("a1", "block");
-    await panel.click("a2", "unblock");
+    await panel.click("a2", "approve");
 
     expect(panel.actionCalls()).toEqual([
-      { accountId: "a1", intent: "block" },
-      { accountId: "a2", intent: "unblock" },
+      { accountId: "a2", intent: "approve" },
+    ]);
+  });
+
+  it("offers an active row Block, and a blocked row Unblock, each wired to its own id", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: {
+        status: "ready",
+        rows: [
+          createAccount("a1", "active"),
+          createAccount("a2", "active"),
+          createAccount("a3", "blocked"),
+          createAccount("a4", "blocked"),
+        ],
+      },
+    });
+
+    expect(panel.hasButton("a2", "block")).toBe(true);
+    expect(panel.buttonLabel("a2", "block")).toBe(ACCOUNT_ADMIN_COPY.block);
+    expect(panel.hasButton("a2", "unblock")).toBe(false);
+    expect(panel.hasButton("a4", "unblock")).toBe(true);
+    expect(panel.buttonLabel("a4", "unblock")).toBe(ACCOUNT_ADMIN_COPY.unblock);
+    expect(panel.hasButton("a4", "block")).toBe(false);
+
+    await panel.click("a2", "block");
+    await panel.click("a4", "unblock");
+
+    expect(panel.actionCalls()).toEqual([
+      { accountId: "a2", intent: "block" },
+      { accountId: "a4", intent: "unblock" },
     ]);
   });
 
@@ -136,29 +144,34 @@ describe("UsersPanel — the actions each status offers", () => {
 });
 
 describe("UsersPanel — delete", () => {
-  it("asks for confirmation inline, and Cancel restores the row", async () => {
+  it("asks for confirmation inline on that row, and Cancel restores it", async () => {
     const panel = mount(UsersPanel, {
-      accountList: { status: "ready", rows: [createAccount("a1", "active")] },
+      accountList: {
+        status: "ready",
+        rows: [createAccount("a1", "active"), createAccount("a2", "active")],
+      },
     });
 
-    await panel.click("a1", "delete");
+    await panel.click("a2", "delete");
 
-    expect(panel.hasButton("a1", "confirm-delete")).toBe(true);
-    expect(panel.buttonLabel("a1", "confirm-delete")).toBe(
+    expect(panel.hasButton("a2", "confirm-delete")).toBe(true);
+    expect(panel.buttonLabel("a2", "confirm-delete")).toBe(
       ACCOUNT_ADMIN_COPY.confirm,
     );
-    expect(panel.hasButton("a1", "cancel")).toBe(true);
-    expect(panel.buttonLabel("a1", "cancel")).toBe(ACCOUNT_ADMIN_COPY.cancel);
-    expect(panel.rowText("a1")).toContain(ACCOUNT_ADMIN_COPY.confirmDelete);
-    expect(panel.hasButton("a1", "delete")).toBe(false);
-
-    await panel.click("a1", "cancel");
-
-    expect(panel.hasButton("a1", "delete")).toBe(true);
+    expect(panel.hasButton("a2", "cancel")).toBe(true);
+    expect(panel.buttonLabel("a2", "cancel")).toBe(ACCOUNT_ADMIN_COPY.cancel);
+    expect(panel.rowText("a2")).toContain(ACCOUNT_ADMIN_COPY.confirmDelete);
+    expect(panel.hasButton("a2", "delete")).toBe(false);
     expect(panel.hasButton("a1", "confirm-delete")).toBe(false);
+    expect(panel.hasButton("a1", "delete")).toBe(true);
+
+    await panel.click("a2", "cancel");
+
+    expect(panel.hasButton("a2", "delete")).toBe(true);
+    expect(panel.hasButton("a2", "confirm-delete")).toBe(false);
     expect(panel.actionCalls()).toEqual([
-      { accountId: "a1", intent: "requestDelete" },
-      { accountId: "a1", intent: "cancel" },
+      { accountId: "a2", intent: "requestDelete" },
+      { accountId: "a2", intent: "cancel" },
     ]);
   });
 
@@ -181,36 +194,45 @@ describe("UsersPanel — delete", () => {
 });
 
 describe("UsersPanel — rename", () => {
-  it("shows the field with the current name, and sends the edits and the save", async () => {
+  it("shows the field with the current name, and sends the edits and the save for that row", async () => {
     const panel = mount(UsersPanel, {
-      accountList: { status: "ready", rows: [createAccount("a1", "active")] },
+      accountList: {
+        status: "ready",
+        rows: [createAccount("a1", "active"), createAccount("a2", "active")],
+      },
     });
 
-    await panel.click("a1", "rename");
+    await panel.click("a2", "rename");
 
-    expect(panel.hasNameInput("a1")).toBe(true);
-    expect(panel.nameDraft("a1")).toBe("Name a1");
-    expect(panel.nameError("a1")).toBeNull();
-    expect(panel.hasButton("a1", "save")).toBe(true);
-    expect(panel.buttonLabel("a1", "save")).toBe(ACCOUNT_ADMIN_COPY.save);
-    expect(panel.isButtonDisabled("a1", "save")).toBe(false);
+    expect(panel.hasNameInput("a2")).toBe(true);
+    expect(panel.hasNameInput("a1")).toBe(false);
+    expect(panel.nameDraft("a2")).toBe("Name a2");
+    expect(panel.nameError("a2")).toBeNull();
+    expect(panel.hasButton("a2", "save")).toBe(true);
+    expect(panel.buttonLabel("a2", "save")).toBe(ACCOUNT_ADMIN_COPY.save);
+    expect(panel.isButtonDisabled("a2", "save")).toBe(false);
 
-    await panel.typeName("a1", "Ann Lee");
-    await panel.click("a1", "save");
+    await panel.typeName("a2", "Ann Lee");
+    await panel.click("a2", "save");
 
     const calls = panel.actionCalls();
 
     expect(calls[0]).toEqual({
-      accountId: "a1",
+      accountId: "a2",
       intent: "startRename",
-      argument: "Name a1",
+      argument: "Name a2",
     });
     expect(calls.at(-2)).toEqual({
-      accountId: "a1",
+      accountId: "a2",
       intent: "editName",
       argument: "Ann Lee",
     });
-    expect(calls.at(-1)).toEqual({ accountId: "a1", intent: "submitRename" });
+    expect(calls.at(-1)).toEqual({ accountId: "a2", intent: "submitRename" });
+    expect(
+      calls.every((call) => {
+        return call.accountId === "a2";
+      }),
+    ).toBe(true);
   });
 
   it("shows an invalid draft's error and disables Save", () => {
@@ -228,58 +250,77 @@ describe("UsersPanel — rename", () => {
   it("shows the error the live check gives an emptied draft", async () => {
     const check = checkDisplayNameInput("");
     const panel = mount(UsersPanel, {
-      accountList: { status: "ready", rows: [createAccount("a1", "active")] },
+      accountList: {
+        status: "ready",
+        rows: [createAccount("a1", "active"), createAccount("a2", "active")],
+      },
     });
 
-    await panel.click("a1", "rename");
-    await panel.typeName("a1", "");
+    await panel.click("a2", "rename");
+    await panel.typeName("a2", "");
 
     expect(check.ok).toBe(false);
-    expect(panel.nameError("a1")).toBe(check.ok ? null : check.error);
-    expect(panel.isButtonDisabled("a1", "save")).toBe(true);
+    expect(panel.nameError("a2")).toBe(check.ok ? null : check.error);
+    expect(panel.isButtonDisabled("a2", "save")).toBe(true);
   });
 
   it("cancels a rename back to the row's actions", async () => {
     const panel = mount(UsersPanel, {
-      accountList: { status: "ready", rows: [createAccount("a1", "active")] },
+      accountList: {
+        status: "ready",
+        rows: [createAccount("a1", "active"), createAccount("a2", "active")],
+      },
       accountActions: {
-        a1: { phase: "renaming", draft: "Ann", draftError: null },
+        a2: { phase: "renaming", draft: "Ann", draftError: null },
       },
     });
 
-    await panel.click("a1", "cancel");
+    await panel.click("a2", "cancel");
 
-    expect(panel.hasNameInput("a1")).toBe(false);
-    expect(panel.hasButton("a1", "rename")).toBe(true);
+    expect(panel.hasNameInput("a2")).toBe(false);
+    expect(panel.hasButton("a2", "rename")).toBe(true);
+    expect(panel.actionCalls()).toEqual([
+      { accountId: "a2", intent: "cancel" },
+    ]);
   });
 });
 
 describe("UsersPanel — a request in flight, and a failure", () => {
-  it("disables the row's buttons while its request is in flight", () => {
+  it("disables only the in-flight row's buttons", () => {
     const panel = mount(UsersPanel, {
-      accountList: { status: "ready", rows: [createAccount("a1", "pending")] },
+      accountList: {
+        status: "ready",
+        rows: [createAccount("a1", "pending"), createAccount("a2", "pending")],
+      },
       accountActions: { a1: { phase: "inFlight", action: "approve" } },
     });
 
     expect(panel.areRowButtonsDisabled("a1")).toBe(true);
+    expect(panel.hasButton("a2", "approve")).toBe(true);
+    expect(panel.isButtonDisabled("a2", "approve")).toBe(false);
+    expect(panel.isButtonDisabled("a2", "delete")).toBe(false);
   });
 
   it("shows a failed row's message with Dismiss, and Dismiss clears it", async () => {
     const message = describeAccountAdminRefusal("not_found", "approve");
     const panel = mount(UsersPanel, {
-      accountList: { status: "ready", rows: [createAccount("a1", "pending")] },
-      accountActions: { a1: { phase: "failed", action: "approve", message } },
+      accountList: {
+        status: "ready",
+        rows: [createAccount("a1", "pending"), createAccount("a2", "pending")],
+      },
+      accountActions: { a2: { phase: "failed", action: "approve", message } },
     });
 
-    expect(panel.errorText("a1")).toBe(message);
-    expect(panel.hasButton("a1", "dismiss")).toBe(true);
-    expect(panel.buttonLabel("a1", "dismiss")).toBe(ACCOUNT_ADMIN_COPY.dismiss);
-
-    await panel.click("a1", "dismiss");
-
+    expect(panel.errorText("a2")).toBe(message);
     expect(panel.errorText("a1")).toBeNull();
+    expect(panel.hasButton("a2", "dismiss")).toBe(true);
+    expect(panel.buttonLabel("a2", "dismiss")).toBe(ACCOUNT_ADMIN_COPY.dismiss);
+
+    await panel.click("a2", "dismiss");
+
+    expect(panel.errorText("a2")).toBeNull();
     expect(panel.actionCalls()).toEqual([
-      { accountId: "a1", intent: "dismiss" },
+      { accountId: "a2", intent: "dismiss" },
     ]);
   });
 });
