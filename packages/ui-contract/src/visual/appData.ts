@@ -4,6 +4,8 @@
 
 import type {
   AccountAccessState,
+  AccountActionState,
+  AccountListState,
   ActivityEntry,
   EqWorkspaceState,
   IncidentKind,
@@ -22,6 +24,7 @@ import type {
   TileExecutionState,
 } from "@rtc/core-api";
 import {
+  type AccessLevel,
   type AmbientStyle,
   type Candle,
   ConnectionStatus,
@@ -167,6 +170,15 @@ export interface AppData {
   /** Whether the build offers create-account / reset (useRegistrationAvailable);
    * defaults to false → no links under the sign-in form. */
   registrationAvailable?: boolean;
+  /** The signed-in user's access level (useAuth's `user.access`); defaults to
+   * "user". "admin" also adds the Admin tab to useWorkspaceNav's visible tabs. */
+  sessionAccess?: AccessLevel;
+  /** The Users panel's account list (useAccountList); defaults to the
+   * `loading` state with no rows. */
+  accountList?: AccountListState;
+  /** Per-account action state (useAccountAction), keyed by account id; an id
+   * not in the map is `idle`. */
+  accountActions?: Record<string, AccountActionState>;
   // ── Ops / telemetry fields (Phase 5) ───────────────────────────────────
   /** Metric windows for the radial gauges / charts (useMetrics); defaults to empty series. */
   opsMetrics?: {

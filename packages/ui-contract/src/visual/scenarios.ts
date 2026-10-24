@@ -1159,6 +1159,35 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "JarvisPanelLayer",
     fixtureKey: "jarvis-panel-unsupported",
   },
+
+  // Admin tab (B2c): the Users panel on a mixed list and each row/list state,
+  // plus the full app as an administrator with the Admin tab active.
+  "admin/users": { componentKey: "UsersPanel", fixtureKey: "admin-users" },
+  "admin/users-empty": {
+    componentKey: "UsersPanel",
+    fixtureKey: "admin-users-empty",
+  },
+  "admin/users-row-in-flight": {
+    componentKey: "UsersPanel",
+    fixtureKey: "admin-users-row-in-flight",
+  },
+  "admin/users-row-failed": {
+    componentKey: "UsersPanel",
+    fixtureKey: "admin-users-row-failed",
+  },
+  "admin/users-confirm-delete": {
+    componentKey: "UsersPanel",
+    fixtureKey: "admin-users-confirm-delete",
+  },
+  "admin/users-rename": {
+    componentKey: "UsersPanel",
+    fixtureKey: "admin-users-rename",
+  },
+  "admin/users-forbidden": {
+    componentKey: "UsersPanel",
+    fixtureKey: "admin-users-forbidden",
+  },
+  "app/admin": { componentKey: "App", fixtureKey: "app-admin" },
 };
 
 // The theme matrix: every skin except neon × dark/light. Every base scenario is

@@ -5,6 +5,7 @@ import type { LayoutState } from "@rtc/core-api";
 import { createDefaultLayoutPort, EVERY_USER_TABS } from "@rtc/core-logic";
 
 import { App } from "#/ui/App";
+import { UsersPanel } from "#/ui/admin/UsersPanel";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
 import { CreditBlotterHead } from "#/ui/credit/blotter/CreditBlotterHead";
 import { NewRfqPanel } from "#/ui/credit/newRfq/NewRfqPanel";
@@ -347,6 +348,15 @@ export const registry: Record<string, (fixtureKey: string) => JSX.Element> = {
     return (
       <div style={panelWidth(660)}>
         <OpsPanel />
+      </div>
+    );
+  },
+  // The Users panel at a pinned width: its columns share one grid, so a
+  // content-sized wrapper would track x86 glyph advances (the #width-flake rule).
+  UsersPanel: () => {
+    return (
+      <div style={panelWidth(1100)}>
+        <UsersPanel />
       </div>
     );
   },

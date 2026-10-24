@@ -1,7 +1,9 @@
 import {
+  ACCOUNT_ACTION_IDLE,
   createDefaultLayoutPort,
   InMemoryDockLayoutStore,
   JARVIS_DEMO_STEPS,
+  visibleTabsFor,
 } from "@rtc/core-logic";
 import {
   type CurrencyPair,
@@ -156,7 +158,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
   // `useState<WorkspaceTab>` is scoped to one App mount.
   const [navState, setNavState] = createSignal<WorkspaceNavState>({
     activeTab: "fx",
-    visibleTabs: ["fx", "credit", "equities", "ops"],
+    visibleTabs: visibleTabsFor(data.sessionAccess ?? "user"),
   });
 
   return {
@@ -393,7 +395,10 @@ export function buildFakeViewModel(data: AppData): ViewModel {
           status: data.sessionAuthenticating
             ? ("authenticating" as const)
             : ("authenticated" as const),
-          user: DEMO_USER,
+          user:
+            data.sessionAccess === "admin"
+              ? { ...DEMO_USER, access: "admin" as const }
+              : DEMO_USER,
           locked: data.sessionLocked ?? false,
           unlocking: data.sessionUnlocking ?? false,
           error: null,
@@ -656,7 +661,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         switchTab: (tab: WorkspaceTab) => {
           setNavState({
             activeTab: tab,
-            visibleTabs: ["fx", "credit", "equities", "ops"],
+            visibleTabs: visibleTabsFor(data.sessionAccess ?? "user"),
           });
         },
       };
@@ -812,16 +817,19 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         resendCode: noop,
       };
     },
-    // Inert until the admin panel's World and fixture support land.
+    // The Users panel: the list from the fixture, and each row's action
+    // state from the fixture's per-account map (an id not in it is idle).
     useAccountList: () => {
       return {
-        state: at({ status: "loading", rows: [], pendingCount: 0 }),
+        state: at(
+          data.accountList ?? { status: "loading", rows: [], pendingCount: 0 },
+        ),
         refresh: noop,
       };
     },
-    useAccountAction: () => {
+    useAccountAction: (accountId: string) => {
       return {
-        state: at({ phase: "idle" }),
+        state: at(data.accountActions?.[accountId] ?? ACCOUNT_ACTION_IDLE),
         intents: {
           approve: noop,
           block: noop,

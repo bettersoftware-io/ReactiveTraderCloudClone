@@ -1,7 +1,9 @@
 import {
+  ACCOUNT_ACTION_IDLE,
   createDefaultLayoutPort,
   InMemoryDockLayoutStore,
   JARVIS_DEMO_STEPS,
+  visibleTabsFor,
 } from "@rtc/core-logic";
 import {
   type CurrencyPair,
@@ -339,7 +341,10 @@ export function buildFakeViewModel(data: AppData): ViewModel {
           status: data.sessionAuthenticating
             ? "authenticating"
             : "authenticated",
-          user: DEMO_USER,
+          user:
+            data.sessionAccess === "admin"
+              ? { ...DEMO_USER, access: "admin" }
+              : DEMO_USER,
           locked: data.sessionLocked ?? false,
           unlocking: data.sessionUnlocking ?? false,
           error: null,
@@ -392,7 +397,10 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useWorkspaceNav: () => {
       const [activeTab, setActiveTab] = useState<WorkspaceTab>("fx");
       return {
-        state: { activeTab, visibleTabs: ["fx", "credit", "equities", "ops"] },
+        state: {
+          activeTab,
+          visibleTabs: visibleTabsFor(data.sessionAccess ?? "user"),
+        },
         switchTab: (tab: WorkspaceTab) => {
           setActiveTab(tab);
         },
@@ -725,16 +733,21 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         resendCode: noop,
       };
     },
-    // Inert until the admin panel's World and fixture support land.
+    // The Users panel: the list from the fixture, and each row's action
+    // state from the fixture's per-account map (an id not in it is idle).
     useAccountList: () => {
       return {
-        state: { status: "loading", rows: [], pendingCount: 0 },
+        state: data.accountList ?? {
+          status: "loading",
+          rows: [],
+          pendingCount: 0,
+        },
         refresh: noop,
       };
     },
-    useAccountAction: () => {
+    useAccountAction: (accountId: string) => {
       return {
-        state: { phase: "idle" },
+        state: data.accountActions?.[accountId] ?? ACCOUNT_ACTION_IDLE,
         intents: {
           approve: noop,
           block: noop,
