@@ -151,7 +151,7 @@ jobs:
             import { writeFileSync } from "node:fs";
             const [url, out] = process.argv.slice(1);
             const res = await fetch(url);
-            if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
+            if (!res.ok) throw new Error(url + " -> HTTP " + res.status);
             writeFileSync(out, Buffer.from(await res.arrayBuffer()));
           ' "https://github.com/oxipng/oxipng/releases/download/v${OXIPNG_VERSION}/${asset}.tar.gz" /tmp/oxipng.tgz
           echo "${OXIPNG_SHA256}  /tmp/oxipng.tgz" | sha256sum -c -
