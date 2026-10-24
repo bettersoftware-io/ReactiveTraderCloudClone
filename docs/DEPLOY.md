@@ -367,13 +367,25 @@ B2c adds a column and changes the wire, so the order matters:
 2. **Deploy the server and both web clients together** (`deploy.yml`): the
    wire messages changed (`ops.*` in the rename PR, and the new
    `admin.accounts.*`).
-3. **Expect a one-time sign-out.** Tokens issued before B2c carry no `iat`, so
-   every registered account is signed out once ("Your session has ended.
-   Please sign in again."). Roster and demo sessions are unaffected.
-4. **React Native** needs an EAS Update for the `ops.*` rename; it shows no
-   Admin tab.
+3. **Reload every open tab right after the deploy.** Tokens issued before
+   B2c carry no `iat`, so every registered account is signed out once ("Your
+   session has ended. Please sign in again.") — but only by the NEW bundle.
+   A tab still running the previous bundle treats the server's `4401` close
+   as an ordinary drop: its old token is accepted at the upgrade, the socket
+   is closed with `4401` at once, the tab reconnects about every 3 s, and
+   the user never sees a sign-out — just a desk that never connects. A reload
+   loads the new bundle, which signs the user out once. Roster and demo
+   sessions are unaffected.
+4. **React Native: publish the EAS Update, and have every RN user with a
+   registered account take it** (or sign out and back in). Without it the
+   build has the same reconnect loop as an old tab (its token has no `iat`,
+   and it does not know `4401`), and the renamed `ops.*` messages break its
+   throughput and Jarvis-usage controls. It shows no Admin tab.
 5. **MCP clients** configured with a roster token must switch to the
    administrator's token (`/mcp` answers `403 admin_only` to anything else).
+   An account promoted to administrator must sign in again before its token
+   reaches `/mcp`: a token minted while it was a user is refused on its claim
+   alone, before any directory read.
 
 ## Deploying
 

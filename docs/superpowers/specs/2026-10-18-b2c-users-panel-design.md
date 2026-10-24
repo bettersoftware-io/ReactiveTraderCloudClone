@@ -501,9 +501,16 @@ goldens, as with B2b.
    messages changed).
 3. Every registered user, including the administrator, is signed out once
    with "Your session has ended" (§4.10): old account tokens carry no `iat`.
-4. **React Native.** Its build talks to the deployed server, and the renamed
-   `ops.*` messages break its throughput and Jarvis-usage controls until an
-   updated build is published (EAS Update). RN sign-in is unaffected.
+   Only the new bundle does that: a tab still running the previous bundle
+   treats the `4401` close as an ordinary drop and reconnects about every
+   3 s (its token is accepted at the upgrade, then closed at once), and the
+   user never sees a sign-out. Reload every open tab after the deploy.
+4. **React Native.** Its build talks to the deployed server. Until the
+   updated build (EAS Update) is taken, a registered account's token (no
+   `iat`) meets the same endless `4401` reconnect as an old tab, and the
+   renamed `ops.*` messages break its throughput and Jarvis-usage controls.
+   RN users with registered accounts must take the update (or sign out and
+   back in).
 5. `/mcp`: any MCP client configured with a roster token stops working.
    Re-configure it with the administrator's token.
 

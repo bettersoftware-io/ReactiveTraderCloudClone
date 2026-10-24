@@ -1069,7 +1069,12 @@ a `sessionEnded` event on `connectionEvents`, and every pending RPC rejects.
 Each core's auth presenter answers the event by signing out with "Your
 session has ended. Please sign in again." and clearing the stored session;
 the transport gate then disconnects. The person lands on the sign-in screen
-with that line.
+with that line. Only a bundle that knows `4401` does this: a tab still running
+the pre-B2c bundle, or a React Native build without the B2c EAS Update, treats
+the close as an ordinary drop and reconnects about every 3 s — its token
+(no `iat`) is accepted at the upgrade and closed at once, forever, and the
+person never sees a sign-out. Hence the rollout's "reload every open tab" and
+"take the EAS update" steps ([DEPLOY.md](DEPLOY.md#rolling-out-b2c)).
 
 ```mermaid
 sequenceDiagram
@@ -1083,7 +1088,7 @@ sequenceDiagram
   D-->>S: ok
   S->>S: invalidate the status cache, closeAll(id)
   S-->>U: close 4401 session_ended
-  S-->>A: changed
+  S-->>A: ack { done: true }
   U->>U: no reconnect, sign out, clear the session
   U->>U: sign-in screen: "Your session has ended."
 ```
@@ -1127,7 +1132,12 @@ nacked. Refusals (`forbidden`, `self`, `not_found`, `invalid_name`,
 
 **`/mcp`.** Only an active administrator with a live session is admitted.
 A roster token or an ordinary user answers `403 admin_only`; a store that
-cannot be read answers `503`. Each request reads the directory once (there is
+cannot be read answers `503`. A token whose signed `a` claim says `user` is
+refused before any directory read (a deny-only use of the claim, so a user's
+token cannot make each request a store round trip); a token claiming `admin`
+still needs the directory to agree, so a demoted administrator is refused
+too. A newly promoted administrator therefore signs in again before `/mcp`
+admits them. Each admitted-claim request reads the directory once (there is
 no limiter yet; see STATUS). Locally: run `pnpm dev:*:ws` (it sets
 `RTC_DEV_ACCOUNTS=1`), sign in as `admin@rtc.test` with the dev password and
 use that token
