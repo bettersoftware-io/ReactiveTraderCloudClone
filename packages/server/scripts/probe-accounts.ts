@@ -436,7 +436,11 @@ try {
     thirdPassword,
     PROBE_IP,
   );
-  check("password reset", reset === "changed", reset);
+  check(
+    "password reset",
+    typeof reset === "object" && reset.outcome === "changed",
+    typeof reset === "object" ? reset.outcome : reset,
+  );
 
   const relogin = await directory.checkPassword(email, thirdPassword, PROBE_IP);
   check(

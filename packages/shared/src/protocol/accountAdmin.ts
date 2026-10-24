@@ -38,7 +38,7 @@ export const SESSION_ENDED_REASON = "session_ended";
 const DISPLAY_NAME_FRAME_MAX = 200;
 
 const UUID_SHAPE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const REFUSALS: readonly string[] = [
   "forbidden",

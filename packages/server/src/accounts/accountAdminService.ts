@@ -75,6 +75,8 @@ export function createAccountAdminService(
 
     const record = found.account;
 
+    // Deliberate defense in depth: `hasSessionEnded` also ends a non-active
+    // account, but the gate states the rule itself rather than lean on it.
     if (record.access !== "admin" || record.status !== "active") {
       return refused("forbidden");
     }
@@ -171,7 +173,10 @@ export function createAccountAdminService(
         return gate;
       }
 
-      if (accountId === gate.adminId) {
+      // Sessions and caches are keyed by the canonical lowercase id.
+      const target = accountId.toLowerCase();
+
+      if (target === gate.adminId) {
         return refused("self");
       }
 
@@ -185,20 +190,20 @@ export function createAccountAdminService(
         }
       }
 
-      const written = await write(accountId, action, displayName);
+      const written = await write(target, action, displayName);
 
       if (written !== "ok") {
         return refused(written);
       }
 
-      deps.statusCache.invalidate(accountId);
+      deps.statusCache.invalidate(target);
 
       if (
         action.kind === "block" ||
         action.kind === "rename" ||
         action.kind === "delete"
       ) {
-        deps.sessions.closeAll(accountId);
+        deps.sessions.closeAll(target);
       }
 
       return { ok: true, value: undefined };

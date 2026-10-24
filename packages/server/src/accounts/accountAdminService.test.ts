@@ -125,6 +125,46 @@ describe("AccountAdminService", () => {
       },
     );
 
+    it("refuses self before it validates the rename", async () => {
+      const { service, writes } = createFixture();
+
+      expect(
+        await service.act(createCaller(ADMIN_ID), ADMIN_ID, {
+          kind: "rename",
+          displayName: "Ann\u200b",
+        }),
+      ).toEqual({ ok: false, refusal: "self" });
+      expect(writes).toHaveBeenCalledTimes(0);
+    });
+
+    it("refuses the caller's own id in uppercase as self with no write", async () => {
+      const { service, writes, cache, sessions } = createFixture();
+
+      expect(
+        await service.act(createCaller(ADMIN_ID), ADMIN_ID.toUpperCase(), {
+          kind: "block",
+        }),
+      ).toEqual({ ok: false, refusal: "self" });
+      expect(writes).toHaveBeenCalledTimes(0);
+      expect(cache.invalidate).not.toHaveBeenCalled();
+      expect(sessions.closeAll).not.toHaveBeenCalled();
+    });
+
+    it("blocks an uppercase id and closes the lowercase one", async () => {
+      const { service, directory, cache, sessions } = createFixture();
+
+      expect(
+        await service.act(createCaller(ADMIN_ID), OTHER_ID.toUpperCase(), {
+          kind: "block",
+        }),
+      ).toEqual({ ok: true, value: undefined });
+      expect(await directory.findAccount(OTHER_ID)).toMatchObject({
+        account: { status: "blocked" },
+      });
+      expect(cache.invalidate).toHaveBeenCalledWith(OTHER_ID);
+      expect(sessions.closeAll).toHaveBeenCalledWith(OTHER_ID);
+    });
+
     it.each(["Ann​", "", "   "])(
       "refuses the rename %j as invalid_name with no write",
       async (displayName) => {
@@ -169,13 +209,16 @@ describe("AccountAdminService", () => {
   describe("act successes", () => {
     it("approve activates the account and only invalidates", async () => {
       const { service, directory, cache, sessions } = createFixture();
-      await directory.setBlocked(OTHER_ID, false, NOW);
 
       expect(
         await service.act(createCaller(ADMIN_ID), OTHER_ID, {
           kind: "approve",
         }),
       ).toEqual({ ok: true, value: undefined });
+      expect(await directory.findAccount(OTHER_ID)).toMatchObject({
+        outcome: "found",
+        account: { status: "active" },
+      });
       expect(cache.invalidate).toHaveBeenCalledWith(OTHER_ID);
       expect(sessions.closeAll).not.toHaveBeenCalled();
     });
@@ -200,13 +243,18 @@ describe("AccountAdminService", () => {
 
     it("unblock invalidates and does not close the sockets", async () => {
       const { service, directory, cache, sessions } = createFixture();
-      await directory.setBlocked(OTHER_ID, true, NOW);
+      await directory.setBlocked(OTHER_ID, true, STAMP);
 
       expect(
         await service.act(createCaller(ADMIN_ID), OTHER_ID, {
           kind: "unblock",
         }),
       ).toEqual({ ok: true, value: undefined });
+      // Back to the seeded status; the block's stamp is left as it was.
+      expect(await directory.findAccount(OTHER_ID)).toMatchObject({
+        outcome: "found",
+        account: { status: "pending", sessionsNotBefore: STAMP },
+      });
       expect(cache.invalidate).toHaveBeenCalledWith(OTHER_ID);
       expect(sessions.closeAll).not.toHaveBeenCalled();
     });
@@ -276,7 +324,19 @@ describe("AccountAdminService", () => {
         }),
       ).toEqual([ADMIN_ID]);
       expect(answer.value).toHaveLength(4);
-      expect(answer.value[0]).toHaveProperty("joinedAt");
+      expect(
+        answer.value.find((row) => {
+          return row.id === ADMIN_ID;
+        }),
+      ).toEqual({
+        id: ADMIN_ID,
+        email: `${ADMIN_ID}@rtc.test`,
+        displayName: "Seed a1",
+        access: "admin",
+        status: "active",
+        joinedAt: CREATED_AT,
+        isSelf: true,
+      });
     });
 
     it("asks the directory for at most the list limit", async () => {
@@ -429,6 +489,8 @@ function createSeed(
 }
 
 const NOW = 5_000;
+const STAMP = 1_234;
+const CREATED_AT = 5_000;
 const ADMIN_ID = "00000000-0000-4000-8000-0000000000a1";
 const OTHER_ID = "00000000-0000-4000-8000-0000000000b1";
 const DEMOTED_ID = "00000000-0000-4000-8000-0000000000c1";

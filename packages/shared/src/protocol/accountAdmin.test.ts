@@ -17,6 +17,7 @@ describe("isAccountIdPayload", () => {
     ["x", "x"],
     ["empty", ""],
     ["37 characters", `${ID}0`],
+    ["uppercase", ID.toUpperCase()],
   ])("refuses %s", (_label: string, accountId: string) => {
     expect(isAccountIdPayload({ accountId })).toBe(false);
   });
