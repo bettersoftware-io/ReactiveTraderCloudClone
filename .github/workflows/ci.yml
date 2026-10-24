@@ -52,7 +52,7 @@ permissions:
 jobs:
   checks:
     name: typecheck · test · build · gates
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     # id-token: write lets the remote-cache step below trade this run's GitHub
     # OIDC token for a short-lived, cache-only Turborepo token. Nothing else in
     # this repo trusts GitHub OIDC (deploys use stored tokens), so the
@@ -301,7 +301,7 @@ jobs:
 
   e2e:
     name: e2e (browser · presenter · fullstack)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     env:
       # The 2-vCPU runner can't sustain the full parallel fan-out (it starves
       # the timing-sensitive WS smoke into timeouts). Cap the pool to 2 suites
@@ -389,7 +389,7 @@ jobs:
   # required check.
   e2e-alt-cores:
     name: e2e (${{ matrix.core }} core · browser · presenter · fullstack)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
@@ -457,3 +457,31 @@ jobs:
             tests/reports/
           if-no-files-found: ignore
           retention-days: 7
+
+  # TEMPORARY (Ubuntu 26 probe): the runner-installed tools the other
+  # workflows rely on, exercised on ubuntu-26.04. Not for merge.
+  ubuntu-26-probe:
+    name: ubuntu-26.04 probe (installers + preinstalled tools)
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+      - name: Image and preinstalled tools
+        run: |
+          cat /etc/os-release
+          echo "ImageVersion=${ImageVersion:-unset}"
+          for t in shellcheck git docker jq curl unzip python3 sudo apt-get; do
+            printf '%s: ' "$t"; command -v "$t" || echo MISSING
+          done
+          shellcheck --version
+          docker version --format '{{.Server.Version}}'
+      - name: Corepack
+        run: scripts/enable-corepack.sh
+      - name: flyctl installer
+        run: scripts/install-flyctl.sh && "$RUNNER_TEMP/rtc-flyctl/bin/flyctl" version
+      - name: Vercel CLI installer
+        run: scripts/install-vercel.sh

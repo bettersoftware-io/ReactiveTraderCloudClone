@@ -1,0 +1,4 @@
+# actionlint 1.7.12 (the newest release) predates the ubuntu-26.04 label.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
