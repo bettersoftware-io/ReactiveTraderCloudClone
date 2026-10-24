@@ -156,6 +156,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
   // `useState<WorkspaceTab>` is scoped to one App mount.
   const [navState, setNavState] = createSignal<WorkspaceNavState>({
     activeTab: "fx",
+    visibleTabs: ["fx", "credit", "equities", "ops"],
   });
 
   return {
@@ -653,7 +654,10 @@ export function buildFakeViewModel(data: AppData): ViewModel {
       return {
         state: navState,
         switchTab: (tab: WorkspaceTab) => {
-          setNavState({ activeTab: tab });
+          setNavState({
+            activeTab: tab,
+            visibleTabs: ["fx", "credit", "equities", "ops"],
+          });
         },
       };
     },

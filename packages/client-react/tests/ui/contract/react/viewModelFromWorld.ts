@@ -256,7 +256,7 @@ function getWorkspaceNav(
   let machine = workspaceNavs.get(world);
 
   if (!machine) {
-    machine = createWorkspaceNavMachine();
+    machine = createWorkspaceNavMachine(of(null));
     workspaceNavs.set(world, machine);
   }
 
@@ -748,7 +748,10 @@ function getLayoutPresets(world: World): LayoutPresetsPresenter {
 /** `readStateNow`'s fallback for the nav machine — never observed in practice
  * (`createWorkspaceNavMachine`'s state$ is warm and defaulted), but the read
  * needs a total type. Mirrors the machine's own INITIAL. */
-const FALLBACK_NAV_STATE: WorkspaceNavState = { activeTab: "fx" };
+const FALLBACK_NAV_STATE: WorkspaceNavState = {
+  activeTab: "fx",
+  visibleTabs: ["fx", "credit", "equities", "ops"],
+};
 
 /** The REAL `CandleSeriesPresenter`, one shared instance PER WORLD (same
  * per-World-singleton doctrine as `getLayoutFor`/`getWorkspaceNav` above) —

@@ -13,7 +13,7 @@ import {
 
 import {
   DOCK_BLOB_VERSION,
-  isCurrentDockBlob,
+  isRestorableDockBlob,
   withoutDynamicNodes,
   withoutFloatingGroups,
   withoutLockMarks,
@@ -429,7 +429,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   function buildLayoutBlob(): string {
     // With no theme gap, dockview's toJSON IS the model — no compensation.
     // `rtcBlobVersion` stamps the blob; a load discards any other version
-    // (isCurrentDockBlob).
+    // (isRestorableDockBlob).
     // `rtcDesignPins` rides along inside the blob (dockview's fromJSON
     // ignores unknown top-level keys) so a still-pinned rail stays pinned
     // across reloads, and a released one stays released — the in-house
@@ -5991,8 +5991,11 @@ export function loadBlobOrSeed(
   height: number,
 ): RestoredLayout {
   // Any blob not stamped with the current version is treated as absent and
-  // the seed restores (plan 2026-09-28, R9).
-  const blob = isCurrentDockBlob(opts.blob) ? opts.blob : null;
+  // the seed restores (plan 2026-09-28, R9); so is a blob holding none of
+  // the seed's panels (a tab whose seed changed under a saved blob).
+  const blob = isRestorableDockBlob(opts.blob, seedPanelIdsOf(opts.seed))
+    ? opts.blob
+    : null;
 
   if (blob !== null) {
     try {

@@ -73,6 +73,7 @@ const WORKSPACE_TAB_MARKERS: Readonly<Record<WorkspaceTab, true>> = {
   credit: true,
   ops: true,
   equities: true,
+  admin: true,
 };
 
 const SPLIT_DIRS: readonly SplitDir[] = ["row", "column"];

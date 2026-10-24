@@ -48,6 +48,7 @@ describe("shellFolds", () => {
     ["unconfirmed", "Email not confirmed"],
     ["pending", "Account awaiting approval"],
     ["blocked", "Account blocked"],
+    ["session_ended", "Your session has ended. Please sign in again."],
   ] as const)("describeAuthFailure(%s) → %s", (reason, text) => {
     expect(describeAuthFailure(reason)).toBe(text);
   });

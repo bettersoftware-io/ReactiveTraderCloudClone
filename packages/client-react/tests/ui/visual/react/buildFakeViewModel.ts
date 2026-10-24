@@ -392,7 +392,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useWorkspaceNav: () => {
       const [activeTab, setActiveTab] = useState<WorkspaceTab>("fx");
       return {
-        state: { activeTab },
+        state: { activeTab, visibleTabs: ["fx", "credit", "equities", "ops"] },
         switchTab: (tab: WorkspaceTab) => {
           setActiveTab(tab);
         },

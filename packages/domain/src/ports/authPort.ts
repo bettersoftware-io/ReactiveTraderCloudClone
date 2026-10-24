@@ -11,7 +11,8 @@ export type AuthFailureReason =
   | "unavailable"
   | "unconfirmed"
   | "pending"
-  | "blocked";
+  | "blocked"
+  | "session_ended";
 
 export type AuthOutcome =
   | {

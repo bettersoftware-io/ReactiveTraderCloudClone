@@ -198,6 +198,25 @@ export class AuthPresenter implements AuthPresenterApi {
     this.subject.next(UNAUTHENTICATED_STATE);
   }
 
+  /** The server ended this session (a `sessionEnded` connection event):
+   * clears the store and signs out with the reason and its copy. Not on the
+   * `AuthPresenter` interface — composition routes the event here. A no-op
+   * when nobody is authenticated, so a late event never overwrites a
+   * sign-in failure's message. */
+  endSession(): void {
+    if (this.subject.value.status !== "authenticated") {
+      return;
+    }
+
+    this.store.clear();
+    this.currentUsername = null;
+    this.subject.next({
+      ...UNAUTHENTICATED_STATE,
+      error: describeAuthFailure("session_ended"),
+      failure: "session_ended",
+    });
+  }
+
   // `exp` is the expiry the AuthPort reported (the server's real token expiry
   // over HTTP, or the simulator's `now() + ttlMs`), persisted verbatim rather
   // than recomputed from a local TTL — so `resume()`'s `exp > now()` check

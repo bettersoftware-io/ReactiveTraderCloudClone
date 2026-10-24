@@ -57,6 +57,7 @@ export * from "#/presenters/shallowArrayEquals";
 export * from "#/presenters/shellFolds";
 export * from "#/presenters/staleFlagFold";
 export * from "#/presenters/tileExecutionState";
+export * from "#/presenters/workspaceNavFold";
 export * from "#/routes/accountRouteSync";
 export * from "#/routes/appRoutes";
 export * from "#/routes/workspaceRouteSync";

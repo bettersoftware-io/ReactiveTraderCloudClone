@@ -396,6 +396,46 @@ export function describeAuthContract(
       });
     });
 
+    it("a sessionEnded connection event signs an authenticated user out with the reason and the copy, and clears the store", async () => {
+      await withFakeClock(async (clock) => {
+        vi.setSystemTime(NOW);
+        const h = makeHarness({ session: createSession(NOW + 1_000) });
+
+        try {
+          const c = collect(h.app.presenters.auth.state$);
+          expect(c.values.at(-1)?.status).toBe("authenticated");
+          h.driver.emitConnection({ type: "sessionEnded" });
+          await clock.settle();
+          expect(c.values.at(-1)).toEqual({
+            ...SIGNED_OUT,
+            error: "Your session has ended. Please sign in again.",
+            failure: "session_ended",
+          });
+          expect(h.driver.storedSession()).toBeNull();
+          c.unsubscribe();
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("a sessionEnded event while signed out changes nothing", async () => {
+      await withFakeClock(async (clock) => {
+        vi.setSystemTime(NOW);
+        const h = makeHarness();
+
+        try {
+          const c = collect(h.app.presenters.auth.state$);
+          h.driver.emitConnection({ type: "sessionEnded" });
+          await clock.settle();
+          expect(c.values).toEqual([SIGNED_OUT]);
+          c.unsubscribe();
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
     it("logout signs out and clears the store", async () => {
       await withFakeClock(async (clock) => {
         vi.setSystemTime(NOW);

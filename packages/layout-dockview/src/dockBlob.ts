@@ -60,6 +60,74 @@ export function isCurrentDockBlob(blob: string | null): blob is string {
   }
 }
 
+/** True only for a blob that is current ({@link isCurrentDockBlob}) AND still
+ * holds at least one of the tab's seed (static) panel ids. A tab whose seed
+ * changed under a saved blob (the old Admin tab's `admin-dashboard` blob,
+ * now that the tab seeds `admin-users`) would otherwise restore, have its
+ * unknown panels dropped by reconciliation, and open empty; with no seed
+ * panel left in it the seed restores instead. A blob that keeps a seed
+ * panel — plus any docked Jarvis panels — restores as saved. */
+export function isRestorableDockBlob(
+  blob: string | null,
+  seedPanelIds: readonly string[],
+): blob is string {
+  if (!isCurrentDockBlob(blob)) {
+    return false;
+  }
+
+  const seed = new Set(seedPanelIds);
+
+  return blobPanelIds(JSON.parse(blob) as unknown).some((id) => {
+    return seed.has(id);
+  });
+}
+
+/** Every panel id a parsed blob names: its `panels` dictionary keys and the
+ * `views` of every grid leaf. Loose on purpose — the blob crosses
+ * localStorage. */
+function blobPanelIds(parsed: unknown): readonly string[] {
+  const blob = parsed as UnverifiedBlob & PanelsCarrier;
+  const ids: string[] = [];
+
+  if (typeof blob.panels === "object" && blob.panels !== null) {
+    ids.push(...Object.keys(blob.panels));
+  }
+
+  if (typeof blob.grid === "object" && blob.grid !== null) {
+    collectLeafViewIds((blob.grid as UnverifiedGrid).root, ids);
+  }
+
+  return ids;
+}
+
+function collectLeafViewIds(node: unknown, into: string[]): void {
+  if (typeof node !== "object" || node === null) {
+    return;
+  }
+
+  const { type, data } = node as UnverifiedGridNode;
+
+  if (type === "branch" && Array.isArray(data)) {
+    for (const child of data) {
+      collectLeafViewIds(child, into);
+    }
+
+    return;
+  }
+
+  if (type === "leaf" && typeof data === "object" && data !== null) {
+    const { views } = data as UnverifiedLeafData;
+
+    if (Array.isArray(views)) {
+      for (const view of views) {
+        if (typeof view === "string") {
+          into.push(view);
+        }
+      }
+    }
+  }
+}
+
 /** Removes every leaf's `locked` mark from a serialized grid. Lock state is
  * DERIVED (a group is locked iff it currently renders as a strip — audit
  * S1), so persisting it would let a blob re-impose a stale lock on a layout

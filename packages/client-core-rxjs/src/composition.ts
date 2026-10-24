@@ -44,6 +44,7 @@ import {
   modelFacingHistory,
 } from "@rtc/core-logic";
 import type {
+  AccessLevel,
   BootVariant,
   ConnectionEvent,
   CurrencyPair,
@@ -260,9 +261,15 @@ export function createApp(givenPorts: AppPorts): App {
   // Every port stream this composition opens ends with it, whoever still
   // holds the presenter stream built on it.
   const ports = cutPortsOnDispose(givenPorts, disposed$);
+  // One `events()` call serves both the status fold and the session end.
+  const connectionEvents$ = ports.connectionEvents.events();
   // Hoisted so the AnimationDirector can wire its connectionStatus$ source from
   // the same connection presenter instance the rest of the app consumes.
-  const connection = new ConnectionStatusPresenter(ports.connectionEvents);
+  const connection = new ConnectionStatusPresenter({
+    events: (): Observable<ConnectionEvent> => {
+      return connectionEvents$;
+    },
+  });
   // Hoisted so priceStream/priceHistory can gate their conflation behind the
   // same power-saver flag stream the record also exposes as `powerSaver`.
   const powerSaver = new PowerSaverPresenter(ports.preferences);
@@ -385,11 +392,28 @@ export function createApp(givenPorts: AppPorts): App {
   // jarvisPanels, same scope — can target this singleton's switchTab intent
   // from a "switchTab" DriveCommand. Takes no deps, unlike eqWorkspace/
   // incident, so it needs nothing else built first.
-  const workspaceNav = createWorkspaceNavMachine();
   const authDeps = createAuthDeps(ports, {
     readNow: readPreferenceNow,
     delayAuth: withLoginDelay,
   });
+
+  // Built before the nav machine: the nav folds the signed-in user's access,
+  // so it needs the auth state.
+  const auth = new AuthPresenter(
+    authDeps.auth,
+    authDeps.store,
+    undefined,
+    authDeps.cycle,
+  );
+
+  const workspaceNav = createWorkspaceNavMachine(
+    auth.state$.pipe(
+      map((authState): AccessLevel | null => {
+        return authState.user?.access ?? null;
+      }),
+      distinctUntilChanged(),
+    ),
+  );
 
   // Session-lifetime mirror of the active tab, for the same synchronous-read
   // reason as `latestPanels` above: `dockPanelIntoWorkspace` has to know
@@ -839,12 +863,7 @@ export function createApp(givenPorts: AppPorts): App {
     // Login/lock/logout lifecycle over the injected AuthPort + SessionStore;
     // the login-delay wrapper and the wait-style cycle are `createAuthDeps`,
     // shared with the sibling cores (pluggable-core slice 6).
-    auth: new AuthPresenter(
-      authDeps.auth,
-      authDeps.store,
-      undefined,
-      authDeps.cycle,
-    ),
+    auth,
     loginWaitPreferences: new LoginWaitPreferencesPresenter(ports.preferences),
     jarvisPreferences,
     watchlist,
@@ -885,6 +904,26 @@ export function createApp(givenPorts: AppPorts): App {
   wireJarvisHistorySource(ports.jarvis, presenters.jarvis);
 
   held.add(gateTransportOnAuth(ports.transport, presenters.auth));
+  // The server ended this session (a 4401 close): the auth presenter signs
+  // out with the reason, and the gate above then disconnects.
+  held.add(
+    connectionEvents$
+      .pipe(
+        filter((event) => {
+          return event.type === "sessionEnded";
+        }),
+      )
+      .subscribe({
+        next: (): void => {
+          auth.endSession();
+        },
+        // A failing event source is surfaced by `connection.status$`; this
+        // listener has nothing to add, and must not rethrow it unhandled.
+        error: (): void => {
+          // intentionally empty — see above
+        },
+      }),
+  );
 
   const commands: AppCommands = {
     reconnect: () => {

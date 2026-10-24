@@ -478,9 +478,11 @@ describe("parseWorkspaceLayout — corrupt corpus, every case → null", () => {
 
   it("a layout saved before the Ops rename reads as no saved layout", () => {
     // The pre-rename shape: a tab keyed `admin` holding the old panel id.
-    // `admin` is no longer a workspace tab, so the whole payload is refused
-    // (fail-closed) and boot falls back to the default layouts. A pre-rename
-    // client wrote fx, credit, equities, admin — never `ops`.
+    // `admin` is a workspace tab again (the Users panel), but its seed holds
+    // `admin-users`, so the old `admin-dashboard` leaf is a foreign leaf with
+    // no docked entry and the whole payload is refused (fail-closed); boot
+    // falls back to the default layouts. A pre-rename client wrote fx,
+    // credit, equities, admin — never `ops`.
     const raw = corruptedJson((obj) => {
       delete obj.tabs.ops;
       obj.tabs.admin = {

@@ -1151,7 +1151,7 @@ function createHarness(
   return {
     events$: new Subject<JarvisEvent>(),
     ts,
-    workspaceNav: createWorkspaceNavMachine(),
+    workspaceNav: createWorkspaceNavMachine(of(null)),
     eqWorkspace: createEqWorkspaceMachine({
       initialSymbol: overrides.initialEqSymbol ?? "EURUSD",
     }),
@@ -1248,4 +1248,5 @@ const KNOWN_PANEL_IDS: Record<WorkspaceTab, readonly string[]> = {
   credit: collectPanelIds(createDefaultLayoutPort("credit").initial.root),
   ops: collectPanelIds(createDefaultLayoutPort("ops").initial.root),
   equities: collectPanelIds(createDefaultLayoutPort("equities").initial.root),
+  admin: collectPanelIds(createDefaultLayoutPort("admin").initial.root),
 };
