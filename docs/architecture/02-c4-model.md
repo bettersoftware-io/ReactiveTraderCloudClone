@@ -11,7 +11,7 @@ C4Context
     title System Context Diagram - Reactive Trader Cloud
 
     Person(trader, "Trader", "FX and Credit trader executing trades and monitoring positions")
-    Person(admin, "Admin", "Operations staff managing throughput and system health")
+    Person(ops, "Ops", "Operations staff managing throughput and system health")
 
     System(rtc, "Reactive Trader Cloud", "Real-time FX trading and Credit RFQ platform with live pricing, trade execution, and analytics")
 
@@ -19,17 +19,17 @@ C4Context
     System_Ext(oms, "Order Management System", "Downstream trade booking and settlement")
 
     Rel(trader, rtc, "Views live prices, executes trades, manages RFQs", "WebSocket / Browser")
-    Rel(admin, rtc, "Monitors health, adjusts throughput", "HTTP / Browser")
+    Rel(ops, rtc, "Monitors health, adjusts throughput", "HTTP / Browser")
     Rel(market, rtc, "Publishes FX spot rates", "Streaming")
     Rel(rtc, oms, "Sends executed trades", "Async")
 
     UpdateElementStyle(trader, $bgColor="#30363d", $fontColor="#ffffff", $borderColor="#8b949e")
-    UpdateElementStyle(admin, $bgColor="#30363d", $fontColor="#ffffff", $borderColor="#8b949e")
+    UpdateElementStyle(ops, $bgColor="#30363d", $fontColor="#ffffff", $borderColor="#8b949e")
     UpdateElementStyle(rtc, $bgColor="#238636", $fontColor="#ffffff", $borderColor="#56d364")
     UpdateElementStyle(market, $bgColor="#1f2d3d", $fontColor="#e6edf3", $borderColor="#4493f8")
     UpdateElementStyle(oms, $bgColor="#1f2d3d", $fontColor="#e6edf3", $borderColor="#4493f8")
     UpdateRelStyle(trader, rtc, $textColor="#6e7fa3", $lineColor="#6e7fa3")
-    UpdateRelStyle(admin, rtc, $textColor="#6e7fa3", $lineColor="#6e7fa3")
+    UpdateRelStyle(ops, rtc, $textColor="#6e7fa3", $lineColor="#6e7fa3")
     UpdateRelStyle(market, rtc, $textColor="#6e7fa3", $lineColor="#6e7fa3")
     UpdateRelStyle(rtc, oms, $textColor="#6e7fa3", $lineColor="#6e7fa3")
 ```
