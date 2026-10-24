@@ -19,7 +19,11 @@ export type OrderTicketState =
   | { phase: "working"; order: EquityOrder }
   | { phase: "partiallyFilled"; order: EquityOrder }
   | { phase: "filled"; order: EquityOrder }
-  | { phase: "rejected"; reason: string };
+  | { phase: "rejected"; reason: string }
+  /** The connection dropped while the order was in flight: it may have
+   * reached the server, so this is NOT a rejection. `message` is the copy to
+   * show (it lives in `@rtc/core-logic`). Left the way `rejected` is: `reset`. */
+  | { phase: "connectionLost"; message: string };
 
 export interface OrderTicketIntents {
   setSymbol(symbol: string): void;

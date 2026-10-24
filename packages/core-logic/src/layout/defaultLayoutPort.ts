@@ -51,6 +51,7 @@ export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
   // sell-side isn't one of the three).
   "credit-sell-side": { id: "credit-sell-side", title: "Sell Side" },
   "ops-dashboard": { id: "ops-dashboard", title: "Ops" },
+  "admin-users": { id: "admin-users", title: "Users" },
   "eq-chart": { id: "eq-chart", title: "Equities" },
   "eq-blotter": { id: "eq-blotter", title: "Orders & Positions" },
   "eq-ticket": {
@@ -130,6 +131,8 @@ const CREDIT_ROOT: LayoutNode = {
 
 const OPS_ROOT: LayoutNode = { kind: "panel", panelId: "ops-dashboard" };
 
+const ADMIN_ROOT: LayoutNode = { kind: "panel", panelId: "admin-users" };
+
 // initialPx is the first-layout allocation for the ticket/watchlist rail (the
 // prototype's 290px design width); the width lock comes from the panels'
 // fixedWidthPx, not from this seed value.
@@ -165,6 +168,7 @@ const ROOTS: Record<WorkspaceTab, LayoutNode> = {
   credit: CREDIT_ROOT,
   ops: OPS_ROOT,
   equities: EQUITIES_ROOT,
+  admin: ADMIN_ROOT,
 };
 
 /** The default in-house arrangement for one workspace tab. A future

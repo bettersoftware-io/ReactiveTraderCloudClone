@@ -1,6 +1,6 @@
 import { type StateObservable, state } from "@rx-state/core";
-import { Subject } from "rxjs";
-import { distinctUntilChanged, scan } from "rxjs/operators";
+import { merge, type Observable, Subject } from "rxjs";
+import { distinctUntilChanged, map, scan } from "rxjs/operators";
 
 import type {
   Machine,
@@ -8,8 +8,12 @@ import type {
   WorkspaceNavState,
   WorkspaceTab,
 } from "@rtc/core-api";
-
-const INITIAL_STATE: WorkspaceNavState = { activeTab: "fx" };
+import {
+  INITIAL_WORKSPACE_NAV,
+  stepWorkspaceNav,
+  type WorkspaceNavEvent,
+} from "@rtc/core-logic";
+import type { AccessLevel } from "@rtc/domain";
 
 /**
  * Composition-root SINGLETON tracking the app's active workspace tab — the
@@ -18,37 +22,44 @@ const INITIAL_STATE: WorkspaceNavState = { activeTab: "fx" };
  * unreachable from composition (and therefore from Jarvis's drive-the-app
  * `switchTab` command; see the P5 `JarvisDriverMachine`, which targets this
  * machine's `switchTab` intent). Mirrors `EqWorkspaceMachine`'s
- * state/Subject/scan/warm-subscribe shape, minus deps — this machine takes
- * none, since `switchTab` is a pure fold over its own prior state.
+ * state/Subject/scan/warm-subscribe shape. Its one dependency is the
+ * signed-in user's access stream: the fold (`stepWorkspaceNav`, core-logic)
+ * decides which tabs are visible, refuses a switch to a hidden one, and
+ * lands on `fx` when the active tab stops being visible.
  *
- * `distinctUntilChanged` collapses a repeated switch to the SAME tab into a
- * no-op emission-wise (still a legal call — a caller doesn't need to check
- * "is this tab already active" first).
+ * `distinctUntilChanged` (by reference — the fold returns the SAME state for
+ * a refused or repeated switch) collapses those into a no-op emission-wise
+ * (still a legal call — a caller doesn't need to check "is this tab already
+ * active" first).
  */
-export function createWorkspaceNavMachine(): Machine<
-  WorkspaceNavState,
-  WorkspaceNavIntents
-> {
+export function createWorkspaceNavMachine(
+  access$: Observable<AccessLevel | null>,
+): Machine<WorkspaceNavState, WorkspaceNavIntents> {
   const switchTab$ = new Subject<WorkspaceTab>();
 
-  const stream$ = switchTab$.pipe(
-    scan((s, tab): WorkspaceNavState => {
-      return { ...s, activeTab: tab };
-    }, INITIAL_STATE),
-    distinctUntilChanged((a, b) => {
-      return a.activeTab === b.activeTab;
-    }),
-  );
+  const stream$ = merge(
+    switchTab$.pipe(
+      map((tab): WorkspaceNavEvent => {
+        return { type: "switchTab", tab };
+      }),
+    ),
+    access$.pipe(
+      map((access): WorkspaceNavEvent => {
+        return { type: "access", access };
+      }),
+    ),
+  ).pipe(scan(stepWorkspaceNav, INITIAL_WORKSPACE_NAV), distinctUntilChanged());
 
   const state$: StateObservable<WorkspaceNavState> = state(
     stream$,
-    INITIAL_STATE,
+    INITIAL_WORKSPACE_NAV,
   );
 
   // Keep state$ warm from construction, same rationale as
   // EqWorkspaceMachine/IncidentMachine: a cold state()/shareReplay stream
   // with no live subscriber can drop its buffer between one consumer
-  // unmounting and the next mounting.
+  // unmounting and the next mounting. This subscription is also the one that
+  // listens to `access$`, so the access fold runs for the session.
   const warm = state$.subscribe();
 
   return {

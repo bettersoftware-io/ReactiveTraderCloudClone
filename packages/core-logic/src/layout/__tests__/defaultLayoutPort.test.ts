@@ -157,6 +157,14 @@ describe("createDefaultLayoutPort", () => {
     });
   });
 
+  it("admin: a single Users panel, titled Users", () => {
+    expect(createDefaultLayoutPort("admin").initial.root).toEqual({
+      kind: "panel",
+      panelId: "admin-users",
+    });
+    expect(PANEL_SPECS["admin-users"].title).toBe("Users");
+  });
+
   it("equities: a four-panel dock — chart+blotter column beside ticket+watchlist column", () => {
     const { initial } = createDefaultLayoutPort("equities");
     expect(panelIds(initial.root)).toEqual([

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { PanelId } from "@rtc/core-api";
 
+import { UsersHead } from "#/ui/admin/UsersHead";
 import { CreditBlotterHead } from "#/ui/credit/blotter/CreditBlotterHead";
 import { NewRfqHead } from "#/ui/credit/newRfq/NewRfqHead";
 import { RfqsHead } from "#/ui/credit/rfqs/RfqsHead";
@@ -26,7 +27,7 @@ import { appHeadRegistry } from "../appHeadRegistry";
 // Registry entries are `() => <Head />` element descriptors, so CALLING one
 // builds a React element without rendering it — no hooks run, no ViewModel
 // provider needed. That makes component IDENTITY directly assertable, which is
-// both stricter and far cheaper than rendering twelve panel heads.
+// both stricter and far cheaper than rendering every panel head.
 
 const expected: ReadonlyArray<readonly [PanelId, ComponentType]> = [
   ["fx-rates", LiveRatesHead],
@@ -38,6 +39,7 @@ const expected: ReadonlyArray<readonly [PanelId, ComponentType]> = [
   ["eq-ticket", EqTicketHead],
   ["eq-watchlist", EqWatchlistHead],
   ["ops-dashboard", OpsHead],
+  ["admin-users", UsersHead],
   ["credit-new-rfq", NewRfqHead],
   ["credit-rfqs", RfqsHead],
   ["credit-blotter", CreditBlotterHead],

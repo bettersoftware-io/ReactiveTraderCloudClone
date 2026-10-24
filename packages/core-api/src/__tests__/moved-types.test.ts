@@ -12,9 +12,9 @@ import type {
 } from "#/index";
 
 describe("moved pure-type modules", () => {
-  it("WorkspaceTab is the closed four-tab union", () => {
+  it("WorkspaceTab is the closed five-tab union", () => {
     expectTypeOf<WorkspaceTab>().toEqualTypeOf<
-      "fx" | "credit" | "ops" | "equities"
+      "fx" | "credit" | "ops" | "equities" | "admin"
     >();
   });
 

@@ -155,6 +155,30 @@ export function buildShellSlice(options: ShellSliceOptions = {}): ShellSlice {
         resendCode: noop,
       };
     },
+    // Inert: the RN client has no admin panel.
+    useAccountList: () => {
+      return {
+        state: { status: "loading", rows: [], pendingCount: 0 },
+        refresh: noop,
+      };
+    },
+    useAccountAction: () => {
+      return {
+        state: { phase: "idle" },
+        intents: {
+          approve: noop,
+          block: noop,
+          unblock: noop,
+          startRename: noop,
+          editName: noop,
+          submitRename: noop,
+          requestDelete: noop,
+          confirmDelete: noop,
+          cancel: noop,
+          dismiss: noop,
+        },
+      };
+    },
     useRegistrationAvailable: () => {
       return false;
     },

@@ -16,6 +16,7 @@ describe("AuthService", () => {
       username: "demo",
       accountId: null,
       access: "user",
+      issuedAt: null,
     });
   });
 
@@ -156,6 +157,7 @@ describe("issueAccountSession", () => {
       username: "ann@desk.io",
       accountId: "acc-1",
       access: "admin",
+      issuedAt: 1_000,
     });
   });
 
@@ -192,6 +194,7 @@ describe("verifyToken under an empty secret", () => {
       username: "demo",
       accountId: null,
       access: "user",
+      issuedAt: null,
     });
   });
 });

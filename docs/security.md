@@ -158,10 +158,14 @@ only after **both** gates: the mailbox is confirmed with an 8-digit code the
 server mailed, and an administrator has set `approved = true` on the account's
 `profiles` row. The password is set together with the code, never at sign-up,
 so an attacker cannot pre-register someone else's address with a password of
-their choosing. Approving, blocking and deleting are row edits in Supabase
-until the B2c Users panel exists; the server re-reads an account's status at
-every login and, through a 60-second cache, at every WebSocket upgrade
-([`authentication.md` §7](authentication.md#7-registered-accounts-b2a)).
+their choosing. An administrator approves, blocks, unblocks, renames and deletes accounts in
+the Users panel; the server re-reads an account's status at every login and,
+through a 60-second cache, at every WebSocket upgrade, and the panel's
+actions also end the account's open sessions at once
+([`authentication.md` §7](authentication.md#7-registered-accounts-b2a),
+[§7.10](authentication.md#710-administration-and-ending-sessions-b2c)). Every
+admin call is checked on the server against the directory itself, never
+against the token. `/mcp` admits only an active administrator.
 
 ## 3. The layers, cheapest first
 
@@ -173,7 +177,7 @@ of them is misread as more than it is.
 | **Hybrid routing** (§1) | The public demo ever reaching the server: no server cost, no AI spend, no credential to leak. | A real credential being guessed; the demo client is still the real client for one. | `resolveDataSource`, `createRoutingAuthPort` (`@rtc/client-adapters`) |
 | **Origin allowlist + JSON content type** on `/login` and the five account routes | A foreign web page using its *visitors' browsers* to drive sign-ups, resends and code entry (browsers set `Origin` themselves, and a cross-origin request with a non-JSON body never preflights). `403 origin_not_allowed`, `415 unsupported_media_type`, no strike. | A script or `curl` forging the header. It is a browser-abuse defence, not an attacker defence; a request with no `Origin` (a script, the RN client) is allowed. | `RTC_ALLOWED_ORIGINS`, `originPolicy.ts` |
 | **Credentials** (§2) | Access without a roster password or a confirmed, approved account. | A weak user-chosen password: the policy is 12+ characters with four classes, no breach check. | `AuthService`, `AccountService` |
-| **Signed session tokens** | Forging a session: an HMAC over the identity and an expiry, keyed by `AUTH_SECRET`; 8 hours by default. | Revoking one token early — a stolen token is valid until it expires, and a password reset does not invalidate it yet (B2c). | `token.ts`, `AUTH_SECRET`, `AUTH_TTL_MS` |
+| **Signed session tokens** | Forging a session: an HMAC over the identity and an expiry, keyed by `AUTH_SECRET`; 8 hours by default. | A roster token cannot be revoked early; it lives until it expires. An account token is ended by a reset, block or rename stamp, except when the stamp write fails after a reset: that revocation then lives only in the server's memory until a restart, and the token works until it expires (at most 8 hours). | `token.ts`, `AUTH_SECRET`, `AUTH_TTL_MS` |
 | **Per-IP rate limits and the ban list** | Password and code guessing from one address: 10 logins a minute, 10 code entries per 10 minutes, 5 sign-ups and 5 sends an hour; 10 strikes in 10 minutes bans the address for 15 minutes, checked before any hash or upgrade. Every per-IP budget is also charged against the caller's /48 at four times the budget. | A distributed guesser with many addresses; and the ban is in memory, so a machine restart (scale-to-zero) clears it. One office behind one NAT shares a budget. | `limits.ts`, `rateLimit.ts`, `banList.ts`, `tieredLimiter.ts` |
 | **Per-address budgets and the mail fuses** | Mail-bombing one address (3 sends an hour, 5 code attempts per 15 minutes) and exhausting the project's email allowance: 25 sign-ups, 15 resends and 15 resets an hour, server-wide, under the project's 60; a resend or reset is attempted only when the address is in a state where mail would land. | Someone *denying* sign-ups for an hour with 25 junk registrations, or holding the resend path shut. That is the edge challenge's job (§5). | `limits.ts`, `AccountService` |
 | **Response-time floor and early answers** | Telling a known address from an unknown one by timing: the three send paths answer `202 code_sent` before any mail is sent, and a failed account login is held to a 300 ms floor. | Enumeration through a different oracle nobody has found yet. | `LOGIN_FAILURE_FLOOR_MS`, `accountHandlers.ts` |
@@ -203,11 +207,11 @@ redeploy for the new server URL.
 | A foreign page abusing visitors' browsers | Origin allowlist and the JSON requirement. | A page served from the *victim's own* localhost, if localhost is ever added to the allowlist. |
 | Finding out whether an address is registered | Identical `202 code_sent` for known and unknown addresses, mail sent after the answer, the 300 ms login floor. | Any oracle not yet measured; re-measure with the probe's per-call durations after adapter changes. |
 | Pre-hijacking: registering someone's address first | No password at sign-up; the password is set with the code; a repeat sign-up of an unconfirmed address resends to the mailbox owner. | None known. |
-| Forged or stolen session tokens | HMAC with a 32+ character secret, 8-hour expiry, the upgrade re-check of account status. | Early revocation: a stolen token or an open socket survives a password reset, block or delete until expiry or reconnect (B2c closes sessions). |
+| Forged or stolen session tokens | HMAC with a 32+ character secret, 8-hour expiry, the upgrade re-check of account status. | B2c closes sessions: a reset, block, rename or delete ends the account's tokens (`iat` against the `sessions_not_before` stamp) and closes its sockets with `4401`. Residual: a stamp that fails after a reset lives only in the server's memory, so a restart forgets it and an old token works until it expires (at most 8 hours); a block or rename made in the Supabase dashboard does not close open sockets. |
 | Email allowance exhaustion, lost mail | Per-address budgets, three per-path fuses summing under the project limit, sends attempted only when they would land, the purge. | Supabase answers a spent allowance the same as a per-address throttle, so the server must say "code sent" to both; watch the sender's dashboard in the first days. |
 | Denial of new sign-ups by junk registrations | Tunable fuses (`RTC_SIGNUPS_PER_HOUR`, `RTC_SIGNUPS_PER_DAY`) and the purge bound the damage. | 25 junk registrations still close sign-up for an hour; 5 IPs can hold the resend path shut. Removed only by the edge challenge. |
 | Volumetric flood | Fly `hard_limit`, the connection caps, the token bucket, the payload caps. | Traffic is still paid for until Cloudflare fronts the server. |
-| A blocked user keeps an open socket | Status re-checked at the next connect within 60 seconds. | Until B2c, `fly machine restart` drops every socket at once. |
+| A blocked user keeps an open socket | Blocking in the Users panel closes the account's sockets at once (`4401`) and stamps the session end. A block made in the Supabase dashboard is re-checked at the next connect within 60 seconds. | A socket already open when the dashboard is used stays open until it reconnects; use the panel, or `fly machine restart`, to drop it at once. |
 | Secret leakage from the operator's machine | Secrets live only in Fly, in Supabase and in private files; commands read them with `$(cat …)` so they never appear in a transcript; the deploy workflow holds only deploy tokens. | A value is visible in `ps` for the duration of a `fly secrets set`; the secret files themselves are plaintext on disk. |
 | A dependency or action compromised upstream | Pinned digests and lockfiles, the audit gate, Scorecard, push protection. | A compromised upstream *inside* a pinned version. |
 | The React Native client | Not hybrid: its login always goes to the server, with the roster password or a registered account. It sends no `Origin`, so the allowlist does not affect it. | The demo personas cannot run live from the mobile app without the private password (open item D7). |
@@ -254,6 +258,7 @@ server's image sets `RTC_DEPLOYED=1`, which together with Fly's own
 | Email rate limit at least 60 an hour | Above the server's three fuses (55). | Mail is lost silently: Supabase answers a spent allowance like a throttle. |
 | IP address forwarding on; CAPTCHA protection off | Per-IP limits apply to the visitor, not the server's one address; a challenge the server cannot solve would turn every sign-in into a strike. | Auth logs show the server's address for every user; or every login fails. |
 | Migration `20261004000000_create_profiles.sql` applied; RLS on `public.profiles`, no policies | The profile table only the secret key can reach. | The probe's `ping` fails. |
+| Migration `20261024000000_sessions_not_before.sql` applied, and PostgREST's schema cache reloaded | The nullable `sessions_not_before` column the session end reads. Apply it **before** deploying B2c: the new server selects it on every account read. | Every account login reads `unavailable`. |
 | A **secret** key (`sb_secret_…`), the publishable key kept private | The server's credential to the store. | `/health/accounts` reads `down`. |
 
 ### 5.3 The email sender and DNS

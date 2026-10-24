@@ -96,6 +96,21 @@ describe("supabase migrations", () => {
     );
   });
 
+  it("adds sessions_not_before as a nullable timestamptz with no default", () => {
+    const migration = readFileSync(
+      join(MIGRATIONS_DIR, "20261024000000_sessions_not_before.sql"),
+      "utf8",
+    ).replace(/^--.*$/gm, "");
+
+    expect(migration).toMatch(
+      /alter table public\.profiles add column sessions_not_before timestamptz\s*;/i,
+    );
+    expect(migration).not.toMatch(/\bdefault\b/i);
+    expect(migration).not.toMatch(/not null/i);
+    expect(migration).not.toMatch(/create\s+policy/i);
+    expect(migration).not.toMatch(/disable row level security/i);
+  });
+
   // A describe body runs fully before its cases, so `sql` is set by then.
   const sql = readAllMigrations();
 });

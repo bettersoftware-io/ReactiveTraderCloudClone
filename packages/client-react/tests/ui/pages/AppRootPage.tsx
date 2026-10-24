@@ -12,6 +12,7 @@ import { BehaviorSubject } from "rxjs";
 
 import { rxjsCore } from "@rtc/client-core-rxjs";
 import type { CoreSelection, RouteHistory } from "@rtc/core-api";
+import { EVERY_USER_TABS } from "@rtc/core-logic";
 import type { DemoAccount } from "@rtc/domain";
 import {
   buildBrowserPorts,
@@ -109,7 +110,11 @@ export function appRootPage(): AppRootPage {
             routes={createInertRoutes()}
           >
             <Suspense fallback={<div data-testid="suspense-fallback" />}>
-              <HeaderChrome activeTab="fx" onTabChange={selectNoTab} />
+              <HeaderChrome
+                activeTab="fx"
+                visibleTabs={EVERY_USER_TABS}
+                onTabChange={selectNoTab}
+              />
               <Suspender data={promise} />
             </Suspense>
           </AppRoot>
@@ -132,7 +137,11 @@ export function appRootPage(): AppRootPage {
             registrationAvailable={false}
             routes={createInertRoutes()}
           >
-            <HeaderChrome activeTab="fx" onTabChange={selectNoTab} />
+            <HeaderChrome
+              activeTab="fx"
+              visibleTabs={EVERY_USER_TABS}
+              onTabChange={selectNoTab}
+            />
           </AppRoot>
         </StrictMode>,
       );

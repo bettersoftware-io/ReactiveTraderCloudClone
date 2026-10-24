@@ -24,15 +24,17 @@ export function NavTab({ tab, active, onSelect }: NavTabProps): ReactElement {
   );
 }
 
-/** The four real workspace tabs the shell switches between. Equities added in
- *  Phase 4; the e2e Workspace page object clicks `tab-${tab}`. */
-export type WorkspaceTab = "fx" | "credit" | "ops" | "equities";
+/** The real workspace tabs the shell switches between. Equities added in
+ *  Phase 4, Admin for administrators only; the e2e Workspace page object
+ *  clicks `tab-${tab}`. */
+export type WorkspaceTab = "fx" | "credit" | "ops" | "equities" | "admin";
 
 const TAB_LABEL: Record<WorkspaceTab, string> = {
   fx: "FX",
   credit: "Credit",
   ops: "Ops",
   equities: "Equities",
+  admin: "Admin",
 };
 
 interface NavTabProps {

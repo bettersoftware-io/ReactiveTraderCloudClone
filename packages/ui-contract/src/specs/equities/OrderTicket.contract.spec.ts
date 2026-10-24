@@ -87,6 +87,21 @@ describe("OrderTicket — place order → fill", () => {
     await ticket.reset();
     expect(ticket.phase()).toBe("editing");
   });
+
+  it("renders a dropped connection as connection lost — not rejected — and resets back to an editable ticket", async () => {
+    const ticket = mount(OrderTicket, { props: { symbol: "AAPL" } });
+
+    await ticket.setQty(100);
+    await ticket.submit();
+    ticket.dropConnection();
+    expect(ticket.phase()).toBe("connectionLost");
+    expect(ticket.statusText()).toBe(
+      "Connection lost — check the orders blotter",
+    );
+
+    await ticket.reset();
+    expect(ticket.phase()).toBe("editing");
+  });
 });
 
 describe("OrderTicket — symbol defaults to the shared eqWorkspace selection", () => {

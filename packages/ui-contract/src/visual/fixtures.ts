@@ -1,4 +1,6 @@
 import type {
+  AccountActionState,
+  AccountListState,
   ActivityEntry,
   EqWorkspaceState,
   JarvisConfirmation,
@@ -8,8 +10,13 @@ import type {
   OrderTicketState,
   RfqQuote,
 } from "@rtc/core-api";
-import { instanceIdFor } from "@rtc/core-logic";
 import {
+  DISPLAY_NAME_INPUT_ERROR,
+  describeAccountAdminRefusal,
+  instanceIdFor,
+} from "@rtc/core-logic";
+import {
+  type AccountSummary,
   ADAPTIVE_BANK_NAME,
   type Candle,
   ConnectionStatus,
@@ -2861,4 +2868,118 @@ fixtures["app-fx-layouts-dockview"] = makeAppData({
       readable: false,
     },
   ],
+});
+
+// ── Admin tab / Users panel (B2c) ───────────────────────────────────────────
+// One mixed list, pending first as the presenter hands it over: two pending,
+// one active, one blocked, one unconfirmed and the administrator's own row.
+// Ids are short and stable (the panel never shows them) and `joinedAt` is
+// fixed, so the shots are deterministic.
+const USERS_PENDING_ID = "acct-pending-1";
+const USERS_ACTIVE_ID = "acct-active-1";
+const USERS_BLOCKED_ID = "acct-blocked-1";
+
+const USER_ROWS: readonly AccountSummary[] = [
+  {
+    id: USERS_PENDING_ID,
+    email: "ann.lee@desk.io",
+    displayName: "Ann Lee",
+    access: "user",
+    status: "pending",
+    joinedAt: Date.UTC(2026, 9, 21, 9, 30),
+    isSelf: false,
+  },
+  {
+    id: "acct-pending-2",
+    email: "bao.tran@desk.io",
+    displayName: "Bao Tran",
+    access: "user",
+    status: "pending",
+    joinedAt: Date.UTC(2026, 9, 22, 14, 5),
+    isSelf: false,
+  },
+  {
+    id: USERS_ACTIVE_ID,
+    email: "chidi.okafor@desk.io",
+    displayName: "Chidi Okafor",
+    access: "user",
+    status: "active",
+    joinedAt: Date.UTC(2026, 8, 14, 11, 0),
+    isSelf: false,
+  },
+  {
+    id: USERS_BLOCKED_ID,
+    email: "dana.whitfield@desk.io",
+    displayName: "Dana Whitfield",
+    access: "user",
+    status: "blocked",
+    joinedAt: Date.UTC(2026, 7, 3, 16, 45),
+    isSelf: false,
+  },
+  {
+    id: "acct-unconfirmed-1",
+    email: "eli.navarro@desk.io",
+    displayName: "Eli Navarro",
+    access: "user",
+    status: "unconfirmed",
+    joinedAt: Date.UTC(2026, 9, 23, 8, 15),
+    isSelf: false,
+  },
+  {
+    id: "acct-self",
+    email: "a.stark@reactivetrader.io",
+    displayName: "Anthony Stark",
+    access: "admin",
+    status: "active",
+    joinedAt: Date.UTC(2026, 5, 1, 7, 0),
+    isSelf: true,
+  },
+];
+
+const USERS_READY: AccountListState = {
+  status: "ready",
+  rows: USER_ROWS,
+  pendingCount: 2,
+};
+
+function usersWithAction(
+  accountId: string,
+  state: AccountActionState,
+): AppData {
+  return makeAppData({
+    accountList: USERS_READY,
+    accountActions: { [accountId]: state },
+  });
+}
+
+fixtures["admin-users"] = makeAppData({ accountList: USERS_READY });
+fixtures["admin-users-empty"] = makeAppData({
+  accountList: { status: "ready", rows: [], pendingCount: 0 },
+});
+fixtures["admin-users-forbidden"] = makeAppData({
+  accountList: { status: "forbidden", rows: [], pendingCount: 0 },
+});
+fixtures["admin-users-row-in-flight"] = usersWithAction(USERS_PENDING_ID, {
+  phase: "inFlight",
+  action: "approve",
+});
+fixtures["admin-users-row-failed"] = usersWithAction(USERS_ACTIVE_ID, {
+  phase: "failed",
+  action: "block",
+  message: describeAccountAdminRefusal("unavailable", "block"),
+});
+fixtures["admin-users-confirm-delete"] = usersWithAction(USERS_BLOCKED_ID, {
+  phase: "confirmingDelete",
+});
+fixtures["admin-users-rename"] = usersWithAction(USERS_PENDING_ID, {
+  phase: "renaming",
+  draft: "A",
+  draftError: DISPLAY_NAME_INPUT_ERROR,
+});
+// The full app as the administrator: the Admin tab is offered (sessionAccess)
+// and the scenario clicks it, which mounts the Users panel on the mixed list.
+fixtures["app-admin"] = makeAppData({
+  ...fixtures["app-fx"],
+  sessionAccess: "admin",
+  accountList: USERS_READY,
 });

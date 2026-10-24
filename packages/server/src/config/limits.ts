@@ -155,3 +155,13 @@ export const AUTH_SECRET_MIN_LENGTH = 32;
 
 /** B2 — `/health/accounts` re-reads the store at most this often. */
 export const ACCOUNTS_HEALTH_CACHE_MS = 60_000;
+
+/** B2c — the most accounts one admin listing returns. The panel reads a
+ * single page; an unbounded `select` on a growing table would let one admin
+ * call pull every profile through the server and the socket. */
+export const ADMIN_ACCOUNT_LIST_MAX = 500;
+
+/** B2c — accounts the in-process revocation ledger holds. It only fills when
+ * a stamp could not be written to the account store; past this the oldest
+ * entry is dropped. */
+export const REVOCATION_LEDGER_MAX_ENTRIES = 10_000;

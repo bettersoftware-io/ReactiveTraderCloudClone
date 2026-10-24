@@ -128,6 +128,10 @@ function CeremonyContent({ state }: OrderCeremonyProps): JSX.Element | null {
           positive={false}
         />
       );
+    case "connectionLost":
+      return (
+        <BusyPill testID="eq-order-connection-lost" label={state.message} />
+      );
     default:
       return assertNever(state);
   }

@@ -31,7 +31,9 @@ import styles from "./HeaderChrome.module.css";
  *
  * All four nav tabs (FX, Credit, Equities, Ops) are live workspace tabs —
  * one NavTab component each (see NavTab.tsx for the testid/data-active
- * contract). Equities was added as a full tab in Phase 4.
+ * contract). Equities was added as a full tab in Phase 4. Admin comes last,
+ * and only when `visibleTabs` lists it: the core's `workspaceNav` decides
+ * who may see it, so this header never reads the user's access itself.
  */
 export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
   // Local view-state only (which UI panel is open) — not business logic, so a
@@ -108,6 +110,13 @@ export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
           active={props.activeTab === "ops"}
           onSelect={props.onTabChange}
         />
+        <Show when={props.visibleTabs.includes("admin")}>
+          <NavTab
+            tab="admin"
+            active={props.activeTab === "admin"}
+            onSelect={props.onTabChange}
+          />
+        </Show>
       </nav>
 
       <div class={styles.spacer} />
@@ -144,5 +153,7 @@ export type { WorkspaceTab } from "./NavTab";
 
 interface HeaderChromeProps {
   activeTab: WorkspaceTab;
+  /** The tabs this user may see (`workspaceNav`'s `visibleTabs`). */
+  visibleTabs: readonly WorkspaceTab[];
   onTabChange: (tab: WorkspaceTab) => void;
 }

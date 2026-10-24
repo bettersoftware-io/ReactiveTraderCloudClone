@@ -111,6 +111,25 @@ const scenarioActions: Record<string, ScenarioAction> = {
     click: "tab-credit",
     waitForText: "▤ Credit Blotter",
   },
+  // Admin tab: the header offers it only to the administrator the fixture
+  // signs in; a row's email proves the Users panel mounted on the mixed list.
+  "app/admin": {
+    fullPage: true,
+    click: "tab-admin",
+    waitForText: "dana.whitfield@desk.io",
+  },
+  "admin/users": { waitForText: "dana.whitfield@desk.io" },
+  "admin/users-empty": { waitForText: "No registered accounts yet." },
+  "admin/users-row-in-flight": { waitForText: "Approving…" },
+  "admin/users-row-failed": {
+    waitForText: "The live desk is unavailable right now. Try again shortly",
+  },
+  "admin/users-confirm-delete": { waitForText: "Delete this account?" },
+  "admin/users-rename": {
+    waitForText:
+      "Display name: 2 to 40 characters, with at least one letter or digit",
+  },
+  "admin/users-forbidden": { waitForText: "Administrator access required" },
   "app/ops": {
     fullPage: true,
     click: "tab-ops",

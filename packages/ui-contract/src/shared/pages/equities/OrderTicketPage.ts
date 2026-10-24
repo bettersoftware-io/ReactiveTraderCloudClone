@@ -2,7 +2,11 @@ import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
-import type { EquityOrder, OrderStatus } from "@rtc/domain";
+import {
+  createTransportLostError,
+  type EquityOrder,
+  type OrderStatus,
+} from "@rtc/domain";
 
 /** Props the OrderTicket component reads (the instrument it trades). Optional:
  * an unset symbol falls back to the shared eqWorkspace selection. */
@@ -183,6 +187,19 @@ export class OrderTicketPage extends MountedComponent<OrderTicketProps> {
     return this.commandLog().placedOrderRequests.map((req) => {
       return req.symbol;
     });
+  }
+
+  /** Fail the place lifecycle as a dropped connection does: a typed
+   * transport-lost error reaches the ticket's place() stream. */
+  dropConnection(): void {
+    this.failOrderLifecycle(
+      createTransportLostError("WsAdapter connection lost"),
+    );
+  }
+
+  /** The status line's text (the phase's message). */
+  statusText(): string {
+    return this.container().querySelector("div")?.textContent?.trim() ?? "";
   }
 
   /** Advance the place lifecycle by emitting one order (status + filledQty). */

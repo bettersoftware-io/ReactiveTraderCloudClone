@@ -81,4 +81,15 @@ export interface LoginScreenPO {
   waitUrlPath(expected: string, timeoutMs: number): Promise<void>;
   /** How many requests this page has made whose URL path ends with `path`. */
   countRequestsTo(path: string): number;
+  /** Navigate this page to `path` (e.g. `/admin`) and wait for the app to
+   *  mount. The page keeps its stored session, so a signed-in user resumes. */
+  openPath(path: string): Promise<void>;
+  /** Click the Admin tab in the header (administrators only). */
+  openAdminTab(): Promise<void>;
+  /** Wait until the Admin tab is not in the header. Call after the app shell
+   *  is visible, or the absence proves nothing. */
+  waitAdminTabAbsent(timeoutMs: number): Promise<void>;
+  /** In the Users panel, press Approve on the row whose email cell reads
+   *  `email`, and wait until that row's Approve button is gone. */
+  approveAccount(email: string, timeoutMs: number): Promise<void>;
 }

@@ -1,10 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { ConfirmEmailRequestDto, RegisterRequestDto } from "@rtc/shared";
+import type {
+  ConfirmEmailRequestDto,
+  RegisterRequestDto,
+  ResetPasswordRequestDto,
+} from "@rtc/shared";
 
 import type {
   AccountDirectory,
+  AccountLookup,
   AccountRecord,
+  AdminWrite,
   ConfirmOutcome,
   RegistrationCount,
   SendOutcome,
@@ -109,6 +115,7 @@ describe("AccountService.register", () => {
       sendLimiter: createRateLimiter(100, 60_000),
       sendFuses: createFuses(),
       log: ignoreLog,
+      onSessionsRevoked: ignoreRevoked,
     });
 
     expect(await service.register(createRegistration(), IP)).toEqual({
@@ -136,6 +143,7 @@ describe("AccountService.register", () => {
       sendLimiter: createRateLimiter(100, 60_000),
       sendFuses: createFuses(),
       log: ignoreLog,
+      onSessionsRevoked: ignoreRevoked,
     });
 
     expect(await service.register(createRegistration(), IP)).toEqual({
@@ -200,6 +208,8 @@ describe("AccountService.login", () => {
         displayName: "Desk Admin",
         access: "admin",
         status: "active",
+        createdAt: 2 * 24 * 60 * 60 * 1_000,
+        sessionsNotBefore: null,
       },
     });
   });
@@ -221,6 +231,7 @@ describe("AccountService.login", () => {
       sendLimiter: createRateLimiter(100, 60_000),
       sendFuses: createFuses(),
       log: ignoreLog,
+      onSessionsRevoked: ignoreRevoked,
     });
 
     expect(await service.login("ann@desk.io", PASSWORD, IP)).toEqual({
@@ -248,6 +259,7 @@ describe("AccountService.login", () => {
       sendLimiter: createRateLimiter(100, 60_000),
       sendFuses: createFuses(),
       log: ignoreLog,
+      onSessionsRevoked: ignoreRevoked,
     });
 
     expect(await service.login("ann@desk.io", PASSWORD, IP)).toEqual({
@@ -603,6 +615,198 @@ describe("AccountService.register under concurrency", () => {
       outcome: "code_sent",
     });
     expect(signUp).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("AccountService.resetPassword ends the account's sessions", () => {
+  it("stamps the account at the clock and then reports it stamped", async () => {
+    const revokeSessions = vi.fn((): Promise<AdminWrite> => {
+      return Promise.resolve("ok");
+    });
+    const { service, revoked } = createRevokingFixture({ revokeSessions });
+
+    expect(await service.resetPassword(RESET_REQUEST, IP)).toEqual({
+      outcome: "changed",
+    });
+    expect(revokeSessions).toHaveBeenCalledExactlyOnceWith(
+      RESET_ID,
+      2 * 24 * 60 * 60 * 1_000,
+    );
+    expect(revoked).toEqual([[RESET_ID, true]]);
+  });
+
+  it("retries a failed stamp once and reports it stamped when the retry lands", async () => {
+    const revokeSessions = vi
+      .fn<AccountDirectory["revokeSessions"]>()
+      .mockResolvedValueOnce("unavailable")
+      .mockResolvedValueOnce("ok");
+
+    const { service, revoked, lines } = createRevokingFixture({
+      revokeSessions,
+    });
+
+    await service.resetPassword(RESET_REQUEST, IP);
+
+    expect(revokeSessions).toHaveBeenCalledTimes(2);
+    expect(revoked).toEqual([[RESET_ID, true]]);
+    expect(lines).toEqual([]);
+  });
+
+  it("still answers changed, reports it unstamped and logs the id when both attempts fail", async () => {
+    const revokeSessions = vi.fn((): Promise<AdminWrite> => {
+      return Promise.resolve("unavailable");
+    });
+
+    const { service, revoked, lines } = createRevokingFixture({
+      revokeSessions,
+    });
+
+    expect(await service.resetPassword(RESET_REQUEST, IP)).toEqual({
+      outcome: "changed",
+    });
+    expect(revokeSessions).toHaveBeenCalledTimes(2);
+    expect(revoked).toEqual([[RESET_ID, false]]);
+    expect(lines).toEqual([`[accounts] stamp-failed id=${RESET_ID}`]);
+  });
+
+  it("treats a stamp that throws like an unavailable one", async () => {
+    const revokeSessions = vi.fn((): Promise<AdminWrite> => {
+      return Promise.reject(new Error("boom ann@desk.io"));
+    });
+
+    const { service, revoked, lines } = createRevokingFixture({
+      revokeSessions,
+    });
+
+    expect(await service.resetPassword(RESET_REQUEST, IP)).toEqual({
+      outcome: "changed",
+    });
+    expect(revoked).toEqual([[RESET_ID, false]]);
+    expect(lines.join("\n")).not.toContain("ann@desk.io");
+  });
+
+  it("uses the id the reset reports and never looks the address up", async () => {
+    const { service, revoked, lookups } = createRevokingFixture({
+      revokeSessions: () => {
+        return Promise.resolve("ok");
+      },
+    });
+
+    await service.resetPassword(RESET_REQUEST, IP);
+
+    expect(lookups).not.toHaveBeenCalled();
+    expect(revoked).toEqual([[RESET_ID, true]]);
+  });
+
+  it("with the id in hand and the store down, still reports the account unstamped", async () => {
+    const { service, revoked, lookups } = createRevokingFixture({
+      revokeSessions: () => {
+        return Promise.resolve("unavailable");
+      },
+      findByEmail: () => {
+        return Promise.resolve({ outcome: "unavailable" });
+      },
+    });
+
+    await service.resetPassword(RESET_REQUEST, IP);
+
+    expect(lookups).not.toHaveBeenCalled();
+    expect(revoked).toEqual([[RESET_ID, false]]);
+  });
+
+  it("falls back to a lookup by address when the reset reported no id", async () => {
+    const { service, revoked, lookups } = createRevokingFixture({
+      resetAccountId: null,
+      revokeSessions: () => {
+        return Promise.resolve("ok");
+      },
+    });
+
+    await service.resetPassword(RESET_REQUEST, IP);
+
+    expect(lookups).toHaveBeenCalledExactlyOnceWith("ann@desk.io");
+    expect(revoked).toEqual([[RESET_ID, true]]);
+  });
+
+  it.each(["unavailable", "missing"] as const)(
+    "still answers changed, calls nothing and logs one fixed line when no id was reported and the lookup says %s",
+    async (outcome) => {
+      const revokeSessions = vi.fn((): Promise<AdminWrite> => {
+        return Promise.resolve("ok");
+      });
+
+      const { service, revoked, lines } = createRevokingFixture({
+        resetAccountId: null,
+        revokeSessions,
+        findByEmail: () => {
+          return Promise.resolve({ outcome });
+        },
+      });
+
+      expect(await service.resetPassword(RESET_REQUEST, IP)).toEqual({
+        outcome: "changed",
+      });
+      expect(revokeSessions).not.toHaveBeenCalled();
+      expect(revoked).toEqual([]);
+      expect(lines).toEqual(["[accounts] reset-lookup-failed"]);
+    },
+  );
+
+  it("still answers changed when no id was reported and the lookup throws", async () => {
+    const { service, revoked, lines } = createRevokingFixture({
+      resetAccountId: null,
+      revokeSessions: () => {
+        return Promise.resolve("ok");
+      },
+      findByEmail: () => {
+        return Promise.reject(new Error("down"));
+      },
+    });
+
+    expect(await service.resetPassword(RESET_REQUEST, IP)).toEqual({
+      outcome: "changed",
+    });
+    expect(revoked).toEqual([]);
+    expect(lines).toEqual(["[accounts] reset-lookup-failed"]);
+  });
+
+  it.each([
+    ["an invalid code", "invalid_code"],
+    ["a refused password", "invalid"],
+  ] as const)("does neither on %s", async (_label, outcome) => {
+    const revokeSessions = vi.fn((): Promise<AdminWrite> => {
+      return Promise.resolve("ok");
+    });
+    const { service, revoked } = createRevokingFixture({ revokeSessions });
+    const request =
+      outcome === "invalid_code"
+        ? { ...RESET_REQUEST, code: "12ab" }
+        : { ...RESET_REQUEST, password: "weak" };
+
+    expect((await service.resetPassword(request, IP)).outcome).toBe(outcome);
+    expect(revokeSessions).not.toHaveBeenCalled();
+    expect(revoked).toEqual([]);
+  });
+
+  it("does neither when the directory rejects the reset", async () => {
+    const revoked: string[] = [];
+    const directory = createDoubleDirectory({
+      resetPassword: () => {
+        return Promise.resolve("invalid_code");
+      },
+    });
+
+    const service = createAccountService({
+      ...createOptions(directory),
+      onSessionsRevoked: (accountId: string): void => {
+        revoked.push(accountId);
+      },
+    });
+
+    expect(await service.resetPassword(RESET_REQUEST, IP)).toEqual({
+      outcome: "invalid_code",
+    });
+    expect(revoked).toEqual([]);
   });
 });
 
@@ -1352,6 +1556,7 @@ interface ServiceOverrides {
   readonly sendLimiter?: RateLimiter;
   readonly sendFuses?: SendFuses;
   readonly log?: (line: string) => void;
+  readonly onSessionsRevoked?: (accountId: string, stamped: boolean) => void;
 }
 
 interface ServiceFixture {
@@ -1376,6 +1581,7 @@ function createService(overrides: ServiceOverrides = {}): ServiceFixture {
     sendLimiter: overrides.sendLimiter ?? createRateLimiter(100, 60_000),
     sendFuses: overrides.sendFuses ?? createFuses(),
     log: overrides.log ?? ignoreLog,
+    onSessionsRevoked: overrides.onSessionsRevoked ?? ignoreRevoked,
   });
 
   return { service, directory };
@@ -1458,6 +1664,7 @@ function createOptions(directory: AccountDirectory): AccountServiceOptions {
     sendLimiter: createRateLimiter(100, 60_000),
     sendFuses: createFuses(),
     log: ignoreLog,
+    onSessionsRevoked: ignoreRevoked,
   };
 }
 
@@ -1468,11 +1675,17 @@ function createUnconfirmedRecord(): AccountRecord {
     displayName: "Ann",
     access: "user",
     status: "unconfirmed",
+    createdAt: 0,
+    sessionsNotBefore: null,
   };
 }
 
 function ignoreLog(): void {
   // The default sink: a test that asserts a log line passes its own.
+}
+
+function ignoreRevoked(): void {
+  // The default sink: a test that asserts a revocation passes its own.
 }
 
 function createDoubleService(
@@ -1488,6 +1701,7 @@ function createDoubleService(
     sendLimiter: createRateLimiter(100, 60_000),
     sendFuses: createFuses(),
     log: ignoreLog,
+    onSessionsRevoked: ignoreRevoked,
   });
 }
 
@@ -1522,4 +1736,70 @@ function spyOnSends(directory: AccountDirectory): () => number {
       return total + spy.mock.calls.length;
     }, 0);
   };
+}
+
+interface RevokingOverrides {
+  readonly revokeSessions: AccountDirectory["revokeSessions"];
+  readonly findByEmail?: AccountDirectory["findByEmail"];
+  /** The id the reset reports; the default is RESET_ID, `null` is a store
+   * that did not say. */
+  readonly resetAccountId?: string | null;
+}
+
+interface RevokingFixture {
+  readonly service: AccountService;
+  readonly revoked: [string, boolean][];
+  readonly lines: string[];
+  readonly lookups: ReturnType<typeof vi.fn>;
+}
+
+const RESET_ID = "00000000-0000-4000-8000-0000000000bb";
+const RESET_REQUEST: ResetPasswordRequestDto = {
+  email: "ann@desk.io",
+  code: DEV_CONFIRMATION_CODE,
+  password: "Fresh2026!pass",
+};
+
+function createRevokingFixture(overrides: RevokingOverrides): RevokingFixture {
+  const revoked: [string, boolean][] = [];
+  const lines: string[] = [];
+  const lookups = vi.fn(
+    overrides.findByEmail ??
+      ((): Promise<AccountLookup> => {
+        return Promise.resolve({
+          outcome: "found",
+          account: {
+            ...createUnconfirmedRecord(),
+            id: RESET_ID,
+            status: "active",
+          },
+        });
+      }),
+  );
+
+  const directory = createDoubleDirectory({
+    resetPassword: () => {
+      return Promise.resolve({
+        outcome: "changed",
+        accountId:
+          overrides.resetAccountId === undefined
+            ? RESET_ID
+            : overrides.resetAccountId,
+      });
+    },
+    findByEmail: lookups,
+    revokeSessions: overrides.revokeSessions,
+  });
+
+  const service = createAccountService({
+    ...createOptions(directory),
+    log: (line: string): void => {
+      lines.push(line);
+    },
+    onSessionsRevoked: (accountId: string, stamped: boolean): void => {
+      revoked.push([accountId, stamped]);
+    },
+  });
+
+  return { service, revoked, lines, lookups };
 }

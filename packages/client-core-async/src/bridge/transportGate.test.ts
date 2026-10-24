@@ -1,10 +1,13 @@
-import { BehaviorSubject } from "rxjs";
+import { BehaviorSubject, NEVER, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { AuthGatedTransport, AuthViewState } from "@rtc/core-api";
 import { DEFAULT_LOGIN_WAIT_VARIANT } from "@rtc/domain";
 
-import { gateTransportOnAuth } from "#/bridge/transportGate";
+import {
+  gateTransportOnAuth,
+  relaySessionEndToAuth,
+} from "#/bridge/transportGate";
 
 describe("bridge/transportGate", () => {
   it("stops gating, and lets go of auth, when the lifetime aborts", () => {
@@ -31,6 +34,52 @@ describe("bridge/transportGate", () => {
   });
 });
 
+describe("bridge/transportGate relaySessionEndToAuth", () => {
+  it("signs out once per session end, and lets go of the stream when the lifetime aborts", () => {
+    const lifetime = new AbortController();
+    const ended$ = new Subject<void>();
+    let ends = 0;
+    relaySessionEndToAuth(
+      createSessionEndTransport(ended$),
+      {
+        endSession: () => {
+          ends += 1;
+        },
+      },
+      lifetime.signal,
+    );
+    ended$.next();
+    ended$.next();
+    expect(ends).toBe(2);
+    lifetime.abort();
+    expect(ended$.observed).toBe(false);
+  });
+
+  it("with no transport, does nothing", () => {
+    expect(() => {
+      relaySessionEndToAuth(
+        undefined,
+        {
+          endSession: () => {
+            throw new Error("never called");
+          },
+        },
+        new AbortController().signal,
+      );
+    }).not.toThrow();
+  });
+});
+
+function createSessionEndTransport(ended$: Subject<void>): AuthGatedTransport {
+  return {
+    connect: () => {},
+    disconnect: () => {},
+    sessionEnded: () => {
+      return ended$;
+    },
+  };
+}
+
 function createRecordingTransport(calls: string[]): AuthGatedTransport {
   return {
     connect: () => {
@@ -38,6 +87,9 @@ function createRecordingTransport(calls: string[]): AuthGatedTransport {
     },
     disconnect: () => {
       calls.push("disconnect");
+    },
+    sessionEnded: () => {
+      return NEVER;
     },
   };
 }

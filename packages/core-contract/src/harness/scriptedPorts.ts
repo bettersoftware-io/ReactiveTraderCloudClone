@@ -25,7 +25,11 @@ import type {
   WorkspaceTab,
 } from "@rtc/core-api";
 import {
+  type AccountActionOutcome,
+  type AccountAdminAction,
+  type AccountAdminPort,
   type AccountFlowOutcome,
+  type AccountListOutcome,
   type AnalyticsPort,
   type AnomalyDetectorConfig,
   type AuthOutcome,
@@ -127,7 +131,10 @@ export type PortMethodName =
   | "jarvis.confirm"
   | "jarvis.availability$"
   | "jarvis.setHistorySource"
-  | "jarvisUsage.usage$";
+  | "jarvisUsage.usage$"
+  | "accountAdmin.listAccounts"
+  | "accountAdmin.actOn"
+  | "transport.sessionEnded";
 
 /** What `pricing.getRfqQuote` was asked for. */
 export interface RfqQuoteRequest {
@@ -168,9 +175,11 @@ export interface HarnessSeed {
   readonly jarvisAvailabilityPending?: boolean;
   /** `ports.narratorConfig` — the detector thresholds. Absent: the base's. */
   readonly narratorConfig?: Partial<AnomalyDetectorConfig>;
-  /** Supply a recording `ports.transport` (see `driver.transportCalls()`).
-   * Absent: the base's, which for every runner is none — the simulator
-   * branch has no socket to gate. */
+  /** Supply a recording `ports.transport` (see `driver.transportCalls()`;
+   * its `sessionEnded()` is driven by `driver.endSession()` and counted as
+   * `transport.sessionEnded`). Absent: the base's, which for every runner is
+   * none — the simulator branch has no socket to gate, and no session there
+   * can end. */
   readonly transport?: boolean;
   /** Count every subscription to every stream any port method returns (see
    * `driver.livePortSubscriptions()`) — the dispose witness's instrument.
@@ -180,6 +189,12 @@ export interface HarnessSeed {
 
 /** One call the core made on the scripted `ports.transport`. */
 type TransportCall = "connect" | "disconnect";
+
+/** One `accountAdmin.actOn(accountId, action)` the core has subscribed. */
+interface AccountActionCall {
+  readonly accountId: string;
+  readonly action: AccountAdminAction;
+}
 
 /** One `auth.login(username, password)` the core has subscribed. */
 interface LoginCall {
@@ -313,9 +328,18 @@ export interface ScriptedDriver {
   connectionEvents$(): Stream<ConnectionEvent>;
   /** How many times the core has called each `connectionIntents` method. */
   connectionIntentCalls(): ConnectionIntentCalls;
-  /** Every call the core has made on the scripted transport, in order
-   * (`HarnessSeed.transport`; always `[]` without it). */
+  /** Every connect/disconnect the core has made on the scripted transport,
+   * in order (`HarnessSeed.transport`; always `[]` without it). Its
+   * `sessionEnded()` calls are counted by `portCalls("transport.sessionEnded")`. */
   transportCalls(): readonly TransportCall[];
+  /** The server ended the session: one emission on the scripted transport's
+   * `sessionEnded()` (a `4401` close). A no-op without `HarnessSeed.transport`. */
+  endSession(): void;
+  /** How many subscriptions the core has ever opened on
+   * `connectionEvents.events()`'s stream. The port's side effects (a client's
+   * idle routing, the browser's listeners) run once per subscription, so a
+   * core keeps exactly one: the connection-status fold's. */
+  connectionEventSubscriptions(): number;
   /** Flip the OS colour scheme the theme presenter resolves "system" against. */
   setPrefersDark(on: boolean): void;
   /** How many times the core has invoked this port method since the harness
@@ -456,6 +480,23 @@ export interface ScriptedDriver {
   /** Every call the core has made against a `metricControls` entry (three
    * recording controls, index 0..2), in order. */
   controlCalls(): readonly ControlCall[];
+  /** How many `accountAdmin.listAccounts()` subscriptions the core holds
+   * that the driver has not yet answered. */
+  pendingAccountLists(): number;
+  /** Answer the OLDEST pending `listAccounts()` (next + complete). A no-op
+   * when nothing is pending. */
+  emitAccountList(outcome: AccountListOutcome): void;
+  /** Error the OLDEST pending `listAccounts()`. A no-op when nothing is
+   * pending. */
+  failAccountList(error: unknown): void;
+  /** Every `accountAdmin.actOn` the core has subscribed and the driver has
+   * not answered, oldest first. */
+  pendingAccountActions(): readonly AccountActionCall[];
+  /** Answer the OLDEST pending `actOn` (next + complete). A no-op when
+   * nothing is pending. */
+  answerAction(outcome: AccountActionOutcome): void;
+  /** Error the OLDEST pending `actOn`. A no-op when nothing is pending. */
+  failAction(error: unknown): void;
   /** Every `auth.login` the core has subscribed and the driver has not
    * settled, oldest first. */
   pendingLogins(): readonly LoginCall[];
@@ -600,6 +641,11 @@ export function scriptPorts(
   const sessionsList$ = new Subject<readonly SessionInfo[]>();
   const throughputLoads = createPendingQueue<void, number>();
   const throughputWrites = createPendingQueue<number, void>();
+  const accountLists = createPendingQueue<void, AccountListOutcome>();
+  const accountActions = createPendingQueue<
+    AccountActionCall,
+    AccountActionOutcome
+  >();
   const logins = createPendingQueue<LoginCall, AuthOutcome>();
   const accountCalls = createPendingQueue<AccountCall, AccountFlowOutcome>();
   const asks = createPendingQueue<string, JarvisEvent>();
@@ -724,10 +770,14 @@ export function scriptPorts(
     });
   }
 
+  let connectionEventSubscriptions = 0;
   const connectionEvents: ConnectionEventsPort = {
     events: (): Observable<ConnectionEvent> => {
       recordCall("connectionEvents.events");
-      return events$;
+      return new Observable<ConnectionEvent>((subscriber) => {
+        connectionEventSubscriptions += 1;
+        return events$.subscribe(subscriber);
+      });
     },
   };
 
@@ -946,6 +996,22 @@ export function scriptPorts(
     "ops.",
   );
 
+  const accountAdmin = countCalls<AccountAdminPort>(
+    {
+      listAccounts: (): Observable<AccountListOutcome> => {
+        return accountLists.open(undefined);
+      },
+      actOn: (
+        accountId: string,
+        action: AccountAdminAction,
+      ): Observable<AccountActionOutcome> => {
+        return accountActions.open({ accountId, action });
+      },
+    },
+    calls,
+    "accountAdmin.",
+  );
+
   const auth = countCalls<AuthPort>(
     {
       login: (username: string, password: string): Observable<AuthOutcome> => {
@@ -1045,6 +1111,7 @@ export function scriptPorts(
     },
   };
   const transportLog: TransportCall[] = [];
+  const sessionEnded$ = new Subject<void>();
   const transport: AuthGatedTransport | undefined =
     seed.transport === true
       ? {
@@ -1053,6 +1120,10 @@ export function scriptPorts(
           },
           disconnect: () => {
             transportLog.push("disconnect");
+          },
+          sessionEnded: (): Observable<void> => {
+            recordCall("transport.sessionEnded");
+            return sessionEnded$;
           },
         }
       : base.transport;
@@ -1073,6 +1144,7 @@ export function scriptPorts(
     bootSplash,
     jarvis,
     jarvisUsage,
+    accountAdmin,
     narratorConfig: seed.narratorConfig ?? base.narratorConfig,
     transport,
     dockLayoutStore,
@@ -1121,6 +1193,12 @@ export function scriptPorts(
       },
       transportCalls: () => {
         return [...transportLog];
+      },
+      endSession: () => {
+        sessionEnded$.next();
+      },
+      connectionEventSubscriptions: () => {
+        return connectionEventSubscriptions;
       },
       setPrefersDark: (on: boolean) => {
         prefersDark$.next(on);
@@ -1270,6 +1348,14 @@ export function scriptPorts(
       controlCalls: () => {
         return controlCallLog.slice();
       },
+      pendingAccountLists: () => {
+        return accountLists.pending().length;
+      },
+      emitAccountList: accountLists.resolve,
+      failAccountList: accountLists.fail,
+      pendingAccountActions: accountActions.pending,
+      answerAction: accountActions.resolve,
+      failAction: accountActions.fail,
       pendingLogins: logins.pending,
       resolveLogin: logins.resolve,
       pendingAccountCalls: accountCalls.pending,
@@ -1363,6 +1449,7 @@ export function scriptPorts(
     },
     teardown: () => {
       connection$.complete();
+      sessionEnded$.complete();
       prefersDark$.complete();
 
       for (const subject of prices.values()) {
@@ -1403,6 +1490,8 @@ export function scriptPorts(
       sessionsList$.complete();
       throughputLoads.drain();
       throughputWrites.drain();
+      accountLists.drain();
+      accountActions.drain();
       logins.drain();
       accountCalls.drain();
       asks.drain();

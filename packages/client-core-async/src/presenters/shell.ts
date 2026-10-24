@@ -65,6 +65,13 @@ const SIGNED_OUT: AuthViewState = {
   waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
 };
 
+/** The `AuthPresenter` plus the one hook composition routes the
+ * transport's `sessionEnded()` to. `endSession` is not on the contract
+ * interface (no new `AuthPresenter` member): composition holds it. */
+export interface EndableAuthPresenter extends AuthPresenter {
+  endSession(): void;
+}
+
 /** The login / lock / unlock / logout lifecycle over `createAuthDeps(ports, authDepsPrimitives)`
  * — the RxJS `AuthPresenter`'s transitions over a Store. The session is
  * resumed at construction from the store (an entry that has not expired
@@ -74,7 +81,7 @@ export function createAuthPresenter(
   deps: AuthDeps,
   lifetime: AbortSignal,
   now: () => number = Date.now,
-): AuthPresenter {
+): EndableAuthPresenter {
   let currentUsername: string | null = null;
 
   function resume(): AuthViewState {
@@ -209,6 +216,22 @@ export function createAuthPresenter(
       deps.store.clear();
       currentUsername = null;
       store.set(SIGNED_OUT);
+    },
+    // The server ended this session: clear the store and sign out with the
+    // reason and its copy. A no-op when nobody is authenticated, so a late
+    // event never overwrites a sign-in failure's message.
+    endSession: () => {
+      if (store.get().status !== "authenticated") {
+        return;
+      }
+
+      deps.store.clear();
+      currentUsername = null;
+      store.set({
+        ...SIGNED_OUT,
+        error: describeAuthFailure("session_ended"),
+        failure: "session_ended",
+      });
     },
   };
 }

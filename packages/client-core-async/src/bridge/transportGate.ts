@@ -48,3 +48,43 @@ export function gateTransportOnAuth(
     { once: true },
   );
 }
+
+/** Sign `auth` out each time `transport` reports the server ended the
+ * session (`sessionEnded()`, a 4401 close). Subscribed ONCE, here, at
+ * construction, and held until `lifetime` aborts. No `transport` (the
+ * simulator branch) means no session can end, and nothing is subscribed. A
+ * throw from `endSession` is not caught: it surfaces out of band, as the
+ * RxJS core's does. */
+export function relaySessionEndToAuth(
+  transport: AuthGatedTransport | undefined,
+  auth: SessionEndingAuth,
+  lifetime: AbortSignal,
+): void {
+  if (transport === undefined) {
+    return;
+  }
+
+  const subscription = transport.sessionEnded().subscribe({
+    next: () => {
+      auth.endSession();
+    },
+    error: (error: unknown) => {
+      setTimeout(() => {
+        throw error;
+      }, 0);
+    },
+  });
+  lifetime.addEventListener(
+    "abort",
+    () => {
+      subscription.unsubscribe();
+    },
+    { once: true },
+  );
+}
+
+/** What `relaySessionEndToAuth` needs of the auth presenter: its internal
+ * sign-out for a session the server ended. */
+interface SessionEndingAuth {
+  endSession(): void;
+}

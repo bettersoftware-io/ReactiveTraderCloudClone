@@ -14,7 +14,11 @@ import type {
 } from "@rtc/shared";
 
 import type { RateLimiter } from "../auth/rateLimit.js";
-import type { AccountDirectory, AccountRecord } from "./AccountDirectory.js";
+import type {
+  AccountDirectory,
+  AccountRecord,
+  AdminWrite,
+} from "./AccountDirectory.js";
 
 const DAY_MS = 24 * 60 * 60 * 1_000;
 /** Each send fuse counts its path's sends under one key. */
@@ -52,6 +56,10 @@ export interface AccountServiceOptions {
   /** One fixed line per detached send that did not answer `sent`: the route
    * and the outcome word, never the address. */
   readonly log: (line: string) => void;
+  /** Called after a reset ended the account's sessions. `stamped` is false
+   * when the stamp could not be written to the directory (so the caller must
+   * fall back to the in-process ledger). */
+  readonly onSessionsRevoked: (accountId: string, stamped: boolean) => void;
 }
 
 type RegisterOutcome =
@@ -387,7 +395,59 @@ export function createAccountService(
       return { outcome: "invalid", rule: "password" };
     }
 
-    return { outcome: changed };
+    if (typeof changed === "string") {
+      return { outcome: changed };
+    }
+
+    await endSessionsAfterReset(changed.accountId, email);
+
+    return { outcome: "changed" };
+  }
+
+  /** A password reset ends every session of the account. Never changes the
+   * reset's outcome: the password HAS changed. The id comes from the reset
+   * itself; only a store that did not say falls back to a lookup. Logs the
+   * account id only. */
+  async function endSessionsAfterReset(
+    knownId: string | null,
+    email: string,
+  ): Promise<void> {
+    const found = knownId ?? (await findForReset(email));
+
+    if (found === null) {
+      options.log("[accounts] reset-lookup-failed");
+      return;
+    }
+
+    let stamped = (await stampOnce(found)) === "ok";
+
+    if (!stamped) {
+      stamped = (await stampOnce(found)) === "ok";
+    }
+
+    if (!stamped) {
+      options.log(`[accounts] stamp-failed id=${found}`);
+    }
+
+    options.onSessionsRevoked(found, stamped);
+  }
+
+  async function findForReset(email: string): Promise<string | null> {
+    try {
+      const lookup = await directory.findByEmail(email);
+
+      return lookup.outcome === "found" ? lookup.account.id : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function stampOnce(accountId: string): Promise<AdminWrite> {
+    try {
+      return await directory.revokeSessions(accountId, options.now());
+    } catch {
+      return "unavailable";
+    }
   }
 
   async function login(

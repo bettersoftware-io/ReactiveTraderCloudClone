@@ -41,6 +41,13 @@ export const CLIENT_MSG = {
   SET_THROUGHPUT: "ops.setThroughput",
   // Subscribes to periodic JarvisUsageSnapshot pushes (see SERVER_MSG.OPS_JARVIS_USAGE).
   OPS_JARVIS_USAGE_SUBSCRIBE: "ops.jarvisUsage.subscribe",
+  // Account administration (administrators only; the server re-checks)
+  ADMIN_ACCOUNTS_LIST: "admin.accounts.list",
+  ADMIN_ACCOUNTS_APPROVE: "admin.accounts.approve",
+  ADMIN_ACCOUNTS_BLOCK: "admin.accounts.block",
+  ADMIN_ACCOUNTS_UNBLOCK: "admin.accounts.unblock",
+  ADMIN_ACCOUNTS_RENAME: "admin.accounts.rename",
+  ADMIN_ACCOUNTS_DELETE: "admin.accounts.delete",
   // Equities
   SUBSCRIBE_WATCHLIST: "subscribe.watchlist",
   SUBSCRIBE_EQ_QUOTES: "subscribe.eqQuotes",
@@ -91,6 +98,13 @@ export const SERVER_MSG = {
   SET_THROUGHPUT_RESPONSE: "ops.setThroughput.response",
   // JarvisUsageSnapshot push, sent in reply to CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE.
   OPS_JARVIS_USAGE: "ops.jarvisUsage",
+  // Account administration
+  ADMIN_ACCOUNTS_LIST_RESPONSE: "admin.accounts.list.response",
+  ADMIN_ACCOUNTS_APPROVE_RESPONSE: "admin.accounts.approve.response",
+  ADMIN_ACCOUNTS_BLOCK_RESPONSE: "admin.accounts.block.response",
+  ADMIN_ACCOUNTS_UNBLOCK_RESPONSE: "admin.accounts.unblock.response",
+  ADMIN_ACCOUNTS_RENAME_RESPONSE: "admin.accounts.rename.response",
+  ADMIN_ACCOUNTS_DELETE_RESPONSE: "admin.accounts.delete.response",
   // Equities
   WATCHLIST: "stream.watchlist",
   EQ_QUOTE: "stream.eqQuote",

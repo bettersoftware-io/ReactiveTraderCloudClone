@@ -8,9 +8,11 @@ import {
   type JarvisToolDefinition,
 } from "@rtc/agent-tools";
 import { KNOWN_CURRENCY_PAIRS } from "@rtc/domain";
+import { SESSION_ENDED_CLOSE_CODE } from "@rtc/shared";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
 import { createAccountService } from "./accounts/AccountService.js";
+import { createAccountAdminService } from "./accounts/accountAdminService.js";
 import { createAccountStatusCache } from "./accounts/accountStatusCache.js";
 import {
   createAccountDirectory,
@@ -18,6 +20,8 @@ import {
   readSignupLevers,
   resolveAccountsMode,
 } from "./accounts/resolveAccountsMode.js";
+import { createRevocationLedger } from "./accounts/revocationLedger.js";
+import { createSessionRegistry } from "./accounts/sessionRegistry.js";
 import { startUnconfirmedPurge } from "./accounts/unconfirmedPurge.js";
 import { AnthropicAgentLoop } from "./agent/AnthropicAgentLoop.js";
 import { type AgentLoop, createJarvisLoops } from "./agent/agentLoop.js";
@@ -29,6 +33,7 @@ import {
   ACCOUNT_STATUS_CACHE_MAX_ENTRIES,
   ACCOUNT_STATUS_CACHE_TTL_MS,
   ACCOUNTS_HEALTH_CACHE_MS,
+  ADMIN_ACCOUNT_LIST_MAX,
   BAN_DURATION_MS,
   BAN_MAX_ENTRIES,
   BAN_STRIKE_WINDOW_MS,
@@ -44,6 +49,7 @@ import {
   PURGE_FIRST_RUN_DELAY_MS,
   PURGE_INTERVAL_MS,
   PURGE_UNCONFIRMED_AFTER_MS,
+  REVOCATION_LEDGER_MAX_ENTRIES,
   WS_MAX_PAYLOAD_BYTES,
 } from "./config/limits.js";
 import { buildEffects } from "./effects/index.js";
@@ -64,6 +70,7 @@ import {
 } from "./http/accountLimits.js";
 import { createAccountsHealth } from "./http/accountsHealth.js";
 import { resolveClientIp, resolveTrustedIpHeader } from "./http/clientIp.js";
+import { decideConnection } from "./http/decideConnection.js";
 import {
   authenticateLoginRequest,
   type UpgradeRejection,
@@ -72,7 +79,11 @@ import { resolveOriginPolicy } from "./http/originPolicy.js";
 import { createPostRouter, type PostRoute } from "./http/postRouter.js";
 import { declaredLengthExceeds } from "./http/readBody.js";
 import { settleUpgrade } from "./http/settleUpgrade.js";
-import { decideUpgrade, type UpgradeGateDeps } from "./http/upgradeGate.js";
+import {
+  decideUpgrade,
+  type UpgradeGateDeps,
+  type UpgradeVerdict,
+} from "./http/upgradeGate.js";
 import { createMcpRequestHandler } from "./mcp/mcpHttpHandler.js";
 import { createConnectionLog } from "./observability/connectionLog.js";
 import { scopeServicesToConnection } from "./services/connectionScope.js";
@@ -195,6 +206,18 @@ const accountDirectory = createAccountDirectory(accountsMode, {
   timeoutMs: ACCOUNT_DIRECTORY_TIMEOUT_MS,
 });
 
+const accountStatus = createAccountStatusCache({
+  directory: accountDirectory,
+  ttlMs: ACCOUNT_STATUS_CACHE_TTL_MS,
+  maxEntries: ACCOUNT_STATUS_CACHE_MAX_ENTRIES,
+  now: readClock,
+});
+
+// Stamps that could not reach the account store, and the live sockets of
+// each account, so ending a session can close them.
+const revocations = createRevocationLedger(REVOCATION_LEDGER_MAX_ENTRIES);
+const sessionRegistry = createSessionRegistry();
+
 const accounts = createAccountService({
   directory: accountDirectory,
   now: readClock,
@@ -206,14 +229,32 @@ const accounts = createAccountService({
   log: (line: string): void => {
     console.log(line);
   },
+  onSessionsRevoked: (accountId: string, stamped: boolean): void => {
+    // A stamp that could not be written is held here instead, so this
+    // process still treats the older tokens as ended.
+    if (!stamped) {
+      revocations.record(accountId, readClock());
+    }
+
+    accountStatus.invalidate(accountId);
+    sessionRegistry.closeAll(accountId);
+  },
 });
 
-const accountStatus = createAccountStatusCache({
+// ONE service for the process; each connection reaches it through its scoped
+// container. With accounts disabled the disabled directory makes every call
+// `unavailable`.
+const accountAdmin = createAccountAdminService({
   directory: accountDirectory,
-  ttlMs: ACCOUNT_STATUS_CACHE_TTL_MS,
-  maxEntries: ACCOUNT_STATUS_CACHE_MAX_ENTRIES,
+  statusCache: accountStatus,
+  sessions: sessionRegistry,
+  revocations,
   now: readClock,
+  listLimit: ADMIN_ACCOUNT_LIST_MAX,
 });
+
+// The shared container every connection's scoped one is made from.
+const connectionServices: ServiceContainer = { ...services, accountAdmin };
 
 const accountsHealth = createAccountsHealth({
   directory: accountDirectory,
@@ -260,6 +301,8 @@ function approveWithoutPrompt(): Promise<boolean> {
 const serveMcp = createMcpRequestHandler({
   auth,
   tools: buildJarvisToolsFor(services, approveWithoutPrompt),
+  accounts: accountDirectory,
+  revocations,
 });
 
 function clientIp(req: IncomingMessage): string {
@@ -423,8 +466,14 @@ const gateDeps: UpgradeGateDeps = {
   banList,
   connections,
   accountStatus,
+  revocations,
+  sessions: sessionRegistry,
   now: readClock,
 };
+
+// `verifyClient` decides; `connection` acts on the decision. The request
+// object is the one thing both see.
+const verdicts = new WeakMap<IncomingMessage, UpgradeVerdict>();
 
 const wss = new WebSocketServer({
   server: httpServer,
@@ -437,7 +486,8 @@ const wss = new WebSocketServer({
   // caller that never signed in, or an expired/bad token). /health and
   // /login stay reachable (HTTP routes, not WS upgrades). A registered
   // account's token is then re-checked against the account's current status
-  // (403, or 503 when the account store does not answer). A rejection is
+  // (503 when the account store does not answer; an ended session is
+  // accepted, then closed 4401 by `connection`). A rejection is
   // logged by reason — never the token itself.
   verifyClient: (
     info: Parameters<VerifyClientCallbackAsync>[0],
@@ -445,7 +495,13 @@ const wss = new WebSocketServer({
   ): void => {
     // Settles the handshake exactly once; never leaves a rejection unhandled.
     void settleUpgrade(
-      decideUpgrade(info.req.url, clientIp(info.req), gateDeps),
+      decideUpgrade(info.req.url, clientIp(info.req), gateDeps).then(
+        (verdict: UpgradeVerdict): UpgradeVerdict => {
+          verdicts.set(info.req, verdict);
+
+          return verdict;
+        },
+      ),
       done,
       {
         recordRejectedUpgrade: (reason: UpgradeRejection): void => {
@@ -477,15 +533,47 @@ wss.on("connection", (ws, req) => {
       banList.strike(ip, "frame-too-large", readClock());
     }
   });
+  const verdict = verdicts.get(req);
+  verdicts.delete(req);
   ws.on("close", () => {
     connections.release(ip);
     connectionLog.recordDisconnect();
   });
+
+  // Decided and registered in one synchronous step: a revocation cannot slip
+  // between the epoch check and `register`.
+  const decision = decideConnection(verdict, sessionRegistry);
+
+  if (decision.kind === "close") {
+    if (decision.code === SESSION_ENDED_CLOSE_CODE) {
+      connectionLog.recordSessionEnded();
+    } else {
+      // Never happens (`verifyClient` stores a verdict first): fixed line,
+      // no account data.
+      console.log("[ws] connection-without-verdict");
+    }
+
+    ws.close(decision.code, decision.reason);
+    return;
+  }
+
+  if (decision.accountId !== null) {
+    const unregister = sessionRegistry.register(decision.accountId, ws);
+    ws.on("close", unregister);
+  }
+
+  const caller = verdict?.caller;
+
+  if (caller === undefined) {
+    ws.close(1011, "internal");
+    return;
+  }
+
   // S8 — a per-socket token bucket in front of the effects; S10 — a
   // connection-scoped service container (its own ThroughputService).
   createWsListener(
     effect,
-    scopeServicesToConnection(services),
+    scopeServicesToConnection(connectionServices, caller),
   )(
     toSocket(ws, {
       bucket: createTokenBucket(INBOUND_BURST, INBOUND_REFILL_PER_SECOND),

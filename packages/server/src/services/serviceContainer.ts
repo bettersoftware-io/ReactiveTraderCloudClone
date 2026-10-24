@@ -19,10 +19,20 @@ import {
   TradeStoreSimulator,
 } from "@rtc/domain";
 
+import type { AccountAdminService } from "../accounts/accountAdminService.js";
 import { JarvisGateService } from "./JarvisGateService.js";
 import { parseJarvisGateConfig } from "./jarvisGate.js";
 import { ThroughputService } from "./ThroughputService.js";
 import { UsageMeter } from "./UsageMeter.js";
+
+/** The verified identity behind one WebSocket connection. `accountId` is null
+ * for a roster login; `issuedAt` is null for a roster token and for an
+ * account token minted before B2c. */
+export interface Caller {
+  readonly username: string;
+  readonly accountId: string | null;
+  readonly issuedAt: number | null;
+}
 
 export interface ServiceContainer {
   readonly referenceData: ReferenceDataSimulator;
@@ -40,6 +50,23 @@ export interface ServiceContainer {
   readonly positions: PositionPort;
   readonly usageMeter: UsageMeter;
   readonly jarvisGate: JarvisGateService;
+  /** Null on the shared container; set on a connection's scoped one. */
+  readonly caller: Caller | null;
+  /** The administrator rules behind the `admin.accounts.*` RPCs. */
+  readonly accountAdmin: AccountAdminService;
+}
+
+/** The service of a container built without an account directory: every
+ * call answers `unavailable`. */
+function createUnavailableAccountAdminService(): AccountAdminService {
+  return {
+    list: () => {
+      return Promise.resolve({ ok: false, refusal: "unavailable" });
+    },
+    act: () => {
+      return Promise.resolve({ ok: false, refusal: "unavailable" });
+    },
+  };
 }
 
 /**
@@ -54,6 +81,7 @@ export interface ServiceContainer {
  */
 export function createServices(
   env: NodeJS.ProcessEnv = process.env,
+  accountAdmin: AccountAdminService = createUnavailableAccountAdminService(),
 ): ServiceContainer {
   const referenceData = new ReferenceDataSimulator();
   const pricing = new PricingSimulator();
@@ -99,5 +127,7 @@ export function createServices(
     positions,
     usageMeter,
     jarvisGate,
+    caller: null,
+    accountAdmin,
   };
 }

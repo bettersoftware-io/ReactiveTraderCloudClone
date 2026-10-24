@@ -1,0 +1,304 @@
+/* The Users panel — the Ops panels' chrome: no body fill (the layout
+ * engine's .panel already paints var(--panel) behind every dock), mono data,
+ * display-face column labels, skin tokens only. Nothing here animates: the
+ * one transition-free hover below is a static state swap. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 12px;
+  padding: 16px;
+  overflow: auto;
+}
+
+/* Loading, empty and forbidden: one centered mono line in the body. */
+.notice {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.notice[data-tone="negative"] {
+  color: var(--accent-negative);
+}
+
+/* A failure line — the list's (over the rows it keeps) and a row's (under
+ * that row): negative tone, carried by a static left rule. */
+.failed,
+.failure {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--accent-negative);
+  border: 1px solid var(--border-primary);
+  border-left: 3px solid var(--accent-negative);
+  border-radius: 3px;
+}
+
+/* One grid for the labels and every row; the rows (and the list holding
+ * them) are subgrids of it, so the columns line up down the list. The status
+ * and actions tracks are FIXED, each wide enough for its widest state, so no
+ * state change (a confirm, a busy label, a refresh that drops the last
+ * unconfirmed row) moves a column. They are sized in the mono face the cells
+ * use — the table's own font, which every cell overrides — so they follow a
+ * skin's font rather than a pixel guess:
+ *   status  — the UNCONFIRMED chip: 11 letters at 9px (0.9ch each, plus
+ *             0.1em tracking), 16px padding, 2px border;
+ *   actions — the inline delete confirmation, the widest state: "Delete this
+ *             account?" at 11px (22ch) + Confirm (7 letters) + Cancel (6) at
+ *             10px with 0.06em tracking, two 22px button frames, two 6px gaps.
+ *             Every other state fits inside it ("Unblocking…" + Rename +
+ *             Delete is ~45px narrower). */
+.table {
+  display: grid;
+  grid-template-columns:
+    minmax(140px, 1fr) minmax(180px, 1.4fr) max-content
+    calc(11ch + 1em + 18px) calc(36ch + 1em + 56px);
+  column-gap: 20px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.columns,
+.rows,
+.row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+
+.columns {
+  padding: 0 8px 7px;
+  border-bottom: 1px solid var(--border-primary);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  /* The cells' line is at least the 27px a plain row's content box is (the
+   * 40px border box less 12px padding and the 1px rule), so a row whose
+   * failure line adds a second grid row keeps its cells on the same centre
+   * line as its siblings. */
+  grid-template-rows: minmax(27px, auto);
+  align-items: center;
+  row-gap: 6px;
+  min-height: 40px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.row:hover {
+  background: var(--chip);
+}
+
+.nameCell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.row[data-self="true"] .name {
+  color: var(--accent-primary);
+}
+
+.email {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.joined {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.statusCell {
+  display: flex;
+}
+
+/* Status chip: the tone is the text and the outline, never a fill, so the
+ * four read at a glance on every skin without a hard-coded colour. */
+.chip {
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 9px;
+  line-height: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid currentcolor;
+  border-radius: 3px;
+}
+
+.chip[data-tone="positive"] {
+  color: var(--accent-positive);
+}
+
+.chip[data-tone="warning"] {
+  color: var(--accent-aware);
+}
+
+.chip[data-tone="negative"] {
+  color: var(--accent-negative);
+}
+
+.chip[data-tone="muted"] {
+  color: var(--text-muted);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Row buttons: the head chip's shape at row scale. */
+.action {
+  padding: 3px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.action[data-tone="primary"] {
+  color: var(--accent-primary);
+  border-color: var(--border-strong);
+}
+
+.action[data-tone="positive"] {
+  color: var(--accent-positive);
+}
+
+.action[data-tone="negative"] {
+  color: var(--accent-negative);
+}
+
+.action:hover:not(:disabled) {
+  background: var(--chip);
+  border-color: var(--border-strong);
+}
+
+/* Disabled, but readable: the muted text token (the house treatment of a
+ * disabled row control, as in the header's view rows and the presets list)
+ * at full opacity, the tone dropped so it cannot read as live. */
+.action:disabled {
+  color: var(--text-muted);
+  border-color: var(--border-primary);
+  cursor: default;
+}
+
+/* The chosen button while its request runs: still disabled, but it stays
+ * at full strength and reads its in-progress label. */
+.action[data-busy="true"] {
+  opacity: 1;
+  color: var(--accent-primary);
+  border-style: dashed;
+  border-color: var(--accent-primary);
+}
+
+.confirmText {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--accent-negative);
+  white-space: nowrap;
+}
+
+.you {
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 9px;
+  line-height: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-primary);
+  background: var(--chip);
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+}
+
+/* Capped so a wide name column does not stretch the field across it. */
+.nameInput {
+  width: 100%;
+  max-width: 320px;
+  min-width: 0;
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 3px;
+  outline: none;
+}
+
+.nameInput:focus-visible {
+  border-color: var(--accent-primary);
+}
+
+.nameInput[aria-invalid="true"] {
+  border-color: var(--accent-negative);
+}
+
+.nameError {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--accent-negative);
+}
+
+/* A row's failure spans the whole row, under its cells. */
+.failure {
+  grid-column: 1 / -1;
+}

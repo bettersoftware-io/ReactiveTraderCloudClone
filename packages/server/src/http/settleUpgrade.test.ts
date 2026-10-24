@@ -24,15 +24,15 @@ describe("settleUpgrade", () => {
     await settleUpgrade(
       Promise.resolve<UpgradeVerdict>({
         ok: false,
-        status: 403,
-        reason: "account-not-active",
+        status: 503,
+        reason: "accounts-unavailable",
       }),
       probe.done,
       probe.sinks,
     );
 
-    expect(probe.calls).toEqual([[false, 403, "account-not-active"]]);
-    expect(probe.rejections).toEqual(["account-not-active"]);
+    expect(probe.calls).toEqual([[false, 503, "accounts-unavailable"]]);
+    expect(probe.rejections).toEqual(["accounts-unavailable"]);
   });
 
   it("fails closed once with 503 when the gate itself rejects", async () => {

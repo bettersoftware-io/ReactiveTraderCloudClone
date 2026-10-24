@@ -223,6 +223,7 @@ function createSeededSession(): string {
       email: "demo@reactivetrader.io",
       desk: "Demo · Cloud",
       clearance: "LEVEL 1 · VIEW",
+      access: "user",
     },
     // Year 2100 — never treated as expired during the test run.
     exp: 4_102_444_800_000,

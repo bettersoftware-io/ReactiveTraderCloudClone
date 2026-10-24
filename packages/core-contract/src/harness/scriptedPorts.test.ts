@@ -948,6 +948,36 @@ describe("scriptPorts — Jarvis turns, confirmations, availability, history and
     expect(driver.portCalls("jarvis.setHistorySource")).toBe(1);
   });
 
+  it("accountAdmin: lazy until subscribed, answered FIFO by emitAccountList/answerAction, both counted", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    const lists: unknown[] = [];
+    const actions: unknown[] = [];
+    const list$ = ports.accountAdmin.listAccounts();
+    const action$ = ports.accountAdmin.actOn("a1", { kind: "approve" });
+    expect(driver.pendingAccountLists()).toBe(0);
+    expect(driver.pendingAccountActions()).toEqual([]);
+
+    list$.subscribe((o) => {
+      lists.push(o);
+    });
+    action$.subscribe((o) => {
+      actions.push(o);
+    });
+    expect(driver.pendingAccountLists()).toBe(1);
+    expect(driver.pendingAccountActions()).toEqual([
+      { accountId: "a1", action: { kind: "approve" } },
+    ]);
+
+    driver.emitAccountList({ ok: true, accounts: [] });
+    driver.answerAction({ ok: false, reason: "self" });
+
+    expect(lists).toEqual([{ ok: true, accounts: [] }]);
+    expect(actions).toEqual([{ ok: false, reason: "self" }]);
+    expect(driver.pendingAccountLists()).toBe(0);
+    expect(driver.portCalls("accountAdmin.listAccounts")).toBe(1);
+    expect(driver.portCalls("accountAdmin.actOn")).toBe(1);
+  });
+
   it("jarvisUsage.usage$ follows pushJarvisUsage, counted", () => {
     const { ports, driver } = scriptPorts(createBasePorts());
     const seen: unknown[] = [];

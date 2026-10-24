@@ -53,14 +53,16 @@ export function App(): JSX.Element {
   const { state: navState, switchTab } = useWorkspaceNav();
   const pulse = useJarvisDrivenPulse();
   // The URL follows the tab: Back/Forward walk the tabs visited.
-  useWorkspaceRoutes(() => {
-    return navState().activeTab;
-  }, switchTab);
+  useWorkspaceRoutes(navState, switchTab);
 
   return (
     <div class={styles.app}>
       <AmbientBackground />
-      <HeaderChrome activeTab={navState().activeTab} onTabChange={switchTab} />
+      <HeaderChrome
+        activeTab={navState().activeTab}
+        visibleTabs={navState().visibleTabs}
+        onTabChange={switchTab}
+      />
       <div
         ref={pulse.ref}
         data-jarvis-driven={pulse.pulsing() ? "true" : "false"}

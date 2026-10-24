@@ -45,5 +45,7 @@ export function describeAuthFailure(reason: AuthFailureReason): string {
       return "Account awaiting approval";
     case "blocked":
       return "Account blocked";
+    case "session_ended":
+      return "Your session has ended. Please sign in again.";
   }
 }

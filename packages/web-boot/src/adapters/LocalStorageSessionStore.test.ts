@@ -21,6 +21,26 @@ describe("LocalStorageSessionStore (jsdom localStorage)", () => {
     expect(store.read()).toEqual(testSession);
   });
 
+  it.each([
+    ["no access", undefined, "user"],
+    ["admin", "admin", "admin"],
+    ["an unknown word", "root", "user"],
+  ])(
+    "reads a stored session with %s as access %s",
+    (_label, stored, expected) => {
+      const { access: _drop, ...bare } = testUser;
+      localStorage.setItem(
+        SESSION_STORAGE_KEY,
+        JSON.stringify({
+          ...testSession,
+          user: stored === undefined ? bare : { ...bare, access: stored },
+        }),
+      );
+
+      expect(new LocalStorageSessionStore().read()?.user.access).toBe(expected);
+    },
+  );
+
   it("returns null when the key is missing", () => {
     const store = new LocalStorageSessionStore();
 
@@ -103,6 +123,7 @@ const testUser: SessionUser = {
   email: "demo@example.com",
   desk: "FX",
   clearance: "standard",
+  access: "user",
 };
 
 const testSession: StoredSession = {

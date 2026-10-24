@@ -2,6 +2,8 @@ import { BehaviorSubject } from "rxjs";
 
 import type {
   AccountAccessState,
+  AccountActionState,
+  AccountListState,
   AnimationIntent,
   AuthViewState,
   CoreImpl,
@@ -133,6 +135,13 @@ export interface MountOptions<P> {
   /** Seeds `useRouteHistory()` (World.routes) with a fake history at this
    * path; defaults to none, where the page is unrouted. */
   routePath?: string;
+  /** Seeds `useAccountList().state` (World.accountList); defaults to
+   * `loading` with no rows. `rows` are shown in the order given, and an
+   * omitted `pendingCount` is counted from them. */
+  accountList?: Partial<AccountListState>;
+  /** Seeds `useAccountAction(id).state` per account id; every other row is
+   * `idle`. */
+  accountActions?: Readonly<Record<string, AccountActionState>>;
 }
 
 const mounted: MountedRoot[] = [];
@@ -192,6 +201,29 @@ function buildContext<P>(
     pushOrderLifecycle: (order: EquityOrder) => {
       return flush(() => {
         return world.pushOrderLifecycle(order);
+      });
+    },
+    failOrderLifecycle: (error: unknown) => {
+      return flush(() => {
+        return world.failOrderLifecycle(error);
+      });
+    },
+    setAccountList: (patch: Partial<AccountListState>) => {
+      return flush(() => {
+        return world.accountList.next({
+          ...world.accountList.getValue(),
+          ...patch,
+        });
+      });
+    },
+    setAccountAction: (accountId: string, state: AccountActionState) => {
+      return flush(() => {
+        return world.accountActionFor(accountId).next(state);
+      });
+    },
+    signOut: () => {
+      return flush(() => {
+        return world.signOut();
       });
     },
     throughputSets: world.throughputSets,
@@ -334,6 +366,8 @@ export function mount<P, Page extends MountedComponent<P>>(
     accountAccess: opts.accountAccess,
     registrationAvailable: opts.registrationAvailable,
     routePath: opts.routePath,
+    accountList: opts.accountList,
+    accountActions: opts.accountActions,
   });
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

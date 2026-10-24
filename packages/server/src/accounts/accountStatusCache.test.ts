@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { AccountLookup, AccountStatus } from "#/accounts/AccountDirectory";
+import type { AccountStatus } from "@rtc/domain";
+
+import type { AccountLookup } from "#/accounts/AccountDirectory";
 import { createAccountStatusCache } from "#/accounts/accountStatusCache";
 
 describe("accountStatusCache", () => {
@@ -16,13 +18,13 @@ describe("accountStatusCache", () => {
       },
     });
 
-    expect(await cache.statusOf("acc-1")).toBe("active");
+    expect((await cache.read("acc-1")).status).toBe("active");
     now = 60_999;
-    expect(await cache.statusOf("acc-1")).toBe("active");
+    expect((await cache.read("acc-1")).status).toBe("active");
     expect(lookups.calls).toBe(1);
 
     now = 61_000;
-    expect(await cache.statusOf("acc-1")).toBe("blocked");
+    expect((await cache.read("acc-1")).status).toBe("blocked");
     expect(lookups.calls).toBe(2);
   });
 
@@ -30,8 +32,8 @@ describe("accountStatusCache", () => {
     const lookups = createLookups(["missing"]);
     const cache = createCache(lookups);
 
-    expect(await cache.statusOf("acc-1")).toBe("missing");
-    expect(await cache.statusOf("acc-1")).toBe("missing");
+    expect((await cache.read("acc-1")).status).toBe("missing");
+    expect((await cache.read("acc-1")).status).toBe("missing");
     expect(lookups.calls).toBe(1);
   });
 
@@ -39,8 +41,8 @@ describe("accountStatusCache", () => {
     const lookups = createLookups(["unavailable", "active"]);
     const cache = createCache(lookups);
 
-    expect(await cache.statusOf("acc-1")).toBe("unavailable");
-    expect(await cache.statusOf("acc-1")).toBe("active");
+    expect((await cache.read("acc-1")).status).toBe("unavailable");
+    expect((await cache.read("acc-1")).status).toBe("active");
     expect(lookups.calls).toBe(2);
   });
 
@@ -55,12 +57,12 @@ describe("accountStatusCache", () => {
       },
     });
 
-    await cache.statusOf("acc-1");
-    await cache.statusOf("acc-2");
-    await cache.statusOf("acc-3");
+    await cache.read("acc-1");
+    await cache.read("acc-2");
+    await cache.read("acc-3");
 
     // acc-1 was evicted, so it is looked up again.
-    expect(await cache.statusOf("acc-1")).toBe("blocked");
+    expect((await cache.read("acc-1")).status).toBe("blocked");
     expect(lookups.calls).toBe(4);
   });
 
@@ -81,8 +83,8 @@ describe("accountStatusCache", () => {
       },
     });
 
-    expect(await cache.statusOf("acc-1")).toBe("unavailable");
-    expect(await cache.statusOf("acc-1")).toBe("unavailable");
+    expect((await cache.read("acc-1")).status).toBe("unavailable");
+    expect((await cache.read("acc-1")).status).toBe("unavailable");
     expect(calls).toBe(2);
   });
 
@@ -103,8 +105,8 @@ describe("accountStatusCache", () => {
       },
     });
 
-    expect(await cache.statusOf("acc-1")).toBe("unavailable");
-    expect(await cache.statusOf("acc-1")).toBe("unavailable");
+    expect((await cache.read("acc-1")).status).toBe("unavailable");
+    expect((await cache.read("acc-1")).status).toBe("unavailable");
     expect(calls).toBe(2);
   });
 
@@ -119,14 +121,14 @@ describe("accountStatusCache", () => {
       },
     });
 
-    const first = cache.statusOf("acc-1");
-    const second = cache.statusOf("acc-1");
+    const first = cache.read("acc-1");
+    const second = cache.read("acc-1");
     expect(deferred.pending).toHaveLength(1);
 
     deferred.settle(0, "blocked");
 
-    expect(await first).toBe("blocked");
-    expect(await second).toBe("blocked");
+    expect((await first).status).toBe("blocked");
+    expect((await second).status).toBe("blocked");
     expect(deferred.pending).toHaveLength(1);
   });
 
@@ -141,14 +143,14 @@ describe("accountStatusCache", () => {
       },
     });
 
-    const first = cache.statusOf("acc-1");
+    const first = cache.read("acc-1");
     deferred.settle(0, "unavailable");
-    expect(await first).toBe("unavailable");
+    expect((await first).status).toBe("unavailable");
 
-    const second = cache.statusOf("acc-1");
+    const second = cache.read("acc-1");
     expect(deferred.pending).toHaveLength(2);
     deferred.settle(1, "active");
-    expect(await second).toBe("active");
+    expect((await second).status).toBe("active");
   });
 
   it("releases the in-flight slot once settled: other ids are independent and a repeat is served from the cache", async () => {
@@ -162,17 +164,124 @@ describe("accountStatusCache", () => {
       },
     });
 
-    const one = cache.statusOf("acc-1");
+    const one = cache.read("acc-1");
     deferred.settle(0, "active");
     await one;
 
-    const other = cache.statusOf("acc-2");
+    const other = cache.read("acc-2");
     expect(deferred.pending).toHaveLength(2);
     deferred.settle(1, "blocked");
-    expect(await other).toBe("blocked");
+    expect((await other).status).toBe("blocked");
 
-    expect(await cache.statusOf("acc-1")).toBe("active");
+    expect((await cache.read("acc-1")).status).toBe("active");
     expect(deferred.pending).toHaveLength(2);
+  });
+  it("carries the account's sessionsNotBefore stamp", async () => {
+    const cache = createAccountStatusCache({
+      directory: {
+        findAccount: (accountId: string): Promise<AccountLookup> => {
+          return Promise.resolve({
+            outcome: "found",
+            account: {
+              id: accountId,
+              email: "ann@desk.io",
+              displayName: "Ann Lee",
+              access: "user",
+              status: "active",
+              createdAt: 0,
+              sessionsNotBefore: 5_000,
+            },
+          });
+        },
+      },
+      ttlMs: 60_000,
+      maxEntries: 10,
+      now: (): number => {
+        return 1_000;
+      },
+    });
+
+    expect(await cache.read("acc-1")).toEqual({
+      status: "active",
+      sessionsNotBefore: 5_000,
+    });
+  });
+
+  it("invalidate makes the next read ask the directory again", async () => {
+    const lookups = createLookups(["active", "blocked"]);
+    const cache = createCache(lookups);
+
+    expect((await cache.read("acc-1")).status).toBe("active");
+    cache.invalidate("acc-1");
+    expect((await cache.read("acc-1")).status).toBe("blocked");
+    expect(lookups.calls).toBe(2);
+  });
+
+  it("does not remember a lookup that an invalidation overtook (Review Focus 2)", async () => {
+    const deferred = createDeferredDirectory();
+    const cache = createCache(deferred);
+
+    const stale = cache.read("acc-1");
+    cache.invalidate("acc-1");
+    deferred.settle(0, "active");
+
+    // The caller that started it still gets its answer...
+    expect((await stale).status).toBe("active");
+
+    // ...but it was not cached: the next read goes to the directory.
+    const fresh = cache.read("acc-1");
+    expect(deferred.pending).toHaveLength(2);
+    deferred.settle(1, "blocked");
+    expect((await fresh).status).toBe("blocked");
+  });
+
+  it("an old lookup's settling does not drop the in-flight lookup started after the invalidation", async () => {
+    const deferred = createDeferredDirectory();
+    const cache = createCache(deferred);
+
+    const old = cache.read("acc-1");
+    cache.invalidate("acc-1");
+    const fresh = cache.read("acc-1");
+    expect(deferred.pending).toHaveLength(2);
+
+    deferred.settle(0, "active");
+    await old;
+
+    // A third concurrent read shares the fresh lookup: two calls, not three.
+    const third = cache.read("acc-1");
+    expect(deferred.pending).toHaveLength(2);
+
+    deferred.settle(1, "blocked");
+    expect((await fresh).status).toBe("blocked");
+    expect((await third).status).toBe("blocked");
+    expect((await cache.read("acc-1")).status).toBe("blocked");
+    expect(deferred.pending).toHaveLength(2);
+  });
+
+  it("a lookup started after an invalidation is remembered even when an older one settles later", async () => {
+    const deferred = createDeferredDirectory();
+    const cache = createCache(deferred);
+
+    const old = cache.read("acc-1");
+    cache.invalidate("acc-1");
+    const fresh = cache.read("acc-1");
+
+    deferred.settle(1, "blocked");
+    await fresh;
+    deferred.settle(0, "active");
+    await old;
+
+    expect((await cache.read("acc-1")).status).toBe("blocked");
+    expect(deferred.pending).toHaveLength(2);
+  });
+
+  it("invalidating an account nothing is known of is harmless", async () => {
+    const lookups = createLookups(["active"]);
+    const cache = createCache(lookups);
+
+    cache.invalidate("acc-9");
+    expect((await cache.read("acc-1")).status).toBe("active");
+    expect(lookups.calls).toBe(1);
   });
 });
 
@@ -203,6 +312,8 @@ function createLookups(script: readonly Scripted[]): ScriptedLookups {
           displayName: "Ann Lee",
           access: "user",
           status: next,
+          createdAt: 0,
+          sessionsNotBefore: null,
         },
       });
     },
@@ -212,7 +323,7 @@ function createLookups(script: readonly Scripted[]): ScriptedLookups {
 }
 
 function createCache(
-  lookups: ScriptedLookups,
+  lookups: Pick<ScriptedLookups, "findAccount">,
 ): ReturnType<typeof createAccountStatusCache> {
   return createAccountStatusCache({
     directory: lookups,
@@ -253,6 +364,8 @@ function createDeferredDirectory(): DeferredDirectory {
               displayName: "Ann Lee",
               access: "user",
               status,
+              createdAt: 0,
+              sessionsNotBefore: null,
             },
           });
         });

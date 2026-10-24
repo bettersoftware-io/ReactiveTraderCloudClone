@@ -15,7 +15,7 @@ import {
   throwError,
 } from "rxjs";
 import { catchError, distinctUntilChanged, map, skip } from "rxjs/operators";
-import { type Accessor, createSignal } from "solid-js";
+import { type Accessor, createSignal, onCleanup } from "solid-js";
 
 import {
   CandleSeriesPresenter,
@@ -75,6 +75,7 @@ import {
   type WorkspaceDockPanels,
 } from "@rtc/core-logic";
 import {
+  type AccessLevel,
   type AmbientStyle,
   type Candle,
   type CandleTimeframe,
@@ -265,7 +266,14 @@ function getWorkspaceNav(
   let machine = workspaceNavs.get(world);
 
   if (!machine) {
-    machine = createWorkspaceNavMachine();
+    machine = createWorkspaceNavMachine(
+      world.auth.pipe(
+        map((authState): AccessLevel | null => {
+          return authState.user?.access ?? null;
+        }),
+        distinctUntilChanged(),
+      ),
+    );
     workspaceNavs.set(world, machine);
   }
 
@@ -499,7 +507,10 @@ function readStateNow<T>(state$: Observable<T>, fallback: T): T {
 /** `readStateNow`'s fallback for the nav machine — never observed in practice
  * (`createWorkspaceNavMachine`'s state$ is warm and defaulted), but the read
  * needs a total type. Mirrors the machine's own INITIAL. */
-const FALLBACK_NAV_STATE: WorkspaceNavState = { activeTab: "fx" };
+const FALLBACK_NAV_STATE: WorkspaceNavState = {
+  activeTab: "fx",
+  visibleTabs: ["fx", "credit", "equities", "ops"],
+};
 
 /** The REAL `CandleSeriesPresenter`, one shared instance PER WORLD (same
  * per-World-singleton doctrine as `getLayoutFor`/`getWorkspaceNav` above) —
@@ -1849,6 +1860,26 @@ export function solidViewModel(world: World): ViewModel {
         resendCode: (email?: string) => {
           world.commands.accountResendCode.push(email);
         },
+      };
+    },
+    // The Users panel: list and per-row action state from the World, the
+    // row's intents from the per-World set (see `accountActionIntentsFor`).
+    useAccountList: () => {
+      return {
+        state: wrapSubject(world.accountList),
+        refresh: () => {
+          world.refreshAccountList();
+        },
+      };
+    },
+    useAccountAction: (accountId: string) => {
+      onCleanup(() => {
+        world.releaseAccountAction(accountId);
+      });
+
+      return {
+        state: wrapSubject(world.accountActionFor(accountId)),
+        intents: world.accountActionIntentsFor(accountId),
       };
     },
     useRegistrationAvailable: () => {

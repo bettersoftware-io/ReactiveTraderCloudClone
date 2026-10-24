@@ -18,6 +18,7 @@ export const ROSTER: readonly RosterEntry[] = [
       email: "a.stark@reactivetrader.io",
       desk: "G10 Spot · London",
       clearance: "LEVEL 4 · FULL",
+      access: "user",
     },
   },
   {
@@ -30,6 +31,7 @@ export const ROSTER: readonly RosterEntry[] = [
       email: "n.romanoff@reactivetrader.io",
       desk: "Credit · London",
       clearance: "LEVEL 3 · DESK",
+      access: "user",
     },
   },
   {
@@ -42,6 +44,7 @@ export const ROSTER: readonly RosterEntry[] = [
       email: "t.challa@reactivetrader.io",
       desk: "Equities · New York",
       clearance: "LEVEL 5 · FULL",
+      access: "user",
     },
   },
   {
@@ -54,6 +57,7 @@ export const ROSTER: readonly RosterEntry[] = [
       email: "demo@reactivetrader.io",
       desk: "Demo · Cloud",
       clearance: "LEVEL 1 · VIEW",
+      access: "user",
     },
   },
 ];

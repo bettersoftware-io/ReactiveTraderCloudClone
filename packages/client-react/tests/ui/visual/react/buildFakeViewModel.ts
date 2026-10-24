@@ -1,7 +1,9 @@
 import {
+  ACCOUNT_ACTION_IDLE,
   createDefaultLayoutPort,
   InMemoryDockLayoutStore,
   JARVIS_DEMO_STEPS,
+  visibleTabsFor,
 } from "@rtc/core-logic";
 import {
   type CurrencyPair,
@@ -106,6 +108,7 @@ const DEMO_USER: SessionUser = {
   email: "a.stark@reactivetrader.io",
   desk: "G10 Spot · London",
   clearance: "LEVEL 4 · FULL",
+  access: "user",
 };
 
 export function buildFakeViewModel(data: AppData): ViewModel {
@@ -338,7 +341,10 @@ export function buildFakeViewModel(data: AppData): ViewModel {
           status: data.sessionAuthenticating
             ? "authenticating"
             : "authenticated",
-          user: DEMO_USER,
+          user:
+            data.sessionAccess === "admin"
+              ? { ...DEMO_USER, access: "admin" }
+              : DEMO_USER,
           locked: data.sessionLocked ?? false,
           unlocking: data.sessionUnlocking ?? false,
           error: null,
@@ -391,7 +397,10 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useWorkspaceNav: () => {
       const [activeTab, setActiveTab] = useState<WorkspaceTab>("fx");
       return {
-        state: { activeTab },
+        state: {
+          activeTab,
+          visibleTabs: visibleTabsFor(data.sessionAccess ?? "user"),
+        },
         switchTab: (tab: WorkspaceTab) => {
           setActiveTab(tab);
         },
@@ -722,6 +731,35 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         requestReset: noop,
         submitCode: noop,
         resendCode: noop,
+      };
+    },
+    // The Users panel: the list from the fixture, and each row's action
+    // state from the fixture's per-account map (an id not in it is idle).
+    useAccountList: () => {
+      return {
+        state: data.accountList ?? {
+          status: "loading",
+          rows: [],
+          pendingCount: 0,
+        },
+        refresh: noop,
+      };
+    },
+    useAccountAction: (accountId: string) => {
+      return {
+        state: data.accountActions?.[accountId] ?? ACCOUNT_ACTION_IDLE,
+        intents: {
+          approve: noop,
+          block: noop,
+          unblock: noop,
+          startRename: noop,
+          editName: noop,
+          submitRename: noop,
+          requestDelete: noop,
+          confirmDelete: noop,
+          cancel: noop,
+          dismiss: noop,
+        },
       };
     },
     useRegistrationAvailable: () => {

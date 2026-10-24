@@ -109,12 +109,12 @@ export function authorizeUpgrade(
 /** Why an upgrade was rejected — surfaced so the server can log the difference
  * between a client that never authenticated (`no-token`, the pre-login case)
  * and one whose token failed verification (`invalid-token`, e.g. an expired
- * session). `no-url` is a malformed request with no URL at all. The last three
- * are the edge guards in front of the token check (`upgradeGate.ts`): a
+ * session). `no-url` is a malformed request with no URL at all. The next
+ * three are the edge guards in front of the token check (`upgradeGate.ts`): a
  * §9.2-banned IP, and the S8 total / per-IP live-socket caps.
- * `account-not-active` is a registered account that is blocked, unapproved,
- * unconfirmed or deleted since the token was issued; `accounts-unavailable` is
- * the account store failing to answer — the gate fails closed. */
+ * `accounts-unavailable` is the account store failing to answer — the gate
+ * fails closed. (A registered account whose session has ended is not a
+ * rejection: the handshake is accepted and the socket closed with 4401.) */
 export type UpgradeRejection =
   | "no-url"
   | "no-token"
@@ -122,7 +122,6 @@ export type UpgradeRejection =
   | "banned"
   | "too-many-connections"
   | "too-many-from-ip"
-  | "account-not-active"
   | "accounts-unavailable";
 
 export type UpgradeDecision =

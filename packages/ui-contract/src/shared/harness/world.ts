@@ -7,6 +7,9 @@ import {
 } from "@rtc/client-core-rxjs";
 import type {
   AccountAccessState,
+  AccountActionIntents,
+  AccountActionState,
+  AccountListState,
   AccountNavigation,
   ActivityEntry,
   AnimationIntent,
@@ -29,9 +32,14 @@ import type {
 } from "@rtc/core-api";
 import {
   ACCOUNT_ACCESS_IDLE,
+  ACCOUNT_ACTION_IDLE,
+  ACCOUNT_LIST_LOADING,
+  type AccountActionEvent,
+  countPending,
   NOTHING_HELD,
   type PanelStreamDeps,
   stepAccountAccess,
+  stepAccountAction,
 } from "@rtc/core-logic";
 import {
   type AmbientStyle,
@@ -392,6 +400,19 @@ export interface CommandLog {
   /** Each argument useAccountAccess().resendCode() was invoked with, in order
    * (`undefined` when the machine holds the address). */
   accountResendCode: Array<string | undefined>;
+  /** Times useAccountList().refresh() was invoked. */
+  accountListRefreshes: number;
+  /** Each intent of useAccountAction(accountId), in order: the row it was
+   * fired on, its name, and its argument (`startRename`'s current name,
+   * `editName`'s draft) when it takes one. */
+  accountActions: AccountActionCall[];
+}
+
+/** One recorded call of a row's `useAccountAction(accountId)` intent. */
+export interface AccountActionCall {
+  readonly accountId: string;
+  readonly intent: keyof AccountActionIntents;
+  readonly argument?: string;
 }
 
 /** The default throughput view a fresh World reports (loaded, value 100). */
@@ -411,6 +432,7 @@ const DEFAULT_AUTH_USER: SessionUser = {
   email: "a.stark@reactivetrader.io",
   desk: "G10 Spot · London",
   clearance: "LEVEL 4 · FULL",
+  access: "user",
 };
 
 /** The default auth state a fresh World reports: authenticated, unlocked, no error. */
@@ -612,6 +634,8 @@ export interface World {
   setDepth(symbol: string, value: DepthBook | null): void;
   /** Advance the OrderTicket lifecycle by emitting one EquityOrder into place(). */
   pushOrderLifecycle(order: EquityOrder): void;
+  /** Fail the OrderTicket's place() stream (the transport dropped in flight). */
+  failOrderLifecycle(error: unknown): void;
   /** The REAL createEqWorkspaceMachine, one shared instance for the whole
    * World — mirrors the composition root's singleton wiring so every panel
    * reading useEqWorkspace() through this World observes the same selection/
@@ -697,6 +721,28 @@ export interface World {
    * the create-account form. The four request intents only record: a spec
    * seeds busy, error and later phases directly. */
   navigateAccountAccess(navigation: AccountNavigation): void;
+  /** Reactive account list backing useAccountList (drives the Users panel
+   * and its head). Defaults to the presenter's `loading` state. */
+  readonly accountList: BehaviorSubject<AccountListState>;
+  /** One row's action state backing useAccountAction(accountId); `idle`
+   * until seeded or moved by one of that row's intents. */
+  accountActionFor(accountId: string): BehaviorSubject<AccountActionState>;
+  /** A row's machine was disposed (its view unmounted): the real machine is
+   * per mount and starts `idle`, so the row's state goes back to `idle`. A
+   * view that remounts a row mid-action therefore shows it reset, which is
+   * what lets a spec tell a row keyed by account id from one that is not. */
+  releaseAccountAction(accountId: string): void;
+  /** One row's useAccountAction intents, stable per row. Each records its
+   * call and moves that row's state through the REAL `stepAccountAction`
+   * fold, so a click on Delete opens the confirmation and Cancel closes it.
+   * A request the fold asks for leaves the row `inFlight`: a spec seeds the
+   * answer. */
+  accountActionIntentsFor(accountId: string): AccountActionIntents;
+  /** Records one refresh of the account list. */
+  refreshAccountList(): void;
+  /** Ends the session: no user, unauthenticated — the access every access
+   * fold reads becomes `null`. */
+  signOut(): void;
 }
 
 /**
@@ -769,6 +815,13 @@ export interface WorldSeeds {
   /** Seeds `World.routes` with a fake history at this path; defaults to
    * none (null). */
   routePath?: string;
+  /** Seeds `World.accountList`; defaults to `loading` with no rows. `rows`
+   * are shown in the order given, and an omitted `pendingCount` is counted
+   * from them by the same `countPending` the presenter uses. */
+  accountList?: Partial<AccountListState>;
+  /** Seeds `World.accountActionFor(id)` per account id; every other row is
+   * `idle`. */
+  accountActions?: Readonly<Record<string, AccountActionState>>;
 }
 
 export function createWorld(seeds: WorldSeeds = {}): World {
@@ -804,6 +857,8 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     accountAccess: accountAccessSeed = ACCOUNT_ACCESS_IDLE,
     registrationAvailable = false,
     routePath,
+    accountList: accountListSeed = {},
+    accountActions: accountActionSeeds = {},
   } = seeds;
 
   const merged: HookValues = { ...DEFAULTS, ...initial };
@@ -1018,6 +1073,110 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     );
   }
 
+  const accountListRows = accountListSeed.rows ?? [];
+  const accountList = new BehaviorSubject<AccountListState>({
+    ...ACCOUNT_LIST_LOADING,
+    ...accountListSeed,
+    pendingCount: accountListSeed.pendingCount ?? countPending(accountListRows),
+  });
+
+  const accountActionStates = new Map<
+    string,
+    BehaviorSubject<AccountActionState>
+  >();
+  const accountActionIntents = new Map<string, AccountActionIntents>();
+
+  function accountActionFor(
+    accountId: string,
+  ): BehaviorSubject<AccountActionState> {
+    let subject = accountActionStates.get(accountId);
+
+    if (!subject) {
+      subject = new BehaviorSubject<AccountActionState>(
+        accountActionSeeds[accountId] ?? ACCOUNT_ACTION_IDLE,
+      );
+      accountActionStates.set(accountId, subject);
+    }
+
+    return subject;
+  }
+
+  function releaseAccountAction(accountId: string): void {
+    accountActionStates.get(accountId)?.next(ACCOUNT_ACTION_IDLE);
+  }
+
+  function accountActionIntentsFor(accountId: string): AccountActionIntents {
+    const cached = accountActionIntents.get(accountId);
+
+    if (cached) {
+      return cached;
+    }
+
+    const subject = accountActionFor(accountId);
+
+    function fire(
+      intent: keyof AccountActionIntents,
+      event: AccountActionEvent,
+      argument?: string,
+    ): void {
+      commands.accountActions.push(
+        argument === undefined
+          ? { accountId, intent }
+          : { accountId, intent, argument },
+      );
+      subject.next(stepAccountAction(subject.getValue(), event).state);
+    }
+
+    const intents: AccountActionIntents = {
+      approve: () => {
+        fire("approve", { type: "approve" });
+      },
+      block: () => {
+        fire("block", { type: "block" });
+      },
+      unblock: () => {
+        fire("unblock", { type: "unblock" });
+      },
+      startRename: (current: string) => {
+        fire("startRename", { type: "startRename", current }, current);
+      },
+      editName: (draft: string) => {
+        fire("editName", { type: "editName", draft }, draft);
+      },
+      submitRename: () => {
+        fire("submitRename", { type: "submitRename" });
+      },
+      requestDelete: () => {
+        fire("requestDelete", { type: "requestDelete" });
+      },
+      confirmDelete: () => {
+        fire("confirmDelete", { type: "confirmDelete" });
+      },
+      cancel: () => {
+        fire("cancel", { type: "cancel" });
+      },
+      dismiss: () => {
+        fire("dismiss", { type: "dismiss" });
+      },
+    };
+
+    accountActionIntents.set(accountId, intents);
+
+    return intents;
+  }
+
+  function refreshAccountList(): void {
+    commands.accountListRefreshes += 1;
+  }
+
+  function signOut(): void {
+    auth.next({
+      ...auth.getValue(),
+      status: "unauthenticated",
+      user: null,
+    });
+  }
+
   // Jarvis (Task 9): the skin preference is a plain World subject (mirrors
   // themeSkin); the port fake is built once here and handed to each
   // framework's viewModelFromWorld driver, which builds the REAL machine over
@@ -1222,6 +1381,8 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     accountRequestReset: [],
     accountSubmitCode: [],
     accountResendCode: [],
+    accountListRefreshes: 0,
+    accountActions: [],
   };
 
   return {
@@ -1251,6 +1412,12 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     registrationAvailable,
     routes: routePath === undefined ? null : createFakeRouteHistory(routePath),
     navigateAccountAccess,
+    accountList,
+    accountActionFor,
+    releaseAccountAction,
+    accountActionIntentsFor,
+    refreshAccountList,
+    signOut,
     jarvisSkin,
     jarvis,
     panelStreamDeps,
@@ -1332,6 +1499,9 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     },
     pushOrderLifecycle: (order: EquityOrder) => {
       return orderLifecycle.next(order);
+    },
+    failOrderLifecycle: (error: unknown) => {
+      return orderLifecycle.error(error);
     },
     eqWorkspace,
     eqDrawings,

@@ -2,7 +2,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ConnectionEvent } from "@rtc/domain";
+import {
+  type ConnectionEvent,
+  isTransportLost,
+  RECONNECT_INTERVAL_MS,
+} from "@rtc/domain";
 
 import { lastMock, MockWebSocket } from "./MockWebSocket.testHelpers";
 import { WsAdapter } from "./WsAdapter";
@@ -821,3 +825,195 @@ describe("WsAdapter auth gating", () => {
     adapter.dispose();
   });
 });
+
+describe("WsAdapter :: a session the server ended (close 4401)", () => {
+  it("emits once on sessionEnded(), nothing on connectionEvents, and opens no new socket", async () => {
+    const { adapter, events, ends } = createEndedSession();
+    lastMock.onopen?.(new Event("open"));
+    lastMock.onclose?.(new CloseEvent("close", { code: 4401 }));
+
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS * 3);
+
+    expect(ends.count).toBe(1);
+    expect(events).toEqual([{ type: "gatewayConnected" }]);
+    expect(MockWebSocket.constructed).toBe(1);
+    adapter.dispose();
+  });
+
+  it("a 1006 drop says nothing on sessionEnded()", async () => {
+    const { adapter, ends } = createEndedSession();
+    lastMock.onopen?.(new Event("open"));
+    lastMock.onclose?.(new CloseEvent("close", { code: 1006 }));
+
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS);
+
+    expect(ends.count).toBe(0);
+    adapter.dispose();
+  });
+
+  it("sessionEnded() replays nothing to a late subscriber, and completes on dispose", () => {
+    const { adapter } = createEndedSession();
+    lastMock.onclose?.(new CloseEvent("close", { code: 4401 }));
+    let late = 0;
+    let completed = false;
+    adapter.sessionEnded().subscribe({
+      next: () => {
+        late += 1;
+      },
+      complete: () => {
+        completed = true;
+      },
+    });
+
+    adapter.dispose();
+
+    expect(late).toBe(0);
+    expect(completed).toBe(true);
+  });
+
+  it("still reconnects after a 1006 drop (the witness the reconnect path runs)", async () => {
+    const { adapter, events } = createEndedSession();
+    lastMock.onopen?.(new Event("open"));
+    lastMock.onclose?.(new CloseEvent("close", { code: 1006 }));
+
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS * 3);
+
+    expect(events).toContainEqual({ type: "gatewayDisconnected" });
+    expect(events).toContainEqual({ type: "reconnectAttempt" });
+    expect(MockWebSocket.constructed).toBeGreaterThan(1);
+    adapter.dispose();
+  });
+
+  it("opens a socket on connect() after a new sign-in", () => {
+    const { adapter } = createEndedSession();
+    lastMock.onclose?.(new CloseEvent("close", { code: 4401 }));
+    expect(MockWebSocket.constructed).toBe(1);
+
+    adapter.connect();
+
+    expect(MockWebSocket.constructed).toBe(2);
+    adapter.dispose();
+  });
+
+  it("rejects an rpc still waiting when the session ends", async () => {
+    const { adapter } = createEndedSession();
+    lastMock.readyState = MockWebSocket.OPEN;
+    const pending = adapter.rpc("admin.accounts.list");
+    lastMock.onclose?.(new CloseEvent("close", { code: 4401 }));
+
+    await expect(pending).rejects.toThrow(/session ended/);
+    adapter.dispose();
+  });
+
+  it("rejects an rpc in flight when the socket drops (1006): no answer can reach it on the next socket", async () => {
+    const { adapter, events } = createEndedSession();
+    lastMock.onopen?.(new Event("open"));
+    lastMock.readyState = MockWebSocket.OPEN;
+    const settlement = trackSettlement(
+      adapter.rpc("admin.accounts.approve", { id: "a" }),
+    );
+
+    lastMock.onclose?.(new CloseEvent("close", { code: 1006 }));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(settlement.outcome).toBe("rejected: WsAdapter connection lost");
+    // Positive witness: the drop still took the reconnect path.
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS);
+    expect(events).toContainEqual({ type: "reconnectAttempt" });
+    adapter.dispose();
+  });
+
+  it("rejects an in-flight rpc with a typed transport-lost error, but an rpc with no socket with a plain one", async () => {
+    const { adapter } = createEndedSession();
+    lastMock.onopen?.(new Event("open"));
+    lastMock.readyState = MockWebSocket.OPEN;
+    const pending = adapter.rpc("admin.accounts.approve", { id: "a" });
+    const failure = pending.catch((error: unknown) => {
+      return error;
+    });
+
+    lastMock.onclose?.(new CloseEvent("close", { code: 1006 }));
+    expect(isTransportLost(await failure)).toBe(true);
+    adapter.dispose();
+
+    const never = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
+
+    const notSent = await never
+      .rpc("rpc.executeTrade", {})
+      .catch((error: unknown) => {
+        return error;
+      });
+    expect(isTransportLost(notSent)).toBe(false);
+    never.dispose();
+  });
+
+  it("rejects an rpc in flight on a deliberate disconnect()", async () => {
+    const { adapter } = createEndedSession();
+    lastMock.readyState = MockWebSocket.OPEN;
+    const settlement = trackSettlement(
+      adapter.rpc("admin.accounts.block", { id: "a" }),
+    );
+
+    adapter.disconnect();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(settlement.outcome).toBe("rejected: WsAdapter disconnected");
+    adapter.dispose();
+  });
+
+  it("rejects an rpc in flight on an idle close", async () => {
+    const { adapter } = createEndedSession();
+    lastMock.readyState = MockWebSocket.OPEN;
+    const settlement = trackSettlement(adapter.rpc("admin.accounts.list"));
+
+    adapter.closeForIdle();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(settlement.outcome).toBe("rejected: WsAdapter disconnected");
+    adapter.dispose();
+  });
+
+  function createEndedSession(): EndedSession {
+    const adapter = new WsAdapter("ws://test", () => {
+      return "tok";
+    });
+    const events: ConnectionEvent[] = [];
+    adapter.connectionEvents().subscribe((e) => {
+      return events.push(e);
+    });
+    const ends = { count: 0 };
+    adapter.sessionEnded().subscribe(() => {
+      ends.count += 1;
+    });
+
+    return { adapter, events, ends };
+  }
+});
+
+interface EndedSession {
+  readonly adapter: WsAdapter;
+  readonly events: ConnectionEvent[];
+  readonly ends: { count: number };
+}
+
+interface Settlement {
+  outcome: string;
+}
+
+/** Records how a promise settled, so a test reads it after the act instead
+ * of awaiting a promise that a wrong implementation leaves hanging. */
+function trackSettlement(promise: Promise<unknown>): Settlement {
+  const settlement: Settlement = { outcome: "pending" };
+  promise.then(
+    () => {
+      settlement.outcome = "resolved";
+    },
+    (error: Error) => {
+      settlement.outcome = `rejected: ${error.message}`;
+    },
+  );
+
+  return settlement;
+}

@@ -240,7 +240,10 @@ describe("SupabaseAccountDirectory — codes and passwords", () => {
 
   it("a reset verifies the code, then updates with the returned token", async () => {
     const fake = createFakeFetch([
-      createReply(200, { access_token: "recovery-token" }),
+      createReply(200, {
+        access_token: "recovery-token",
+        user: { id: ACCOUNT_ID },
+      }),
       createReply(200, {}),
     ]);
 
@@ -251,7 +254,7 @@ describe("SupabaseAccountDirectory — codes and passwords", () => {
         "Fresh2026!pass",
         IP,
       ),
-    ).toBe("changed");
+    ).toEqual({ outcome: "changed", accountId: ACCOUNT_ID });
     expect(fake.requests[0]?.body).toBe(
       JSON.stringify({
         type: "recovery",
@@ -293,13 +296,27 @@ describe("SupabaseAccountDirectory — codes and passwords", () => {
 
   it("a reset refused as the same password is changed: the password already is what was asked", async () => {
     const fake = createFakeFetch([
-      createReply(200, { access_token: "recovery-token" }),
+      createReply(200, {
+        access_token: "recovery-token",
+        user: { id: ACCOUNT_ID },
+      }),
       createReply(422, { error_code: "same_password" }),
     ]);
 
     expect(
       await createDirectory(fake).resetPassword("ann@desk.io", "1", "pw", IP),
-    ).toBe("changed");
+    ).toEqual({ outcome: "changed", accountId: ACCOUNT_ID });
+  });
+
+  it("a reset whose verification carries no user id still changes, with no id", async () => {
+    const fake = createFakeFetch([
+      createReply(200, { access_token: "recovery-token" }),
+      createReply(200, {}),
+    ]);
+
+    expect(
+      await createDirectory(fake).resetPassword("ann@desk.io", "1", "pw", IP),
+    ).toEqual({ outcome: "changed", accountId: null });
   });
 });
 
@@ -426,7 +443,7 @@ describe("SupabaseAccountDirectory — sessions are closed", () => {
       ]);
 
       const reset = createFakeFetch([
-        createReply(200, { access_token: "t" }),
+        createReply(200, { access_token: "t", user: { id: ACCOUNT_ID } }),
         createReply(200, {}),
         ...logoutReplies,
       ]);
@@ -449,7 +466,7 @@ describe("SupabaseAccountDirectory — sessions are closed", () => {
           "pw",
           IP,
         ),
-      ).toBe("changed");
+      ).toEqual({ outcome: "changed", accountId: ACCOUNT_ID });
     },
   );
 });
@@ -466,10 +483,12 @@ describe("SupabaseAccountDirectory — profiles", () => {
         displayName: "Ann Lee",
         access: "user",
         status: "pending",
+        createdAt: CREATED_AT_MS,
+        sessionsNotBefore: null,
       },
     });
     expect(fake.requests[0]?.url).toBe(
-      `https://proj.supabase.co/rest/v1/profiles?id=eq.${ACCOUNT_ID}&select=id,email,display_name,role,approved,blocked,email_confirmed_at`,
+      `https://proj.supabase.co/rest/v1/profiles?id=eq.${ACCOUNT_ID}&select=${COLUMNS}`,
     );
     expect(fake.requests[0]?.headers["Sb-Forwarded-For"]).toBeUndefined();
   });
@@ -694,7 +713,7 @@ describe("SupabaseAccountDirectory — findByEmail and purge", () => {
 
     expect(fake.requests[0]?.method).toBe("GET");
     expect(fake.requests[0]?.url).toBe(
-      "https://proj.supabase.co/rest/v1/profiles?email=eq.ann%2Bdesk%40desk.io&select=id,email,display_name,role,approved,blocked,email_confirmed_at",
+      "https://proj.supabase.co/rest/v1/profiles?email=eq.ann%2Bdesk%40desk.io&select=id,email,display_name,role,approved,blocked,email_confirmed_at,created_at,sessions_not_before",
     );
     expect(found.outcome).toBe("found");
   });
@@ -787,6 +806,224 @@ describe("SupabaseAccountDirectory — findByEmail and purge", () => {
       outcome: "unavailable",
     });
     expect(fake.requests).toHaveLength(0);
+  });
+});
+
+describe("SupabaseAccountDirectory — admin operations", () => {
+  it("lists newest first, capped, with the admin columns", async () => {
+    const fake = createFakeFetch([
+      createReply(200, [
+        { ...createProfileRow(), sessions_not_before: STAMP_ISO },
+        { ...createProfileRow(), id: OTHER_ID },
+      ]),
+    ]);
+
+    const listing = await createDirectory(fake).listAccounts(500);
+
+    expect(fake.requests[0]?.method).toBe("GET");
+    expect(fake.requests[0]?.url).toBe(
+      `https://proj.supabase.co/rest/v1/profiles?select=${COLUMNS}&order=created_at.desc&limit=500`,
+    );
+    expect(listing).toMatchObject({
+      outcome: "listed",
+      accounts: [
+        { id: ACCOUNT_ID, sessionsNotBefore: STAMP_MS },
+        { id: OTHER_ID, sessionsNotBefore: null },
+      ],
+    });
+  });
+
+  it("a listing with an unreadable row is unavailable (fail closed)", async () => {
+    const fake = createFakeFetch([
+      createReply(200, [
+        createProfileRow(),
+        { ...createProfileRow(), role: "x" },
+      ]),
+    ]);
+
+    expect(await createDirectory(fake).listAccounts(10)).toEqual({
+      outcome: "unavailable",
+    });
+  });
+
+  it.each([
+    ["sessions_not_before not a date", { sessions_not_before: "not-a-date" }],
+    ["sessions_not_before a number", { sessions_not_before: 123 }],
+    ["created_at missing", { created_at: undefined }],
+    ["created_at null", { created_at: null }],
+    ["created_at not a date", { created_at: "not-a-date" }],
+  ])(
+    "a row with %s is unavailable, in findAccount and listAccounts",
+    async (_name, override) => {
+      const row = { ...createProfileRow(), ...override };
+
+      expect(
+        await createDirectory(
+          createFakeFetch([createReply(200, [row])]),
+        ).findAccount(ACCOUNT_ID),
+      ).toEqual({ outcome: "unavailable" });
+      expect(
+        await createDirectory(
+          createFakeFetch([createReply(200, [row])]),
+        ).listAccounts(10),
+      ).toEqual({ outcome: "unavailable" });
+    },
+  );
+
+  it("approves with one PATCH asking for the row back", async () => {
+    const fake = createFakeFetch([createReply(200, [{ id: ACCOUNT_ID }])]);
+
+    expect(await createDirectory(fake).setApproved(ACCOUNT_ID)).toBe("ok");
+    expect(fake.requests).toHaveLength(1);
+    expect(fake.requests[0]?.method).toBe("PATCH");
+    expect(fake.requests[0]?.url).toBe(
+      `https://proj.supabase.co/rest/v1/profiles?id=eq.${ACCOUNT_ID}`,
+    );
+    expect(fake.requests[0]?.headers.Prefer).toBe("return=representation");
+    expect(fake.requests[0]?.body).toBe(JSON.stringify({ approved: true }));
+  });
+
+  it("blocking stamps the server's time in the same PATCH", async () => {
+    const fake = createFakeFetch([createReply(200, [{ id: ACCOUNT_ID }])]);
+
+    expect(
+      await createDirectory(fake).setBlocked(ACCOUNT_ID, true, STAMP_MS),
+    ).toBe("ok");
+    expect(fake.requests[0]?.method).toBe("PATCH");
+    expect(fake.requests[0]?.url).toBe(
+      `https://proj.supabase.co/rest/v1/profiles?id=eq.${ACCOUNT_ID}`,
+    );
+    expect(fake.requests[0]?.headers.Prefer).toBe("return=representation");
+    expect(fake.requests[0]?.body).toBe(
+      JSON.stringify({ blocked: true, sessions_not_before: STAMP_ISO }),
+    );
+  });
+
+  it("unblocking writes the flag alone, no stamp", async () => {
+    const fake = createFakeFetch([createReply(200, [{ id: ACCOUNT_ID }])]);
+
+    expect(
+      await createDirectory(fake).setBlocked(ACCOUNT_ID, false, STAMP_MS),
+    ).toBe("ok");
+    expect(fake.requests[0]?.body).toBe(JSON.stringify({ blocked: false }));
+  });
+
+  it("renames and stamps in one PATCH", async () => {
+    const fake = createFakeFetch([createReply(200, [{ id: ACCOUNT_ID }])]);
+
+    expect(
+      await createDirectory(fake).rename(ACCOUNT_ID, "Ann Q", STAMP_MS),
+    ).toBe("ok");
+    expect(fake.requests).toHaveLength(1);
+    expect(fake.requests[0]?.method).toBe("PATCH");
+    expect(fake.requests[0]?.body).toBe(
+      JSON.stringify({ display_name: "Ann Q", sessions_not_before: STAMP_ISO }),
+    );
+  });
+
+  it("revoking sessions PATCHes the stamp alone", async () => {
+    const fake = createFakeFetch([createReply(200, [{ id: ACCOUNT_ID }])]);
+
+    expect(
+      await createDirectory(fake).revokeSessions(ACCOUNT_ID, STAMP_MS),
+    ).toBe("ok");
+    expect(fake.requests[0]?.method).toBe("PATCH");
+    expect(fake.requests[0]?.url).toBe(
+      `https://proj.supabase.co/rest/v1/profiles?id=eq.${ACCOUNT_ID}`,
+    );
+    expect(fake.requests[0]?.body).toBe(
+      JSON.stringify({ sessions_not_before: STAMP_ISO }),
+    );
+  });
+
+  it("a PATCH answering no row is not_found", async () => {
+    const directory = createDirectory(
+      createFakeFetch([
+        createReply(200, []),
+        createReply(200, []),
+        createReply(200, []),
+        createReply(200, []),
+      ]),
+    );
+
+    expect(await directory.setApproved(ACCOUNT_ID)).toBe("not_found");
+    expect(await directory.setBlocked(ACCOUNT_ID, true, STAMP_MS)).toBe(
+      "not_found",
+    );
+    expect(await directory.rename(ACCOUNT_ID, "Ann", STAMP_MS)).toBe(
+      "not_found",
+    );
+    expect(await directory.revokeSessions(ACCOUNT_ID, STAMP_MS)).toBe(
+      "not_found",
+    );
+  });
+
+  it("a PATCH reply that is not a list is unavailable", async () => {
+    const fake = createFakeFetch([createReply(200, { id: ACCOUNT_ID })]);
+
+    expect(await createDirectory(fake).setApproved(ACCOUNT_ID)).toBe(
+      "unavailable",
+    );
+  });
+
+  it("deletes through the auth admin endpoint, as the purge does", async () => {
+    const fake = createFakeFetch([createReply(200, {})]);
+
+    expect(await createDirectory(fake).deleteAccount(ACCOUNT_ID)).toBe("ok");
+    expect(fake.requests[0]?.method).toBe("DELETE");
+    expect(fake.requests[0]?.url).toBe(
+      `https://proj.supabase.co/auth/v1/admin/users/${ACCOUNT_ID}`,
+    );
+  });
+
+  it("a delete answering 404 is not_found", async () => {
+    const fake = createFakeFetch([
+      createReply(404, { error_code: "user_not_found" }),
+    ]);
+
+    expect(await createDirectory(fake).deleteAccount(ACCOUNT_ID)).toBe(
+      "not_found",
+    );
+  });
+
+  it("a 404 that is not GoTrue's user_not_found is unavailable", async () => {
+    const fake = createFakeFetch([createReply(404, { message: "no route" })]);
+
+    expect(await createDirectory(fake).deleteAccount(ACCOUNT_ID)).toBe(
+      "unavailable",
+    );
+  });
+
+  it("a delete refused any other way is unavailable", async () => {
+    const fake = createFakeFetch([
+      createReply(422, { error_code: "validation_failed" }),
+    ]);
+
+    expect(await createDirectory(fake).deleteAccount(ACCOUNT_ID)).toBe(
+      "unavailable",
+    );
+  });
+
+  it("an id that is not a UUID is not_found with no request", async () => {
+    const fake = createFakeFetch([]);
+    const directory = createDirectory(fake);
+    const bad = "x&select=*";
+
+    expect(await directory.setApproved(bad)).toBe("not_found");
+    expect(await directory.setBlocked(bad, true, STAMP_MS)).toBe("not_found");
+    expect(await directory.rename(bad, "Ann", STAMP_MS)).toBe("not_found");
+    expect(await directory.deleteAccount(bad)).toBe("not_found");
+    expect(await directory.revokeSessions(bad, STAMP_MS)).toBe("not_found");
+    expect(fake.requests).toHaveLength(0);
+  });
+
+  it("a 5xx or a thrown fetch is unavailable for every write", async () => {
+    const down = createDirectory(createFakeFetch([createReply(540, {})]));
+    const failing = createDirectory(createFailingFetch());
+
+    expect(await down.setApproved(ACCOUNT_ID)).toBe("unavailable");
+    expect(await failing.deleteAccount(ACCOUNT_ID)).toBe("unavailable");
+    expect(await failing.listAccounts(5)).toEqual({ outcome: "unavailable" });
   });
 });
 
@@ -906,6 +1143,30 @@ function createOperations(): Operation[] {
     return d.ping();
   }
 
+  function listAccounts(d: AccountDirectory): Promise<unknown> {
+    return d.listAccounts(10);
+  }
+
+  function setApproved(d: AccountDirectory): Promise<unknown> {
+    return d.setApproved(ACCOUNT_ID);
+  }
+
+  function setBlocked(d: AccountDirectory): Promise<unknown> {
+    return d.setBlocked(ACCOUNT_ID, true, STAMP_MS);
+  }
+
+  function rename(d: AccountDirectory): Promise<unknown> {
+    return d.rename(ACCOUNT_ID, "Ann", STAMP_MS);
+  }
+
+  function deleteAccount(d: AccountDirectory): Promise<unknown> {
+    return d.deleteAccount(ACCOUNT_ID);
+  }
+
+  function revokeSessions(d: AccountDirectory): Promise<unknown> {
+    return d.revokeSessions(ACCOUNT_ID, STAMP_MS);
+  }
+
   return [
     ["signUp", signUp, "unavailable"],
     ["resendCode", resendCode, "unavailable"],
@@ -918,6 +1179,12 @@ function createOperations(): Operation[] {
     ["findByEmail", findByEmail, down],
     ["purgeUnconfirmedBefore", purgeUnconfirmedBefore, down],
     ["ping", ping, false],
+    ["listAccounts", listAccounts, down],
+    ["setApproved", setApproved, "unavailable"],
+    ["setBlocked", setBlocked, "unavailable"],
+    ["rename", rename, "unavailable"],
+    ["deleteAccount", deleteAccount, "unavailable"],
+    ["revokeSessions", revokeSessions, "unavailable"],
   ];
 }
 
@@ -964,6 +1231,8 @@ interface ProfileRow {
   readonly approved: boolean;
   readonly blocked: boolean;
   readonly email_confirmed_at: string | null;
+  readonly created_at: string;
+  readonly sessions_not_before: string | null;
 }
 
 function createProfileRow(): ProfileRow {
@@ -975,10 +1244,19 @@ function createProfileRow(): ProfileRow {
     approved: false,
     blocked: false,
     email_confirmed_at: "2026-10-04T10:00:00Z",
+    created_at: CREATED_AT_ISO,
+    sessions_not_before: null,
   };
 }
 
 const IP = "203.0.113.9";
+
+const COLUMNS =
+  "id,email,display_name,role,approved,blocked,email_confirmed_at,created_at,sessions_not_before";
+const CREATED_AT_ISO = "2026-10-04T09:00:00.000Z";
+const CREATED_AT_MS = Date.parse(CREATED_AT_ISO);
+const STAMP_MS = 1_700_000_000_000;
+const STAMP_ISO = "2023-11-14T22:13:20.000Z";
 
 const ACCOUNT_ID = "1f3a9c2e-0000-4000-8000-000000000000";
 const OTHER_ID = "2b4c8d1f-0000-4000-8000-000000000000";

@@ -1,4 +1,5 @@
 export type * from "#/machines/accountAccess";
+export type * from "#/machines/accountAction";
 export type * from "#/machines/bootSequence";
 export type * from "#/machines/eqDrawings";
 export type * from "#/machines/eqWorkspace";

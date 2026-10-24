@@ -7147,6 +7147,53 @@ describe("loadBlobOrSeed's restoreTier (the provable tier label)", () => {
     api.dispose();
   });
 
+  it("a current blob holding none of the seed's panels (the old Admin tab's admin-dashboard) restores the new seed, not an empty workspace", () => {
+    const oldSeed = { kind: "panel", panelId: "admin-dashboard" } as const;
+    const newSeed = { kind: "panel", panelId: "admin-users" } as const;
+    const first = createDockEngine({ ...createBase(), seed: oldSeed });
+    const saved = first.snapshotLayout();
+    first.dispose();
+
+    expect(JSON.parse(saved).rtcBlobVersion).toBe(DOCK_BLOB_VERSION);
+
+    const api = createFreshDockviewApi(1440, 900);
+    const restored = loadBlobOrSeed(
+      api,
+      { ...createBase(), seed: newSeed, blob: saved },
+      1440,
+      900,
+    );
+
+    expect(restored.restoreTier).toBe("seed");
+    expect(api.getPanel("admin-users")).toBeDefined();
+    expect(api.getPanel("admin-dashboard")).toBeUndefined();
+    api.dispose();
+  });
+
+  it("a blob holding a seed panel plus a docked Jarvis panel still restores as saved", async () => {
+    const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
+    const seen = trackLayout();
+    const first = createDockEngine({
+      ...createBase(),
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    first.dispose();
+
+    const api = createFreshDockviewApi(1440, 900);
+    const restored = loadBlobOrSeed(
+      api,
+      { ...createBase(), blob: seen.blob(), dynamicPanels: [DYN] },
+      1440,
+      900,
+    );
+
+    expect(restored.restoreTier).toBe("blob");
+    expect(api.getPanel("panel-dyn-1")).toBeDefined();
+    api.dispose();
+  });
+
   function createFreshDockviewApi(width: number, height: number): DockviewApi {
     const api = createDockview(sizedContainer(width, height), {
       createComponent: () => {

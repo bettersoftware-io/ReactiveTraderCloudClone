@@ -626,6 +626,14 @@ the email beside the name. And a display name can belong to an earlier,
 never-confirmed registrant of the same address (§5.3), so the panel is where
 a rename belongs.
 
+> **As built (B2c PR 2, 2026-10-24):** shipped as described, with these
+> differences: refusals are typed answers (`forbidden`, `self`, `not_found`,
+> `invalid_name`, `unavailable`) rather than nacks, malformed frames being the
+> nacks; `block`, `rename` and `delete` end the account's open sessions
+> (`4401`); `unblock` is its own action. See
+> [the B2c spec §10](2026-10-18-b2c-users-panel-design.md#10-as-built-pr-2-2026-10-24)
+> and [authentication.md §7.10](../../authentication.md#710-administration-and-ending-sessions-b2c).
+
 ## 9. Privacy
 
 B2 stores personal data for the first time: an email address and a display

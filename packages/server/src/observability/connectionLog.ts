@@ -18,6 +18,9 @@ export interface ConnectionLog {
    * UTF-8, reserved bits). `ws` emits `error` for these and Node would throw
    * with no listener — so the listener exists, and logs the `code` only. */
   recordSocketError(code: string): void;
+  /** An account whose session had already ended was accepted and closed at
+   * once with the session-ended code. */
+  recordSessionEnded(): void;
 }
 
 export function createConnectionLog(
@@ -28,6 +31,7 @@ export function createConnectionLog(
 ): ConnectionLog {
   let active = 0;
   let total = 0;
+  let sessionsEnded = 0;
 
   function stamp(): string {
     return new Date(now()).toISOString();
@@ -49,6 +53,12 @@ export function createConnectionLog(
     },
     recordSocketError(code: string): void {
       out(`[ws] ${stamp()} socket-error   code=${code} active=${active}`);
+    },
+    recordSessionEnded(): void {
+      sessionsEnded += 1;
+      out(
+        `[ws] ${stamp()} session-ended  sessions-ended=${sessionsEnded} active=${active}`,
+      );
     },
   };
 }

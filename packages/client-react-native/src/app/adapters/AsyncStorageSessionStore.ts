@@ -43,6 +43,21 @@ function isStoredSession(value: unknown): value is StoredSession {
   );
 }
 
+interface MaybeAccess {
+  readonly access?: unknown;
+}
+
+/** A session written before `access` existed (or by a server that omits it)
+ * reads as an ordinary user; only the exact word `"admin"` grants more. */
+function withTolerantAccess(session: StoredSession): StoredSession {
+  const stored = (session.user as MaybeAccess).access;
+
+  return {
+    ...session,
+    user: { ...session.user, access: stored === "admin" ? "admin" : "user" },
+  };
+}
+
 function parseSession(raw: string | null): StoredSession | null {
   if (raw === null) {
     return null;
@@ -50,7 +65,7 @@ function parseSession(raw: string | null): StoredSession | null {
 
   try {
     const parsed: unknown = JSON.parse(raw);
-    return isStoredSession(parsed) ? parsed : null;
+    return isStoredSession(parsed) ? withTolerantAccess(parsed) : null;
   } catch {
     return null;
   }

@@ -335,8 +335,14 @@ a network failure look the same to it, and the adapter reconnects either way
 
 **The client's side.**
 - **Detection.** `WsAdapter` treats a close with `4401` as final. It does not
-  schedule a reconnect, and it emits a new `ConnectionEvent`,
-  `{ type: "sessionEnded" }` (`packages/core-api/src/adapters.ts`).
+  schedule a reconnect, and it emits once on the auth-gated transport's new
+  `sessionEnded()` stream (`AuthGatedTransport`,
+  `packages/core-api/src/adapters.ts`). As built, this is NOT a
+  `ConnectionEvent`: the first build put `{ type: "sessionEnded" }` on
+  `connectionEvents`, which gave every core a second subscriber of that
+  port, and a client's per-subscription side effects (idle routing, the
+  browser's activity listeners) then ran twice. The final fix wave moved it
+  to the transport.
 - **The auth presenter, in all three cores.** It answers `sessionEnded` by
   signing out: the stored session is cleared, as on a manual sign-out.
   Sign-out and its message are shared logic in `@rtc/core-logic`.
@@ -501,9 +507,16 @@ goldens, as with B2b.
    messages changed).
 3. Every registered user, including the administrator, is signed out once
    with "Your session has ended" (§4.10): old account tokens carry no `iat`.
-4. **React Native.** Its build talks to the deployed server, and the renamed
-   `ops.*` messages break its throughput and Jarvis-usage controls until an
-   updated build is published (EAS Update). RN sign-in is unaffected.
+   Only the new bundle does that: a tab still running the previous bundle
+   treats the `4401` close as an ordinary drop and reconnects about every
+   3 s (its token is accepted at the upgrade, then closed at once), and the
+   user never sees a sign-out. Reload every open tab after the deploy.
+4. **React Native.** Its build talks to the deployed server. Until the
+   updated build (EAS Update) is taken, a registered account's token (no
+   `iat`) meets the same endless `4401` reconnect as an old tab, and the
+   renamed `ops.*` messages break its throughput and Jarvis-usage controls.
+   RN users with registered accounts must take the update (or sign out and
+   back in).
 5. `/mcp`: any MCP client configured with a roster token stops working.
    Re-configure it with the administrator's token.
 
@@ -536,3 +549,76 @@ These were settled after the builder check. Check them while reading.
 - A live-updating list (D7).
 - Self-service deletion or an email change (parent §13).
 - Users panel in React Native.
+
+## 10. As built (PR 2, 2026-10-24)
+
+The plan settled six decisions the spec left to the code, and review changed
+a few more. Where this section differs from §4 and §5, this section is what
+shipped. The mechanism, end to end, is in
+[authentication.md §7.10](../../authentication.md#710-administration-and-ending-sessions-b2c).
+
+**Decisions made in the plan**
+
+1. One directory method, `revokeSessions(id, atMs)`, serves the reset path.
+   `setBlocked(id, true, atMs)` and `rename(id, name, atMs)` write the stamp in
+   the **same** PATCH as their own column, so those two are atomic. Blocking
+   stamps, so a later unblock does not bring the old tokens back.
+2. The admin rules sit in a server-side `AccountAdminService`
+   (`packages/server/src/accounts/accountAdminService.ts`); the effects stay
+   thin. It is `ctx.accountAdmin` on the connection container, and the
+   identity is `ctx.caller`.
+3. The connection identity is passed explicitly:
+   `scopeServicesToConnection(shared, caller)`, with a
+   `WeakMap<IncomingMessage, UpgradeVerdict>` carrying the verdict from
+   `verifyClient` to `connection`.
+4. `workspaceNav` owns tab visibility. `WorkspaceNavState` gains
+   `visibleTabs`, the tab bar renders from it, and the route sync gains
+   `canShow` from the same state, so Jarvis, a URL and a click go through one
+   gate.
+5. `sessionEnded` reaches the auth presenter through
+   `ports.transport.sessionEnded()` (subscribed once, at construction; no
+   transport, the simulator branch, subscribes nothing), not through
+   `ports.connectionEvents`, whose one subscriber stays the status fold. No
+   new `AuthPresenter` member: each core's composition routes it to its auth
+   presenter's internal sign-out, and a throw from that sign-out is not
+   swallowed.
+6. `AccountStatus` moved to `@rtc/domain` (`auth/accountStatus.ts`).
+
+**Changes from review**
+
+- An ended session is **accepted** at the upgrade and closed at once with
+  `4401` / `session_ended`; the upgrade-time `403` in §4.3 was replaced
+  because a browser cannot read it. Bad signature or expiry stay `401`; an
+  unreadable store stays `503`. The stamp comparison is strict (`iat <
+  max(stamp, ledger)`), and a token without `iat` is ended.
+- `closeAll` bumps a per-account revocation epoch. An upgrade that read the
+  status before a revocation is closed at connection time when the epoch
+  moved (a TOCTOU fix), and invalidating the status cache drops in-flight
+  lookups (a generation guard).
+- Unblock does **not** stamp. A password reset takes the account id from
+  Supabase's verify response (a `findByEmail` fallback only if absent). A
+  stamp that fails twice after a reset logs `[accounts] stamp-failed id=<id>`,
+  records the stamp in an in-process ledger, invalidates the cache and closes
+  the sockets; the outcome stays `changed`. A restart forgets the ledger (an
+  old token then lives until expiry, at most 8 hours).
+- Every admin call reads `findAccount` directly (not the cache, not the
+  token's `a` claim) and requires active, admin and a live session; `self` is
+  refused before any write; a rename is re-validated (`invalid_name`); ids
+  must be canonical lowercase UUIDs, and an uppercase id is a malformed frame
+  (a nack). Refusals are typed answers, malformed frames are nacks.
+- Blocks and renames made in the Supabase dashboard do not close open sockets;
+  they apply at the next upgrade within the 60 s cache TTL.
+- `/mcp`: only an active administrator with a live session; roster tokens and
+  users get `403 admin_only`, an unreadable store `503`. The earlier
+  `account_tokens_not_accepted` refusal is gone. No limiter yet.
+- Client: `WsAdapter` treats `4401` as final (no reconnect, one emission on
+  `transport.sessionEnded()`, pending RPCs rejected; a drop and a deliberate
+  close reject pending RPCs too). The Users panel's list is keyed on the signed-in
+  user. A pre-rename saved workspace layout reads as none; an old Dockview
+  blob for the admin tab restores the new seed; old admin presets show as
+  unreadable.
+- Two core members were added: `accountList` (presenter) and `accountAction`
+  (machine), taking the member count from 76 to 78.
+- Rollout order: the migration **before** the deploy
+  ([DEPLOY.md](../../DEPLOY.md#rolling-out-b2c)).
+

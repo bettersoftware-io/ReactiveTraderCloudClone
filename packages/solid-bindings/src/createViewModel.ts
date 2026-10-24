@@ -5,6 +5,9 @@ import type { Accessor } from "solid-js";
 import type {
   AccountAccessIntents,
   AccountAccessState,
+  AccountActionIntents,
+  AccountActionState,
+  AccountListState,
   ActivityEntry,
   AnimationIntent,
   AppCommands,
@@ -132,6 +135,14 @@ type UseTileExecutionResult = {
   state: Accessor<TileExecutionState>;
 } & TileExecutionIntents;
 type UseRfqTileResult = { state: Accessor<RfqState> } & RfqTileIntents;
+type UseAccountListResult = {
+  state: Accessor<AccountListState>;
+  refresh: () => void;
+};
+type UseAccountActionResult = {
+  state: Accessor<AccountActionState>;
+  intents: AccountActionIntents;
+};
 type UseAccountAccessResult = {
   state: Accessor<AccountAccessState>;
 } & AccountAccessIntents;
@@ -695,6 +706,14 @@ export interface ViewModel {
   /** The login screen's account flows — a per-mount machine: phase, busy,
    * error, plus the eight intents. */
   useAccountAccess: () => UseAccountAccessResult;
+  /** The administrator's account list — the shared presenter stream (not
+   * per mount): it loads on the first subscription, stays warm for one user
+   * and resets on sign-out. `refresh` re-reads it. */
+  useAccountList: () => UseAccountListResult;
+  /** One account row's action machine (approve, block, rename, delete…) — a
+   * per-mount machine keyed on `accountId`, disposed on unmount. The id is
+   * read once at mount: mount one row per account. */
+  useAccountAction: (accountId: string) => UseAccountActionResult;
   /** Not a hook: the shell's `registrationAvailable`, false by default. */
   useRegistrationAvailable: () => boolean;
   /** Not a hook: the shell's `routes`, null by default. */
@@ -1230,6 +1249,10 @@ export function createViewModel(
   // Workspace nav machine — shared single instance, same toSignal-direct
   // pattern as eqWorkspace above (NOT useMachine, which would dispose the
   // singleton on the first tab-switch remount).
+  function refreshAccountList(): void {
+    presenters.accountList.refresh();
+  }
+
   function switchWorkspaceTab(tab: WorkspaceTab): void {
     presenters.workspaceNav.intents.switchTab(tab);
   }
@@ -1719,6 +1742,19 @@ export function createViewModel(
       return useMachine(() => {
         return machines.accountAccess();
       });
+    },
+    useAccountList: () => {
+      return {
+        state: toSignal(presenters.accountList.state$),
+        refresh: refreshAccountList,
+      };
+    },
+    useAccountAction: (accountId: string) => {
+      const { state, ...intents } = useMachine(() => {
+        return machines.accountAction(accountId);
+      });
+
+      return { state, intents };
     },
     useRegistrationAvailable: () => {
       return registrationAvailable;

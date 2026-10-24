@@ -2,6 +2,7 @@ import type { Accessor, JSX } from "solid-js";
 
 import type { JarvisPanelVm, PanelId } from "@rtc/core-api";
 
+import { UsersHead } from "#/ui/admin/UsersHead";
 import { CreditBlotterHead } from "#/ui/credit/blotter/CreditBlotterHead";
 import { NewRfqHead } from "#/ui/credit/newRfq/NewRfqHead";
 import { RfqsHead } from "#/ui/credit/rfqs/RfqsHead";
@@ -49,6 +50,9 @@ export const appHeadRegistry: Partial<Record<PanelId, () => JSX.Element>> = {
   },
   "ops-dashboard": () => {
     return <OpsHead />;
+  },
+  "admin-users": () => {
+    return <UsersHead />;
   },
   "credit-new-rfq": () => {
     return <NewRfqHead />;

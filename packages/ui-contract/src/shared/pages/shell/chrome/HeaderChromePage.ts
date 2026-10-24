@@ -2,8 +2,9 @@ import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
-/** The real workspace tabs the header switches between (equities wired in Phase 4). */
-export type WorkspaceTab = "fx" | "credit" | "equities" | "ops";
+/** The workspace tabs the header switches between; `admin` is offered to
+ * administrators only. */
+export type WorkspaceTab = "fx" | "credit" | "equities" | "ops" | "admin";
 
 export interface HeaderChromeProps {
   activeTab: WorkspaceTab;
@@ -40,6 +41,34 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
         within(this.root).getByTestId(`tab-${tab}`).textContent?.trim() ?? ""
       );
     });
+  }
+
+  /** The workspace tabs the header offers, in document order. */
+  tabOrder(): string[] {
+    const known = ["fx", "credit", "equities", "ops", "admin"];
+
+    return Array.from(this.root.querySelectorAll<HTMLElement>("[data-testid]"))
+      .map((el) => {
+        return el.dataset.testid ?? "";
+      })
+      .filter((id) => {
+        return id.startsWith("tab-") && known.includes(id.slice(4));
+      })
+      .map((id) => {
+        return id.slice(4);
+      });
+  }
+
+  /** The visible label of one tab button. */
+  tabLabel(tab: WorkspaceTab): string {
+    return (
+      within(this.root).getByTestId(`tab-${tab}`).textContent?.trim() ?? ""
+    );
+  }
+
+  /** True when the header offers that tab at all. */
+  hasTab(tab: WorkspaceTab): boolean {
+    return within(this.root).queryByTestId(`tab-${tab}`) !== null;
   }
 
   /** True when the given real tab is the active (highlighted) one. */

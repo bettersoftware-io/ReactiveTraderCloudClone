@@ -497,13 +497,13 @@ sequenceDiagram
     V->>S: POST /confirm-email {email, code, password}
     S->>DB: verify the sign-up code, then set the password
     S-->>V: 200 pending_approval
-    A->>DB: profiles.approved = true (dashboard until B2c)
+    A->>DB: profiles.approved = true (the Users panel, or the dashboard)
     V->>S: POST /login {username: email, password}
     S->>DB: check the password, read the profile
     S-->>V: 200 {token, user, exp}
     V->>S: WebSocket upgrade ?access=token
     S->>DB: account status (cached 60 s)
-    S-->>V: 101, or 403 / 503
+    S-->>V: 101, or 401 / 503 (an ended session: 101, then 4401)
 ```
 
 **Why the password arrives with the code.** Supabase Auth does not update an
@@ -526,7 +526,7 @@ type `recovery`.
 **Known residual:** an address someone else registered earlier and never
 confirmed keeps that first display name when its owner registers and
 confirms. It is not a credential; the administrator sees it beside the email
-at approval, and a rename comes with the B2c Users panel.
+at approval, and the Users panel (§7.10) can rename the account.
 
 ### 7.3 Endpoints
 
@@ -691,8 +691,11 @@ no account and skip it). The status comes through `accountStatusCache`:
 
 - one store lookup per account per `ACCOUNT_STATUS_CACHE_TTL_MS` (60 s), and
   only one in flight per account, so a reconnect storm costs one call;
-- only `active` is admitted; anything else — unconfirmed, pending, blocked,
-  or the account gone — is `403` (logged as `account-not-active`);
+- only an `active` account with a live session is served; anything else —
+  unconfirmed, pending, blocked, the account gone, or a token issued before
+  the account's `sessionsNotBefore` stamp — is accepted at the handshake and
+  closed at once with `4401` (logged as `session-ended`), so the browser can
+  tell "signed out" from "server down";
 - a lookup that fails, throws or times out reads as unavailable and is
   never cached: the upgrade answers `503` (`accounts-unavailable`) — the gate
   fails closed;
@@ -702,13 +705,12 @@ no account and skip it). The status comes through `accountStatusCache`:
 
 So a block made in the Supabase dashboard applies within 60 seconds, at the
 account's next connect. A socket already open stays open until it
-reconnects; closing it at once arrives with the B2c Users panel.
+reconnects: only an action taken in the Users panel closes open sockets at
+once ([§7.10](#710-administration-and-ending-sessions-b2c)), so use the panel
+when the effect must be immediate.
 
-`/mcp` refuses every token that carries account claims with `403`
-(`account_tokens_not_accepted`): only the upgrade re-checks status, so a
-since-blocked account's token would otherwise work there until it expired.
-Registered accounts have no `/mcp` access until B2c adds its administrator
-gate; roster tokens keep today's access.
+`/mcp` admits only an active administrator with a live session; see
+[§7.10](#710-administration-and-ending-sessions-b2c).
 
 ### 7.6 Limits
 
@@ -800,8 +802,8 @@ status, all with the password `Mcdc2026!desk`:
 
 The confirmation and reset code is always `00000000`; a reset needs a
 `/request-reset` first. New registrations live until the server restarts.
-The directory has no admin API, so a newly registered dev account stays
-pending — use the seeded ones to exercise each status. `.test` is a reserved
+A newly registered dev account stays pending until `admin@rtc.test` approves
+it in the Users panel (§7.10); the seeded accounts exercise each status. `.test` is a reserved
 top-level domain, so these addresses can never belong to anyone. Locally:
 
 ```bash
@@ -828,9 +830,13 @@ curl -s localhost:4000/login -H 'Content-Type: application/json' \
 | `/login`'s `@` branch | `packages/server/src/http/loginHandler.ts` |
 | One route table for the six POSTs | `packages/server/src/http/postRouter.ts` |
 | Upgrade gate with the re-check | `packages/server/src/http/upgradeGate.ts` |
+| Session end: the stamp, `iat` and the ledger | `packages/server/src/accounts/sessionEnd.ts`, `revocationLedger.ts` |
+| Open sockets by account; `closeAll` | `packages/server/src/accounts/sessionRegistry.ts` |
+| The admin rules (`AccountAdminService`) | `packages/server/src/accounts/accountAdminService.ts` |
+| `/mcp` gate | `packages/server/src/mcp/mcpHttpHandler.ts` |
 | `/health/accounts` | `packages/server/src/http/accountsHealth.ts` |
 | Every limit | `packages/server/src/config/limits.ts` |
-| Schema, triggers, RLS | `supabase/migrations/20261004000000_create_profiles.sql` |
+| Schema, triggers, RLS; the session stamp column | `supabase/migrations/20261004000000_create_profiles.sql`, `20261024000000_sessions_not_before.sql` |
 | Email templates; project setup | `supabase/templates/`, [`supabase/README.md`](../supabase/README.md) |
 | Live probe of a real project | `packages/server/scripts/probe-accounts.ts` (`pnpm --filter @rtc/server accounts:probe`) |
 | Keep-alive | `.github/workflows/accounts-keepalive.yml` |
@@ -1028,3 +1034,142 @@ Register a new address, enter `00000000`, and the account lands in `pendingAppro
 `pending@` and `blocked@` show their sign-in messages. The in-memory
 directory cannot produce `password_unset` or `unconfirmed`; those are rendered
 by the visual scenarios and the shared contract suite.
+
+### 7.10 Administration and ending sessions (B2c)
+
+B2c adds the administrator's half: six `admin.accounts.*` calls over the
+WebSocket, the Users panel that drives them, and a way to end an account's
+sessions at once. Design and as-built notes:
+[the B2c spec](superpowers/specs/2026-10-18-b2c-users-panel-design.md).
+
+**Ending a session.** An account token now carries `iat`, the issue time in
+milliseconds. `profiles.sessions_not_before` holds a stamp the server writes
+(milliseconds, stored as a timestamp). A session has **ended** when any of
+these holds:
+
+- the account is not `active`, or is missing;
+- the token has no `iat` (every token issued before B2c);
+- `iat` is strictly less than the larger of the stamp and the in-process
+  revocation ledger's stamp for that account.
+
+Roster tokens have no account and are never ended this way.
+
+**Gate order at the upgrade.** A bad signature or an expired token answers
+`401`; a store that cannot be read answers `503`; an ended session is
+**accepted** (`101`) and closed at once with `4401` and the reason
+`session_ended`, because a browser cannot read the status of a refused
+upgrade. An upgrade that read the account's status before a revocation is
+closed at connection time when the account's revocation epoch moved while it
+waited, so a revocation cannot slip between the read and the connect.
+Invalidating the status cache also drops lookups already in flight (a
+generation guard), so a stale answer is never stored.
+
+**What the browser does.** `WsAdapter` treats `4401` as final: no reconnect,
+one emission on the transport's `sessionEnded()` stream, and every pending
+RPC rejects. It is deliberately not a connection event: the
+connection-status fold stays the only subscriber of `connectionEvents`,
+whose client-side effects (idle routing, the browser's activity listeners)
+run once per subscription. Each core subscribes `transport.sessionEnded()`
+once, at construction, and answers it by signing out with "Your session has
+ended. Please sign in again." and clearing the stored session; the
+transport gate then disconnects. The person lands on the sign-in screen
+with that line. Only a bundle that knows `4401` does this: a tab still running
+the pre-B2c bundle, or a React Native build without the B2c EAS Update, treats
+the close as an ordinary drop and reconnects about every 3 s — its token
+(no `iat`) is accepted at the upgrade and closed at once, forever, and the
+person never sees a sign-out. Hence the rollout's "reload every open tab" and
+"take the EAS update" steps ([DEPLOY.md](DEPLOY.md#rolling-out-b2c)).
+
+```mermaid
+sequenceDiagram
+  participant A as Admin's browser
+  participant S as Server
+  participant D as Account store
+  participant U as Blocked user's browser
+  A->>S: admin.accounts.block {id}
+  S->>S: gate: caller active, admin, session live
+  S->>D: PATCH blocked + sessions_not_before
+  D-->>S: ok
+  S->>S: invalidate the status cache, closeAll(id)
+  S-->>U: close 4401 session_ended
+  S-->>A: ack { done: true }
+  U->>U: no reconnect, sign out, clear the session
+  U->>U: sign-in screen: "Your session has ended."
+```
+
+**What stamps.**
+
+| Action | Stamp |
+|---|---|
+| Password reset | Yes. The reset returns the account id from Supabase's verify response; a `findByEmail` fallback runs only if the id is absent |
+| Block | Yes, in the same `PATCH` as `blocked` |
+| Rename | Yes, in the same `PATCH` as the name |
+| Unblock | **No.** Tokens issued before the block stay ended after an unblock |
+| Delete | The row is removed, so the account is missing |
+
+**The ledger and its residual.** If a stamp fails after a reset, the server
+retries once. On a second failure it logs `[accounts] stamp-failed id=<id>`
+(an account id, never an address), records the stamp in an in-process ledger,
+invalidates the cache and closes the account's sockets anyway; the outcome
+stays `changed`. Residual: a machine restart forgets the ledger, so a token
+issued before that reset is usable until it expires (at most eight hours).
+Blocks and renames have no such residual: their stamp is part of the same
+write that changes the account.
+
+**Open sockets.** `SessionRegistry.closeAll(id)` closes every socket of the
+account with `4401` and bumps its revocation epoch. A block or rename made
+directly in the Supabase dashboard calls nothing, so it takes effect at the
+next upgrade within the 60-second status-cache window, and a socket already
+open stays open until it reconnects. Use the Users panel for an immediate
+effect.
+
+**The calls.** `admin.accounts.list` plus the five actions `approve`,
+`block`, `unblock`, `rename` and `delete`. Every call runs the same gate: the
+caller is a registered account and `findAccount` is read **directly** from the
+directory, not from the cache and not from the token's `a` claim, and must be
+`active` with `admin` access and a live session; otherwise `forbidden`. An
+action on the caller's own account is refused as `self` before any write. A
+rename is re-validated with the registration rule (`invalid_name`). Ids must
+be canonical lowercase UUIDs; an uppercase id is a malformed frame and is
+nacked. Refusals (`forbidden`, `self`, `not_found`, `invalid_name`,
+`unavailable`) are typed answers `{ error }`; malformed frames are nacks.
+
+**`/mcp`.** Only an active administrator with a live session is admitted.
+A roster token or an ordinary user answers `403 admin_only`; a store that
+cannot be read answers `503`. A token whose signed `a` claim says `user` is
+refused before any directory read (a deny-only use of the claim, so a user's
+token cannot make each request a store round trip); a token claiming `admin`
+still needs the directory to agree, so a demoted administrator is refused
+too. A newly promoted administrator therefore signs in again before `/mcp`
+admits them. Each admitted-claim request reads the directory once (there is
+no limiter yet; see STATUS). Locally: run `pnpm dev:*:ws` (it sets
+`RTC_DEV_ACCOUNTS=1`), sign in as `admin@rtc.test` with the dev password and
+use that token
+([architecture §18.14](architecture/18-jarvis-ai-agent-surface.md#1814-p4--the-mcp-endpoint-second-transport)).
+
+**The client.** The Ops tab (the operations dashboard) is for everyone. The
+Admin tab, route `/admin`, appears only when `SessionUser.access` is
+`"admin"`: each core's `workspaceNav` folds that into `visibleTabs`, so a
+tab click, a Jarvis switch and a URL all pass one gate. A non-admin's
+`/admin` lands on `/fx`, and signing out on Admin lands on FX. The server's
+checks are the lock; hiding the tab only keeps the interface honest.
+
+The Users panel lists pending accounts first (oldest first), shows the
+pending count in its head, and has a Refresh control. Per status a row offers
+Approve, Block, Unblock, Rename and Delete; the administrator's own row reads
+"You" and has no actions. Delete confirms inline; rename edits inline with the
+live display-name check; each row shows its own in-flight and failed state.
+The list is keyed on the signed-in user, so it resets on sign-out and
+sign-in. The two core members behind it are `accountList` (a presenter) and
+`accountAction` (a machine).
+
+**Saved layouts.** A saved workspace layout from before the rename reads as
+none (the parser fails closed). An old Dockview blob for the admin tab
+(`rtc-dock-layout-admin`) restores the new seed, since a blob holding none of
+the tab's seed panels is not restored; old admin presets show as unreadable
+entries.
+
+**Rollout.** The order matters; see
+[`DEPLOY.md`](DEPLOY.md#rolling-out-b2c): apply the migration first, because
+the new server selects `sessions_not_before` on every account read. Every
+registered account is then signed out once, since old tokens carry no `iat`.

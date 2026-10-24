@@ -74,6 +74,14 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
     );
   }
 
+  if (state.phase === "connectionLost") {
+    return (
+      <Ticket state={state} styles={styles}>
+        <ResetButton label="NEW ORDER" onPress={ticket.reset} styles={styles} />
+      </Ticket>
+    );
+  }
+
   const { form, error } = state;
   const isLimit = form.type === "limit";
   const buy = form.side === "buy";

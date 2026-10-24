@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   DOCK_BLOB_VERSION,
   isCurrentDockBlob,
+  isRestorableDockBlob,
   withoutDynamicNodes,
   withoutFloatingGroups,
   withoutLockMarks,
@@ -46,6 +47,62 @@ describe("isCurrentDockBlob", () => {
   it("is the version the layout engine stamps (3, the width-lock discard)", () => {
     expect(DOCK_BLOB_VERSION).toBe(3);
   });
+});
+
+describe("isRestorableDockBlob", () => {
+  it("needs the current version AND at least one seed panel", () => {
+    expect(
+      isRestorableDockBlob(createBlob(["admin-users"], DOCK_BLOB_VERSION), [
+        "admin-users",
+      ]),
+    ).toBe(true);
+    expect(
+      isRestorableDockBlob(createBlob(["admin-users"], DOCK_BLOB_VERSION - 1), [
+        "admin-users",
+      ]),
+    ).toBe(false);
+    expect(
+      isRestorableDockBlob(createBlob(["admin-dashboard"], DOCK_BLOB_VERSION), [
+        "admin-users",
+      ]),
+    ).toBe(false);
+  });
+
+  it("a seed panel beside a docked panel counts; a blob of docked panels alone does not", () => {
+    expect(
+      isRestorableDockBlob(
+        createBlob(["panel-dyn-1", "fx-rates"], DOCK_BLOB_VERSION),
+        ["fx-rates", "fx-blotter"],
+      ),
+    ).toBe(true);
+    expect(
+      isRestorableDockBlob(createBlob(["panel-dyn-1"], DOCK_BLOB_VERSION), [
+        "fx-rates",
+      ]),
+    ).toBe(false);
+  });
+
+  it("rejects an absent or unparseable blob", () => {
+    expect(isRestorableDockBlob(null, ["fx-rates"])).toBe(false);
+    expect(isRestorableDockBlob("{not json", ["fx-rates"])).toBe(false);
+  });
+
+  function createBlob(panelIds: readonly string[], version: unknown): string {
+    return JSON.stringify({
+      rtcBlobVersion: version,
+      grid: {
+        root: {
+          type: "branch",
+          data: [{ type: "leaf", data: { views: panelIds } }],
+        },
+      },
+      panels: Object.fromEntries(
+        panelIds.map((id) => {
+          return [id, {}];
+        }),
+      ),
+    });
+  }
 });
 
 describe("the gap-0 model", () => {

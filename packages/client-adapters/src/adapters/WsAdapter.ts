@@ -3,10 +3,11 @@
  * Manages connection lifecycle and message routing between client and server.
  */
 
-import { type Observable, ReplaySubject } from "rxjs";
+import { type Observable, ReplaySubject, Subject } from "rxjs";
 
 import type { IWsAdapter, MessageHandler } from "@rtc/core-api";
-import type { ConnectionEvent } from "@rtc/domain";
+import { type ConnectionEvent, createTransportLostError } from "@rtc/domain";
+import { SESSION_ENDED_CLOSE_CODE } from "@rtc/shared";
 
 import { buildWsUrl } from "#/wsUrl";
 
@@ -70,6 +71,10 @@ export class WsAdapter implements IWsAdapter {
   private closedForIdle = false;
 
   private readonly connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
+
+  // Hot, no replay: a session end is an occurrence, not a state, so a core
+  // composed later (a hot swap) must not sign out over an old one.
+  private readonly sessionEnded$ = new Subject<void>();
 
   constructor(
     url: string,
@@ -198,13 +203,32 @@ export class WsAdapter implements IWsAdapter {
       }
     };
 
-    socket.onclose = (): void => {
+    socket.onclose = (event: CloseEvent): void => {
       if (this.disposed || isReleased()) {
         return;
       }
 
+      // The server ended this session (4401): final. Report it once on
+      // `sessionEnded()`, with no gatewayDisconnected and no reconnect — a
+      // retry would only meet the same refusal. The adapter lets go of the
+      // socket and goes quiet, so a connect() after a new sign-in opens a
+      // fresh one.
+      if (event.code === SESSION_ENDED_CLOSE_CODE) {
+        this.ws = null;
+        this.suspended = true;
+        this.closedForIdle = false;
+        this.sendQueue.length = 0;
+        this.rejectPendingRpcs("WsAdapter session ended");
+        this.sessionEnded$.next();
+        return;
+      }
+
       // Only a genuine drop reaches here: a deliberate close (idle timeout
-      // or sign-out) released the socket first and reported it itself.
+      // or sign-out) released the socket first and reported it itself. An
+      // answer is bound to the socket that carried the request, so an rpc
+      // in flight can never be answered now: reject it rather than leave it
+      // hanging across the reconnect.
+      this.rejectPendingRpcs("WsAdapter connection lost");
       this.connectionEvents$.next({ type: "gatewayDisconnected" });
 
       console.log(
@@ -226,7 +250,8 @@ export class WsAdapter implements IWsAdapter {
    * microtask later, so the event whose handling closed the socket (an
    * `idleTimeout` passing through `routeIdleLifecycle`) reaches the reducer
    * first, as it did when the socket's `close` event reported it. Nothing
-   * is reported if the socket has been reopened by then. */
+   * is reported if the socket has been reopened by then. Every rpc in
+   * flight is rejected. */
   private releaseSocket(): void {
     const ws = this.ws;
 
@@ -236,6 +261,9 @@ export class WsAdapter implements IWsAdapter {
 
     this.ws = null;
     ws.close();
+    // No answer can arrive on another socket, so an rpc in flight on this
+    // one is over.
+    this.rejectPendingRpcs("WsAdapter disconnected");
     queueMicrotask(() => {
       if (!this.disposed && this.ws === null) {
         this.connectionEvents$.next({ type: "gatewayDisconnected" });
@@ -341,6 +369,12 @@ export class WsAdapter implements IWsAdapter {
     return this.connectionEvents$.asObservable();
   }
 
+  /** One emission per `4401` close: the server ended this session. Hot and
+   * not replayed (see `sessionEnded$`). */
+  sessionEnded(): Observable<void> {
+    return this.sessionEnded$.asObservable();
+  }
+
   /** Close the current socket for an idle timeout without disposing the adapter.
    * Suppresses auto-reconnect (idle reconnect is user-initiated); preserves
    * sendQueue so subscriptions re-flush on reopen(). Nulls this.ws so any
@@ -378,6 +412,7 @@ export class WsAdapter implements IWsAdapter {
   dispose(): void {
     this.disposed = true;
     this.connectionEvents$.complete();
+    this.sessionEnded$.complete();
     this.sendQueue.length = 0;
 
     if (this.reconnectTimer) {
@@ -388,8 +423,12 @@ export class WsAdapter implements IWsAdapter {
     this.ws?.close();
     this.handlers.clear();
 
+    this.rejectPendingRpcs("WsAdapter disposed");
+  }
+
+  private rejectPendingRpcs(reason: string): void {
     for (const rpc of this.pendingRpcs.values()) {
-      rpc.reject(new Error("WsAdapter disposed"));
+      rpc.reject(createTransportLostError(reason));
     }
 
     this.pendingRpcs.clear();

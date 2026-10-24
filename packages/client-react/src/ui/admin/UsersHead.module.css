@@ -1,0 +1,15 @@
+/* The pending count beside the Refresh chip — the head `.count` idiom
+ * (mono, muted), lit in the warning tone while someone is waiting for an
+ * administrator, since that count is the only signal a registration sends. */
+.pending {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.pending[data-waiting="true"] {
+  color: var(--accent-aware);
+}

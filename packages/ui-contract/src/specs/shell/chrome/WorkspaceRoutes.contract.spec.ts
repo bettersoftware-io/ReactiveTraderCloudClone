@@ -7,6 +7,7 @@
  */
 
 import { AppShell } from "@ui-contract/components";
+import { createSessionUser } from "@ui-contract/fixtures/sessionUser";
 import { DRIVE_SETTLE_MS } from "@ui-contract/harness/driveSettle";
 import { cleanupMounted, mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -29,6 +30,42 @@ describe("Workspace routes — mount", () => {
 
     expect(app.header.isActive("credit")).toBe(true);
     expect(app.routeWrites()).toEqual([]);
+  });
+});
+
+describe("Workspace routes — the Admin tab", () => {
+  it("lands a user who opens /admin on /fx", () => {
+    const app = mount(AppShell, {
+      routePath: "/admin",
+      auth: { user: createSessionUser("user") },
+    });
+
+    expect(app.header.isActive("fx")).toBe(true);
+    expect(app.routePath()).toBe("/fx");
+  });
+
+  it("opens /admin for an administrator, writing nothing", () => {
+    const app = mount(AppShell, {
+      routePath: "/admin",
+      auth: { user: createSessionUser("admin") },
+    });
+
+    expect(app.header.isActive("admin")).toBe(true);
+    expect(app.routeWrites()).toEqual([]);
+  });
+
+  it("lands on fx when the administrator signs out on Admin", () => {
+    const app = mount(AppShell, {
+      routePath: "/admin",
+      auth: { user: createSessionUser("admin") },
+    });
+
+    expect(app.header.isActive("admin")).toBe(true);
+
+    app.signOut();
+
+    expect(app.header.isActive("fx")).toBe(true);
+    expect(app.header.hasTab("admin")).toBe(false);
   });
 });
 

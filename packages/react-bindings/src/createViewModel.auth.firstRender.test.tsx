@@ -61,6 +61,7 @@ function createHooks(): ViewModel {
       email: "astark@example.com",
       desk: "FX",
       clearance: "L3",
+      access: "user",
     },
     username: "astark",
     exp: Date.now() + 3_600_000,

@@ -2,9 +2,10 @@ import { fixtures } from "@ui-visual-shared/fixtures";
 import type { CSSProperties, ReactElement } from "react";
 
 import type { LayoutState } from "@rtc/core-api";
-import { createDefaultLayoutPort } from "@rtc/core-logic";
+import { createDefaultLayoutPort, EVERY_USER_TABS } from "@rtc/core-logic";
 
 import { App } from "#/ui/App";
+import { UsersPanel } from "#/ui/admin/UsersPanel";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
 import { CreditBlotterHead } from "#/ui/credit/blotter/CreditBlotterHead";
 import { NewRfqPanel } from "#/ui/credit/newRfq/NewRfqPanel";
@@ -359,6 +360,15 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
       </div>
     );
   },
+  // The Users panel at a pinned width: its columns share one grid, so a
+  // content-sized wrapper would track x86 glyph advances (the #width-flake rule).
+  UsersPanel: () => {
+    return (
+      <div style={{ width: 1100, display: "flex", flexDirection: "column" }}>
+        <UsersPanel />
+      </div>
+    );
+  },
   // --- Phase 5 Ops dashboard components ---
   // Full OpsDashboard at a fixed panel WIDTH (1280) but content-driven height,
   // so the full dashboard is captured without the bottom row (topology / sessions
@@ -671,7 +681,13 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return <LoginScreen />;
   },
   HeaderChrome: () => {
-    return <HeaderChrome activeTab="fx" onTabChange={() => {}} />;
+    return (
+      <HeaderChrome
+        activeTab="fx"
+        visibleTabs={EVERY_USER_TABS}
+        onTabChange={() => {}}
+      />
+    );
   },
   StatusBar: () => {
     // Render at a FIXED width (like the real app, where StatusBar stretches to

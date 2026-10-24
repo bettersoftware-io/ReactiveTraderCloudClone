@@ -1,19 +1,63 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { BootSequenceState, WorkspaceNavState } from "@rtc/core-api";
+import type {
+  AuthViewState,
+  BootSequenceState,
+  WorkspaceNavState,
+} from "@rtc/core-api";
 import {
   BOOT_DURATION_MS,
   BOOT_TICK_MS,
   BOOT_VARIANTS,
   type BootVariant,
+  DEFAULT_LOGIN_WAIT_VARIANT,
 } from "@rtc/domain";
 
+import { storeToStateStream } from "#/bridge/out";
+import { createStore } from "#/kernel/store";
 import { createBootMachine } from "#/machines/boot";
 import { createWorkspaceNavMachine } from "#/machines/workspaceNav";
 
 describe("createWorkspaceNavMachine (async)", () => {
+  it("shows admin in the first emission of a resumed administrator, and loses it with the access", () => {
+    const auth = createStore<AuthViewState>(createAuthView("admin"));
+    const nav = createWorkspaceNavMachine(
+      storeToStateStream(auth),
+      new AbortController().signal,
+    );
+    const seen: WorkspaceNavState[] = [];
+    const sub = nav.state$.subscribe((s) => {
+      seen.push(s);
+    });
+    nav.intents.switchTab("admin");
+    auth.set(createAuthView("user"));
+
+    expect(seen[0]?.visibleTabs).toEqual([...USER_TABS, "admin"]);
+    expect(seen.at(-2)?.activeTab).toBe("admin");
+    expect(seen.at(-1)).toEqual({ activeTab: "fx", visibleTabs: USER_TABS });
+    sub.unsubscribe();
+  });
+
+  it("refuses a switch to a hidden tab without emitting", () => {
+    const nav = createWorkspaceNavMachine(
+      storeToStateStream(createStore<AuthViewState>(createAuthView("user"))),
+      new AbortController().signal,
+    );
+    const seen: WorkspaceNavState[] = [];
+    const sub = nav.state$.subscribe((s) => {
+      seen.push(s);
+    });
+    nav.intents.switchTab("admin");
+
+    expect(seen).toHaveLength(1);
+    sub.unsubscribe();
+  });
+
   it("drops a switch to the tab already active and moves on a new one", () => {
-    const nav = createWorkspaceNavMachine(new AbortController().signal);
+    const nav = createWorkspaceNavMachine(
+      storeToStateStream(createStore<AuthViewState>(createAuthView(null))),
+      new AbortController().signal,
+    );
     const seen: WorkspaceNavState[] = [];
     const sub = nav.state$.subscribe((s) => {
       seen.push(s);
@@ -21,7 +65,10 @@ describe("createWorkspaceNavMachine (async)", () => {
     nav.intents.switchTab("fx");
     nav.intents.switchTab("credit");
 
-    expect(seen).toEqual([{ activeTab: "fx" }, { activeTab: "credit" }]);
+    expect(seen).toEqual([
+      { activeTab: "fx", visibleTabs: USER_TABS },
+      { activeTab: "credit", visibleTabs: USER_TABS },
+    ]);
     sub.unsubscribe();
   });
 
@@ -29,7 +76,10 @@ describe("createWorkspaceNavMachine (async)", () => {
   // before it stays attached to the shared source and would not tell.
   it("after the lifetime aborts, switchTab changes nothing", () => {
     const lifetime = new AbortController();
-    const nav = createWorkspaceNavMachine(lifetime.signal);
+    const nav = createWorkspaceNavMachine(
+      storeToStateStream(createStore<AuthViewState>(createAuthView(null))),
+      lifetime.signal,
+    );
     lifetime.abort();
     nav.intents.switchTab("credit");
     const fresh: WorkspaceNavState[] = [];
@@ -39,7 +89,7 @@ describe("createWorkspaceNavMachine (async)", () => {
       })
       .unsubscribe();
 
-    expect(fresh).toEqual([{ activeTab: "fx" }]);
+    expect(fresh).toEqual([{ activeTab: "fx", visibleTabs: USER_TABS }]);
   });
 });
 
@@ -97,3 +147,29 @@ describe("createBootMachine (async)", () => {
     sub.unsubscribe();
   });
 });
+
+function createAuthView(access: "admin" | "user" | null): AuthViewState {
+  return {
+    status: access === null ? "unauthenticated" : "authenticated",
+    user:
+      access === null
+        ? null
+        : {
+            id: "u1",
+            name: "U One",
+            initials: "UO",
+            role: "Trader",
+            email: "u1@example.com",
+            desk: "FX",
+            clearance: "L1",
+            access,
+          },
+    locked: false,
+    unlocking: false,
+    error: null,
+    failure: null,
+    waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
+  };
+}
+
+const USER_TABS = ["fx", "credit", "equities", "ops"];

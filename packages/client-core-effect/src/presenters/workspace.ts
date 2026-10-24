@@ -20,6 +20,7 @@ import {
   createLayoutPresetsController,
   createWorkspaceDock,
   type DriveCommandDeps,
+  INITIAL_WORKSPACE_NAV,
   InMemoryDockLayoutStore,
   InMemoryLayoutPresetStore,
   type PanelStreamDeps,
@@ -190,9 +191,10 @@ export function createNativeWorkspace(
     },
     layoutFor,
     activeTab: (): WorkspaceTab => {
-      return peek<WorkspaceNavState>(deps.workspaceNav.state$, {
-        activeTab: "fx",
-      }).activeTab;
+      return peek<WorkspaceNavState>(
+        deps.workspaceNav.state$,
+        INITIAL_WORKSPACE_NAV,
+      ).activeTab;
     },
     readStoredLayout,
     clearStoredLayout: (): void => {

@@ -335,13 +335,14 @@ Supabase moves them.
 remains is re-running step 9, then the deploy itself (steps 10–15), and a look at Resend's dashboard
 in the first days.
 
-**Approving and blocking** (until the B2c Users panel): edit `approved` /
-`blocked` on the account's `profiles` row in the table editor. A change
-applies at the account's next sign-in, and to an open session within 60
-seconds, at its next connect — a socket already open stays open until it
-reconnects. Until B2c closes sockets on a block, `fly machine restart -a
-rtc-clone-server` is how to drop a blocked user's open socket at once
-(everyone reconnects; the blocked account is then refused). **Deleting an account** (a privacy request,
+**Approving and blocking:** use the Admin tab's Users panel
+([`authentication.md` §7.10](authentication.md#710-administration-and-ending-sessions-b2c)).
+A block, rename or delete there ends the account's open sessions at once.
+Editing `approved` / `blocked` on the `profiles` row in the table editor
+still works, but applies only at the account's next sign-in, and to an open
+session within 60 seconds at its next connect — a socket already open stays
+open until it reconnects (`fly machine restart -a rtc-clone-server` drops it
+at once; everyone reconnects). **Deleting an account** (a privacy request,
 [`privacy.md`](privacy.md)): delete the user under Authentication → Users;
 its profile goes with it.
 
@@ -351,6 +352,40 @@ the machine with the new value; `/register` then answers `403
 registration_closed`). Reopen with `true`, or `fly secrets unset
 REGISTRATION_OPEN`. Any other value stops the server at startup, so a typo
 cannot leave sign-up silently open.
+
+## Rolling out B2c
+
+B2c adds a column and changes the wire, so the order matters:
+
+1. **Apply the migration**
+   `supabase/migrations/20261024000000_sessions_not_before.sql` to the
+   project (SQL editor, or the Supabase connector), and make sure PostgREST's
+   schema cache has reloaded. The column is nullable, so the server that is
+   running now is unaffected. **Do this before the deploy:** the new server
+   selects `sessions_not_before` on every account read, so deploying it first
+   makes every account login read `unavailable`.
+2. **Deploy the server and both web clients together** (`deploy.yml`): the
+   wire messages changed (`ops.*` in the rename PR, and the new
+   `admin.accounts.*`).
+3. **Reload every open tab right after the deploy.** Tokens issued before
+   B2c carry no `iat`, so every registered account is signed out once ("Your
+   session has ended. Please sign in again.") — but only by the NEW bundle.
+   A tab still running the previous bundle treats the server's `4401` close
+   as an ordinary drop: its old token is accepted at the upgrade, the socket
+   is closed with `4401` at once, the tab reconnects about every 3 s, and
+   the user never sees a sign-out — just a desk that never connects. A reload
+   loads the new bundle, which signs the user out once. Roster and demo
+   sessions are unaffected.
+4. **React Native: publish the EAS Update, and have every RN user with a
+   registered account take it** (or sign out and back in). Without it the
+   build has the same reconnect loop as an old tab (its token has no `iat`,
+   and it does not know `4401`), and the renamed `ops.*` messages break its
+   throughput and Jarvis-usage controls. It shows no Admin tab.
+5. **MCP clients** configured with a roster token must switch to the
+   administrator's token (`/mcp` answers `403 admin_only` to anything else).
+   An account promoted to administrator must sign in again before its token
+   reaches `/mcp`: a token minted while it was a user is refused on its claim
+   alone, before any directory read.
 
 ## Deploying
 

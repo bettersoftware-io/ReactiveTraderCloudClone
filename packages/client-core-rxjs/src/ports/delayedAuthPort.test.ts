@@ -220,6 +220,7 @@ const OK: AuthOutcome = {
     email: "astark@rtc.dev",
     desk: "FX",
     clearance: "L3",
+    access: "user",
   },
   exp: 1,
 };

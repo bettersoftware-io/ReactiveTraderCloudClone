@@ -396,6 +396,87 @@ export function describeAuthContract(
       });
     });
 
+    it("the transport's sessionEnded signs an authenticated user out with the reason and the copy, and clears the store", async () => {
+      await withFakeClock(async (clock) => {
+        vi.setSystemTime(NOW);
+        const h = makeHarness({
+          session: createSession(NOW + 1_000),
+          transport: true,
+        });
+
+        try {
+          const c = collect(h.app.presenters.auth.state$);
+          expect(c.values.at(-1)?.status).toBe("authenticated");
+          expect(h.driver.transportCalls()).toEqual(["connect"]);
+          h.driver.endSession();
+          await clock.settle();
+          expect(c.values.at(-1)).toEqual({
+            ...SIGNED_OUT,
+            error: "Your session has ended. Please sign in again.",
+            failure: "session_ended",
+          });
+          expect(h.driver.storedSession()).toBeNull();
+          // The transport gate then closes the socket.
+          expect(h.driver.transportCalls()).toEqual(["connect", "disconnect"]);
+          c.unsubscribe();
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("a session end while signed out changes nothing", async () => {
+      await withFakeClock(async (clock) => {
+        vi.setSystemTime(NOW);
+        const h = makeHarness({ transport: true });
+
+        try {
+          const c = collect(h.app.presenters.auth.state$);
+          h.driver.endSession();
+          await clock.settle();
+          expect(c.values).toEqual([SIGNED_OUT]);
+          expect(h.driver.transportCalls()).toEqual(["disconnect"]);
+          c.unsubscribe();
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("subscribes the transport's sessionEnded exactly once, at construction, and never the connection events", async () => {
+      await withFakeClock(async (clock) => {
+        vi.setSystemTime(NOW);
+        const h = makeHarness({
+          session: createSession(NOW + 1_000),
+          transport: true,
+        });
+
+        try {
+          expect(h.driver.portCalls("transport.sessionEnded")).toBe(1);
+          // Nothing but the status fold may hold the connection events, and
+          // nothing here subscribed the status.
+          expect(h.driver.connectionEventSubscriptions()).toBe(0);
+          h.driver.endSession();
+          await clock.settle();
+          expect(h.driver.portCalls("transport.sessionEnded")).toBe(1);
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("a core with no transport opens no session-end subscription", async () => {
+      const h = makeHarness();
+
+      try {
+        expect(h.ports.transport).toBeUndefined();
+        expect(h.driver.portCalls("transport.sessionEnded")).toBe(0);
+        expect(h.driver.connectionEventSubscriptions()).toBe(0);
+      } finally {
+        await h.teardown();
+      }
+    });
+
     it("logout signs out and clears the store", async () => {
       await withFakeClock(async (clock) => {
         vi.setSystemTime(NOW);

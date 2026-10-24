@@ -18,6 +18,7 @@ describe("HttpAuthAdapter", () => {
         email: "ada@example.com",
         desk: "FX",
         clearance: "standard",
+        access: "user",
       },
       exp: 1_800_000_000,
     };
@@ -37,6 +38,34 @@ describe("HttpAuthAdapter", () => {
     });
   });
 
+  it.each([
+    ["admin", "admin", "admin"],
+    ["no access", undefined, "user"],
+  ])(
+    "passes %s through the /login DTO as access %s",
+    async (_label, sent, expected) => {
+      const user = {
+        name: "Ada Lovelace",
+        initials: "AL",
+        role: "trader",
+        id: "u1",
+        email: "ada@example.com",
+        desk: "FX",
+        clearance: "standard",
+        ...(sent === undefined ? {} : { access: sent }),
+      };
+
+      const fetchImpl = vi.fn(async () => {
+        return jsonResponse({ token: "t", user, exp: 1 }, 200);
+      });
+      const adapter = new HttpAuthAdapter(BASE_URL, fetchImpl);
+
+      const outcome = await firstValueFrom(adapter.login("ada", "pw"));
+
+      expect(outcome.ok && outcome.user.access).toBe(expected);
+    },
+  );
+
   it("POSTs to the base URL's /login path with a JSON body and Content-Type header", async () => {
     const dto: LoginResponseDto = {
       token: "tok.abc",
@@ -48,6 +77,7 @@ describe("HttpAuthAdapter", () => {
         email: "ada@example.com",
         desk: "FX",
         clearance: "standard",
+        access: "user",
       },
       exp: 1_800_000_000,
     };

@@ -348,7 +348,7 @@ const LAYOUT_PRESETS_RESULT: ReturnType<ViewModel["useLayoutPresets"]> = {
  * otherwise fully static fake, and nothing in this package exercises it.
  */
 const WORKSPACE_NAV_RESULT: WorkspaceNavResult = {
-  state: { activeTab: "fx" },
+  state: { activeTab: "fx", visibleTabs: ["fx", "credit", "equities", "ops"] },
   switchTab: noop,
 };
 

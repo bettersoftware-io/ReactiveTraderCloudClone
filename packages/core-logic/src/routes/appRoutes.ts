@@ -17,6 +17,7 @@ const WORKSPACE_SLUGS: Readonly<Record<WorkspaceTab, string>> = {
   credit: "credit",
   equities: "equities",
   ops: "ops",
+  admin: "admin",
 };
 
 const ACCOUNT_SLUGS: Readonly<Record<AccountRouteMode, string>> = {

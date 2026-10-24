@@ -1,15 +1,21 @@
 import { Effect, Exit, Layer, ManagedRuntime, Scope } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { BootSequenceState, WorkspaceNavState } from "@rtc/core-api";
+import type {
+  AuthViewState,
+  BootSequenceState,
+  WorkspaceNavState,
+} from "@rtc/core-api";
 import {
   BOOT_DURATION_MS,
   BOOT_TICK_MS,
   BOOT_VARIANTS,
   type BootVariant,
+  DEFAULT_LOGIN_WAIT_VARIANT,
 } from "@rtc/domain";
 
-import type { EffectHost } from "#/bridge/out";
+import { type EffectHost, listenToStateStream } from "#/bridge/out";
+import { createSyncRef } from "#/bridge/syncRef";
 import { createBootMachine } from "#/machines/boot";
 import { createWorkspaceNavMachine } from "#/machines/workspaceNav";
 
@@ -25,8 +31,38 @@ describe("createWorkspaceNavMachine (effect)", () => {
     }
   });
 
+  it("shows admin in the first emission of a resumed administrator, and loses it with the access", () => {
+    const auth = createSyncRef<AuthViewState>(createAuthView("admin"));
+    const nav = createWorkspaceNavMachine(useHost(), auth.stateStream());
+    const seen: WorkspaceNavState[] = [];
+    const sub = nav.state$.subscribe((s) => {
+      seen.push(s);
+    });
+    nav.intents.switchTab("admin");
+    auth.set(() => {
+      return createAuthView("user");
+    });
+
+    expect(seen[0]?.visibleTabs).toEqual([...USER_TABS, "admin"]);
+    expect(seen.at(-2)?.activeTab).toBe("admin");
+    expect(seen.at(-1)).toEqual({ activeTab: "fx", visibleTabs: USER_TABS });
+    sub.unsubscribe();
+  });
+
+  it("refuses a switch to a hidden tab without emitting", () => {
+    const nav = createWorkspaceNavMachine(useHost(), createAuthState("user"));
+    const seen: WorkspaceNavState[] = [];
+    const sub = nav.state$.subscribe((s) => {
+      seen.push(s);
+    });
+    nav.intents.switchTab("admin");
+
+    expect(seen).toHaveLength(1);
+    sub.unsubscribe();
+  });
+
   it("drops a switch to the tab already active and moves on a new one", async () => {
-    const nav = createWorkspaceNavMachine(useHost());
+    const nav = createWorkspaceNavMachine(useHost(), createAuthState(null));
     const seen: WorkspaceNavState[] = [];
     const sub = nav.state$.subscribe((s) => {
       seen.push(s);
@@ -36,12 +72,15 @@ describe("createWorkspaceNavMachine (effect)", () => {
     nav.intents.switchTab("credit");
     await tick();
 
-    expect(seen).toEqual([{ activeTab: "fx" }, { activeTab: "credit" }]);
+    expect(seen).toEqual([
+      { activeTab: "fx", visibleTabs: USER_TABS },
+      { activeTab: "credit", visibleTabs: USER_TABS },
+    ]);
     sub.unsubscribe();
   });
 
   it("a switch is visible to a subscriber joining in the SAME tick — no fiber step", () => {
-    const nav = createWorkspaceNavMachine(useHost());
+    const nav = createWorkspaceNavMachine(useHost(), createAuthState(null));
     nav.intents.switchTab("equities");
     const seen: WorkspaceNavState[] = [];
     nav.state$
@@ -50,14 +89,14 @@ describe("createWorkspaceNavMachine (effect)", () => {
       })
       .unsubscribe();
 
-    expect(seen).toEqual([{ activeTab: "equities" }]);
+    expect(seen).toEqual([{ activeTab: "equities", visibleTabs: USER_TABS }]);
   });
 
   // Read from a fresh subscriber's seed after the close, which reads the
   // ref.
   it("after the host scope closes, switchTab changes nothing", async () => {
     const host = useHost();
-    const nav = createWorkspaceNavMachine(host);
+    const nav = createWorkspaceNavMachine(host, createAuthState(null));
     await Effect.runPromise(Scope.close(host.scope, Exit.void));
     nav.intents.switchTab("credit");
     const fresh: WorkspaceNavState[] = [];
@@ -67,7 +106,7 @@ describe("createWorkspaceNavMachine (effect)", () => {
       })
       .unsubscribe();
 
-    expect(fresh).toEqual([{ activeTab: "fx" }]);
+    expect(fresh).toEqual([{ activeTab: "fx", visibleTabs: USER_TABS }]);
   });
 
   const hosts: TestHost[] = [];
@@ -167,3 +206,44 @@ function tick(): Promise<unknown> {
     setTimeout(resolve, 0);
   });
 }
+
+function createAuthState(
+  access: "admin" | "user" | null,
+): ReturnType<typeof listenToStateStream<AuthViewState>> {
+  const view = createAuthView(access);
+  return listenToStateStream(
+    (listener) => {
+      listener(view);
+      return () => {};
+    },
+    () => {
+      return view;
+    },
+  );
+}
+
+function createAuthView(access: "admin" | "user" | null): AuthViewState {
+  return {
+    status: access === null ? "unauthenticated" : "authenticated",
+    user:
+      access === null
+        ? null
+        : {
+            id: "u1",
+            name: "U One",
+            initials: "UO",
+            role: "Trader",
+            email: "u1@example.com",
+            desk: "FX",
+            clearance: "L1",
+            access,
+          },
+    locked: false,
+    unlocking: false,
+    error: null,
+    failure: null,
+    waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
+  };
+}
+
+const USER_TABS = ["fx", "credit", "equities", "ops"];

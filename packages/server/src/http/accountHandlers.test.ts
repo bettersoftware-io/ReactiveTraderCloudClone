@@ -699,6 +699,7 @@ function createDeps(overrides: DepsOverrides = {}): AccountHandlerDeps {
       sendLimiter: overrides.sendLimiter ?? createRateLimiter(100, 60_000),
       sendFuses: overrides.sendFuses ?? createFuses(),
       log: () => {},
+      onSessionsRevoked: () => {},
     }),
     banList:
       overrides.banList ??

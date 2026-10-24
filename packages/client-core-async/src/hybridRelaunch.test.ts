@@ -119,6 +119,7 @@ function createUser(): SessionUser {
     email: "ada@example.com",
     desk: "FX",
     clearance: "standard",
+    access: "user",
   };
 }
 

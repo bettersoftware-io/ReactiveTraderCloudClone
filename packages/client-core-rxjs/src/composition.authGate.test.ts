@@ -86,10 +86,17 @@ describe("createApp transport auth gate", () => {
 interface FakeTransport {
   connect: Mock;
   disconnect: Mock;
+  sessionEnded: () => typeof NEVER;
 }
 
 function createFakeTransport(): FakeTransport {
-  return { connect: vi.fn(), disconnect: vi.fn() };
+  return {
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    sessionEnded: () => {
+      return NEVER;
+    },
+  };
 }
 
 function portsWith(

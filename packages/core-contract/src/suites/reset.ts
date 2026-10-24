@@ -77,7 +77,13 @@ export function describeResetWorkspaceLayoutContract(
             return v === before + 1;
           }),
         ).toHaveLength(1);
-        expect(seenAtBump).toEqual([null, null, null, null, null]);
+        // One null per tab's dock blob (every workspace tab, admin included),
+        // then the stored workspace layout.
+        expect(seenAtBump).toEqual(
+          Array.from({ length: WORKSPACE_TABS.length + 1 }, () => {
+            return null;
+          }),
+        );
         sub.unsubscribe();
         resets.unsubscribe();
       } finally {

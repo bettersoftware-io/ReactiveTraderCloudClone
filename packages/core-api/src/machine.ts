@@ -6,6 +6,10 @@ import type {
   AccountAccessState,
 } from "#/machines/accountAccess";
 import type {
+  AccountActionIntents,
+  AccountActionState,
+} from "#/machines/accountAction";
+import type {
   BootSequenceIntents,
   BootSequenceState,
 } from "#/machines/bootSequence";
@@ -100,4 +104,10 @@ export interface MachineFactories {
   /** The login screen's create-account / confirm / reset flows. One per
    * login-screen mount; at rest it is the plain sign-in form (`signIn`). */
   accountAccess: () => Machine<AccountAccessState, AccountAccessIntents>;
+  /** One account row's administrator action (approve / block / unblock /
+   * rename / delete). One per row; it re-reads the account list through
+   * `Presenters.accountList` when an action settles. */
+  accountAction: (
+    accountId: string,
+  ) => Machine<AccountActionState, AccountActionIntents>;
 }

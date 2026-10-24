@@ -52,6 +52,7 @@ export const WORKSPACE_TABS: readonly WorkspaceTab[] = [
   "credit",
   "equities",
   "ops",
+  "admin",
 ];
 
 /** `JarvisDriverMachine`'s `knownLayoutPanelIds` dep source: the static panel

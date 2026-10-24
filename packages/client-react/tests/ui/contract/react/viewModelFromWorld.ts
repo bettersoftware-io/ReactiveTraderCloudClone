@@ -3,7 +3,13 @@ import {
   type JarvisWorld,
   type World,
 } from "@ui-contract/harness/world";
-import { useCallback, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   BehaviorSubject,
   combineLatest,
@@ -75,6 +81,7 @@ import {
   type WorkspaceDockPanels,
 } from "@rtc/core-logic";
 import {
+  type AccessLevel,
   type AmbientStyle,
   type Candle,
   type CandleTimeframe,
@@ -256,7 +263,14 @@ function getWorkspaceNav(
   let machine = workspaceNavs.get(world);
 
   if (!machine) {
-    machine = createWorkspaceNavMachine();
+    machine = createWorkspaceNavMachine(
+      world.auth.pipe(
+        map((authState): AccessLevel | null => {
+          return authState.user?.access ?? null;
+        }),
+        distinctUntilChanged(),
+      ),
+    );
     workspaceNavs.set(world, machine);
   }
 
@@ -748,7 +762,10 @@ function getLayoutPresets(world: World): LayoutPresetsPresenter {
 /** `readStateNow`'s fallback for the nav machine — never observed in practice
  * (`createWorkspaceNavMachine`'s state$ is warm and defaulted), but the read
  * needs a total type. Mirrors the machine's own INITIAL. */
-const FALLBACK_NAV_STATE: WorkspaceNavState = { activeTab: "fx" };
+const FALLBACK_NAV_STATE: WorkspaceNavState = {
+  activeTab: "fx",
+  visibleTabs: ["fx", "credit", "equities", "ops"],
+};
 
 /** The REAL `CandleSeriesPresenter`, one shared instance PER WORLD (same
  * per-World-singleton doctrine as `getLayoutFor`/`getWorkspaceNav` above) —
@@ -1930,6 +1947,28 @@ export function reactViewModel(world: World): ViewModel {
       return {
         state: useSubject(world.accountAccess),
         ...getAccountIntents(world),
+      };
+    },
+    // The Users panel: list and per-row action state from the World, the
+    // row's intents from the per-World set (see `accountActionIntentsFor`).
+    useAccountList: () => {
+      return {
+        state: useSubject(world.accountList),
+        refresh: () => {
+          world.refreshAccountList();
+        },
+      };
+    },
+    useAccountAction: (accountId: string) => {
+      useEffect(() => {
+        return () => {
+          world.releaseAccountAction(accountId);
+        };
+      }, [accountId]);
+
+      return {
+        state: useSubject(world.accountActionFor(accountId)),
+        intents: world.accountActionIntentsFor(accountId),
       };
     },
     useRegistrationAvailable: () => {

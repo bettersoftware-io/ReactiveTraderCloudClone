@@ -264,6 +264,7 @@ function seedSession(token: string): void {
       email: "demo@example.com",
       desk: "FX",
       clearance: "standard",
+      access: "user",
     },
   });
 }

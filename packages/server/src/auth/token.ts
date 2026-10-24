@@ -13,6 +13,8 @@ interface Payload {
   readonly exp: number;
   readonly id?: string;
   readonly a?: AccessLevel;
+  /** Issued-at, epoch ms. Account tokens only. */
+  readonly iat?: number;
 }
 
 export interface VerifiedToken {
@@ -20,6 +22,10 @@ export interface VerifiedToken {
   /** Null for a roster login, which has no directory entry. */
   readonly accountId: string | null;
   readonly access: AccessLevel;
+  /** When an account token was issued (epoch ms). Null for a roster token
+   * AND for an account token minted before B2c: verification does not refuse
+   * the latter, so the upgrade can end it visibly. */
+  readonly issuedAt: number | null;
 }
 
 function sign(payload: string, secret: string): string {
@@ -41,6 +47,7 @@ export function signToken(
           exp: now + ttlMs,
           id: account.accountId,
           a: account.access,
+          iat: now,
         };
   const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `${encoded}.${sign(encoded, secret)}`;
@@ -87,7 +94,12 @@ function readClaims(payload: Payload): VerifiedToken | null {
   }
 
   if (payload.id === undefined && payload.a === undefined) {
-    return { username: payload.u, accountId: null, access: "user" };
+    return {
+      username: payload.u,
+      accountId: null,
+      access: "user",
+      issuedAt: null,
+    };
   }
 
   if (
@@ -98,5 +110,14 @@ function readClaims(payload: Payload): VerifiedToken | null {
     return null;
   }
 
-  return { username: payload.u, accountId: payload.id, access: payload.a };
+  if (payload.iat !== undefined && typeof payload.iat !== "number") {
+    return null;
+  }
+
+  return {
+    username: payload.u,
+    accountId: payload.id,
+    access: payload.a,
+    issuedAt: payload.iat ?? null,
+  };
 }

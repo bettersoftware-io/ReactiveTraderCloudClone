@@ -1,4 +1,5 @@
 import type {
+  AccountAdminPort,
   AnalyticsPort,
   AnomalyDetectorConfig,
   AuthPort,
@@ -50,6 +51,7 @@ import type {
   WorkspaceNavState,
 } from "#/machines/index";
 import type {
+  AccountListPresenter,
   AmbientStylePresenter,
   AnalyticsPresenter,
   AnimatedBackgroundPresenter,
@@ -119,6 +121,10 @@ export interface AppPorts {
    * `jarvis` above. Simulator mode gets an always-empty snapshot; WS-real
    * mode streams `SERVER_MSG.OPS_JARVIS_USAGE` (`WsJarvisUsageAdapter`). */
   jarvisUsage: JarvisUsagePort;
+  /** The administrator's account list and actions. Simulator and native
+   * builders supply the unavailable port; WS-real speaks the
+   * `admin.accounts.*` RPCs (`createWsAccountAdminAdapter`). */
+  accountAdmin: AccountAdminPort;
   connectionEvents: ConnectionEventsPort;
   /** The pushes into `connectionEvents` that originate INSIDE the app — the
    * Reconnect button (`commands.reconnect`) and the ops console's incident
@@ -294,6 +300,8 @@ export interface Presenters {
   sessions: SessionsPresenter;
   /** Plan E Ops: rolling session-count series for the "Active Sessions" KPI card. */
   sessionsKpi: SessionsKpiPresenter;
+  /** Admin: the registered accounts (loads on first subscription). */
+  accountList: AccountListPresenter;
   /** J.A.R.V.I.S. chat overlay: entries, skin, pending confirmation, phase.
    * Widened with `events$` (every turn's reply events) — Task 6's
    * `jarvisPanels` below is composed from it. */

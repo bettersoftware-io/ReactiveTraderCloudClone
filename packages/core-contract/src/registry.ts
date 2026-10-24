@@ -2,6 +2,8 @@ import type { AppCommands, MachineFactories, Presenters } from "@rtc/core-api";
 
 import type { Suite } from "#/harness/harness";
 import { describeAccountAccessContract } from "#/suites/accountAccess";
+import { describeAccountActionContract } from "#/suites/accountAction";
+import { describeAccountListContract } from "#/suites/accountList";
 import { describeAmbientStyleContract } from "#/suites/ambientStyle";
 import { describeAnalyticsContract } from "#/suites/analytics";
 import { describeAnalyticsStaleFlagContract } from "#/suites/analyticsStaleFlag";
@@ -149,6 +151,7 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.eventLog": describeEventLogContract,
   "presenters.sessions": describeSessionsContract,
   "presenters.sessionsKpi": describeSessionsKpiContract,
+  "presenters.accountList": describeAccountListContract,
   "presenters.jarvis": describeJarvisContract,
   "presenters.jarvisUsage": describeJarvisUsageContract,
   "presenters.jarvisPanels": describeJarvisPanelsContract,
@@ -174,6 +177,7 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "machines.boot": describeBootContract,
   "machines.orderTicket": describeOrderTicketContract,
   "machines.accountAccess": describeAccountAccessContract,
+  "machines.accountAction": describeAccountActionContract,
   "commands.reconnect": describeReconnectContract,
   "commands.reportDetachedPanels": describeReportDetachedPanelsContract,
 };

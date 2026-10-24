@@ -2,6 +2,7 @@
 
 exports[`@rtc/client-core-rxjs public runtime API > has a pinned runtime surface 1`] = `
 [
+  "AccountListPresenter",
   "AmbientStylePresenter",
   "AnalyticsPresenter",
   "AnimatedBackgroundPresenter",
@@ -50,6 +51,7 @@ exports[`@rtc/client-core-rxjs public runtime API > has a pinned runtime surface
   "WatchlistPresenter",
   "composePanelStream",
   "createAccountAccessMachine",
+  "createAccountActionMachine",
   "createApp",
   "createBootSequenceMachine",
   "createEqDrawingsMachine",

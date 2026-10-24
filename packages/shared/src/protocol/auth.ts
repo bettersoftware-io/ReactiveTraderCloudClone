@@ -1,4 +1,5 @@
 import {
+  type AccessLevel,
   type AccountFlowStatus,
   type AccountInputRule,
   isAccountInputRule,
@@ -12,6 +13,7 @@ export interface SessionUserDto {
   readonly email: string;
   readonly desk: string;
   readonly clearance: string;
+  readonly access: AccessLevel;
 }
 
 export interface LoginRequestDto {

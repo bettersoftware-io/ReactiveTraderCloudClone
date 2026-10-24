@@ -116,6 +116,24 @@ test("rejected phase surfaces the reason", async () => {
   ).toBe(true);
 });
 
+test("connectionLost phase shows its message, never REJECTED, and resets", async () => {
+  const reset = jest.fn();
+  const lost: OrderTicketState = {
+    phase: "connectionLost",
+    message: "Connection lost — check the orders blotter",
+  };
+  await page.mount(lost, { reset });
+  expect(
+    page.containsTextContent(
+      "order-ticket",
+      "Connection lost — check the orders blotter",
+    ),
+  ).toBe(true);
+  expect(page.containsTextContent("order-ticket", "REJECTED")).toBe(false);
+  await page.press("order-ticket-reset");
+  expect(reset).toHaveBeenCalledTimes(1);
+});
+
 // dc.html:2371 — the CTA is `linear-gradient(180deg, sideC, color-mix(in
 // oklab, sideC 72%, black))` in every skin; CtaGradient paints the ramp over
 // the flat side-colour fallback.

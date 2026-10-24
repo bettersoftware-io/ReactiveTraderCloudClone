@@ -1,9 +1,19 @@
-import type { AccountDirectory, AccountStatus } from "./AccountDirectory.js";
+import type { AccountStatus } from "@rtc/domain";
 
-export type CachedStatus = AccountStatus | "missing" | "unavailable";
+import type { AccountDirectory } from "./AccountDirectory.js";
+
+export type CachedAccount =
+  | {
+      readonly status: AccountStatus;
+      readonly sessionsNotBefore: number | null;
+    }
+  | { readonly status: "missing" | "unavailable" };
 
 export interface AccountStatusCache {
-  statusOf(accountId: string): Promise<CachedStatus>;
+  read(accountId: string): Promise<CachedAccount>;
+  /** Forget what is known of an account, and make a lookup already in flight
+   * unable to remember its (possibly pre-change) answer. */
+  invalidate(accountId: string): void;
 }
 
 export interface AccountStatusCacheOptions {
@@ -14,7 +24,7 @@ export interface AccountStatusCacheOptions {
 }
 
 interface Entry {
-  readonly status: CachedStatus;
+  readonly account: CachedAccount;
   readonly readAt: number;
 }
 
@@ -30,15 +40,31 @@ export function createAccountStatusCache(
   options: AccountStatusCacheOptions,
 ): AccountStatusCache {
   const entries = new Map<string, Entry>();
-  const inFlight = new Map<string, Promise<CachedStatus>>();
+  const inFlight = new Map<string, Promise<CachedAccount>>();
 
-  async function readStatus(accountId: string): Promise<CachedStatus> {
+  // Generation of an account that was invalidated while a lookup ran, and
+  // how many lookups (including superseded ones) are still running per
+  // account. A generation is dropped only when the last of them settles, so
+  // a superseded lookup can never compare against a forgotten generation;
+  // both maps are bounded by the lookups in flight.
+  const generations = new Map<string, number>();
+  const running = new Map<string, number>();
+  let lastGeneration = 0;
+
+  async function readAccount(accountId: string): Promise<CachedAccount> {
     try {
       const found = await options.directory.findAccount(accountId);
 
-      return found.outcome === "found" ? found.account.status : found.outcome;
+      if (found.outcome !== "found") {
+        return { status: found.outcome };
+      }
+
+      return {
+        status: found.account.status,
+        sessionsNotBefore: found.account.sessionsNotBefore,
+      };
     } catch {
-      return "unavailable";
+      return { status: "unavailable" };
     }
   }
 
@@ -66,27 +92,47 @@ export function createAccountStatusCache(
   async function lookUp(
     accountId: string,
     readAt: number,
-  ): Promise<CachedStatus> {
-    try {
-      const status = await readStatus(accountId);
+    generation: number,
+    ownPromise: () => Promise<CachedAccount> | undefined,
+  ): Promise<CachedAccount> {
+    running.set(accountId, (running.get(accountId) ?? 0) + 1);
 
-      if (status !== "unavailable") {
-        remember(accountId, { status, readAt });
+    try {
+      const account = await readAccount(accountId);
+
+      // An invalidation since this lookup started means its answer may
+      // predate the change: serve it to this caller, never remember it.
+      if (
+        account.status !== "unavailable" &&
+        (generations.get(accountId) ?? 0) === generation
+      ) {
+        remember(accountId, { account, readAt });
       }
 
-      return status;
+      return account;
     } finally {
-      inFlight.delete(accountId);
+      if (inFlight.get(accountId) === ownPromise()) {
+        inFlight.delete(accountId);
+      }
+
+      const left = (running.get(accountId) ?? 1) - 1;
+
+      if (left === 0) {
+        running.delete(accountId);
+        generations.delete(accountId);
+      } else {
+        running.set(accountId, left);
+      }
     }
   }
 
   return {
-    statusOf(accountId: string): Promise<CachedStatus> {
+    read(accountId: string): Promise<CachedAccount> {
       const now = options.now();
       const cached = entries.get(accountId);
 
       if (cached !== undefined && now < cached.readAt + options.ttlMs) {
-        return Promise.resolve(cached.status);
+        return Promise.resolve(cached.account);
       }
 
       const pending = inFlight.get(accountId);
@@ -95,10 +141,26 @@ export function createAccountStatusCache(
         return pending;
       }
 
-      const started = lookUp(accountId, now);
+      let started: Promise<CachedAccount> | undefined;
+      started = lookUp(
+        accountId,
+        now,
+        generations.get(accountId) ?? 0,
+        (): Promise<CachedAccount> | undefined => {
+          return started;
+        },
+      );
       inFlight.set(accountId, started);
 
       return started;
+    },
+    invalidate(accountId: string): void {
+      entries.delete(accountId);
+
+      if (inFlight.delete(accountId)) {
+        lastGeneration += 1;
+        generations.set(accountId, lastGeneration);
+      }
     },
   };
 }

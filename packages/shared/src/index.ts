@@ -58,6 +58,7 @@ export {
   type ScriptedJarvisDeps,
   ScriptedJarvisEngine,
 } from "./jarvis/ScriptedJarvisEngine.js";
+export * from "./protocol/accountAdmin.js";
 export * from "./protocol/auth.js";
 export { CLIENT_MSG, SERVER_MSG } from "./protocol/messages.js";
 export type { RpcResponse } from "./protocol/rpc.js";

@@ -390,7 +390,7 @@ core would be RxJS with extra steps.
 
 ## Members
 
-**All 76** members are **native** (74 as of slice 7's wave 2; `equityPriceHistory` added 2026-09-28, `accountAccess` 2026-10-14), and since slice 8
+**All 78** members are **native** (74 as of slice 7's wave 2; `equityPriceHistory` added 2026-09-28, `accountAccess` 2026-10-14, `accountList` and `accountAction` 2026-10-24), and since slice 8
 `@rtc/client-adapters` is a devDependency for test adapters only. Wave 2 added the Jarvis family (`presenters/jarvisFamily.ts`), built
 outside the Layer graph on child hosts of the app host: `jarvis` (a
 `SyncRef` over core-logic's shared `createJarvisController`; an idle `send`

@@ -13,6 +13,7 @@ const PANEL_IDS: readonly PanelId[] = [
   "eq-ticket",
   "eq-watchlist",
   "ops-dashboard",
+  "admin-users",
   "credit-new-rfq",
   "credit-rfqs",
   "credit-blotter",
@@ -34,6 +35,7 @@ beforeAll(async () => {
 
   const [
     { OpsHead },
+    { UsersHead },
     { CreditBlotterHead },
     { NewRfqHead },
     { RfqsHead },
@@ -48,6 +50,7 @@ beforeAll(async () => {
     registryModule,
   ] = await Promise.all([
     import("#/ui/ops/OpsHead"),
+    import("#/ui/admin/UsersHead"),
     import("#/ui/credit/blotter/CreditBlotterHead"),
     import("#/ui/credit/newRfq/NewRfqHead"),
     import("#/ui/credit/rfqs/RfqsHead"),
@@ -73,6 +76,7 @@ beforeAll(async () => {
     ["eq-ticket", EqTicketHead],
     ["eq-watchlist", EqWatchlistHead],
     ["ops-dashboard", OpsHead],
+    ["admin-users", UsersHead],
     ["credit-new-rfq", NewRfqHead],
     ["credit-rfqs", RfqsHead],
     ["credit-blotter", CreditBlotterHead],
