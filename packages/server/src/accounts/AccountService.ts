@@ -52,6 +52,10 @@ export interface AccountServiceOptions {
   /** One fixed line per detached send that did not answer `sent`: the route
    * and the outcome word, never the address. */
   readonly log: (line: string) => void;
+  /** Called after a reset ended the account's sessions. `stamped` is false
+   * when the stamp could not be written to the directory (so the caller must
+   * fall back to the in-process ledger). */
+  readonly onSessionsRevoked: (accountId: string, stamped: boolean) => void;
 }
 
 type RegisterOutcome =
@@ -387,7 +391,52 @@ export function createAccountService(
       return { outcome: "invalid", rule: "password" };
     }
 
+    if (changed === "changed") {
+      await endSessionsAfterReset(email);
+    }
+
     return { outcome: changed };
+  }
+
+  /** A password reset ends every session of the account. Never changes the
+   * reset's outcome: the password HAS changed. Logs the account id only. */
+  async function endSessionsAfterReset(email: string): Promise<void> {
+    const found = await findForReset(email);
+
+    if (found === null) {
+      options.log("[accounts] reset-lookup-failed");
+      return;
+    }
+
+    let stamped = (await stampOnce(found)) === "ok";
+
+    if (!stamped) {
+      stamped = (await stampOnce(found)) === "ok";
+    }
+
+    if (!stamped) {
+      options.log(`[accounts] stamp-failed id=${found}`);
+    }
+
+    options.onSessionsRevoked(found, stamped);
+  }
+
+  async function findForReset(email: string): Promise<string | null> {
+    try {
+      const lookup = await directory.findByEmail(email);
+
+      return lookup.outcome === "found" ? lookup.account.id : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function stampOnce(accountId: string): Promise<string> {
+    try {
+      return await directory.revokeSessions(accountId, options.now());
+    } catch {
+      return "unavailable";
+    }
   }
 
   async function login(

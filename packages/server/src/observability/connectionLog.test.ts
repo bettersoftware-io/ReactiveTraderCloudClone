@@ -21,6 +21,20 @@ describe("createConnectionLog", () => {
     expect(lines[2]).toContain("active=1 total=2");
   });
 
+  it("counts sessions ended and names no account", () => {
+    const lines: string[] = [];
+    const log = createConnectionLog((l) => {
+      return lines.push(l);
+    }, fixedClock());
+
+    log.recordSessionEnded();
+    log.recordSessionEnded();
+
+    expect(lines[0]).toContain("session-ended");
+    expect(lines[0]).toContain("sessions-ended=1");
+    expect(lines[1]).toContain("sessions-ended=2");
+  });
+
   it("never lets active go negative on an unmatched disconnect", () => {
     const lines: string[] = [];
     const log = createConnectionLog((l) => {

@@ -4,12 +4,20 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 
 import type { JarvisToolDefinition } from "@rtc/agent-tools";
 
+import type { AccountDirectory } from "../accounts/AccountDirectory.js";
+import type { CachedAccount } from "../accounts/accountStatusCache.js";
+import type { RevocationLedger } from "../accounts/revocationLedger.js";
+import { hasSessionEnded } from "../accounts/sessionEnd.js";
 import type { AuthService } from "../auth/AuthService.js";
 import { buildJarvisMcpServer } from "./buildJarvisMcpServer.js";
 
 export interface McpHandlerDeps {
   readonly auth: Pick<AuthService, "verifyToken">;
   readonly tools: readonly JarvisToolDefinition[];
+  /** Read directly, never through the status cache: an administrator's
+   * demotion or block must bite on the next request. */
+  readonly accounts: Pick<AccountDirectory, "findAccount">;
+  readonly revocations: RevocationLedger;
 }
 
 const BEARER_SCHEME_LENGTH: number = "Bearer ".length;
@@ -52,6 +60,52 @@ function rejectRequest(
   );
 }
 
+async function readAdminGate(
+  accountId: string,
+  issuedAt: number | null,
+  deps: McpHandlerDeps,
+): Promise<"admitted" | "refused" | "unavailable"> {
+  let found: Awaited<ReturnType<McpHandlerDeps["accounts"]["findAccount"]>>;
+
+  try {
+    found = await deps.accounts.findAccount(accountId);
+  } catch {
+    return "unavailable";
+  }
+
+  if (found.outcome === "unavailable") {
+    return "unavailable";
+  }
+
+  const account: CachedAccount =
+    found.outcome === "found"
+      ? {
+          status: found.account.status,
+          sessionsNotBefore: found.account.sessionsNotBefore,
+        }
+      : { status: "missing" };
+
+  const verdict = hasSessionEnded(
+    issuedAt,
+    account,
+    deps.revocations.notBefore(accountId),
+  );
+
+  if (verdict === "unavailable") {
+    return "unavailable";
+  }
+
+  if (
+    verdict === "ended" ||
+    found.outcome !== "found" ||
+    found.account.access !== "admin"
+  ) {
+    return "refused";
+  }
+
+  return "admitted";
+}
+
 async function serveMcpRequest(
   req: IncomingMessage,
   res: ServerResponse,
@@ -70,12 +124,23 @@ async function serveMcpRequest(
     return;
   }
 
-  // Only the WebSocket upgrade re-checks an account's status, so a registered
-  // account's token — including a since-blocked account's — must not work
-  // here until it expires. B2c replaces this with an administrator gate that
-  // checks the account's current status.
-  if (verified.accountId !== null) {
-    rejectRequest(res, 403, "account_tokens_not_accepted");
+  // The administrator only: a roster login has no account, and a registered
+  // account must be active, still `admin` today and unrevoked since its token
+  // was issued.
+  if (verified.accountId === null) {
+    rejectRequest(res, 403, "admin_only");
+    return;
+  }
+
+  const gate = await readAdminGate(verified.accountId, verified.issuedAt, deps);
+
+  if (gate === "unavailable") {
+    rejectRequest(res, 503, "Account store unavailable.");
+    return;
+  }
+
+  if (gate === "refused") {
+    rejectRequest(res, 403, "admin_only");
     return;
   }
 
@@ -107,7 +172,7 @@ async function serveMcpRequest(
 }
 
 /** The `/mcp` route: Bearer-authenticated (same `AuthService` tokens as the
- * WS upgrade), stateless Streamable HTTP over the low-level Jarvis server. */
+ * WS upgrade) and open to the administrator alone, stateless Streamable HTTP over the low-level Jarvis server. */
 export function createMcpRequestHandler(
   deps: McpHandlerDeps,
 ): (req: IncomingMessage, res: ServerResponse) => void {

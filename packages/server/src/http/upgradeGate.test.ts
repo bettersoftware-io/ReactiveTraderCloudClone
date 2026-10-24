@@ -1,3 +1,5 @@
+import { createHmac } from "node:crypto";
+
 import { describe, expect, it, vi } from "vitest";
 
 import type { AccountStatus } from "@rtc/domain";
@@ -7,6 +9,7 @@ import {
   type CachedAccount,
   createAccountStatusCache,
 } from "#/accounts/accountStatusCache";
+import { createRevocationLedger } from "#/accounts/revocationLedger";
 import { AuthService, parseAuthUsers } from "#/auth/AuthService";
 import { createBanList } from "#/auth/banList";
 import { signToken } from "#/auth/token";
@@ -19,7 +22,11 @@ describe("decideUpgrade", () => {
 
     expect(
       await decideUpgrade(`/?access=${createToken()}`, "1.2.3.4", deps),
-    ).toEqual({ ok: true, status: 200 });
+    ).toEqual({
+      ok: true,
+      status: 200,
+      caller: { username: "demo", accountId: null, issuedAt: null },
+    });
     expect(deps.asked).toEqual([]);
   });
 
@@ -71,17 +78,21 @@ describe("decideUpgrade", () => {
     });
   });
 
-  it("accepts a registered account's token only while the account is active", async () => {
+  it("admits a live registered account with its caller and no sessionEnded", async () => {
     const deps = createDeps({ status: "active" });
 
     expect(
       await decideUpgrade(`/?access=${createAccountToken()}`, "1.2.3.4", deps),
-    ).toEqual({ ok: true, status: 200 });
+    ).toEqual({
+      ok: true,
+      status: 200,
+      caller: { username: "ann@desk.io", accountId: "acc-1", issuedAt: NOW },
+    });
     expect(deps.asked).toEqual(["acc-1"]);
   });
 
   it.each(["blocked", "pending", "unconfirmed", "missing"] as const)(
-    "rejects a still-valid token of a %s account with 403",
+    "accepts a still-valid token of a %s account and marks its session ended",
     async (status) => {
       const deps = createDeps({ status });
 
@@ -91,9 +102,49 @@ describe("decideUpgrade", () => {
           "1.2.3.4",
           deps,
         ),
-      ).toEqual({ ok: false, status: 403, reason: "account-not-active" });
+      ).toEqual({
+        ok: true,
+        status: 200,
+        sessionEnded: true,
+        caller: { username: "ann@desk.io", accountId: "acc-1", issuedAt: NOW },
+      });
     },
   );
+
+  it("marks a token with no issued-at as ended", async () => {
+    const deps = createDeps({ status: "active" });
+    const legacy = signLegacyAccountToken();
+
+    expect(
+      await decideUpgrade(`/?access=${legacy}`, "1.2.3.4", deps),
+    ).toMatchObject({ ok: true, sessionEnded: true });
+  });
+
+  it("marks a token issued before the account's stamp as ended, and one issued at the stamp as live", async () => {
+    const before = createDeps({ status: "active", sessionsNotBefore: NOW + 1 });
+    const at = createDeps({ status: "active", sessionsNotBefore: NOW });
+
+    expect(
+      await decideUpgrade(
+        `/?access=${createAccountToken()}`,
+        "1.2.3.4",
+        before,
+      ),
+    ).toMatchObject({ ok: true, sessionEnded: true });
+    expect(
+      (await decideUpgrade(`/?access=${createAccountToken()}`, "1.2.3.4", at))
+        .sessionEnded,
+    ).toBeUndefined();
+  });
+
+  it("marks a token issued before the ledger's stamp as ended", async () => {
+    const deps = createDeps({ status: "active" });
+    deps.revocations.record("acc-1", NOW + 1);
+
+    expect(
+      await decideUpgrade(`/?access=${createAccountToken()}`, "1.2.3.4", deps),
+    ).toMatchObject({ ok: true, sessionEnded: true });
+  });
 
   it("fails closed with 503 when the account store is unavailable", async () => {
     const deps = createDeps({ status: "unavailable" });
@@ -173,6 +224,7 @@ interface GateOverrides {
   readonly maxPerIp?: number;
   readonly maxTotal?: number;
   readonly status?: AccountStatus | "missing" | "unavailable";
+  readonly sessionsNotBefore?: number;
 }
 
 interface GateFixture extends UpgradeGateDeps {
@@ -212,11 +264,15 @@ function createDeps(overrides: GateOverrides = {}): GateFixture {
         return Promise.resolve(
           status === "missing" || status === "unavailable"
             ? { status }
-            : { status, sessionsNotBefore: null },
+            : {
+                status,
+                sessionsNotBefore: overrides.sessionsNotBefore ?? null,
+              },
         );
       },
       invalidate: (): void => {},
     },
+    revocations: createRevocationLedger(10),
     now: (): number => {
       return NOW;
     },
@@ -234,4 +290,18 @@ function createAccountToken(): string {
     accountId: "acc-1",
     access: "user",
   });
+}
+
+/** An account token minted before B2c: both claims, no `iat`. */
+function signLegacyAccountToken(): string {
+  const payload = Buffer.from(
+    JSON.stringify({
+      u: "ann@desk.io",
+      exp: NOW + 60_000,
+      id: "acc-1",
+      a: "user",
+    }),
+  ).toString("base64url");
+
+  return `${payload}.${createHmac("sha256", SECRET).update(payload).digest("base64url")}`;
 }

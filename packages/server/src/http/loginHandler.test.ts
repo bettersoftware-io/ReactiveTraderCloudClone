@@ -102,6 +102,7 @@ describe("authenticateLoginRequest", () => {
         sendLimiter: createRateLimiter(100, 60_000),
         sendFuses: createFuses(),
         log: () => {},
+        onSessionsRevoked: () => {},
       }),
     });
 
@@ -147,6 +148,7 @@ describe("authenticateLoginRequest", () => {
         sendLimiter: createRateLimiter(100, 60_000),
         sendFuses: createFuses(),
         log: () => {},
+        onSessionsRevoked: () => {},
       }),
     });
 
@@ -548,6 +550,7 @@ function createAccounts(): AccountService {
     sendLimiter: createRateLimiter(100, 60_000),
     sendFuses: createFuses(),
     log: () => {},
+    onSessionsRevoked: () => {},
   });
 }
 
@@ -563,6 +566,7 @@ function createDisabledAccounts(): AccountService {
     sendLimiter: createRateLimiter(100, 60_000),
     sendFuses: createFuses(),
     log: () => {},
+    onSessionsRevoked: () => {},
   });
 }
 

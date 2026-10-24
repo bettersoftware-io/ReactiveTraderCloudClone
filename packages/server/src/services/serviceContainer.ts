@@ -24,6 +24,15 @@ import { parseJarvisGateConfig } from "./jarvisGate.js";
 import { ThroughputService } from "./ThroughputService.js";
 import { UsageMeter } from "./UsageMeter.js";
 
+/** The verified identity behind one WebSocket connection. `accountId` is null
+ * for a roster login; `issuedAt` is null for a roster token and for an
+ * account token minted before B2c. */
+export interface Caller {
+  readonly username: string;
+  readonly accountId: string | null;
+  readonly issuedAt: number | null;
+}
+
 export interface ServiceContainer {
   readonly referenceData: ReferenceDataSimulator;
   readonly pricing: PricingSimulator;
@@ -40,6 +49,8 @@ export interface ServiceContainer {
   readonly positions: PositionPort;
   readonly usageMeter: UsageMeter;
   readonly jarvisGate: JarvisGateService;
+  /** Null on the shared container; set on a connection's scoped one. */
+  readonly caller: Caller | null;
 }
 
 /**
@@ -99,5 +110,6 @@ export function createServices(
     positions,
     usageMeter,
     jarvisGate,
+    caller: null,
   };
 }

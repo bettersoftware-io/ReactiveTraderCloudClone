@@ -41,4 +41,15 @@ describe("revocationLedger", () => {
     expect(ledger.notBefore("acc-1")).toBe(150);
     expect(ledger.notBefore("acc-2")).toBeNull();
   });
+
+  it("re-recording a held account at the cap evicts nobody", () => {
+    const ledger = createRevocationLedger(2);
+
+    ledger.record("acc-1", 100);
+    ledger.record("acc-2", 200);
+    ledger.record("acc-2", 250);
+
+    expect(ledger.notBefore("acc-1")).toBe(100);
+    expect(ledger.notBefore("acc-2")).toBe(250);
+  });
 });
