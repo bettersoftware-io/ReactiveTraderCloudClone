@@ -219,7 +219,11 @@ export class WsAdapter implements IWsAdapter {
       }
 
       // Only a genuine drop reaches here: a deliberate close (idle timeout
-      // or sign-out) released the socket first and reported it itself.
+      // or sign-out) released the socket first and reported it itself. An
+      // answer is bound to the socket that carried the request, so an rpc
+      // in flight can never be answered now: reject it rather than leave it
+      // hanging across the reconnect.
+      this.rejectPendingRpcs("WsAdapter connection lost");
       this.connectionEvents$.next({ type: "gatewayDisconnected" });
 
       console.log(
@@ -241,7 +245,8 @@ export class WsAdapter implements IWsAdapter {
    * microtask later, so the event whose handling closed the socket (an
    * `idleTimeout` passing through `routeIdleLifecycle`) reaches the reducer
    * first, as it did when the socket's `close` event reported it. Nothing
-   * is reported if the socket has been reopened by then. */
+   * is reported if the socket has been reopened by then. Every rpc in
+   * flight is rejected. */
   private releaseSocket(): void {
     const ws = this.ws;
 
@@ -251,6 +256,9 @@ export class WsAdapter implements IWsAdapter {
 
     this.ws = null;
     ws.close();
+    // No answer can arrive on another socket, so an rpc in flight on this
+    // one is over.
+    this.rejectPendingRpcs("WsAdapter disconnected");
     queueMicrotask(() => {
       if (!this.disposed && this.ws === null) {
         this.connectionEvents$.next({ type: "gatewayDisconnected" });
