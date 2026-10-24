@@ -29,6 +29,90 @@ Each tagged week is also a [GitHub Release](https://github.com/bettersoftware-io
 whose notes are generated from its section here, so edit this file, never a
 release.
 
+## 2026-W42 — 12 Oct – 18 Oct
+
+Real accounts. The server learned to register, confirm, approve and sign in
+people outside the demo roster, was hardened for a public audience, and both
+web clients gained the screens to use it. Around it, the browser's Back and
+Forward started working through the app on real URL paths, the unit-test step
+got about three times cheaper, and the changelog was completed back to the
+first commit and published as GitHub Releases.
+
+### Added
+
+- **Registered accounts on the server.** Register, confirm with an emailed
+  code (the confirmation sets the password), wait for an administrator's
+  approval, then sign in; reset a password by code. Accounts live in Supabase;
+  without its secrets the server runs in a `disabled` account mode and the
+  roster logins work as before. [#1000]
+- **The login screen's account flows in both web clients** — create account,
+  enter code, reset password — over one new `accountAccess` machine in all
+  three application cores, held to one 20-case contract suite. The chosen
+  password lives only in the machine's closure, and the devtools hub masks
+  `password` and `code` in recorded intents. [#1007]
+- **Browser Back and Forward** move between the login modes and the workspace
+  tabs, and the address, display name and code are checked as you type
+  ([#1012]); a password that breaks a rule now shows a red ✗, names the first
+  broken rule under the field and stops the submit ([#1022]).
+- **Every tagged week is a GitHub Release**, its notes generated from that
+  week's `CHANGELOG.md` section by `sync-releases.yml`. [#1026]
+
+### Changed
+
+- **Real URL paths** — `/credit`, `/create-account` — instead of the hash
+  (`/#/credit`). The `RouteHistory` port speaks routes, not URLs, so the move
+  touched one constant and one adapter. [#1019]
+- **The deployed server, hardened for registration:** POST routes only from an
+  origin allowlist with JSON bodies; sends looked up first, fused per path and
+  never awaited, so response time no longer tells whether an address has an
+  account; a 300 ms floor on a failed account login; never-confirmed accounts
+  purged after 48 h; sign-up rates as settings; every per-IP limiter also
+  limits an IPv6 caller's /48. [#1004]
+- **Unit tests run on vitest's `vmThreads` pool**, which stops re-importing the
+  environment per test file: 385 → 117 CPU-seconds across all suites, coverage
+  identical (`server` stays on `threads`; grep gate 54 holds both) ([#1021]).
+  CI's unit-test step is capped at 4 turbo tasks × 2 workers, which ended the
+  timeouts without changing wall time ([#1018]).
+- **One font manifest for both web clients and their visual tiers**, in
+  `@rtc/web-boot/fonts`, with a drift test; built output byte-identical. [#999]
+- **`CLAUDE.md` cut from 63k to 17k characters** — what the code or a gate
+  already says is gone, and the rest moved into skills that load on demand
+  ([#1010]); `.claude/commands/CLAUDE.md` no longer registers as a `/CLAUDE`
+  command ([#1011]).
+
+### Fixed
+
+- The Credit RFQ prototype test no longer times out on CI. [#1016]
+- A grep-gate exclude matches the file path, not the whole matched line. [#996]
+- The local Mac goldens for the stacked and floating dock scenarios are
+  re-pinned. [#1002]
+
+### Decisions
+
+- **The CI cache is Vercel's Remote Cache over GitHub OIDC**, with no stored
+  secret — five options measured and compared in
+  [ADR-008](docs/adr/ADR-008-ci-turbo-remote-cache.md). It is wired but
+  dormant until the operator's Vercel setup. [#1027]
+- **The repo-size options**, recorded without choosing one yet, and the right
+  Vercel account for DEPLOY's off-switch. [#1020]
+- **The changelog covers every week since the first commit**: W40 completed
+  and W41 written ([#1023]), then the PR era W27–W35 ([#1024]) and the
+  direct-commit era W12–W26 ([#1025]) backfilled, with retroactive week tags.
+
+### Under the hood
+
+- **Docs:** the operator's checklist for the hardening deploy ([#1005]); the
+  security model and an inventory of every setting and secret by location
+  ([#1006]); STATUS entries for the B2b follow-ups and the login-screen asks
+  ([#1008] [#1009] [#1013]).
+- **Tests:** the real-server browser smoke and the hybrid smoke run against
+  Solid as well as React ([#1014] [#1017]); the browser-history follow-ups and
+  one field-reveal helper per client ([#1015]).
+- **Agent workflow:** the hook asks before a push that can lose something on
+  the remote, and a dead permission rule is removed. [#998]
+- **Dependencies:** `smol-toml` lifted to 1.9.1 for GHSA-r4xh-jqrq-34v2
+  ([#1003]), and the weekly Renovate wave ([#939] [#940] [#944] [#997]).
+
 ## 2026-W41 — 5 Oct – 11 Oct
 
 The application core became hot-swappable: picking a core in Preferences swaps
@@ -3192,7 +3276,10 @@ Every commit: [`2026-W12`](https://github.com/bettersoftware-io/ReactiveTraderCl
 [#936]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/936
 [#937]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/937
 [#938]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/938
+[#939]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/939
+[#940]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/940
 [#941]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/941
+[#944]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/944
 [#945]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/945
 [#946]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/946
 [#947]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/947
@@ -3243,6 +3330,37 @@ Every commit: [`2026-W12`](https://github.com/bettersoftware-io/ReactiveTraderCl
 [#993]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/993
 [#994]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/994
 [#995]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/995
+[#996]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/996
+[#997]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/997
+[#998]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/998
+[#999]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/999
+[#1000]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1000
+[#1002]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1002
+[#1003]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1003
+[#1004]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1004
+[#1005]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1005
+[#1006]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1006
+[#1007]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1007
+[#1008]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1008
+[#1009]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1009
+[#1010]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1010
+[#1011]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1011
+[#1012]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1012
+[#1013]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1013
+[#1014]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1014
+[#1015]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1015
+[#1016]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1016
+[#1017]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1017
+[#1018]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1018
+[#1019]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1019
+[#1020]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1020
+[#1021]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1021
+[#1022]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1022
+[#1023]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1023
+[#1024]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1024
+[#1025]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1025
+[#1026]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1026
+[#1027]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1027
 
 [`007b6b325`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/007b6b32551f3d35184f10389c57a2529b122401
 [`0281b2a4e`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/0281b2a4e8c218a63eeb77e8c29c9a93accc1f9b
