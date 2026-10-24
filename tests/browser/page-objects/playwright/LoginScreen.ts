@@ -2,7 +2,7 @@ import { expect, type Page } from "@playwright/test";
 
 import type { AccountField, LoginScreenPO } from "../contracts/LoginScreen.ts";
 import { TESTIDS } from "../contracts/testids.ts";
-import { awaitAppMount } from "./appMount.ts";
+import { awaitAppMount, navigateAndAwaitMount } from "./appMount.ts";
 
 /**
  * Playwright impl of {@link LoginScreenPO}. Constructed with the PRIMARY app
@@ -258,5 +258,41 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
     return this.requestPaths.filter((requested) => {
       return requested.endsWith(path);
     }).length;
+  }
+
+  async openPath(path: string): Promise<void> {
+    const page = this.page();
+    await navigateAndAwaitMount(page, () => {
+      return page.goto(path);
+    });
+  }
+
+  async openAdminTab(): Promise<void> {
+    await this.page().getByTestId(TESTIDS.shell.tab("admin")).click();
+  }
+
+  async waitAdminTabAbsent(timeoutMs: number): Promise<void> {
+    await expect(
+      this.page().getByTestId(TESTIDS.shell.tab("admin")),
+    ).toHaveCount(0, { timeout: timeoutMs });
+  }
+
+  async approveAccount(email: string, timeoutMs: number): Promise<void> {
+    const page = this.page();
+    const row = page
+      .locator(`[data-testid^="${TESTIDS.admin.rowPrefix}"]`)
+      .filter({
+        has: page
+          .locator(`[data-testid^="${TESTIDS.admin.emailPrefix}"]`)
+          .getByText(email, { exact: true }),
+      });
+
+    const approve = row.locator(
+      `[data-testid^="${TESTIDS.admin.approvePrefix}"]`,
+    );
+
+    await expect(approve).toBeVisible({ timeout: timeoutMs });
+    await approve.click();
+    await expect(approve).toHaveCount(0, { timeout: timeoutMs });
   }
 }

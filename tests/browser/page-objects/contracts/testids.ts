@@ -111,6 +111,8 @@ export const TESTIDS = {
     forbidden: "users-forbidden",
     failed: "users-failed",
     rowPrefix: "user-row-",
+    emailPrefix: "user-email-",
+    approvePrefix: "user-approve-",
     row: (id: string) => {
       return `user-row-${id}`;
     },

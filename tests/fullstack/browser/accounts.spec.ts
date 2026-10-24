@@ -1,3 +1,4 @@
+import * as admin from "#/browser/scenarios/admin.js";
 import * as common from "#/browser/scenarios/common.js";
 import * as login from "#/browser/scenarios/login.js";
 
@@ -8,8 +9,8 @@ test.describe
     test("register, confirm, awaiting approval, then refused at sign-in", async ({
       ctx,
     }) => {
-      const email = `e2e-${Date.now()}@rtc.test`;
-      const password = "Correct-Horse-9x";
+      const email = REGISTERED_EMAIL;
+      const password = REGISTERED_PASSWORD;
 
       await login.openLoginScreen(ctx);
       await login.expectLoginTitle(ctx, `${TITLE}SIGN IN`);
@@ -35,6 +36,32 @@ test.describe
       await login.submitLogin(ctx);
       await login.expectAppShellVisible(ctx);
       await login.expectLoginScreenGone(ctx);
+    });
+
+    test("an administrator approves the registered account, which then signs in without the Admin tab", async ({
+      ctx,
+    }) => {
+      await login.openLoginScreen(ctx);
+      await login.typeUsername(ctx, "admin@rtc.test");
+      await login.typePassword(ctx, SEED_PASSWORD);
+      await login.submitLogin(ctx);
+      await login.expectAppShellVisible(ctx);
+      await admin.openAdminTab(ctx);
+      await admin.approveAccount(ctx, REGISTERED_EMAIL);
+
+      // A new context: the registered account signs in for the first time.
+      await login.openLoginScreen(ctx);
+      await login.typeUsername(ctx, REGISTERED_EMAIL);
+      await login.typePassword(ctx, REGISTERED_PASSWORD);
+      await login.submitLogin(ctx);
+      await login.expectAppShellVisible(ctx);
+      await admin.expectAdminTabAbsent(ctx);
+
+      // A plain user's /admin falls back to /fx.
+      await admin.openAdminRoute(ctx);
+      await login.expectAppShellVisible(ctx);
+      await login.expectUrlPath(ctx, "/fx");
+      await admin.expectAdminTabAbsent(ctx);
     });
 
     test("forgot password changes a seed's password", async ({ ctx }) => {
@@ -149,7 +176,7 @@ test.describe("full-stack: browser history through the login modes", () => {
 // directory, seeded admin@ / trader@ / pending@ / blocked@rtc.test with
 // password "Mcdc2026!desk" and dev code 00000000). Every assertion delegates
 // to scenario helpers. Request budget for one IP: 1 register, 1 confirm,
-// 1 reset request, 1 reset confirm, 4 logins — inside every limit. The
+// 1 reset request, 1 reset confirm, 6 logins (10 per minute per IP; the seeded fullstack.spec cases add 3 more) — inside every limit. The
 // local-refusal cases send nothing, so they add no server request.
 //
 // Copy strings mirror @rtc/core-logic's accountAccessCopy.ts / shellFolds.ts
@@ -157,3 +184,7 @@ test.describe("full-stack: browser history through the login modes", () => {
 const TITLE = "REACTIVE TRADER OS · ";
 
 const SEED_PASSWORD = "Mcdc2026!desk";
+
+// The account the serial journey registers, then has an administrator approve.
+const REGISTERED_EMAIL = `e2e-${Date.now()}@rtc.test`;
+const REGISTERED_PASSWORD = "Correct-Horse-9x";
