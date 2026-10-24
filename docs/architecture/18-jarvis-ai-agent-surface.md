@@ -1082,16 +1082,20 @@ something readable to show. A non-`POST` method gets 405 with an `Allow: POST`
 header (RFC 9110 §15.5.6) — this endpoint is stateless-only, so `GET` (session
 resumption) and `DELETE` (session teardown) have nothing to attach to.
 
-Two lines get an MCP client talking to a local server:
+Since B2c, `/mcp` admits only an active administrator with a live session
+(roster tokens and ordinary users get `403 admin_only`; an unreadable store
+`503`). Start the server with `pnpm dev:*:ws` (it sets `RTC_DEV_ACCOUNTS=1`)
+and two lines get an MCP client talking to it, signed in as the seeded
+administrator:
 
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:4000/login -H 'Content-Type: application/json' \
-  -d '{"username":"demo","password":"mcdc2026"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+  -d '{"username":"admin@rtc.test","password":"Mcdc2026!desk"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
 claude mcp add --transport http rtc-desk http://localhost:4000/mcp --header "Authorization: Bearer $TOKEN"
 ```
 
-Point the first line at `https://rtc-clone-server.fly.dev/login` instead for
-the deployed server (subject to whichever `RTC_JARVIS_FAKE`/`ANTHROPIC_API_KEY`
+For the deployed server, sign in as the administrator account at
+`https://rtc-clone-server.fly.dev/login` instead (subject to whichever `RTC_JARVIS_FAKE`/`ANTHROPIC_API_KEY`
 decision STATUS.md's Jarvis entry records at the time — the tools work either
 way, since they read the desk's live simulators, not the loop). Both the
 `token` field name and the `claude mcp add --transport http <name> <url>

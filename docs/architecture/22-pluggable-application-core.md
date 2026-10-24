@@ -556,7 +556,7 @@ flight), then fires `disposed$`.
 `@rtc/core-contract` mirrors `@rtc/ui-contract`'s shape at a different
 boundary. `CONTRACT_SUITES` is an exhaustive `Record<ContractMember, Suite |
 null>` — one entry per `Presenters` member, per `MachineFactories` member,
-and per `AppCommands` member (76 members: 61 presenters, 13 machines, 2
+and per `AppCommands` member (78 members: 62 presenters, 14 machines, 2
 commands). Four cross-member suites sit beside the registry, witnessing
 properties of the whole composition: `portDiscipline`, (slice 8)
 `transportGate`, `dispose` (ADR-006 Follow-up 6: after a signed-in
