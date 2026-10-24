@@ -29,11 +29,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
-interface Week {
-  tag: string;
-  title: string;
-  section: string;
-}
+import { parseDefinitions, parseWeeks, type Week } from "./changelog.mts";
 
 interface Release {
   id: number;
@@ -117,33 +113,6 @@ if (args.body !== undefined) {
   if (args.apply) {
     applyPlan(plan, args.repo);
   }
-}
-
-function parseWeeks(text: string): Week[] {
-  const body = text
-    .split("\n")
-    .filter((line): boolean => {
-      return !/^\[[^\]]+\]: \S+$/.test(line);
-    })
-    .join("\n");
-  const parts = body.split(/\n(?=## \d{4}-W\d\d )/).slice(1);
-
-  return parts.map((part): Week => {
-    const [heading, ...rest] = part.split("\n");
-    const title = heading.slice(3).trim();
-    const tag = title.slice(0, 8);
-    return { tag, title, section: rest.join("\n").trim() };
-  });
-}
-
-function parseDefinitions(text: string): Map<string, string> {
-  const defs = new Map<string, string>();
-
-  for (const m of text.matchAll(/^\[([^\]]+)\]: (\S+)$/gm)) {
-    defs.set(m[1], m[2]);
-  }
-
-  return defs;
 }
 
 function renderReleaseBody(

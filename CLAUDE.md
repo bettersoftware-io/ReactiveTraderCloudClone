@@ -81,7 +81,8 @@ and dozens of merges old.
 | `visual.yml` | push to main (post-merge, **not** a PR gate) | — |
 | `publish-site.yml` | push to main | — |
 | `e2e-gherkin-weekly.yml` | weekly cron (Mon 06:00) | up to 7 days of Gherkin drift |
-| `weekly-tag.yml` | weekly cron (Mon 00:05 UTC) | — (tags the finished ISO week `2026-Wnn` and opens a "write the changelog" issue; the entry itself is written by `/rtc:changelog`, so `CHANGELOG.md` lags until someone runs it) |
+| `weekly-tag.yml` | weekly cron (Mon 00:05 UTC) | — (tags the finished ISO week `2026-Wnn`, dated at the week's end so releases sort in order, and opens a "write the changelog" issue; the entry itself is written by `/rtc:changelog`, so `CHANGELOG.md` lags until someone runs it) |
+| `changelog-check.yml` | PRs touching `CHANGELOG.md` or `scripts/changelog/` | — (every week cites exactly the PRs merged in it, a finished week all of them; definitions match citations. The same checker lists outstanding weeks in the Monday reminder issue) |
 | `sync-releases.yml` | push to main touching `CHANGELOG.md` + cron (Mon 00:30 UTC) | — (one GitHub Release per tagged week, its notes generated from that week's `CHANGELOG.md` section; a release edited by hand is overwritten, so edit the changelog) |
 | `accounts-keepalive.yml` | cron (Mon + Thu 07:17 UTC) | — (reads the deployed server's `/health/accounts`, which keeps a free-plan Supabase project from pausing; fails when the account store reads `down`, e.g. a paused project) |
 

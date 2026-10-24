@@ -1,13 +1,13 @@
 ---
 name: authoring-slash-commands
-description: Use when creating or editing a project slash command under .claude/commands/ — its !`…` pre-execution blocks fail silently on shell control flow, and any .md file placed in that directory becomes a command.
+description: Use when creating or editing a project slash command under .claude/commands/ — its bang-backtick pre-execution blocks fail silently on shell control flow, and any .md file placed in that directory becomes a command.
 ---
 
 # Authoring project slash commands
 
 **Every `.md` file under `.claude/commands/` is registered as a command** — a `README.md` or `CLAUDE.md` dropped there for documentation becomes `/README` or `/CLAUDE`. Keep notes about the commands here, not beside them.
 
-**Authoring trap — keep `` !`…` `` blocks free of shell control flow.** Those
+**Authoring trap — keep bang-backtick pre-execution blocks (an exclamation mark, then a backtick-quoted command) free of shell control flow.** Those
 pre-execution blocks are parsed and matched against the command's
 `allowed-tools` *before* they run; a construct the parser won't analyse fails
 closed (`Contains case_statement`) and the block yields an error instead of
