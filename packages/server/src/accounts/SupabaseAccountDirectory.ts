@@ -70,7 +70,12 @@ type CodeAndPassword =
   | { readonly step: "code-unreachable" }
   | { readonly step: "code-refused" }
   | { readonly step: "no-session" }
-  | { readonly step: "password-answered"; readonly reply: Reply };
+  | {
+      readonly step: "password-answered";
+      readonly reply: Reply;
+      /** The verified user's id, when verification carried one. */
+      readonly userId: string | null;
+    };
 
 /**
  * The account directory over Supabase's REST endpoints — Auth for
@@ -213,7 +218,11 @@ export function createSupabaseAccountDirectory(
 
     await closeSession(session);
 
-    return { step: "password-answered", reply };
+    return {
+      step: "password-answered",
+      reply,
+      userId: readString(readField(verified.body, "user"), "id"),
+    };
   }
 
   /**
@@ -404,7 +413,7 @@ export function createSupabaseAccountDirectory(
         return "unavailable";
       }
 
-      const { reply } = result;
+      const { reply, userId } = result;
 
       // A throttled update says nothing about the password, so it is not
       // `rejected` (which tells the user to choose another).
@@ -418,7 +427,7 @@ export function createSupabaseAccountDirectory(
       // The code is spent either way; `same_password` means the password
       // already is what the user asked for.
       return reply.kind === "ok" || reply.errorCode === "same_password"
-        ? "changed"
+        ? { outcome: "changed", accountId: userId }
         : "rejected";
     },
 

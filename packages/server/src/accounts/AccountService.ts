@@ -14,7 +14,11 @@ import type {
 } from "@rtc/shared";
 
 import type { RateLimiter } from "../auth/rateLimit.js";
-import type { AccountDirectory, AccountRecord } from "./AccountDirectory.js";
+import type {
+  AccountDirectory,
+  AccountRecord,
+  AdminWrite,
+} from "./AccountDirectory.js";
 
 const DAY_MS = 24 * 60 * 60 * 1_000;
 /** Each send fuse counts its path's sends under one key. */
@@ -391,17 +395,24 @@ export function createAccountService(
       return { outcome: "invalid", rule: "password" };
     }
 
-    if (changed === "changed") {
-      await endSessionsAfterReset(email);
+    if (typeof changed === "string") {
+      return { outcome: changed };
     }
 
-    return { outcome: changed };
+    await endSessionsAfterReset(changed.accountId, email);
+
+    return { outcome: "changed" };
   }
 
   /** A password reset ends every session of the account. Never changes the
-   * reset's outcome: the password HAS changed. Logs the account id only. */
-  async function endSessionsAfterReset(email: string): Promise<void> {
-    const found = await findForReset(email);
+   * reset's outcome: the password HAS changed. The id comes from the reset
+   * itself; only a store that did not say falls back to a lookup. Logs the
+   * account id only. */
+  async function endSessionsAfterReset(
+    knownId: string | null,
+    email: string,
+  ): Promise<void> {
+    const found = knownId ?? (await findForReset(email));
 
     if (found === null) {
       options.log("[accounts] reset-lookup-failed");
@@ -431,7 +442,7 @@ export function createAccountService(
     }
   }
 
-  async function stampOnce(accountId: string): Promise<string> {
+  async function stampOnce(accountId: string): Promise<AdminWrite> {
     try {
       return await directory.revokeSessions(accountId, options.now());
     } catch {

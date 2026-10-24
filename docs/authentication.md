@@ -691,8 +691,11 @@ no account and skip it). The status comes through `accountStatusCache`:
 
 - one store lookup per account per `ACCOUNT_STATUS_CACHE_TTL_MS` (60 s), and
   only one in flight per account, so a reconnect storm costs one call;
-- only `active` is admitted; anything else — unconfirmed, pending, blocked,
-  or the account gone — is `403` (logged as `account-not-active`);
+- only an `active` account with a live session is served; anything else —
+  unconfirmed, pending, blocked, the account gone, or a token issued before
+  the account's `sessionsNotBefore` stamp — is accepted at the handshake and
+  closed at once with `4401` (logged as `session-ended`), so the browser can
+  tell "signed out" from "server down";
 - a lookup that fails, throws or times out reads as unavailable and is
   never cached: the upgrade answers `503` (`accounts-unavailable`) — the gate
   fails closed;

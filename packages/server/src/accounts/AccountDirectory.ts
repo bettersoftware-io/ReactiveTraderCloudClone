@@ -40,7 +40,11 @@ export type ConfirmOutcome =
   | "unavailable";
 
 export type ResetOutcome =
-  | "changed"
+  | {
+      readonly outcome: "changed";
+      /** The account whose password changed, when the store says which. */
+      readonly accountId: string | null;
+    }
   | "invalid_code"
   | "rejected"
   | "unavailable";

@@ -10,6 +10,10 @@ import {
   createAccountStatusCache,
 } from "#/accounts/accountStatusCache";
 import { createRevocationLedger } from "#/accounts/revocationLedger";
+import {
+  createSessionRegistry,
+  type SessionRegistry,
+} from "#/accounts/sessionRegistry";
 import { AuthService, parseAuthUsers } from "#/auth/AuthService";
 import { createBanList } from "#/auth/banList";
 import { signToken } from "#/auth/token";
@@ -87,6 +91,7 @@ describe("decideUpgrade", () => {
       ok: true,
       status: 200,
       caller: { username: "ann@desk.io", accountId: "acc-1", issuedAt: NOW },
+      revocationEpoch: 0,
     });
     expect(deps.asked).toEqual(["acc-1"]);
   });
@@ -106,10 +111,41 @@ describe("decideUpgrade", () => {
         ok: true,
         status: 200,
         sessionEnded: true,
+        revocationEpoch: 0,
         caller: { username: "ann@desk.io", accountId: "acc-1", issuedAt: NOW },
       });
     },
   );
+
+  it("carries the epoch read BEFORE the status lookup, so a revocation during the lookup is visible later", async () => {
+    const deps = createDeps({ status: "active" });
+    let release: (account: CachedAccount) => void = ignoreCall;
+    const lookup = new Promise<CachedAccount>((resolve) => {
+      release = resolve;
+    });
+
+    const pending = decideUpgrade(
+      `/?access=${createAccountToken()}`,
+      "1.2.3.4",
+      {
+        ...deps,
+        accountStatus: {
+          read: (): Promise<CachedAccount> => {
+            return lookup;
+          },
+          invalidate: ignoreCall,
+        },
+      },
+    );
+
+    deps.sessions.closeAll("acc-1");
+    release({ status: "active", sessionsNotBefore: null });
+
+    const verdict = await pending;
+
+    expect(verdict.revocationEpoch).toBe(0);
+    expect(deps.sessions.epochOf("acc-1")).toBeGreaterThan(0);
+  });
 
   it("marks a token with no issued-at as ended", async () => {
     const deps = createDeps({ status: "active" });
@@ -228,6 +264,7 @@ interface GateOverrides {
 }
 
 interface GateFixture extends UpgradeGateDeps {
+  readonly sessions: SessionRegistry;
   /** The account ids the gate asked a status for, in order. */
   readonly asked: string[];
 }
@@ -273,6 +310,7 @@ function createDeps(overrides: GateOverrides = {}): GateFixture {
       invalidate: (): void => {},
     },
     revocations: createRevocationLedger(10),
+    sessions: createSessionRegistry(),
     now: (): number => {
       return NOW;
     },
@@ -304,4 +342,8 @@ function signLegacyAccountToken(): string {
   ).toString("base64url");
 
   return `${payload}.${createHmac("sha256", SECRET).update(payload).digest("base64url")}`;
+}
+
+function ignoreCall(): void {
+  // A stand-in for a callback this test never needs.
 }

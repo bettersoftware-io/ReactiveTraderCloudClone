@@ -268,7 +268,7 @@ export function createInMemoryAccountDirectory(
       entry.confirmed = true;
       entry.resetRequested = false;
 
-      return "changed";
+      return { outcome: "changed", accountId: entry.id };
     },
 
     findAccount(accountId: string): Promise<AccountLookup> {

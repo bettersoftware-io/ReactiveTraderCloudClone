@@ -1,6 +1,7 @@
 import type { AccountStatusCache } from "../accounts/accountStatusCache.js";
 import type { RevocationLedger } from "../accounts/revocationLedger.js";
 import { hasSessionEnded } from "../accounts/sessionEnd.js";
+import type { SessionRegistry } from "../accounts/sessionRegistry.js";
 import type { AuthService } from "../auth/AuthService.js";
 import type { BanList } from "../auth/banList.js";
 import type { Caller } from "../services/serviceContainer.js";
@@ -13,18 +14,24 @@ export interface UpgradeGateDeps {
   readonly connections: ConnectionGuard;
   readonly accountStatus: AccountStatusCache;
   readonly revocations: RevocationLedger;
+  /** Read for the account's revocation epoch before the status lookup. */
+  readonly sessions: Pick<SessionRegistry, "epochOf">;
   readonly now: () => number;
 }
 
 export interface UpgradeVerdict {
   readonly ok: boolean;
-  readonly status: 200 | 401 | 403 | 429 | 503;
+  readonly status: 200 | 401 | 429 | 503;
   readonly reason?: UpgradeRejection;
   /** Set when `ok`: who is on the other end. */
   readonly caller?: Caller;
   /** `ok` and true: accept the handshake, then close at once with the
    * session-ended code, so the browser can tell "signed out" from "down". */
   readonly sessionEnded?: boolean;
+  /** The account's revocation epoch as read BEFORE its status was looked up.
+   * `connection` compares it with the registry's current one: a larger value
+   * means the sessions were ended while the lookup was in flight. */
+  readonly revocationEpoch?: number;
 }
 
 /** The whole upgrade decision, cheapest check first: a banned IP costs a Map
@@ -74,6 +81,8 @@ export async function decideUpgrade(
     return { ok: true, status: 200, caller };
   }
 
+  // Before the await: a revocation that lands during the lookup must be seen.
+  const revocationEpoch = deps.sessions.epochOf(token.accountId);
   const account = await deps.accountStatus.read(token.accountId);
   const verdict = hasSessionEnded(
     token.issuedAt,
@@ -93,8 +102,14 @@ export async function decideUpgrade(
   }
 
   if (verdict === "ended") {
-    return { ok: true, status: 200, caller, sessionEnded: true };
+    return {
+      ok: true,
+      status: 200,
+      caller,
+      sessionEnded: true,
+      revocationEpoch,
+    };
   }
 
-  return { ok: true, status: 200, caller };
+  return { ok: true, status: 200, caller, revocationEpoch };
 }

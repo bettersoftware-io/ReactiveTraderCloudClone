@@ -240,7 +240,10 @@ describe("SupabaseAccountDirectory — codes and passwords", () => {
 
   it("a reset verifies the code, then updates with the returned token", async () => {
     const fake = createFakeFetch([
-      createReply(200, { access_token: "recovery-token" }),
+      createReply(200, {
+        access_token: "recovery-token",
+        user: { id: ACCOUNT_ID },
+      }),
       createReply(200, {}),
     ]);
 
@@ -251,7 +254,7 @@ describe("SupabaseAccountDirectory — codes and passwords", () => {
         "Fresh2026!pass",
         IP,
       ),
-    ).toBe("changed");
+    ).toEqual({ outcome: "changed", accountId: ACCOUNT_ID });
     expect(fake.requests[0]?.body).toBe(
       JSON.stringify({
         type: "recovery",
@@ -293,13 +296,27 @@ describe("SupabaseAccountDirectory — codes and passwords", () => {
 
   it("a reset refused as the same password is changed: the password already is what was asked", async () => {
     const fake = createFakeFetch([
-      createReply(200, { access_token: "recovery-token" }),
+      createReply(200, {
+        access_token: "recovery-token",
+        user: { id: ACCOUNT_ID },
+      }),
       createReply(422, { error_code: "same_password" }),
     ]);
 
     expect(
       await createDirectory(fake).resetPassword("ann@desk.io", "1", "pw", IP),
-    ).toBe("changed");
+    ).toEqual({ outcome: "changed", accountId: ACCOUNT_ID });
+  });
+
+  it("a reset whose verification carries no user id still changes, with no id", async () => {
+    const fake = createFakeFetch([
+      createReply(200, { access_token: "recovery-token" }),
+      createReply(200, {}),
+    ]);
+
+    expect(
+      await createDirectory(fake).resetPassword("ann@desk.io", "1", "pw", IP),
+    ).toEqual({ outcome: "changed", accountId: null });
   });
 });
 
@@ -426,7 +443,7 @@ describe("SupabaseAccountDirectory — sessions are closed", () => {
       ]);
 
       const reset = createFakeFetch([
-        createReply(200, { access_token: "t" }),
+        createReply(200, { access_token: "t", user: { id: ACCOUNT_ID } }),
         createReply(200, {}),
         ...logoutReplies,
       ]);
@@ -449,7 +466,7 @@ describe("SupabaseAccountDirectory — sessions are closed", () => {
           "pw",
           IP,
         ),
-      ).toBe("changed");
+      ).toEqual({ outcome: "changed", accountId: ACCOUNT_ID });
     },
   );
 });

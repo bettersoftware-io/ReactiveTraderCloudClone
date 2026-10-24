@@ -19,6 +19,7 @@ import { createMcpRequestHandler } from "./mcpHttpHandler.js";
 
 describe("createMcpRequestHandler", () => {
   beforeEach(async () => {
+    findAccountError = null;
     lookup = { outcome: "found", account: createRecord({}) };
     revocations = createRevocationLedger(10);
     auth = new AuthService({
@@ -36,7 +37,9 @@ describe("createMcpRequestHandler", () => {
       tools,
       accounts: {
         findAccount: (): Promise<AccountLookup> => {
-          return Promise.resolve(lookup);
+          return findAccountError === null
+            ? Promise.resolve(lookup)
+            : Promise.reject(findAccountError);
         },
       },
       revocations,
@@ -146,6 +149,14 @@ describe("createMcpRequestHandler", () => {
     expect(response.status).toBe(405);
   });
 
+  it("answers 503 (never admits) when the directory throws", async () => {
+    findAccountError = new Error("socket hang up");
+
+    const response = await postToolsList(adminToken());
+
+    expect(response.status).toBe(503);
+  });
+
   it("answers 503 when the directory cannot be read", async () => {
     lookup = { outcome: "unavailable" };
 
@@ -170,6 +181,8 @@ describe("createMcpRequestHandler", () => {
   let auth: AuthService;
 
   let lookup: AccountLookup;
+
+  let findAccountError: Error | null;
 
   let revocations: ReturnType<typeof createRevocationLedger>;
 

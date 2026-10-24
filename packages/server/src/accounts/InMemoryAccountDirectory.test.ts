@@ -147,7 +147,10 @@ describe("InMemoryAccountDirectory", () => {
         next,
         IP,
       ),
-    ).toBe("changed");
+    ).toMatchObject({
+      outcome: "changed",
+      accountId: expect.any(String),
+    });
     expect(
       (await directory.checkPassword("trader@rtc.test", next, IP)).outcome,
     ).toBe("match");
@@ -174,7 +177,10 @@ describe("InMemoryAccountDirectory", () => {
         PASSWORD,
         IP,
       ),
-    ).toBe("changed");
+    ).toMatchObject({
+      outcome: "changed",
+      accountId: expect.any(String),
+    });
 
     const check = await directory.checkPassword("ann@desk.io", PASSWORD, IP);
 
@@ -255,7 +261,10 @@ describe("InMemoryAccountDirectory", () => {
         next,
         IP,
       ),
-    ).toBe("changed");
+    ).toMatchObject({
+      outcome: "changed",
+      accountId: expect.any(String),
+    });
     expect(
       (await directory.checkPassword("trader@rtc.test", next, IP)).outcome,
     ).toBe("match");

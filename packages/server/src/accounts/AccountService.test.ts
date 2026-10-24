@@ -685,14 +685,58 @@ describe("AccountService.resetPassword ends the account's sessions", () => {
     expect(lines.join("\n")).not.toContain("ann@desk.io");
   });
 
+  it("uses the id the reset reports and never looks the address up", async () => {
+    const { service, revoked, lookups } = createRevokingFixture({
+      revokeSessions: () => {
+        return Promise.resolve("ok");
+      },
+    });
+
+    await service.resetPassword(RESET_REQUEST, IP);
+
+    expect(lookups).not.toHaveBeenCalled();
+    expect(revoked).toEqual([[RESET_ID, true]]);
+  });
+
+  it("with the id in hand and the store down, still reports the account unstamped", async () => {
+    const { service, revoked, lookups } = createRevokingFixture({
+      revokeSessions: () => {
+        return Promise.resolve("unavailable");
+      },
+      findByEmail: () => {
+        return Promise.resolve({ outcome: "unavailable" });
+      },
+    });
+
+    await service.resetPassword(RESET_REQUEST, IP);
+
+    expect(lookups).not.toHaveBeenCalled();
+    expect(revoked).toEqual([[RESET_ID, false]]);
+  });
+
+  it("falls back to a lookup by address when the reset reported no id", async () => {
+    const { service, revoked, lookups } = createRevokingFixture({
+      resetAccountId: null,
+      revokeSessions: () => {
+        return Promise.resolve("ok");
+      },
+    });
+
+    await service.resetPassword(RESET_REQUEST, IP);
+
+    expect(lookups).toHaveBeenCalledExactlyOnceWith("ann@desk.io");
+    expect(revoked).toEqual([[RESET_ID, true]]);
+  });
+
   it.each(["unavailable", "missing"] as const)(
-    "still answers changed, calls nothing and logs one fixed line when the lookup says %s",
+    "still answers changed, calls nothing and logs one fixed line when no id was reported and the lookup says %s",
     async (outcome) => {
       const revokeSessions = vi.fn((): Promise<AdminWrite> => {
         return Promise.resolve("ok");
       });
 
       const { service, revoked, lines } = createRevokingFixture({
+        resetAccountId: null,
         revokeSessions,
         findByEmail: () => {
           return Promise.resolve({ outcome });
@@ -708,8 +752,9 @@ describe("AccountService.resetPassword ends the account's sessions", () => {
     },
   );
 
-  it("still answers changed when the lookup throws", async () => {
+  it("still answers changed when no id was reported and the lookup throws", async () => {
     const { service, revoked, lines } = createRevokingFixture({
+      resetAccountId: null,
       revokeSessions: () => {
         return Promise.resolve("ok");
       },
@@ -1696,12 +1741,16 @@ function spyOnSends(directory: AccountDirectory): () => number {
 interface RevokingOverrides {
   readonly revokeSessions: AccountDirectory["revokeSessions"];
   readonly findByEmail?: AccountDirectory["findByEmail"];
+  /** The id the reset reports; the default is RESET_ID, `null` is a store
+   * that did not say. */
+  readonly resetAccountId?: string | null;
 }
 
 interface RevokingFixture {
   readonly service: AccountService;
   readonly revoked: [string, boolean][];
   readonly lines: string[];
+  readonly lookups: ReturnType<typeof vi.fn>;
 }
 
 const RESET_ID = "00000000-0000-4000-8000-0000000000bb";
@@ -1714,12 +1763,8 @@ const RESET_REQUEST: ResetPasswordRequestDto = {
 function createRevokingFixture(overrides: RevokingOverrides): RevokingFixture {
   const revoked: [string, boolean][] = [];
   const lines: string[] = [];
-  const directory = createDoubleDirectory({
-    resetPassword: () => {
-      return Promise.resolve("changed");
-    },
-    findByEmail:
-      overrides.findByEmail ??
+  const lookups = vi.fn(
+    overrides.findByEmail ??
       ((): Promise<AccountLookup> => {
         return Promise.resolve({
           outcome: "found",
@@ -1730,6 +1775,19 @@ function createRevokingFixture(overrides: RevokingOverrides): RevokingFixture {
           },
         });
       }),
+  );
+
+  const directory = createDoubleDirectory({
+    resetPassword: () => {
+      return Promise.resolve({
+        outcome: "changed",
+        accountId:
+          overrides.resetAccountId === undefined
+            ? RESET_ID
+            : overrides.resetAccountId,
+      });
+    },
+    findByEmail: lookups,
     revokeSessions: overrides.revokeSessions,
   });
 
@@ -1743,5 +1801,5 @@ function createRevokingFixture(overrides: RevokingOverrides): RevokingFixture {
     },
   });
 
-  return { service, revoked, lines };
+  return { service, revoked, lines, lookups };
 }

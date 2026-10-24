@@ -243,8 +243,11 @@ from the outside with no logging framework and no client inspector:
 - **upgrade-reject** logs the [`describeUpgrade`](src/http/loginHandler.ts) reason
   — `no-token` (never signed in — the pre-login case), `invalid-token`
   (expired/bad), `no-url`, the edge guards `banned`, `too-many-connections`
-  and `too-many-from-ip`, and for a registered account `account-not-active`
-  or `accounts-unavailable` — and **never the token itself**.
+  and `too-many-from-ip`, and `accounts-unavailable` when a registered
+  account's store does not answer — and **never the token itself**. A registered
+  account whose session has ended (blocked, unapproved, deleted, renamed, reset,
+  or an old token) is not rejected: the handshake is accepted and the socket
+  closed at once with `4401`, counted as `session-ended`.
 
 Watch it live:
 

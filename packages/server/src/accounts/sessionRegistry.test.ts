@@ -21,6 +21,49 @@ describe("sessionRegistry", () => {
     expect(other.closes).toEqual([]);
   });
 
+  it("an account never ended reads epoch 0; each end moves it up, from one shared counter", () => {
+    const registry = createSessionRegistry();
+
+    expect(registry.epochOf("acc-1")).toBe(0);
+
+    registry.closeAll("acc-1");
+    const first = registry.epochOf("acc-1");
+    registry.closeAll("acc-2");
+    const other = registry.epochOf("acc-2");
+    registry.closeAll("acc-1");
+
+    expect(first).toBeGreaterThan(0);
+    expect(other).toBeGreaterThan(first);
+    expect(registry.epochOf("acc-1")).toBeGreaterThan(other);
+  });
+
+  it("bumps the epoch before closing sockets, so a close handler sees the new one", () => {
+    const registry = createSessionRegistry();
+    const seen: number[] = [];
+    registry.register("acc-1", {
+      close: (): void => {
+        seen.push(registry.epochOf("acc-1"));
+      },
+    });
+
+    registry.closeAll("acc-1");
+
+    expect(seen).toEqual([registry.epochOf("acc-1")]);
+    expect(seen[0]).toBeGreaterThan(0);
+  });
+
+  it("keeps the epoch map bounded, and an evicted account reads 0 (never above a capture)", () => {
+    const registry = createSessionRegistry(2);
+
+    registry.closeAll("acc-1");
+    registry.closeAll("acc-2");
+    registry.closeAll("acc-3");
+
+    expect(registry.epochOf("acc-1")).toBe(0);
+    expect(registry.epochOf("acc-2")).toBeGreaterThan(0);
+    expect(registry.epochOf("acc-3")).toBeGreaterThan(0);
+  });
+
   it("does not close an unregistered socket", () => {
     const registry = createSessionRegistry();
     const gone = createSocket();

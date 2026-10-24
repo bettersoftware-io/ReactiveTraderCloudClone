@@ -8,7 +8,7 @@ import {
   type JarvisToolDefinition,
 } from "@rtc/agent-tools";
 import { KNOWN_CURRENCY_PAIRS } from "@rtc/domain";
-import { SESSION_ENDED_CLOSE_CODE, SESSION_ENDED_REASON } from "@rtc/shared";
+import { SESSION_ENDED_CLOSE_CODE } from "@rtc/shared";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
 import { createAccountService } from "./accounts/AccountService.js";
@@ -68,6 +68,7 @@ import {
 } from "./http/accountLimits.js";
 import { createAccountsHealth } from "./http/accountsHealth.js";
 import { resolveClientIp, resolveTrustedIpHeader } from "./http/clientIp.js";
+import { decideConnection } from "./http/decideConnection.js";
 import {
   authenticateLoginRequest,
   type UpgradeRejection,
@@ -449,6 +450,7 @@ const gateDeps: UpgradeGateDeps = {
   connections,
   accountStatus,
   revocations,
+  sessions: sessionRegistry,
   now: readClock,
 };
 
@@ -467,7 +469,8 @@ const wss = new WebSocketServer({
   // caller that never signed in, or an expired/bad token). /health and
   // /login stay reachable (HTTP routes, not WS upgrades). A registered
   // account's token is then re-checked against the account's current status
-  // (403, or 503 when the account store does not answer). A rejection is
+  // (503 when the account store does not answer; an ended session is
+  // accepted, then closed 4401 by `connection`). A rejection is
   // logged by reason — never the token itself.
   verifyClient: (
     info: Parameters<VerifyClientCallbackAsync>[0],
@@ -520,25 +523,33 @@ wss.on("connection", (ws, req) => {
     connectionLog.recordDisconnect();
   });
 
-  // Never happens (`verifyClient` stores one before `connection` runs); if
-  // it ever does, no caller is known, so nothing may be served.
-  if (verdict?.caller === undefined) {
-    console.log("[ws] connection-without-verdict");
+  // Decided and registered in one synchronous step: a revocation cannot slip
+  // between the epoch check and `register`.
+  const decision = decideConnection(verdict, sessionRegistry);
+
+  if (decision.kind === "close") {
+    if (decision.code === SESSION_ENDED_CLOSE_CODE) {
+      connectionLog.recordSessionEnded();
+    } else {
+      // Never happens (`verifyClient` stores a verdict first): fixed line,
+      // no account data.
+      console.log("[ws] connection-without-verdict");
+    }
+
+    ws.close(decision.code, decision.reason);
+    return;
+  }
+
+  if (decision.accountId !== null) {
+    const unregister = sessionRegistry.register(decision.accountId, ws);
+    ws.on("close", unregister);
+  }
+
+  const caller = verdict?.caller;
+
+  if (caller === undefined) {
     ws.close(1011, "internal");
     return;
-  }
-
-  const { caller } = verdict;
-
-  if (verdict.sessionEnded === true) {
-    connectionLog.recordSessionEnded();
-    ws.close(SESSION_ENDED_CLOSE_CODE, SESSION_ENDED_REASON);
-    return;
-  }
-
-  if (caller.accountId !== null) {
-    const unregister = sessionRegistry.register(caller.accountId, ws);
-    ws.on("close", unregister);
   }
 
   // S8 — a per-socket token bucket in front of the effects; S10 — a
