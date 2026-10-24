@@ -294,6 +294,32 @@ export function describeAccountListContract(
       });
     });
 
+    it("signing out cancels a load still in flight: the port call is cut and a late answer changes nothing", async () => {
+      await withFakeClock(async (clock) => {
+        vi.setSystemTime(NOW);
+        const h = makeHarness(createAdminSeed(0));
+
+        try {
+          const c = collect(h.app.presenters.accountList.state$);
+          await clock.settle();
+          expect(h.driver.pendingAccountLists()).toBe(1);
+          h.app.presenters.auth.logout();
+          await clock.settle();
+          expect(h.driver.pendingAccountLists()).toBe(0);
+          h.driver.emitAccountList({
+            ok: true,
+            accounts: [createAccount("a-row", "pending", 1)],
+          });
+          await clock.settle();
+          expect(c.values.at(-1)).toEqual(LOADING);
+          expect(h.driver.portCalls("accountAdmin.listAccounts")).toBe(1);
+          c.unsubscribe();
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
     it("a different user signing in while nobody is subscribed loads on the next first subscription, not before", async () => {
       await withFakeClock(async (clock) => {
         vi.setSystemTime(NOW);
