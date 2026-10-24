@@ -5,7 +5,6 @@ import type {
   PanelSpec,
 } from "@rtc/core-api";
 
-import { AdminDashboard } from "#/ui/admin/AdminDashboard";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
 import { NewRfqPanel } from "#/ui/credit/newRfq/NewRfqPanel";
 import { RfqsPanel } from "#/ui/credit/rfqs/RfqsPanel";
@@ -20,6 +19,7 @@ import { AnalyticsPanel } from "#/ui/fx/analytics/AnalyticsPanel";
 import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
 import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
 import { PositionsPanel } from "#/ui/fx/positions/PositionsPanel";
+import { OpsDashboard } from "#/ui/ops/OpsDashboard";
 import { JarvisDockedPanelBody } from "#/ui/shell/jarvis/panels/JarvisDockedPanelBody";
 
 import type { PanelRegistry } from "./panelRegistry";
@@ -61,8 +61,8 @@ export const appPanelRegistry: PanelRegistry = {
   "credit-sell-side": () => {
     return <SellSidePanel />;
   },
-  "admin-dashboard": () => {
-    return <AdminDashboard />;
+  "ops-dashboard": () => {
+    return <OpsDashboard />;
   },
   "eq-chart": () => {
     return <ChartPanel />;

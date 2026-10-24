@@ -33,7 +33,7 @@ body,
 }
 
 /* Thin, theme-matched scrollbars for every scroll region (the LiveRates panel
- * body, blotters, admin lists, …). `scrollbar-width`/`scrollbar-color` are
+ * body, blotters, ops lists, …). `scrollbar-width`/`scrollbar-color` are
  * inherited properties, so setting them on :root cascades to every descendant;
  * the one element that deliberately hides its scrollbar (InstrumentTabs
  * `.tabs`) still wins on specificity. Standard properties only (Chrome 121+,

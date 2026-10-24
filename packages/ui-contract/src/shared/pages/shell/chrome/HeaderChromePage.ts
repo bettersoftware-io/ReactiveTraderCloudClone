@@ -3,7 +3,7 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
 /** The real workspace tabs the header switches between (equities wired in Phase 4). */
-export type WorkspaceTab = "fx" | "credit" | "equities" | "admin";
+export type WorkspaceTab = "fx" | "credit" | "equities" | "ops";
 
 export interface HeaderChromeProps {
   activeTab: WorkspaceTab;
@@ -35,7 +35,7 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
 
   /** The visible label for each real tab button, in nav order. */
   tabLabels(): string[] {
-    return (["fx", "credit", "equities", "admin"] as const).map((tab) => {
+    return (["fx", "credit", "equities", "ops"] as const).map((tab) => {
       return (
         within(this.root).getByTestId(`tab-${tab}`).textContent?.trim() ?? ""
       );

@@ -951,8 +951,8 @@ export const fixtures: Record<string, AppData> = {
     prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
     analytics: analyticsData,
     connectionStatus: ConnectionStatus.CONNECTED,
-    // Admin tab throughput: a loaded value of 250 (was the old fetch-stub value),
-    // so the AdminPanel slider/input render deterministically through the seam.
+    // Ops tab throughput: a loaded value of 250 (was the old fetch-stub value),
+    // so the OpsPanel slider/input render deterministically through the seam.
     throughput: { value: 250, loading: false, message: null },
     layoutEngine: "inhouse",
   }),
@@ -1086,20 +1086,20 @@ export const fixtures: Record<string, AppData> = {
     dealers: creditDealers,
     rfqSubmission: { status: "confirmed", rfqId: 999 },
   }),
-  // AdminPanel loading arm: throughput not yet loaded → "Loading throughput…".
-  "admin-loading": makeAppData({
+  // OpsPanel loading arm: throughput not yet loaded → "Loading throughput…".
+  "ops-loading": makeAppData({
     throughput: { value: 0, loading: true, message: null },
   }),
-  // AdminPanel message banner arms (the `{message && …}` block): a confirmation
+  // OpsPanel message banner arms (the `{message && …}` block): a confirmation
   // (isError:false → accent-primary bg) and an error (isError:true → status-error).
-  "admin-message": makeAppData({
+  "ops-message": makeAppData({
     throughput: {
       value: 250,
       loading: false,
       message: { text: "Throughput updated", isError: false },
     },
   }),
-  "admin-message-error": makeAppData({
+  "ops-message-error": makeAppData({
     throughput: {
       value: 250,
       loading: false,
@@ -2092,10 +2092,10 @@ fixtures["equities-ticket-filled"] = makeAppData({
   equityOrderTicket: orderTicketFilled,
 });
 
-// ── Phase 5 Admin fixtures ─────────────────────────────────────────────────
+// ── Phase 5 Ops fixtures ─────────────────────────────────────────────────
 // All data is FIXED (no simulator) so every pixel is deterministic.
 
-const adminTopology: ServiceTopology = {
+const opsTopology: ServiceTopology = {
   nodes: [
     { name: "kernel", status: "ok", health: 98, throughput: 250, latencyMs: 8 },
     {
@@ -2139,13 +2139,13 @@ const adminTopology: ServiceTopology = {
   ],
 };
 
-type AdminMetricWindows = {
+type OpsMetricWindows = {
   throughput: readonly MetricSample[];
   latency: readonly MetricSample[];
   errorRate: readonly MetricSample[];
 };
 
-const adminMetricSamples: AdminMetricWindows = {
+const opsMetricSamples: OpsMetricWindows = {
   throughput: [
     { t: 1_750_000_000_000, value: 180 },
     { t: 1_750_000_001_000, value: 210 },
@@ -2170,7 +2170,7 @@ const adminMetricSamples: AdminMetricWindows = {
 };
 
 // Fixed log events: info/warn/error severity arms (newest-first when rendered).
-const adminEvents: readonly LogEvent[] = [
+const opsEvents: readonly LogEvent[] = [
   {
     t: 1_750_000_004_000,
     severity: "error",
@@ -2197,7 +2197,7 @@ const adminEvents: readonly LogEvent[] = [
   },
 ];
 
-const adminSessionData: readonly SessionInfo[] = [
+const opsSessionData: readonly SessionInfo[] = [
   {
     id: "sess-001",
     user: "trader-alpha",
@@ -2214,32 +2214,32 @@ const adminSessionData: readonly SessionInfo[] = [
   },
 ];
 
-// "admin-loaded": all admin telemetry cards rendered with seeded deterministic data.
-fixtures["admin-loaded"] = makeAppData({
+// "ops-loaded": all ops telemetry cards rendered with seeded deterministic data.
+fixtures["ops-loaded"] = makeAppData({
   throughput: { value: 250, loading: false, message: null },
-  adminMetrics: adminMetricSamples,
-  adminTopology,
-  adminEventLog: adminEvents,
-  adminSessions: adminSessionData,
+  opsMetrics: opsMetricSamples,
+  opsTopology,
+  opsEventLog: opsEvents,
+  opsSessions: opsSessionData,
 });
 
-// "admin-incident-active": serviceDown incident active → "Inject service down"
+// "ops-incident-active": serviceDown incident active → "Inject service down"
 // button has data-active="true" and the Clear button is also active. State is
 // injected through the seam (no click / timing needed).
-fixtures["admin-incident-active"] = makeAppData({
+fixtures["ops-incident-active"] = makeAppData({
   throughput: { value: 250, loading: false, message: null },
-  adminMetrics: adminMetricSamples,
-  adminTopology,
-  adminEventLog: adminEvents,
-  adminSessions: adminSessionData,
-  adminIncident: { active: ["serviceDown"] },
+  opsMetrics: opsMetricSamples,
+  opsTopology,
+  opsEventLog: opsEvents,
+  opsSessions: opsSessionData,
+  opsIncident: { active: ["serviceDown"] },
 });
 
 // KpiRow isolated warn arm: latency's last sample (65ms) and error-rate's
 // last sample (0.92%) both cross their warn thresholds (lat>60, err>0.8) —
 // the accent-negative value/delta colour on those two cards. Throughput and
 // sessions never warn (kpisVm's `noWarn`), so only lat/err flip.
-const adminKpiWarnSamples: AdminMetricWindows = {
+const opsKpiWarnSamples: OpsMetricWindows = {
   throughput: [
     { t: 1_750_000_000_000, value: 180 },
     { t: 1_750_000_001_000, value: 190 },
@@ -2262,15 +2262,15 @@ const adminKpiWarnSamples: AdminMetricWindows = {
     { t: 1_750_000_004_000, value: 0.92 },
   ],
 };
-fixtures["admin-kpi-warn"] = makeAppData({
+fixtures["ops-kpi-warn"] = makeAppData({
   throughput: { value: 250, loading: false, message: null },
-  adminMetrics: adminKpiWarnSamples,
+  opsMetrics: opsKpiWarnSamples,
 });
 
 // ServiceHealth isolated mixed-status arm: ok + degraded + down in one
 // topology snapshot. "down" is a real-app extra the topology simulator can
 // emit that PROTO never modelled (servicesVm's em-dash uptime + red row).
-const adminTopologyMixed: ServiceTopology = {
+const opsTopologyMixed: ServiceTopology = {
   nodes: [
     { name: "kernel", status: "ok", health: 98, throughput: 250, latencyMs: 8 },
     {
@@ -2290,8 +2290,8 @@ const adminTopologyMixed: ServiceTopology = {
   ],
   edges: [],
 };
-fixtures["admin-service-mixed"] = makeAppData({
-  adminTopology: adminTopologyMixed,
+fixtures["ops-service-mixed"] = makeAppData({
+  opsTopology: opsTopologyMixed,
 });
 
 // ── Phase 1 J.A.R.V.I.S fixtures (jarvis/orb-*, jarvis/overlay-*) ──────────
@@ -2420,7 +2420,7 @@ fixtures["jarvis-status-chip-scripted"] = makeAppData({
   jarvis: { ...jarvisStateIdle, effectiveBrain: "scripted" },
 });
 
-// admin/jarvis-usage-card: two brains populated across BOTH windows, with
+// ops/jarvis-usage-card: two brains populated across BOTH windows, with
 // cost strings the golden pins visually. windowEndMs is pinned to the
 // snapshot's own "no turn recorded yet" sentinel (0 → renders "—") rather
 // than a real epoch — a real epoch would render the local machine's
@@ -2470,7 +2470,7 @@ const jarvisUsageSnapshot: JarvisUsageSnapshot = {
     },
   ],
 };
-fixtures["admin-jarvis-usage"] = makeAppData({
+fixtures["ops-jarvis-usage"] = makeAppData({
   jarvisUsage: jarvisUsageSnapshot,
 });
 

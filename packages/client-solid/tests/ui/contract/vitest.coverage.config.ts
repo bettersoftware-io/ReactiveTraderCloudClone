@@ -24,7 +24,7 @@ const specsDir = resolve(pkgRoot, "../ui-contract/src/specs");
 // the `newValue !== cachedValue` guard inside every attribute-update
 // effect, the <For>/<Show> fallback checks) whose branches are source-mapped
 // onto component lines, inflating v8's branch DENOMINATOR with arms that no
-// source-level test can take. Verified concretely on AdminHead.tsx: the
+// source-level test can take. Verified concretely on OpsHead.tsx: the
 // react build counts 4 branches (both source ternaries, both arms hit); the
 // solid build counts 8 for the byte-equivalent JSX, and the only unhit arm
 // is a compiled effect guard — while both SOURCE ternaries hit both arms in

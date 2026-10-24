@@ -1697,7 +1697,7 @@ export function solidViewModel(world: World): ViewModel {
         },
       };
     },
-    // Admin / telemetry: World-backed fakes that re-render subscribing
+    // Ops / telemetry: World-backed fakes that re-render subscribing
     // components when the test pushes new data. The incident fake mirrors
     // the real IncidentMachine's connection-status asymmetry via
     // world.injectIncident.

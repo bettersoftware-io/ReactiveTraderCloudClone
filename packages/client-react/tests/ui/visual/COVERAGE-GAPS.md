@@ -112,7 +112,7 @@ darwin-arm64), full 5-skin × dark/light matrix, real app fonts, @1920×1080.
 
 The visual-tier headline (76.92% st) is LOWER than 2026-06-30's 82.22% because
 the denominator grew with the v2-round-2 + v3 surface (positions bubbles,
-admin topology HTML overlay, boot chrome, equities docks) while the metric's
+ops topology HTML overlay, boot chrome, equities docks) while the metric's
 meaning is unchanged: every sub-100% row above traces to an interaction-only
 handler, a timer state, or a documented canvas policy — each with a named
 owning tier. **No undocumented visual gaps remain.**
@@ -171,7 +171,7 @@ unit/contract tiers.
 
 Phase 6 consolidation snapshot, taken after the entire HUD redesign (theming +
 motion, in-house layout engine, shell chrome / boot / lock, reskinned FX+Credit,
-the new **Equities** module, and the new **Admin observability** module) landed on
+the new **Equities** module, and the new **Ops observability** module) landed on
 `main` (Phase 5 merge `baf0ed9d`). All gate families, both committed golden sets,
 the contract ≥95% gate, the 29 grep-gates (incl. dumb-UI 26–29), and the e2e
 suites are green. This phase added **zero** product behaviour — it re-ran every
@@ -188,7 +188,7 @@ tier and recorded the figures below.
 | Visual tier (istanbul, `src/ui/**/*.tsx`) | — | 82.22% | 72.58% | 76.09% | 83.53% |
 
 Unit/contract test totals: domain 276, server 65, client unit 805, contract 406.
-The visual gap-finder denominator grew (the equities + admin + HUD-chrome surface
+The visual gap-finder denominator grew (the equities + ops + HUD-chrome surface
 is now rendered), so the istanbul percentage moved relative to the 2026-06-25
 `82.53%` against a smaller pre-redesign denominator — it is **not** a regression;
 the absolute snapshotted-component count rose substantially (see below).
@@ -198,9 +198,9 @@ the absolute snapshotted-component count rose substantially (see below).
 - **Equities (`src/ui/equities/`):** watchlist (heat-tint), canvas candlestick
   chart, depth ladder, instrument tabs, order ticket (fill choreography), orders +
   positions blotters, P&L spark-bars, bottom-arc desk gauge, sector heatmap.
-- **Admin (`src/ui/admin/`):** MetricGauges, ThroughputChart, LatencyHistogram,
+- **Ops (`src/ui/ops/`):** MetricGauges, ThroughputChart, LatencyHistogram,
   ErrorRatePanel, SessionsPanel, LiveEventLog (canvas), ServiceTopologyGraph (SVG),
-  IncidentControls, AdminDashboard.
+  IncidentControls, OpsDashboard.
 - **Shell chrome (`src/ui/shell/`):** boot sequence canvas, lock screen, header /
   status / prefs / theme-skin chrome, the in-house layout engine, ambient
   background — across the classic/holo/terminal/neon skins × light/dark modes.
@@ -209,7 +209,7 @@ the absolute snapshotted-component count rose substantially (see below).
 
 The report-only app-layer figure dipped versus 2026-06-25 because Phases 0–5 added
 a large volume of new machines/presenters (LayoutMachine, BootSequenceMachine,
-OrderTicketMachine, IncidentMachine, AnimationDirector, plus the equities/admin
+OrderTicketMachine, IncidentMachine, AnimationDirector, plus the equities/ops
 presenters) and the **enforced** gate is the contract ≥95% `src/ui` gate (green at
 95.25% branch), not this metric. The remaining app-layer gaps are:
 
@@ -227,7 +227,7 @@ Only the `portFactory` wiring gap below remains, with the same intentional ratio
 
 | File | Lines | Reason |
 |------|-------|--------|
-| `adapters/portFactory.ts` 834-918, 928-935 | new equities/admin port-wiring + `if (cancelled)`/`catch` teardown arms | Composition wiring exercised end-to-end by the e2e + real-composition tests, not unit-isolated; the teardown/`catch` arms follow the same documented pattern as the 2026-06-25 portFactory gaps (fire only on mid-flight unsubscribe / `ws.rpc()` rejection). |
+| `adapters/portFactory.ts` 834-918, 928-935 | new equities/ops port-wiring + `if (cancelled)`/`catch` teardown arms | Composition wiring exercised end-to-end by the e2e + real-composition tests, not unit-isolated; the teardown/`catch` arms follow the same documented pattern as the 2026-06-25 portFactory gaps (fire only on mid-flight unsubscribe / `ws.rpc()` rejection). |
 
 ## Phase 10 (final) — Dumb-UI gates + whole-workstream verification (2026-06-18)
 
@@ -243,7 +243,7 @@ now ENFORCES the Dumb-UI rules against production `src/ui` (the
 
 All 29 gates pass. The 4 un-excluded components (`RfqCountdown`,
 `TileConfirmation`, `TileRfq`, `StaleIndicator`) plus `Tile.tsx`,
-`AnalyticsPanel.tsx`, `AdminPanel.tsx` carry **no** rxjs / timer / localStorage /
+`AnalyticsPanel.tsx`, `OpsPanel.tsx` carry **no** rxjs / timer / localStorage /
 fetch / env reference and no import of a deleted hook — the seam-method calls
 (`useNotional`, `useThroughput`, etc.) are app-layer-backed and allowed.
 
@@ -353,7 +353,7 @@ scenarios (`credit/blotter-sorted`, `credit/blotter-filtered`,
 | `ui/fx/liveRates/tile/TilePrice.tsx` lines 115-117 | `PriceButton` `executeAtSide` (Sell/Buy) | Clicking triggers the execution flow → visual becomes "Executing…" overlay, already pinned by `tile/execution-started`. Click path produces no new visually distinct golden. (Note: this handler moved here from the now-deleted `TileExecution.tsx` during the v2 spot-tile restructure.) |
 | `ui/fx/liveRates/tile/TileNotional.tsx` lines 25-35 | input onChange, `blurNotionalOnEnter` (Enter-to-blur), onFocus (select-on-focus) | Interaction handlers for the notional input (onChange/onFocus are inline arrows; only Enter-to-blur is a named function). Result is the same tile-with-changed-notional view — already covered by static scenarios. No new visual branch pinned. |
 | `ui/fx/liveRates/tile/TileRfq.tsx` lines 43-57, 94-103 | `executeAcceptedQuote` body, Sell button onClick | Click interactions that trigger execution flow — already pinned via `tile/rfq-received`; clicking navigates away from received state into execution. |
-| `ui/admin/AdminPanel.tsx` lines 26-42 | slider onChange + number input onChange validation | No `data-testid` on slider or number input. Cannot target via `click`/`type` steps. (File moved from `ui/shell/admin/` to `ui/admin/`; the gap itself is unchanged.) |
+| `ui/ops/OpsPanel.tsx` lines 26-42 | slider onChange + number input onChange validation | No `data-testid` on slider or number input. Cannot target via `click`/`type` steps. (File moved from `ui/shell/ops/` to `ui/ops/`; the gap itself is unchanged.) |
 | `ui/credit/newRfq/DealerChecklist.tsx` — `NewRfqPanel.tsx`'s `toggleDealer` | Individual dealer checkbox add/remove branches | Carries a `data-testid` (`new-rfq-dealer-<id>`) now, but `credit/new-rfq-filled` only clicks the "All Dealers" toggle (`new-rfq-dealer-all` → `toggleAllDealers`); no scenario clicks a single dealer row, so `toggleDealer`'s add/remove branches are unexercised. (File renamed from `newRfq/DealerSelection.tsx`.) |
 | `ui/credit/newRfq/NewRfqPanel.tsx` lines 134-147 | `submitRfq` `if (!canSubmit \|\| !selectedInstrument)` guard + `submit()` call | `credit/new-rfq-confirmed` seeds the confirmed state directly via fixture rather than by clicking SEND, so this body is never reached from a golden scenario; the guard itself is also documented in-code as runtime-unreachable while SEND stays `disabled`. (File renamed from `newRfq/NewRfqForm.tsx`.) |
 | `ui/fx/blotter/FxBlotter.tsx` lines 49, 82 | `else next.delete(column)` (filter clear) + `exportFxToCsv` onClick | Line 49 requires applying a filter then removing it (two-step interaction beyond current single-action schemes). Line 82 triggers a CSV download — no visual state change. |
@@ -436,7 +436,7 @@ are no longer listed:
 - `CreditWorkspace.tsx` new-rfq / sell-side view arms → `credit/workspace-{new-rfq,sell-side}`
   (the tabbed workspace was later removed entirely, replaced by the docked-panel
   `appPanelRegistry`/`InhouseLayoutEngine`; no direct successor file)
-- `AdminPanel.tsx` loaded slider arm → `admin/panel-loaded`
+- `OpsPanel.tsx` loaded slider arm → `ops/panel-loaded`
 
 ## Closed by the testid-gated interaction batch (2026-06-16)
 

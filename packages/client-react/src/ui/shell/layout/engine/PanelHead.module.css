@@ -8,7 +8,7 @@
 /* Icon-less default title — harmonizes with the FX panels' registered heads
  * (PanelHeadTabs.module.css's `.headTab[data-active="true"]`, itself ported
  * from PROTO's tabStyleObj): every panel without its own head slot (Credit,
- * Equities, Admin, Credit Blotter — until their own restructures) now reads
+ * Equities, Ops, Credit Blotter — until their own restructures) now reads
  * as the same single accent tab instead of a plain label. There is only ever
  * one "tab" here, so it always renders active; the declarations are
  * duplicated rather than shared via CSS Modules `composes` (no precedent for

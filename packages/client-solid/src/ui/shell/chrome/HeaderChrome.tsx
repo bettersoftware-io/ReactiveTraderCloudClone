@@ -29,7 +29,7 @@ import styles from "./HeaderChrome.module.css";
  * `takePreferencesReopen()` says this composition came from a core swap, so
  * the user lands back where they chose the core.
  *
- * All four nav tabs (FX, Credit, Equities, Admin) are live workspace tabs —
+ * All four nav tabs (FX, Credit, Equities, Ops) are live workspace tabs —
  * one NavTab component each (see NavTab.tsx for the testid/data-active
  * contract). Equities was added as a full tab in Phase 4.
  */
@@ -104,8 +104,8 @@ export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
           onSelect={props.onTabChange}
         />
         <NavTab
-          tab="admin"
-          active={props.activeTab === "admin"}
+          tab="ops"
+          active={props.activeTab === "ops"}
           onSelect={props.onTabChange}
         />
       </nav>

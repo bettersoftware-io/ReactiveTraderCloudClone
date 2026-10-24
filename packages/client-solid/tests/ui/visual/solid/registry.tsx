@@ -5,15 +5,6 @@ import type { LayoutState } from "@rtc/core-api";
 import { createDefaultLayoutPort } from "@rtc/core-logic";
 
 import { App } from "#/ui/App";
-import { AdminDashboard } from "#/ui/admin/AdminDashboard";
-import { AdminHead } from "#/ui/admin/AdminHead";
-import { AdminPanel } from "#/ui/admin/AdminPanel";
-import { IncidentControls } from "#/ui/admin/IncidentControls";
-import { JarvisUsageCard } from "#/ui/admin/jarvis/JarvisUsageCard";
-import { KpiRow } from "#/ui/admin/kpis/KpiRow";
-import { LiveEventLog } from "#/ui/admin/LiveEventLog";
-import { ServiceTopologyGraph } from "#/ui/admin/ServiceTopologyGraph";
-import { ServiceHealth } from "#/ui/admin/services/ServiceHealth";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
 import { CreditBlotterHead } from "#/ui/credit/blotter/CreditBlotterHead";
 import { NewRfqPanel } from "#/ui/credit/newRfq/NewRfqPanel";
@@ -38,6 +29,15 @@ import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
 import { Tile } from "#/ui/fx/liveRates/tile/Tile";
 import { WatchlistView } from "#/ui/fx/liveRates/WatchlistView";
 import { PositionsPanel } from "#/ui/fx/positions/PositionsPanel";
+import { IncidentControls } from "#/ui/ops/IncidentControls";
+import { JarvisUsageCard } from "#/ui/ops/jarvis/JarvisUsageCard";
+import { KpiRow } from "#/ui/ops/kpis/KpiRow";
+import { LiveEventLog } from "#/ui/ops/LiveEventLog";
+import { OpsDashboard } from "#/ui/ops/OpsDashboard";
+import { OpsHead } from "#/ui/ops/OpsHead";
+import { OpsPanel } from "#/ui/ops/OpsPanel";
+import { ServiceTopologyGraph } from "#/ui/ops/ServiceTopologyGraph";
+import { ServiceHealth } from "#/ui/ops/services/ServiceHealth";
 import { LoginScreen } from "#/ui/shell/auth/LoginScreen";
 import { BootSequence } from "#/ui/shell/boot/BootSequence";
 import { AccountMenu } from "#/ui/shell/chrome/AccountMenu";
@@ -121,7 +121,7 @@ const visualPanelRegistry: PanelRegistry = {
   "fx-blotter": stubPanel("fx-blotter", "BLOTTER"),
   "credit-rfqs": stubPanel("credit-rfqs", "RFQS"),
   "credit-blotter": stubPanel("credit-blotter", "CREDIT BLOTTER"),
-  "admin-throughput": stubPanel("admin-throughput", "ADMIN"),
+  "ops-throughput": stubPanel("ops-throughput", "OPS"),
 };
 
 function noop(): void {}
@@ -342,23 +342,23 @@ export const registry: Record<string, (fixtureKey: string) => JSX.Element> = {
   },
   // Pinned wrapper: the loading arm is a single content-width text line, so
   // its captured WIDTH tracks x86 mono-glyph advances — a dimension flake
-  // tolerance can never absorb. 660 matches the IncidentControls admin wrapper.
-  AdminPanel: () => {
+  // tolerance can never absorb. 660 matches the IncidentControls ops wrapper.
+  OpsPanel: () => {
     return (
       <div style={panelWidth(660)}>
-        <AdminPanel />
+        <OpsPanel />
       </div>
     );
   },
-  // --- Phase 5 Admin dashboard components ---
-  // Full AdminDashboard at a fixed panel WIDTH (1280) but content-driven height,
+  // --- Phase 5 Ops dashboard components ---
+  // Full OpsDashboard at a fixed panel WIDTH (1280) but content-driven height,
   // so the full dashboard is captured without the bottom row being clipped. A
   // fixed width keeps the intrinsic capture DIMENSION deterministic (the
   // #width-flake rule); the inner charts carry their own explicit heights.
-  AdminDashboard: () => {
+  OpsDashboard: () => {
     return (
       <div style={panelWidth(1280)}>
-        <AdminDashboard />
+        <OpsDashboard />
       </div>
     );
   },
@@ -381,7 +381,7 @@ export const registry: Record<string, (fixtureKey: string) => JSX.Element> = {
     );
   },
   // IncidentControls: renders the three inject buttons + Clear. The
-  // admin/incident-active fixture seeds state so "Inject service down" button
+  // ops/incident-active fixture seeds state so "Inject service down" button
   // has data-active="true" without any click interaction.
   // Render at a fixed width (test-only) — the controls are a content-width flex
   // row of buttons whose total width is driven by button label glyph-advance,
@@ -423,13 +423,13 @@ export const registry: Record<string, (fixtureKey: string) => JSX.Element> = {
       </div>
     );
   },
-  // AdminHead: `.head` is `display: flex; flex: 1` (fills the panel header's
+  // OpsHead: `.head` is `display: flex; flex: 1` (fills the panel header's
   // remaining width in the real layout engine) — a fixed-width flex wrapper
   // stabilises the title/pill spacing for an isolated shot.
-  AdminHead: () => {
+  OpsHead: () => {
     return (
       <div style={{ width: "480px", display: "flex" }}>
-        <AdminHead />
+        <OpsHead />
       </div>
     );
   },

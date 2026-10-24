@@ -80,12 +80,12 @@ export default defineConfig({
         // (PnlChart is an SVG path leaf, not canvas — it IS DOM-assertable and has
         // its own contract spec; see PnlChart.contract.spec.ts.)
         "src/ui/fx/liveRates/tile/TileChart.tsx",
-        // Admin throughput line chart: the canvas draw path (drawLine helper) is
+        // Ops throughput line chart: the canvas draw path (drawLine helper) is
         // unreachable in jsdom (getContext("2d") returns null, early-return).
         // The DOM-assertable contract (wrapper present, NO DATA placeholder) is
         // tested by ThroughputChart.contract.spec.ts; only the canvas internals
         // are excluded, exactly as per the PriceChart / TileChart pattern.
-        "src/ui/admin/ThroughputChart.tsx",
+        "src/ui/ops/ThroughputChart.tsx",
       ],
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "reports/ui/contract/coverage",

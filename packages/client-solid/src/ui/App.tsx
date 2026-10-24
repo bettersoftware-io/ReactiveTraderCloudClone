@@ -40,7 +40,7 @@ import drivenPulseStyles from "./shell/jarvis/DrivenPulse.module.css";
 /** Shell chrome wired to the real ViewModel (Task 9 — theme/chrome/boot/lock)
  * plus one shared WorkspaceEngine serving every tab's live layout engine and
  * panel subtree: FX (Tasks 10/13), Credit (Task 14), Equities (Task 15), and
- * Admin (Task 16), all through the SAME `appPanelRegistry`/`appHeadRegistry`,
+ * Ops (Task 16), all through the SAME `appPanelRegistry`/`appHeadRegistry`,
  * keyed by panel id — the exact structure of the react `App.tsx`. */
 export function App(): JSX.Element {
   // Machine-backed nav (Task 10/11 parity): the promoted composition-root

@@ -2,7 +2,6 @@ import type { Accessor, JSX } from "solid-js";
 
 import type { JarvisPanelVm, PanelId } from "@rtc/core-api";
 
-import { AdminHead } from "#/ui/admin/AdminHead";
 import { CreditBlotterHead } from "#/ui/credit/blotter/CreditBlotterHead";
 import { NewRfqHead } from "#/ui/credit/newRfq/NewRfqHead";
 import { RfqsHead } from "#/ui/credit/rfqs/RfqsHead";
@@ -14,6 +13,7 @@ import { AnalyticsHead } from "#/ui/fx/analytics/AnalyticsHead";
 import { FxBlotterHead } from "#/ui/fx/blotter/FxBlotterHead";
 import { LiveRatesHead } from "#/ui/fx/liveRates/LiveRatesHead";
 import { PositionsHead } from "#/ui/fx/positions/PositionsHead";
+import { OpsHead } from "#/ui/ops/OpsHead";
 import { JarvisDockedPanelHead } from "#/ui/shell/jarvis/panels/JarvisDockedPanelHead";
 
 /** The real id→head-slot map, passed to InhouseLayoutEngine's headRegistry
@@ -47,8 +47,8 @@ export const appHeadRegistry: Partial<Record<PanelId, () => JSX.Element>> = {
   "eq-watchlist": () => {
     return <EqWatchlistHead />;
   },
-  "admin-dashboard": () => {
-    return <AdminHead />;
+  "ops-dashboard": () => {
+    return <OpsHead />;
   },
   "credit-new-rfq": () => {
     return <NewRfqHead />;

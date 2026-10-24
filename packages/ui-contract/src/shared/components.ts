@@ -1,16 +1,4 @@
 import { component } from "./harness/component";
-import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
-import { AdminHeadPage } from "./pages/admin/AdminHeadPage";
-import { AdminPanelPage } from "./pages/admin/AdminPanelPage";
-import { IncidentControlsPage } from "./pages/admin/IncidentControlsPage";
-import { JarvisUsageCardPage } from "./pages/admin/JarvisUsageCardPage";
-import { KpiRowPage } from "./pages/admin/KpiRowPage";
-import { LatencyHistogramPage } from "./pages/admin/LatencyHistogramPage";
-import { LiveEventLogPage } from "./pages/admin/LiveEventLogPage";
-import { ServiceHealthPage } from "./pages/admin/ServiceHealthPage";
-import { ServiceTopologyGraphPage } from "./pages/admin/ServiceTopologyGraphPage";
-import { SessionsPanelPage } from "./pages/admin/SessionsPanelPage";
-import { ThroughputChartPage } from "./pages/admin/ThroughputChartPage";
 import { CreditBlotterHeadPage } from "./pages/credit/blotter/CreditBlotterHeadPage";
 import { CreditBlotterPage } from "./pages/credit/blotter/CreditBlotterPage";
 import { CreditBlotterWorkspacePage } from "./pages/credit/blotter/CreditBlotterWorkspacePage";
@@ -164,6 +152,18 @@ import {
 } from "./pages/fx/liveRates/tile/TileRfqPage";
 import { PositionsHeadPage } from "./pages/fx/positions/PositionsHeadPage";
 import { PositionsPanelPage } from "./pages/fx/positions/PositionsPanelPage";
+import { IncidentControlsPage } from "./pages/ops/IncidentControlsPage";
+import { JarvisUsageCardPage } from "./pages/ops/JarvisUsageCardPage";
+import { KpiRowPage } from "./pages/ops/KpiRowPage";
+import { LatencyHistogramPage } from "./pages/ops/LatencyHistogramPage";
+import { LiveEventLogPage } from "./pages/ops/LiveEventLogPage";
+import { OpsDashboardPage } from "./pages/ops/OpsDashboardPage";
+import { OpsHeadPage } from "./pages/ops/OpsHeadPage";
+import { OpsPanelPage } from "./pages/ops/OpsPanelPage";
+import { ServiceHealthPage } from "./pages/ops/ServiceHealthPage";
+import { ServiceTopologyGraphPage } from "./pages/ops/ServiceTopologyGraphPage";
+import { SessionsPanelPage } from "./pages/ops/SessionsPanelPage";
+import { ThroughputChartPage } from "./pages/ops/ThroughputChartPage";
 import { AuthGatedAppPage } from "./pages/shell/auth/AuthGatedAppPage";
 import { AuthGatePage } from "./pages/shell/auth/AuthGatePage";
 import { LoginScreenPage } from "./pages/shell/auth/LoginScreenPage";
@@ -520,9 +520,9 @@ export const JarvisPanelLayer = component<
   return new JarvisPanelLayerPage(ctx);
 });
 
-export const AdminPanel = component<Record<string, never>, AdminPanelPage>(
+export const OpsPanel = component<Record<string, never>, OpsPanelPage>(
   (ctx) => {
-    return new AdminPanelPage(ctx);
+    return new OpsPanelPage(ctx);
   },
 );
 
@@ -734,7 +734,7 @@ export const PnlSparkline = component<PnlSparklineProps, PnlSparklinePage>(
   },
 );
 
-// Admin / telemetry components (Phase 5 Task 8)
+// Ops / telemetry components (Phase 5 Task 8)
 export const IncidentControls = component<
   Record<string, never>,
   IncidentControlsPage
@@ -787,12 +787,11 @@ export const SessionsPanel = component<
   return new SessionsPanelPage(ctx);
 });
 
-export const AdminDashboard = component<
-  Record<string, never>,
-  AdminDashboardPage
->((ctx) => {
-  return new AdminDashboardPage(ctx);
-});
+export const OpsDashboard = component<Record<string, never>, OpsDashboardPage>(
+  (ctx) => {
+    return new OpsDashboardPage(ctx);
+  },
+);
 
 export const JarvisUsageCard = component<
   Record<string, never>,
@@ -801,8 +800,6 @@ export const JarvisUsageCard = component<
   return new JarvisUsageCardPage(ctx);
 });
 
-export const AdminHead = component<Record<string, never>, AdminHeadPage>(
-  (ctx) => {
-    return new AdminHeadPage(ctx);
-  },
-);
+export const OpsHead = component<Record<string, never>, OpsHeadPage>((ctx) => {
+  return new OpsHeadPage(ctx);
+});

@@ -13,12 +13,12 @@ The framework-neutral UI test contract: the shared sociable-RTL harness, the `*.
 
 | Path | What lives here |
 |---|---|
-| `src/specs/fx/`, `src/specs/credit/`, `src/specs/equities/`, `src/specs/admin/`, `src/specs/shell/` | 104 shared `*.contract.spec.ts` files / 872 tests (2026-09-20) — sociable React Testing Library specs that assert text, roles, structure, recorded command inputs, and dynamic re-renders, written once against a render-target-neutral `ComponentToken` |
+| `src/specs/fx/`, `src/specs/credit/`, `src/specs/equities/`, `src/specs/ops/`, `src/specs/shell/` | 104 shared `*.contract.spec.ts` files / 872 tests (2026-09-20) — sociable React Testing Library specs that assert text, roles, structure, recorded command inputs, and dynamic re-renders, written once against a render-target-neutral `ComponentToken` |
 | `src/shared/harness/activeDriver.ts` | The framework seam: `UiContractDriver` interface + `setDriver`/`getDriver` — each client's swap-trio registers its own driver (`render()` into the DOM, plus optional `flushSync`/`flushAsync` hooks for frameworks that batch updates, e.g. React's `act()`) |
 | `src/shared/harness/component.ts` | `ComponentToken`/`MountedComponent`/`PageContext` — the types a spec mounts against, independent of any framework |
 | `src/shared/harness/world.ts` | `createWorld`/`World` — the controllable fake-hook state a mounted component reads, driven by the spec via `PageContext` setters |
 | `src/shared/mount.ts` | `mount()`/`mountWith()`/`cleanupMounted()` — the entry points every spec calls; builds a `World`, calls the active driver's `render()`, and returns a `Page` object built from `PageContext` |
-| `src/shared/pages/fx/`, `.../credit/`, `.../equities/`, `.../admin/`, `.../shell/` | Page-Object-ish query helpers per domain, layered over `MountedComponent` |
+| `src/shared/pages/fx/`, `.../credit/`, `.../equities/`, `.../ops/`, `.../shell/` | Page-Object-ish query helpers per domain, layered over `MountedComponent` |
 | `src/shared/components.ts` | The full `ComponentToken` registry every spec imports tokens from |
 | `src/visual/scenarios.ts` | The visual scenario manifest: `name → { componentKey, fixtureKey }` — the single source of truth the surviving `playwright` tier, in both clients, loops over |
 | `src/visual/scenarioActions.ts` | Per-scenario interaction table (click/type/select steps) — pairs with `scenarios.ts` for the data-driven tiers (`playwright`, and the `vitest-browser` coverage instrument) |

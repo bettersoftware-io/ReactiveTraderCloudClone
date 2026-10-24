@@ -28,10 +28,10 @@ no presenters, no live streams — the dependency graph stops at `ViewModelProvi
   CreditBlotter (populated + empty), SellSidePanel (active / responded / empty),
   the CreditWorkspace sub-views (new-RFQ + sell-side tabs), and the full App on
   the Credit tab.
-- **Admin** — the loaded AdminPanel slider (`admin/panel-loaded`) and the full
-  App on the Admin tab. The throughput fetch is stubbed (`page.route` for the
+- **Ops** — the loaded OpsPanel slider (`ops/panel-loaded`) and the full
+  App on the Ops tab. The throughput fetch is stubbed (`page.route` for the
   playwright tier, `window.fetch` for the vitest-browser coverage instrument),
-  since `AdminPanel` reads its own hook outside the `ViewModelProvider` seam.
+  since `OpsPanel` reads its own hook outside the `ViewModelProvider` seam.
 
 ### Interaction-driven goldens
 
@@ -295,7 +295,7 @@ other two, per "Measured durations" below), so running it for coverage alone
 costs little. A few v4-API specifics worth knowing (the provider is a factory
 from `@vitest/browser-playwright`; the golden path is set via a custom
 `resolveScreenshotPath`; full-bleed `App` shots target `document.body` since
-they have no `scenario-root`; the admin fetch is stubbed via `window.fetch`)
+they have no `scenario-root`; the ops fetch is stubbed via `window.fetch`)
 are documented in [`ADR-001-visual-diff-tooling.md`](./ADR-001-visual-diff-tooling.md)
 under "Vitest browser mode — implemented (Tier 3)".
 

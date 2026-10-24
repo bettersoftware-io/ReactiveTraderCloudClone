@@ -12,7 +12,7 @@ const PANEL_IDS: readonly PanelId[] = [
   "credit-rfqs",
   "credit-blotter",
   "credit-sell-side",
-  "admin-dashboard",
+  "ops-dashboard",
   "eq-chart",
   "eq-blotter",
   "eq-ticket",
@@ -36,7 +36,7 @@ beforeAll(async () => {
   await import("../appPanelRegistry");
 
   const [
-    { AdminDashboard },
+    { OpsDashboard },
     { CreditBlotter },
     { NewRfqPanel },
     { RfqsPanel },
@@ -53,7 +53,7 @@ beforeAll(async () => {
     { PositionsPanel },
     registryModule,
   ] = await Promise.all([
-    import("#/ui/admin/AdminDashboard"),
+    import("#/ui/ops/OpsDashboard"),
     import("#/ui/credit/blotter/CreditBlotter"),
     import("#/ui/credit/newRfq/NewRfqPanel"),
     import("#/ui/credit/rfqs/RfqsPanel"),
@@ -84,7 +84,7 @@ beforeAll(async () => {
     ["credit-rfqs", RfqsPanel],
     ["credit-blotter", CreditBlotter],
     ["credit-sell-side", SellSidePanel],
-    ["admin-dashboard", AdminDashboard],
+    ["ops-dashboard", OpsDashboard],
     ["eq-chart", ChartPanel],
     ["eq-blotter", EqBlotterPanel],
     ["eq-ticket", OrderTicket],

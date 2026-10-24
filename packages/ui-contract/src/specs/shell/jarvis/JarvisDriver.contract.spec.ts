@@ -126,13 +126,13 @@ describe("JarvisDriver", () => {
     const app = mountWith(world, AppShell);
 
     await app.overlay.pressHotkey();
-    await app.overlay.send("switch to admin");
+    await app.overlay.send("switch to ops");
 
     vi.useFakeTimers();
     app.overlay.emitEvents([
       {
         type: "command",
-        batch: { v: 1, commands: [{ kind: "switchTab", tab: "admin" }] },
+        batch: { v: 1, commands: [{ kind: "switchTab", tab: "ops" }] },
       },
       { type: "done" },
     ]);

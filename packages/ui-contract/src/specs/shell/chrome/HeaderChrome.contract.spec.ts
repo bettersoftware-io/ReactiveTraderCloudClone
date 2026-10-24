@@ -28,7 +28,7 @@ describe("HeaderChrome", () => {
     });
     expect(header.isRendered()).toBe(true);
     expect(header.wordmark()).toMatch(/reactive trader/i);
-    expect(header.tabLabels()).toEqual(["FX", "Credit", "Equities", "Admin"]);
+    expect(header.tabLabels()).toEqual(["FX", "Credit", "Equities", "Ops"]);
   });
 
   it("reports an Equities tab click through onTabChange (wired in Phase 4)", async () => {
@@ -52,7 +52,7 @@ describe("HeaderChrome", () => {
     });
     expect(header.isActive("credit")).toBe(true);
     expect(header.isActive("fx")).toBe(false);
-    expect(header.isActive("admin")).toBe(false);
+    expect(header.isActive("ops")).toBe(false);
   });
 
   it("reports the clicked tab through onTabChange", async () => {
@@ -66,8 +66,8 @@ describe("HeaderChrome", () => {
       },
     });
     await header.clickTab("credit");
-    await header.clickTab("admin");
-    expect(changes).toEqual(["credit", "admin"]);
+    await header.clickTab("ops");
+    expect(changes).toEqual(["credit", "ops"]);
   });
 
   it("moves the highlight when the active tab prop changes", () => {
@@ -75,8 +75,8 @@ describe("HeaderChrome", () => {
       props: { activeTab: "fx", onTabChange: () => {} },
     });
     expect(header.isActive("fx")).toBe(true);
-    header.setProps({ activeTab: "admin" });
-    expect(header.isActive("admin")).toBe(true);
+    header.setProps({ activeTab: "ops" });
+    expect(header.isActive("ops")).toBe(true);
     expect(header.isActive("fx")).toBe(false);
   });
 
@@ -143,11 +143,11 @@ describe("HeaderChrome", () => {
     expect(header.hasNavPillClass("fx")).toBe(true);
     expect(header.hasNavPillClass("credit")).toBe(true);
     expect(header.hasNavPillClass("equities")).toBe(true);
-    expect(header.hasNavPillClass("admin")).toBe(true);
+    expect(header.hasNavPillClass("ops")).toBe(true);
     // Labels stay mixed-case in code — the CSS module class applies the
     // `text-transform: uppercase` visual treatment (pixel fidelity verified
     // by the visual golden tier).
-    expect(header.tabLabels()).toEqual(["FX", "Credit", "Equities", "Admin"]);
+    expect(header.tabLabels()).toEqual(["FX", "Credit", "Equities", "Ops"]);
   });
 
   it("opens the standalone decorative language menu and relabels the trigger on selection", async () => {

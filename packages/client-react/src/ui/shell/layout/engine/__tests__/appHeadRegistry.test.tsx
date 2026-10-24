@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 
 import type { PanelId } from "@rtc/core-api";
 
-import { AdminHead } from "#/ui/admin/AdminHead";
 import { CreditBlotterHead } from "#/ui/credit/blotter/CreditBlotterHead";
 import { NewRfqHead } from "#/ui/credit/newRfq/NewRfqHead";
 import { RfqsHead } from "#/ui/credit/rfqs/RfqsHead";
@@ -15,6 +14,7 @@ import { AnalyticsHead } from "#/ui/fx/analytics/AnalyticsHead";
 import { FxBlotterHead } from "#/ui/fx/blotter/FxBlotterHead";
 import { LiveRatesHead } from "#/ui/fx/liveRates/LiveRatesHead";
 import { PositionsHead } from "#/ui/fx/positions/PositionsHead";
+import { OpsHead } from "#/ui/ops/OpsHead";
 
 import { appHeadRegistry } from "../appHeadRegistry";
 
@@ -37,7 +37,7 @@ const expected: ReadonlyArray<readonly [PanelId, ComponentType]> = [
   ["eq-blotter", EqBlotterHead],
   ["eq-ticket", EqTicketHead],
   ["eq-watchlist", EqWatchlistHead],
-  ["admin-dashboard", AdminHead],
+  ["ops-dashboard", OpsHead],
   ["credit-new-rfq", NewRfqHead],
   ["credit-rfqs", RfqsHead],
   ["credit-blotter", CreditBlotterHead],

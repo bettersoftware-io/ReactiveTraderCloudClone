@@ -26,12 +26,12 @@ export function NavTab({ tab, active, onSelect }: NavTabProps): ReactElement {
 
 /** The four real workspace tabs the shell switches between. Equities added in
  *  Phase 4; the e2e Workspace page object clicks `tab-${tab}`. */
-export type WorkspaceTab = "fx" | "credit" | "admin" | "equities";
+export type WorkspaceTab = "fx" | "credit" | "ops" | "equities";
 
 const TAB_LABEL: Record<WorkspaceTab, string> = {
   fx: "FX",
   credit: "Credit",
-  admin: "Admin",
+  ops: "Ops",
   equities: "Equities",
 };
 

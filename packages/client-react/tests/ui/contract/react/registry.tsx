@@ -1,7 +1,4 @@
 import {
-  AdminDashboard,
-  AdminHead,
-  AdminPanel,
   AmbientBackground,
   AnalyticsHead,
   AnalyticsPanel,
@@ -55,6 +52,9 @@ import {
   NewRfqHead,
   NewRfqPanel,
   NumberFilter,
+  OpsDashboard,
+  OpsHead,
+  OpsPanel,
   OrdersTable,
   OrderTicket,
   PairPnlBars,
@@ -135,18 +135,6 @@ import type {
 } from "@rtc/domain";
 
 import { App } from "#/ui/App";
-import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
-import { AdminHead as AdminHeadComponent } from "#/ui/admin/AdminHead";
-import { AdminPanel as AdminPanelComponent } from "#/ui/admin/AdminPanel";
-import { IncidentControls as IncidentControlsComponent } from "#/ui/admin/IncidentControls";
-import { JarvisUsageCard as JarvisUsageCardComponent } from "#/ui/admin/jarvis/JarvisUsageCard";
-import { KpiRow as KpiRowComponent } from "#/ui/admin/kpis/KpiRow";
-import { LatencyHistogram as LatencyHistogramComponent } from "#/ui/admin/LatencyHistogram";
-import { LiveEventLog as LiveEventLogComponent } from "#/ui/admin/LiveEventLog";
-import { ServiceTopologyGraph as ServiceTopologyGraphComponent } from "#/ui/admin/ServiceTopologyGraph";
-import { SessionsPanel as SessionsPanelComponent } from "#/ui/admin/SessionsPanel";
-import { ServiceHealth as ServiceHealthComponent } from "#/ui/admin/services/ServiceHealth";
-import { ThroughputChart as ThroughputChartComponent } from "#/ui/admin/ThroughputChart";
 import { CreditBlotter as CreditBlotterComponent } from "#/ui/credit/blotter/CreditBlotter";
 import { CreditBlotterHead as CreditBlotterHeadComponent } from "#/ui/credit/blotter/CreditBlotterHead";
 import { NewRfqHead as NewRfqHeadComponent } from "#/ui/credit/newRfq/NewRfqHead";
@@ -207,6 +195,18 @@ import {
 } from "#/ui/fx/liveRates/tile/TileRfq";
 import { PositionsHead as PositionsHeadComponent } from "#/ui/fx/positions/PositionsHead";
 import { PositionsPanel as PositionsPanelComponent } from "#/ui/fx/positions/PositionsPanel";
+import { IncidentControls as IncidentControlsComponent } from "#/ui/ops/IncidentControls";
+import { JarvisUsageCard as JarvisUsageCardComponent } from "#/ui/ops/jarvis/JarvisUsageCard";
+import { KpiRow as KpiRowComponent } from "#/ui/ops/kpis/KpiRow";
+import { LatencyHistogram as LatencyHistogramComponent } from "#/ui/ops/LatencyHistogram";
+import { LiveEventLog as LiveEventLogComponent } from "#/ui/ops/LiveEventLog";
+import { OpsDashboard as OpsDashboardComponent } from "#/ui/ops/OpsDashboard";
+import { OpsHead as OpsHeadComponent } from "#/ui/ops/OpsHead";
+import { OpsPanel as OpsPanelComponent } from "#/ui/ops/OpsPanel";
+import { ServiceTopologyGraph as ServiceTopologyGraphComponent } from "#/ui/ops/ServiceTopologyGraph";
+import { SessionsPanel as SessionsPanelComponent } from "#/ui/ops/SessionsPanel";
+import { ServiceHealth as ServiceHealthComponent } from "#/ui/ops/services/ServiceHealth";
+import { ThroughputChart as ThroughputChartComponent } from "#/ui/ops/ThroughputChart";
 import { AuthGate as AuthGateComponent } from "#/ui/shell/auth/AuthGate";
 import { LoginScreen as LoginScreenComponent } from "#/ui/shell/auth/LoginScreen";
 import { AmbientBackground as AmbientBackgroundComponent } from "#/ui/shell/background/AmbientBackground";
@@ -785,9 +785,9 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    AdminPanel,
+    OpsPanel,
     (): ReactElement => {
-      return <AdminPanelComponent />;
+      return <OpsPanelComponent />;
     },
   ],
   [
@@ -1090,7 +1090,7 @@ export const registry = new Map<AnyToken, ElementFor>([
       return <EqBlotterHeadComponent />;
     },
   ],
-  // Admin / telemetry components (Phase 5 Task 8)
+  // Ops / telemetry components (Phase 5 Task 8)
   [
     IncidentControls,
     (): ReactElement => {
@@ -1140,15 +1140,15 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    AdminDashboard,
+    OpsDashboard,
     (): ReactElement => {
-      return <AdminDashboardComponent />;
+      return <OpsDashboardComponent />;
     },
   ],
   [
-    AdminHead,
+    OpsHead,
     (): ReactElement => {
-      return <AdminHeadComponent />;
+      return <OpsHeadComponent />;
     },
   ],
   [
