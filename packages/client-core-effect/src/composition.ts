@@ -21,6 +21,7 @@ import { gateTransportOnAuth } from "#/bridge/transportGate";
 import { createCommands } from "#/commands";
 import { buildAppLayer, nativePresentersEffect } from "#/layers";
 import { createAccountAccessMachine } from "#/machines/accountAccess";
+import { createAccountActionMachine } from "#/machines/accountAction";
 import { createBootMachine } from "#/machines/boot";
 import { createNotionalMachine } from "#/machines/notional";
 import { createOrderTicketMachine } from "#/machines/orderTicket";
@@ -173,6 +174,9 @@ function nativeMachines(presenters: Presenters): MachineFactories {
         },
         defaultSymbol,
       });
+    },
+    accountAction: (accountId: string) => {
+      return createAccountActionMachine(accountId, presenters.accountList);
     },
     accountAccess: () => {
       return createAccountAccessMachine(presenters.auth.accounts);

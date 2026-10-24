@@ -1,12 +1,13 @@
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, Scope } from "effect";
+import type { Observable } from "rxjs";
 
 import type {
+  AccountListPresenter,
   AmbientStylePresenter,
   AnalyticsPresenter,
   AnimatedBackgroundPresenter,
   AnimationDirector,
   AppPorts,
-  AuthPresenter,
   BlotterPresenter,
   BootGatePresenter,
   BootPreferencePresenter,
@@ -60,12 +61,13 @@ import { createAuthDeps, firstWatchlistSymbol } from "@rtc/core-logic";
 import type { ConnectionEvent, CurrencyPair } from "@rtc/domain";
 
 import { authDepsPrimitives } from "#/bridge/authDepsPrimitives";
-import type { EffectHost } from "#/bridge/out";
+import { type EffectHost, listenToStream } from "#/bridge/out";
 import { peek } from "#/bridge/peek";
 import { createEqDrawingsMachine } from "#/machines/eqDrawings";
 import { createEqWorkspaceMachine } from "#/machines/eqWorkspace";
 import { createIncidentMachine } from "#/machines/incident";
 import { createWorkspaceNavMachine } from "#/machines/workspaceNav";
+import { createAccountListPresenter } from "#/presenters/accountList";
 import { createBlotterPresenter } from "#/presenters/blotter";
 import { createCandleSeriesPresenter } from "#/presenters/candleSeries";
 import { createConnectionPresenter } from "#/presenters/connection";
@@ -108,6 +110,7 @@ import {
   createAnimationDirector,
   createAuthPresenter,
   createBootGatePresenter,
+  type EndableAuthPresenter,
 } from "#/presenters/shell";
 import { createThemePreferencePresenter } from "#/presenters/themePreference";
 import { createThroughputPresenter } from "#/presenters/throughput";
@@ -275,8 +278,19 @@ const BootGateTag = Context.GenericTag<BootGatePresenter>(
   "@rtc/client-core-effect/bootGate",
 );
 
-const AuthTag = Context.GenericTag<AuthPresenter>(
+const AuthTag = Context.GenericTag<EndableAuthPresenter>(
   "@rtc/client-core-effect/auth",
+);
+
+const AccountListTag = Context.GenericTag<AccountListPresenter>(
+  "@rtc/client-core-effect/accountList",
+);
+
+/** The connection-event stream, opened ONCE: `ports.connectionEvents.events()`
+ * is called here and nowhere else, and the status fold and the session-end
+ * listener share the result. Not a presenter, so not in `NativeServices`. */
+const ConnectionEventsTag = Context.GenericTag<Observable<ConnectionEvent>>(
+  "@rtc/client-core-effect/connectionEvents",
 );
 
 const AnimationDirectorTag = Context.GenericTag<AnimationDirector>(
@@ -335,13 +349,30 @@ export type NativeServices =
   | Machine<IncidentState, IncidentIntents>
   | Machine<WorkspaceNavState, WorkspaceNavIntents>
   | BootGatePresenter
-  | AuthPresenter
+  | EndableAuthPresenter
+  | AccountListPresenter
   | AnimationDirector;
 
 // Presenters that need only the host and the ports.
-const ConnectionLive = presenterLayer(ConnectionTag, (host, ports) => {
-  return createConnectionPresenter(host, ports.connectionEvents);
-});
+const ConnectionEventsLive = Layer.effect(
+  ConnectionEventsTag,
+  Effect.map(AppPortsTag, (ports) => {
+    return ports.connectionEvents.events();
+  }),
+);
+
+const ConnectionLive = Layer.effect(
+  ConnectionTag,
+  Effect.gen(function* buildConnection() {
+    const host = yield* HostTag;
+    const events = yield* ConnectionEventsTag;
+    return createConnectionPresenter(host, {
+      events: () => {
+        return events;
+      },
+    });
+  }),
+).pipe(Layer.provide(ConnectionEventsLive));
 
 const ThemePreferenceLive = presenterLayer(
   ThemePreferenceTag,
@@ -543,16 +574,63 @@ const IncidentLive = presenterLayer(IncidentTag, (host, ports) => {
 // Slice 6: the shell. `workspaceNav` is an app-lifetime singleton (a child
 // host); `bootGate` and `auth` read the ports; `animationDirector` is below,
 // with the presenters it listens to.
-const WorkspaceNavLive = presenterLayer(WorkspaceNavTag, (host) => {
-  return createWorkspaceNavMachine(host);
+const AuthLive = presenterLayer(AuthTag, (host, ports) => {
+  return createAuthPresenter(host, createAuthDeps(ports, authDepsPrimitives));
 });
+
+const WorkspaceNavLive = Layer.effect(
+  WorkspaceNavTag,
+  Effect.gen(function* buildWorkspaceNav() {
+    const host = yield* HostTag;
+    const auth = yield* AuthTag;
+    return createWorkspaceNavMachine(host, auth.state$);
+  }),
+).pipe(Layer.provide(AuthLive));
+
+const AccountListLive = Layer.effect(
+  AccountListTag,
+  Effect.gen(function* buildAccountList() {
+    const host = yield* HostTag;
+    const ports = yield* AppPortsTag;
+    const auth = yield* AuthTag;
+    return createAccountListPresenter(host, ports.accountAdmin, auth.state$);
+  }),
+).pipe(Layer.provide(AuthLive));
+
+/** The server ended this session (a 4401 close): the auth presenter signs
+ * out with the reason, and the transport gate then disconnects. Holds the
+ * shared event stream until the host's scope closes. A failing event source
+ * is surfaced by `connection.status$`, so it is ignored here; an error
+ * thrown by the sign-out itself is NOT caught. */
+const SessionEndedLive = Layer.effectDiscard(
+  Effect.gen(function* listenForSessionEnd() {
+    const host = yield* HostTag;
+    const events = yield* ConnectionEventsTag;
+    const auth = yield* AuthTag;
+    const release = listenToStream(
+      events,
+      (event: ConnectionEvent) => {
+        if (event.type === "sessionEnded") {
+          auth.endSession();
+        }
+      },
+      () => {
+        // intentionally empty — see above
+      },
+    );
+    host.runtime.runSync(
+      Scope.addFinalizer(
+        host.scope,
+        Effect.sync(() => {
+          release();
+        }),
+      ),
+    );
+  }),
+).pipe(Layer.provide(Layer.merge(ConnectionEventsLive, AuthLive)));
 
 const BootGateLive = presenterLayer(BootGateTag, (_host, ports) => {
   return createBootGatePresenter(ports.bootSplash?.shouldPlay() ?? true);
-});
-
-const AuthLive = presenterLayer(AuthTag, (host, ports) => {
-  return createAuthPresenter(host, createAuthDeps(ports, authDepsPrimitives));
 });
 
 // The one native machine that needs nothing but the host — `ports` is
@@ -718,6 +796,8 @@ export function buildAppLayer(ports: AppPorts): Layer.Layer<AppLayerServices> {
     WorkspaceNavLive,
     BootGateLive,
     AuthLive,
+    AccountListLive,
+    SessionEndedLive,
   );
 
   const dependent = Layer.mergeAll(
@@ -821,5 +901,6 @@ export const nativePresentersEffect: Effect.Effect<
   workspaceNav: WorkspaceNavTag,
   bootGate: BootGateTag,
   auth: AuthTag,
+  accountList: AccountListTag,
   animationDirector: AnimationDirectorTag,
 });
