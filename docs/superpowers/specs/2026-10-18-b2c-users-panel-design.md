@@ -335,8 +335,14 @@ a network failure look the same to it, and the adapter reconnects either way
 
 **The client's side.**
 - **Detection.** `WsAdapter` treats a close with `4401` as final. It does not
-  schedule a reconnect, and it emits a new `ConnectionEvent`,
-  `{ type: "sessionEnded" }` (`packages/core-api/src/adapters.ts`).
+  schedule a reconnect, and it emits once on the auth-gated transport's new
+  `sessionEnded()` stream (`AuthGatedTransport`,
+  `packages/core-api/src/adapters.ts`). As built, this is NOT a
+  `ConnectionEvent`: the first build put `{ type: "sessionEnded" }` on
+  `connectionEvents`, which gave every core a second subscriber of that
+  port, and a client's per-subscription side effects (idle routing, the
+  browser's activity listeners) then ran twice. The final fix wave moved it
+  to the transport.
 - **The auth presenter, in all three cores.** It answers `sessionEnded` by
   signing out: the stored session is cleared, as on a manual sign-out.
   Sign-out and its message are shared logic in `@rtc/core-logic`.
@@ -569,9 +575,13 @@ shipped. The mechanism, end to end, is in
    `visibleTabs`, the tab bar renders from it, and the route sync gains
    `canShow` from the same state, so Jarvis, a URL and a click go through one
    gate.
-5. `sessionEnded` reaches the auth presenter through `ports.connectionEvents`;
-   no new `AuthPresenter` member. Each core's composition routes it to its
-   auth presenter's internal sign-out.
+5. `sessionEnded` reaches the auth presenter through
+   `ports.transport.sessionEnded()` (subscribed once, at construction; no
+   transport, the simulator branch, subscribes nothing), not through
+   `ports.connectionEvents`, whose one subscriber stays the status fold. No
+   new `AuthPresenter` member: each core's composition routes it to its auth
+   presenter's internal sign-out, and a throw from that sign-out is not
+   swallowed.
 6. `AccountStatus` moved to `@rtc/domain` (`auth/accountStatus.ts`).
 
 **Changes from review**
@@ -601,8 +611,9 @@ shipped. The mechanism, end to end, is in
 - `/mcp`: only an active administrator with a live session; roster tokens and
   users get `403 admin_only`, an unreadable store `503`. The earlier
   `account_tokens_not_accepted` refusal is gone. No limiter yet.
-- Client: `WsAdapter` treats `4401` as final (no reconnect, `sessionEnded`,
-  pending RPCs rejected). The Users panel's list is keyed on the signed-in
+- Client: `WsAdapter` treats `4401` as final (no reconnect, one emission on
+  `transport.sessionEnded()`, pending RPCs rejected; a drop and a deliberate
+  close reject pending RPCs too). The Users panel's list is keyed on the signed-in
   user. A pre-rename saved workspace layout reads as none; an old Dockview
   blob for the admin tab restores the new seed; old admin presets show as
   unreadable.

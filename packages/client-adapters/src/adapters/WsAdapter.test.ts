@@ -823,19 +823,48 @@ describe("WsAdapter auth gating", () => {
 });
 
 describe("WsAdapter :: a session the server ended (close 4401)", () => {
-  it("emits sessionEnded, not gatewayDisconnected, and opens no new socket", async () => {
-    const { adapter, events } = createEndedSession();
+  it("emits once on sessionEnded(), nothing on connectionEvents, and opens no new socket", async () => {
+    const { adapter, events, ends } = createEndedSession();
     lastMock.onopen?.(new Event("open"));
     lastMock.onclose?.(new CloseEvent("close", { code: 4401 }));
 
     await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS * 3);
 
-    expect(events).toEqual([
-      { type: "gatewayConnected" },
-      { type: "sessionEnded" },
-    ]);
+    expect(ends.count).toBe(1);
+    expect(events).toEqual([{ type: "gatewayConnected" }]);
     expect(MockWebSocket.constructed).toBe(1);
     adapter.dispose();
+  });
+
+  it("a 1006 drop says nothing on sessionEnded()", async () => {
+    const { adapter, ends } = createEndedSession();
+    lastMock.onopen?.(new Event("open"));
+    lastMock.onclose?.(new CloseEvent("close", { code: 1006 }));
+
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS);
+
+    expect(ends.count).toBe(0);
+    adapter.dispose();
+  });
+
+  it("sessionEnded() replays nothing to a late subscriber, and completes on dispose", () => {
+    const { adapter } = createEndedSession();
+    lastMock.onclose?.(new CloseEvent("close", { code: 4401 }));
+    let late = 0;
+    let completed = false;
+    adapter.sessionEnded().subscribe({
+      next: () => {
+        late += 1;
+      },
+      complete: () => {
+        completed = true;
+      },
+    });
+
+    adapter.dispose();
+
+    expect(late).toBe(0);
+    expect(completed).toBe(true);
   });
 
   it("still reconnects after a 1006 drop (the witness the reconnect path runs)", async () => {
@@ -924,14 +953,19 @@ describe("WsAdapter :: a session the server ended (close 4401)", () => {
     adapter.connectionEvents().subscribe((e) => {
       return events.push(e);
     });
+    const ends = { count: 0 };
+    adapter.sessionEnded().subscribe(() => {
+      ends.count += 1;
+    });
 
-    return { adapter, events };
+    return { adapter, events, ends };
   }
 });
 
 interface EndedSession {
   readonly adapter: WsAdapter;
   readonly events: ConnectionEvent[];
+  readonly ends: { count: number };
 }
 
 interface Settlement {

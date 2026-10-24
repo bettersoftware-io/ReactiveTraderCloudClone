@@ -1,6 +1,6 @@
 // packages/client-react/src/app/adapters/__tests__/FakeWsAdapter.ts
 
-import { type Observable, ReplaySubject } from "rxjs";
+import { type Observable, ReplaySubject, Subject } from "rxjs";
 
 import type { IWsAdapter, MessageHandler } from "@rtc/core-api";
 import type { ConnectionEvent } from "@rtc/domain";
@@ -32,6 +32,8 @@ export class FakeWsAdapter implements IWsAdapter {
 
   private readonly connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
 
+  private readonly sessionEnded$ = new Subject<void>();
+
   private _idleClosed = false;
 
   private _disposed = false;
@@ -61,6 +63,10 @@ export class FakeWsAdapter implements IWsAdapter {
 
   connectionEvents(): Observable<ConnectionEvent> {
     return this.connectionEvents$.asObservable();
+  }
+
+  sessionEnded(): Observable<void> {
+    return this.sessionEnded$.asObservable();
   }
 
   closeForIdle(): void {
@@ -102,6 +108,7 @@ export class FakeWsAdapter implements IWsAdapter {
   dispose(): void {
     this._disposed = true;
     this.connectionEvents$.complete();
+    this.sessionEnded$.complete();
     this.listeners.clear();
     this.pendingRpcs = [];
     this.sent = [];

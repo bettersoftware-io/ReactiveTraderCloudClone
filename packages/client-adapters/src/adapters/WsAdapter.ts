@@ -3,7 +3,7 @@
  * Manages connection lifecycle and message routing between client and server.
  */
 
-import { type Observable, ReplaySubject } from "rxjs";
+import { type Observable, ReplaySubject, Subject } from "rxjs";
 
 import type { IWsAdapter, MessageHandler } from "@rtc/core-api";
 import type { ConnectionEvent } from "@rtc/domain";
@@ -71,6 +71,10 @@ export class WsAdapter implements IWsAdapter {
   private closedForIdle = false;
 
   private readonly connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
+
+  // Hot, no replay: a session end is an occurrence, not a state, so a core
+  // composed later (a hot swap) must not sign out over an old one.
+  private readonly sessionEnded$ = new Subject<void>();
 
   constructor(
     url: string,
@@ -204,17 +208,18 @@ export class WsAdapter implements IWsAdapter {
         return;
       }
 
-      // The server ended this session (4401): final. Report it once, with no
-      // gatewayDisconnected and no reconnect — a retry would only meet the
-      // same refusal. The adapter lets go of the socket and goes quiet, so a
-      // connect() after a new sign-in opens a fresh one.
+      // The server ended this session (4401): final. Report it once on
+      // `sessionEnded()`, with no gatewayDisconnected and no reconnect — a
+      // retry would only meet the same refusal. The adapter lets go of the
+      // socket and goes quiet, so a connect() after a new sign-in opens a
+      // fresh one.
       if (event.code === SESSION_ENDED_CLOSE_CODE) {
         this.ws = null;
         this.suspended = true;
         this.closedForIdle = false;
         this.sendQueue.length = 0;
         this.rejectPendingRpcs("WsAdapter session ended");
-        this.connectionEvents$.next({ type: "sessionEnded" });
+        this.sessionEnded$.next();
         return;
       }
 
@@ -364,6 +369,12 @@ export class WsAdapter implements IWsAdapter {
     return this.connectionEvents$.asObservable();
   }
 
+  /** One emission per `4401` close: the server ended this session. Hot and
+   * not replayed (see `sessionEnded$`). */
+  sessionEnded(): Observable<void> {
+    return this.sessionEnded$.asObservable();
+  }
+
   /** Close the current socket for an idle timeout without disposing the adapter.
    * Suppresses auto-reconnect (idle reconnect is user-initiated); preserves
    * sendQueue so subscriptions re-flush on reopen(). Nulls this.ws so any
@@ -401,6 +412,7 @@ export class WsAdapter implements IWsAdapter {
   dispose(): void {
     this.disposed = true;
     this.connectionEvents$.complete();
+    this.sessionEnded$.complete();
     this.sendQueue.length = 0;
 
     if (this.reconnectTimer) {

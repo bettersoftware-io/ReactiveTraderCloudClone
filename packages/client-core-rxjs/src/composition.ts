@@ -263,15 +263,9 @@ export function createApp(givenPorts: AppPorts): App {
   // Every port stream this composition opens ends with it, whoever still
   // holds the presenter stream built on it.
   const ports = cutPortsOnDispose(givenPorts, disposed$);
-  // One `events()` call serves both the status fold and the session end.
-  const connectionEvents$ = ports.connectionEvents.events();
   // Hoisted so the AnimationDirector can wire its connectionStatus$ source from
   // the same connection presenter instance the rest of the app consumes.
-  const connection = new ConnectionStatusPresenter({
-    events: (): Observable<ConnectionEvent> => {
-      return connectionEvents$;
-    },
-  });
+  const connection = new ConnectionStatusPresenter(ports.connectionEvents);
   // Hoisted so priceStream/priceHistory can gate their conflation behind the
   // same power-saver flag stream the record also exposes as `powerSaver`.
   const powerSaver = new PowerSaverPresenter(ports.preferences);
@@ -915,26 +909,20 @@ export function createApp(givenPorts: AppPorts): App {
   wireJarvisHistorySource(ports.jarvis, presenters.jarvis);
 
   held.add(gateTransportOnAuth(ports.transport, presenters.auth));
-  // The server ended this session (a 4401 close): the auth presenter signs
-  // out with the reason, and the gate above then disconnects.
-  held.add(
-    connectionEvents$
-      .pipe(
-        filter((event) => {
-          return event.type === "sessionEnded";
-        }),
-      )
-      .subscribe({
-        next: (): void => {
-          auth.endSession();
-        },
-        // A failing event source is surfaced by `connection.status$`; this
-        // listener has nothing to add, and must not rethrow it unhandled.
-        error: (): void => {
-          // intentionally empty — see above
-        },
+  // The server ended this session (a 4401 close, reported by the transport
+  // itself — not on `connectionEvents`, whose one subscriber is the status
+  // fold): the auth presenter signs out with the reason, and the gate above
+  // then disconnects. Subscribed once, here; a throw from `endSession` is
+  // not swallowed.
+  const sessionEnded$ = ports.transport?.sessionEnded();
+
+  if (sessionEnded$ !== undefined) {
+    held.add(
+      sessionEnded$.subscribe((): void => {
+        auth.endSession();
       }),
-  );
+    );
+  }
 
   const commands: AppCommands = {
     reconnect: () => {

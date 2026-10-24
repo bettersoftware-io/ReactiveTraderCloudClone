@@ -62,6 +62,26 @@ export function describeConnectionContract(
       }
     });
 
+    it("the status fold is the connection events' only subscriber: none at construction, one for two status$ subscribers", async () => {
+      // The port's side effects (a client's idle routing, the browser's
+      // activity listeners) run once per subscription, so a second subscriber
+      // anywhere in the core doubles them.
+      const h = makeHarness({ transport: true });
+
+      try {
+        await settle();
+        expect(h.driver.connectionEventSubscriptions()).toBe(0);
+        const first = collect(h.app.presenters.connection.status$);
+        const second = collect(h.app.presenters.connection.status$);
+        await settle();
+        expect(h.driver.connectionEventSubscriptions()).toBe(1);
+        first.unsubscribe();
+        second.unsubscribe();
+      } finally {
+        await h.teardown();
+      }
+    });
+
     it("a failing event source errors status$ (and does not hang)", async () => {
       const h = makeHarness();
 

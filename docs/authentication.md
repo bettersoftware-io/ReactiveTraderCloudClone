@@ -1065,10 +1065,14 @@ Invalidating the status cache also drops lookups already in flight (a
 generation guard), so a stale answer is never stored.
 
 **What the browser does.** `WsAdapter` treats `4401` as final: no reconnect,
-a `sessionEnded` event on `connectionEvents`, and every pending RPC rejects.
-Each core's auth presenter answers the event by signing out with "Your
-session has ended. Please sign in again." and clearing the stored session;
-the transport gate then disconnects. The person lands on the sign-in screen
+one emission on the transport's `sessionEnded()` stream, and every pending
+RPC rejects. It is deliberately not a connection event: the
+connection-status fold stays the only subscriber of `connectionEvents`,
+whose client-side effects (idle routing, the browser's activity listeners)
+run once per subscription. Each core subscribes `transport.sessionEnded()`
+once, at construction, and answers it by signing out with "Your session has
+ended. Please sign in again." and clearing the stored session; the
+transport gate then disconnects. The person lands on the sign-in screen
 with that line. Only a bundle that knows `4401` does this: a tab still running
 the pre-B2c bundle, or a React Native build without the B2c EAS Update, treats
 the close as an ordinary drop and reconnects about every 3 s — its token

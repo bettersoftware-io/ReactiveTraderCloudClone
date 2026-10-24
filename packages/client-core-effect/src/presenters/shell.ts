@@ -81,8 +81,8 @@ const SIGNED_OUT: AuthViewState = {
   waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
 };
 
-/** The `AuthPresenter` plus the one hook composition routes a
- * `sessionEnded` connection event to. `endSession` is not on the contract
+/** The `AuthPresenter` plus the one hook composition routes the
+ * transport's `sessionEnded()` to. `endSession` is not on the contract
  * interface (no new `AuthPresenter` member): composition holds it. */
 export interface EndableAuthPresenter extends AuthPresenter {
   endSession(): void;

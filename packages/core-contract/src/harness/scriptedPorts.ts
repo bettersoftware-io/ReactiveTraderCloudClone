@@ -133,7 +133,8 @@ export type PortMethodName =
   | "jarvis.setHistorySource"
   | "jarvisUsage.usage$"
   | "accountAdmin.listAccounts"
-  | "accountAdmin.actOn";
+  | "accountAdmin.actOn"
+  | "transport.sessionEnded";
 
 /** What `pricing.getRfqQuote` was asked for. */
 export interface RfqQuoteRequest {
@@ -174,9 +175,11 @@ export interface HarnessSeed {
   readonly jarvisAvailabilityPending?: boolean;
   /** `ports.narratorConfig` — the detector thresholds. Absent: the base's. */
   readonly narratorConfig?: Partial<AnomalyDetectorConfig>;
-  /** Supply a recording `ports.transport` (see `driver.transportCalls()`).
-   * Absent: the base's, which for every runner is none — the simulator
-   * branch has no socket to gate. */
+  /** Supply a recording `ports.transport` (see `driver.transportCalls()`;
+   * its `sessionEnded()` is driven by `driver.endSession()` and counted as
+   * `transport.sessionEnded`). Absent: the base's, which for every runner is
+   * none — the simulator branch has no socket to gate, and no session there
+   * can end. */
   readonly transport?: boolean;
   /** Count every subscription to every stream any port method returns (see
    * `driver.livePortSubscriptions()`) — the dispose witness's instrument.
@@ -325,9 +328,18 @@ export interface ScriptedDriver {
   connectionEvents$(): Stream<ConnectionEvent>;
   /** How many times the core has called each `connectionIntents` method. */
   connectionIntentCalls(): ConnectionIntentCalls;
-  /** Every call the core has made on the scripted transport, in order
-   * (`HarnessSeed.transport`; always `[]` without it). */
+  /** Every connect/disconnect the core has made on the scripted transport,
+   * in order (`HarnessSeed.transport`; always `[]` without it). Its
+   * `sessionEnded()` calls are counted by `portCalls("transport.sessionEnded")`. */
   transportCalls(): readonly TransportCall[];
+  /** The server ended the session: one emission on the scripted transport's
+   * `sessionEnded()` (a `4401` close). A no-op without `HarnessSeed.transport`. */
+  endSession(): void;
+  /** How many subscriptions the core has ever opened on
+   * `connectionEvents.events()`'s stream. The port's side effects (a client's
+   * idle routing, the browser's listeners) run once per subscription, so a
+   * core keeps exactly one: the connection-status fold's. */
+  connectionEventSubscriptions(): number;
   /** Flip the OS colour scheme the theme presenter resolves "system" against. */
   setPrefersDark(on: boolean): void;
   /** How many times the core has invoked this port method since the harness
@@ -758,10 +770,14 @@ export function scriptPorts(
     });
   }
 
+  let connectionEventSubscriptions = 0;
   const connectionEvents: ConnectionEventsPort = {
     events: (): Observable<ConnectionEvent> => {
       recordCall("connectionEvents.events");
-      return events$;
+      return new Observable<ConnectionEvent>((subscriber) => {
+        connectionEventSubscriptions += 1;
+        return events$.subscribe(subscriber);
+      });
     },
   };
 
@@ -1095,6 +1111,7 @@ export function scriptPorts(
     },
   };
   const transportLog: TransportCall[] = [];
+  const sessionEnded$ = new Subject<void>();
   const transport: AuthGatedTransport | undefined =
     seed.transport === true
       ? {
@@ -1103,6 +1120,10 @@ export function scriptPorts(
           },
           disconnect: () => {
             transportLog.push("disconnect");
+          },
+          sessionEnded: (): Observable<void> => {
+            recordCall("transport.sessionEnded");
+            return sessionEnded$;
           },
         }
       : base.transport;
@@ -1172,6 +1193,12 @@ export function scriptPorts(
       },
       transportCalls: () => {
         return [...transportLog];
+      },
+      endSession: () => {
+        sessionEnded$.next();
+      },
+      connectionEventSubscriptions: () => {
+        return connectionEventSubscriptions;
       },
       setPrefersDark: (on: boolean) => {
         prefersDark$.next(on);
@@ -1422,6 +1449,7 @@ export function scriptPorts(
     },
     teardown: () => {
       connection$.complete();
+      sessionEnded$.complete();
       prefersDark$.complete();
 
       for (const subject of prices.values()) {

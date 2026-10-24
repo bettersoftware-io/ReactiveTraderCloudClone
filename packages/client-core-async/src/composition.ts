@@ -18,10 +18,12 @@ import type {
 
 import { authDepsPrimitives } from "#/bridge/authDepsPrimitives";
 import { cutPortsOnAbort } from "#/bridge/cutPortsOnAbort";
-import { peek, relay } from "#/bridge/in";
-import { gateTransportOnAuth } from "#/bridge/transportGate";
+import { peek } from "#/bridge/in";
+import {
+  gateTransportOnAuth,
+  relaySessionEndToAuth,
+} from "#/bridge/transportGate";
 import { createCommands } from "#/commands";
-import { spawn } from "#/kernel/spawn";
 import { createAccountAccessMachine } from "#/machines/accountAccess";
 import { createAccountActionMachine } from "#/machines/accountAction";
 import { createBootMachine } from "#/machines/boot";
@@ -143,26 +145,11 @@ function nativePresenters(
   // Hoisted: `priceStream` and `priceHistory` gate their conflation on it —
   // the RxJS core's order.
   const powerSaver = createPowerSaverPresenter(preferences);
-  // ONE `events()` call serves both the status fold and the session end.
-  const connectionEvents = ports.connectionEvents.events();
-  const connection = createConnectionPresenter({
-    events: () => {
-      return connectionEvents;
-    },
-  });
-  // The server ended this session (a 4401 close): sign out; the transport
-  // gate then disconnects. A failing event source is surfaced by
-  // `connection.status$`; this listener swallows it so it is not unhandled.
-  void spawn(
-    () => {
-      return relay(connectionEvents, lifetime, (event) => {
-        if (event.type === "sessionEnded") {
-          auth.endSession();
-        }
-      });
-    },
-    () => {},
-  );
+  const connection = createConnectionPresenter(ports.connectionEvents);
+  // The server ended this session (a 4401 close, reported by the transport,
+  // not on `connectionEvents`, whose one subscriber is the status fold):
+  // sign out; the transport gate then disconnects.
+  relaySessionEndToAuth(ports.transport, auth, lifetime);
   const priceStream = createPriceStreamPresenter(
     ports.pricing,
     powerSaver.isCalm$,

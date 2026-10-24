@@ -1,5 +1,4 @@
-import { Context, Effect, Layer, Scope } from "effect";
-import type { Observable } from "rxjs";
+import { Context, Effect, Layer } from "effect";
 
 import type {
   AccountListPresenter,
@@ -61,8 +60,9 @@ import { createAuthDeps, firstWatchlistSymbol } from "@rtc/core-logic";
 import type { ConnectionEvent, CurrencyPair } from "@rtc/domain";
 
 import { authDepsPrimitives } from "#/bridge/authDepsPrimitives";
-import { type EffectHost, listenToStream } from "#/bridge/out";
+import type { EffectHost } from "#/bridge/out";
 import { peek } from "#/bridge/peek";
+import { relaySessionEndToAuth } from "#/bridge/transportGate";
 import { createEqDrawingsMachine } from "#/machines/eqDrawings";
 import { createEqWorkspaceMachine } from "#/machines/eqWorkspace";
 import { createIncidentMachine } from "#/machines/incident";
@@ -286,13 +286,6 @@ const AccountListTag = Context.GenericTag<AccountListPresenter>(
   "@rtc/client-core-effect/accountList",
 );
 
-/** The connection-event stream, opened ONCE: `ports.connectionEvents.events()`
- * is called here and nowhere else, and the status fold and the session-end
- * listener share the result. Not a presenter, so not in `NativeServices`. */
-const ConnectionEventsTag = Context.GenericTag<Observable<ConnectionEvent>>(
-  "@rtc/client-core-effect/connectionEvents",
-);
-
 const AnimationDirectorTag = Context.GenericTag<AnimationDirector>(
   "@rtc/client-core-effect/animationDirector",
 );
@@ -354,25 +347,9 @@ export type NativeServices =
   | AnimationDirector;
 
 // Presenters that need only the host and the ports.
-const ConnectionEventsLive = Layer.effect(
-  ConnectionEventsTag,
-  Effect.map(AppPortsTag, (ports) => {
-    return ports.connectionEvents.events();
-  }),
-);
-
-const ConnectionLive = Layer.effect(
-  ConnectionTag,
-  Effect.gen(function* buildConnection() {
-    const host = yield* HostTag;
-    const events = yield* ConnectionEventsTag;
-    return createConnectionPresenter(host, {
-      events: () => {
-        return events;
-      },
-    });
-  }),
-).pipe(Layer.provide(ConnectionEventsLive));
+const ConnectionLive = presenterLayer(ConnectionTag, (host, ports) => {
+  return createConnectionPresenter(host, ports.connectionEvents);
+});
 
 const ThemePreferenceLive = presenterLayer(
   ThemePreferenceTag,
@@ -597,37 +574,20 @@ const AccountListLive = Layer.effect(
   }),
 ).pipe(Layer.provide(AuthLive));
 
-/** The server ended this session (a 4401 close): the auth presenter signs
- * out with the reason, and the transport gate then disconnects. Holds the
- * shared event stream until the host's scope closes. A failing event source
- * is surfaced by `connection.status$`, so it is ignored here; an error
- * thrown by the sign-out itself is NOT caught. */
+/** The server ended this session (a 4401 close, reported by the transport's
+ * `sessionEnded()` — not on `connectionEvents`, whose one subscriber is the
+ * status fold): the auth presenter signs out with the reason, and the
+ * transport gate then disconnects. Subscribed once, at construction, and
+ * held until the host's scope closes; no transport (the simulator branch)
+ * subscribes nothing. A throw from the sign-out is NOT caught. */
 const SessionEndedLive = Layer.effectDiscard(
   Effect.gen(function* listenForSessionEnd() {
     const host = yield* HostTag;
-    const events = yield* ConnectionEventsTag;
+    const ports = yield* AppPortsTag;
     const auth = yield* AuthTag;
-    const release = listenToStream(
-      events,
-      (event: ConnectionEvent) => {
-        if (event.type === "sessionEnded") {
-          auth.endSession();
-        }
-      },
-      () => {
-        // intentionally empty — see above
-      },
-    );
-    host.runtime.runSync(
-      Scope.addFinalizer(
-        host.scope,
-        Effect.sync(() => {
-          release();
-        }),
-      ),
-    );
+    relaySessionEndToAuth(host, ports.transport, auth);
   }),
-).pipe(Layer.provide(Layer.merge(ConnectionEventsLive, AuthLive)));
+).pipe(Layer.provide(AuthLive));
 
 const BootGateLive = presenterLayer(BootGateTag, (_host, ports) => {
   return createBootGatePresenter(ports.bootSplash?.shouldPlay() ?? true);

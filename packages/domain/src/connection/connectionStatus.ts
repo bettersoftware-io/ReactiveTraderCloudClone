@@ -17,9 +17,7 @@ export type ConnectionEvent =
   | { type: "reconnect" }
   | { type: "userActivity" }
   | { type: "browserOffline" }
-  | { type: "browserOnline" }
-  /** The server ended this session (close 4401); not a connection state. */
-  | { type: "sessionEnded" };
+  | { type: "browserOnline" };
 
 /**
  * Pure state machine transition function for connection status.

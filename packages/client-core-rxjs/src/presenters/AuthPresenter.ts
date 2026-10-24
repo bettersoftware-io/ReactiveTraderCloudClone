@@ -198,7 +198,7 @@ export class AuthPresenter implements AuthPresenterApi {
     this.subject.next(UNAUTHENTICATED_STATE);
   }
 
-  /** The server ended this session (a `sessionEnded` connection event):
+  /** The server ended this session (the transport's `sessionEnded()`):
    * clears the store and signs out with the reason and its copy. Not on the
    * `AuthPresenter` interface — composition routes the event here. A no-op
    * when nobody is authenticated, so a late event never overwrites a

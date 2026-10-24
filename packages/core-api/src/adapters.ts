@@ -163,6 +163,9 @@ export interface IWsAdapter {
   /** Close the socket deliberately (sign-out) and suppress auto-reconnect,
    * leaving the adapter reusable via connect(). */
   disconnect(): void;
+  /** One emission per session the server ended (close `4401`) — see
+   * `AuthGatedTransport.sessionEnded`. */
+  sessionEnded(): Stream<void>;
   dispose(): void;
 }
 
@@ -171,4 +174,11 @@ export interface IWsAdapter {
 export interface AuthGatedTransport {
   connect(): void;
   disconnect(): void;
+  /** The server ended this session (a `4401` close): emits once per such
+   * close. Hot and adapter-owned — nothing is replayed to a late subscriber,
+   * and subscribing opens nothing. A core subscribes it ONCE, at
+   * construction, and answers it by signing out. It is deliberately not a
+   * `ConnectionEvent`: the connection-status fold stays the one subscriber
+   * of `connectionEvents`, whose port side effects run per subscription. */
+  sessionEnded(): Stream<void>;
 }
