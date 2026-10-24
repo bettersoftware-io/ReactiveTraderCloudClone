@@ -214,43 +214,6 @@ jobs:
       - name: Cucumber hooks unit tests
         run: pnpm --filter @rtc/tests test:hooks
 
-      # The ui:contract coverage gate over the whole src/ui surface (≥95%). It
-      # runs the neutral sociable contract specs AND the co-located src/ui unit
-      # tests, so the percentage reflects their true combined coverage.
-      - name: UI contract coverage gate (≥95%)
-        run: pnpm --filter @rtc/client-react test:ui:contract:coverage
-
-      # Same gate, same neutral specs, second framework: proves the Solid port
-      # carries the react coverage bar (replaceability §8.1 full-parity).
-      # Branches gate at 85 (not 95) — Solid's compiled reactive-effect guards
-      # inflate v8's branch denominator; rationale in the coverage config.
-      - name: UI contract coverage gate — solid (≥95%, branches ≥85%)
-        run: pnpm --filter @rtc/client-solid test:ui:contract:coverage
-
-      # The devtools packages carry the same bar. Aggregate gates cannot see one
-      # weak file (STATUS.md, "Coverage-gap sweep") — the per-file report is the
-      # coverage-report.yml tiers below; this step is the floor.
-      - name: Devtools coverage gates (core + app, ≥95%, branches ≥85%)
-        run: pnpm --filter @rtc/devtools-core test:coverage && pnpm --filter @rtc/devtools-app test:coverage
-
-      # The two alternative application cores (slice 0 of the pluggable-core
-      # workstream) carry the same coverage bar as every other package.
-      - name: Alternative-core coverage gates (async + effect, ≥95%, branches ≥85%)
-        run: pnpm --filter @rtc/client-core-async test:coverage && pnpm --filter @rtc/client-core-effect test:coverage
-
-      # The shared web boot code (core host, core selection, browser adapters)
-      # carries the same coverage bar as the packages it was lifted out of.
-      - name: Web boot coverage gate (≥95%, branches ≥85%)
-        run: pnpm --filter @rtc/web-boot test:coverage
-
-      # The RN client runs TWO runners (vitest for *.test.ts, jest for
-      # *.test.tsx), so neither runner's own percentage is the package's. This
-      # merges their line coverage and gates the union — see
-      # packages/client-react-native/README-COVERAGE.md. Lines only: statement,
-      # branch and function identities differ between the two providers.
-      - name: React Native coverage gate (merged lines ≥95%)
-        run: pnpm --filter @rtc/client-react-native test:coverage:gate
-
       - name: Build
         run: pnpm build
 
@@ -299,11 +262,95 @@ jobs:
       - name: Architecture + supply-chain gates (grep gates + pnpm audit --prod)
         run: pnpm --filter @rtc/tests gates
 
+  # The ≥95% coverage gates, split out of `checks` so the two run side by
+  # side: together they were one ~700 s job, the slowest in the workflow,
+  # and these steps alone were ~250 s of it (2026-10-24 runs 40127240472,
+  # 40126300544). They invoke vitest/jest through `pnpm --filter`, not turbo,
+  # so the remote cache could never skip them anyway, and this job asks for
+  # no `id-token`. The build below is the only thing they need from
+  # `checks`' order: each gate imports its dependencies' dist/.
+  coverage:
+    name: coverage gates (≥95%)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Nothing in this job pushes: keep the token out of .git/config (zizmor
+          # `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+
+      - name: Enable Corepack (provisions the pnpm pinned by the packageManager field)
+        # Lockfile-pinned (sha512), not an ad-hoc `npm install -g`: see the header of
+        # scripts/enable-corepack.sh. Must run AFTER checkout — the script is in-repo.
+        run: scripts/enable-corepack.sh
+
+      - name: Resolve pnpm store path
+        run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
+
+      - name: Cache the pnpm content-addressable store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      # --frozen-lockfile fails if the lockfile is out of date, and (since pnpm 11)
+      # it also enforces the supply-chain policy: the minimumReleaseAge cooldown
+      # and the allowBuilds install-script allowlist. A PR that introduces a
+      # too-fresh (<24h) dependency, an unvetted build script, or a stale lockfile
+      # is rejected here.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      # The ui:contract coverage gate over the whole src/ui surface (≥95%). It
+      # runs the neutral sociable contract specs AND the co-located src/ui unit
+      # tests, so the percentage reflects their true combined coverage.
+      - name: UI contract coverage gate (≥95%)
+        run: pnpm --filter @rtc/client-react test:ui:contract:coverage
+
+      # Same gate, same neutral specs, second framework: proves the Solid port
+      # carries the react coverage bar (replaceability §8.1 full-parity).
+      # Branches gate at 85 (not 95) — Solid's compiled reactive-effect guards
+      # inflate v8's branch denominator; rationale in the coverage config.
+      - name: UI contract coverage gate — solid (≥95%, branches ≥85%)
+        run: pnpm --filter @rtc/client-solid test:ui:contract:coverage
+
+      # The devtools packages carry the same bar. Aggregate gates cannot see one
+      # weak file (STATUS.md, "Coverage-gap sweep") — the per-file report is the
+      # coverage-report.yml tiers below; this step is the floor.
+      - name: Devtools coverage gates (core + app, ≥95%, branches ≥85%)
+        run: pnpm --filter @rtc/devtools-core test:coverage && pnpm --filter @rtc/devtools-app test:coverage
+
+      # The two alternative application cores (slice 0 of the pluggable-core
+      # workstream) carry the same coverage bar as every other package.
+      - name: Alternative-core coverage gates (async + effect, ≥95%, branches ≥85%)
+        run: pnpm --filter @rtc/client-core-async test:coverage && pnpm --filter @rtc/client-core-effect test:coverage
+
+      # The shared web boot code (core host, core selection, browser adapters)
+      # carries the same coverage bar as the packages it was lifted out of.
+      - name: Web boot coverage gate (≥95%, branches ≥85%)
+        run: pnpm --filter @rtc/web-boot test:coverage
+
+      # The RN client runs TWO runners (vitest for *.test.ts, jest for
+      # *.test.tsx), so neither runner's own percentage is the package's. This
+      # merges their line coverage and gates the union — see
+      # packages/client-react-native/README-COVERAGE.md. Lines only: statement,
+      # branch and function identities differ between the two providers.
+      - name: React Native coverage gate (merged lines ≥95%)
+        run: pnpm --filter @rtc/client-react-native test:coverage:gate
+
   e2e:
     name: e2e (browser · presenter · fullstack)
     runs-on: ubuntu-latest
     env:
-      # The 2-vCPU runner can't sustain the full parallel fan-out (it starves
+      # The 4-vCPU runner can't sustain the full parallel fan-out (it starves
       # the timing-sensitive WS smoke into timeouts). Cap the pool to 2 suites
       # at a time — slower wall-clock, but reliable. run-all.ts defaults to
       # fully parallel when this is unset (multi-core dev boxes).
@@ -395,7 +442,7 @@ jobs:
       matrix:
         core: [async, effect]
     env:
-      # The 2-vCPU runner can't sustain the full parallel fan-out (it starves
+      # The 4-vCPU runner can't sustain the full parallel fan-out (it starves
       # the timing-sensitive WS smoke into timeouts). Cap the pool to 2 suites
       # at a time — slower wall-clock, but reliable. run-all.ts defaults to
       # fully parallel when this is unset (multi-core dev boxes).
