@@ -17,6 +17,9 @@ name: Update visual goldens
 #     on 2026-07-28. The old "~11 min" figure predates the matrix reaching 1,462
 #     goldens.)
 #
+# The goldens a run changed are then losslessly recompressed with a pinned
+# oxipng (~26% smaller, pixel-identical; see that step).
+#
 # It then AUTO-COMMITS the regenerated goldens straight to the dispatched branch
 # (scoped to the canonical react/ tree only — never a partial react-local/ set)
 # using the workflow's GITHUB_TOKEN, so there is no artifact → download →
@@ -118,6 +121,45 @@ jobs:
       # ignores it. Empty pattern = no filter = full matrix.
       - name: Regenerate playwright goldens
         run: pnpm --filter @rtc/client-react test:ui:visual:playwright:react:update
+
+      # Losslessly recompress the goldens this run CHANGED, before they are
+      # committed or uploaded: ~26% smaller with pixel-identical decodes
+      # (measured 2026-10-24 on a 201-golden sample), and git stores every golden
+      # version whole, so each regen adds that much less to the repository
+      # (docs/IDEAS.md, "Shrink the repository"). Visual comparisons decode
+      # pixels, so they are unaffected.
+      #
+      # Only files git sees as modified or new are touched. An unchanged scenario
+      # re-renders to byte-identical Playwright output and never enters the list,
+      # so adopting this does not rewrite all ~2,000 goldens into history at once.
+      # A golden recompressed by an earlier run re-renders to different raw
+      # bytes, but recompressing maps them back to the committed bytes, so it
+      # drops out of the diff again.
+      #
+      # oxipng is pinned by version AND checksum: another version may encode the
+      # same pixels differently, which would turn every re-rendered golden into
+      # a byte change. Downloaded with node (installed above) rather than relying
+      # on curl being present in the Playwright image.
+      - name: Recompress changed goldens (oxipng, lossless)
+        env:
+          OXIPNG_VERSION: 10.2.1
+          OXIPNG_SHA256: 1813750ef592c5350ca79c88f98b2c0876d05c826dc7156245256d4255c1ad17
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          asset="oxipng-${OXIPNG_VERSION}-x86_64-unknown-linux-musl"
+          node --input-type=module -e '
+            import { writeFileSync } from "node:fs";
+            const [url, out] = process.argv.slice(1);
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
+            writeFileSync(out, Buffer.from(await res.arrayBuffer()));
+          ' "https://github.com/oxipng/oxipng/releases/download/v${OXIPNG_VERSION}/${asset}.tar.gz" /tmp/oxipng.tgz
+          echo "${OXIPNG_SHA256}  /tmp/oxipng.tgz" | sha256sum -c -
+          tar -xzf /tmp/oxipng.tgz -C /tmp --strip-components=1 "${asset}/oxipng"
+          git ls-files -z --modified --others --exclude-standard -- \
+            packages/ui-contract/goldens/playwright/__screenshots__/react \
+            | grep -z '\.png$' \
+            | xargs -0 -r /tmp/oxipng -q -o 2 --strip safe
 
       # Commit the regenerated goldens straight to the dispatched branch. Scope the
       # stage to the canonical react/ tree ONLY — a bare `git add` would also catch

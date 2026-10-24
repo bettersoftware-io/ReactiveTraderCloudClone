@@ -159,11 +159,14 @@ under 5 GB strongly recommended — but the first three stop the growth:
    appending — Pages serves only the tip, so its history is worthless and
    grows on every push to `main` (`visual.yml`, `publish-site.yml`,
    `coverage-report.yml`).
-3. **Cut golden churn.** Decide whether `react-local/darwin-arm64` needs to be
-   committed at all (git-ignored or regenerated on demand would roughly halve
-   future growth); losslessly recompress PNGs (`oxipng`) in
-   `update-visual-goldens.yml` — Playwright compares decoded pixels, so
-   results are unchanged.
+3. **Cut golden churn.** Still open: decide whether `react-local/darwin-arm64`
+   needs to be committed at all (git-ignored or regenerated on demand would
+   roughly halve future growth). **Done 2026-10-24:** `update-visual-goldens.yml`
+   losslessly recompresses the goldens each run changed with a pinned `oxipng`
+   (~26% smaller, pixel-identical on a 201-golden sample). Deliberately not a
+   one-off pass over all existing goldens — that would add a full second copy
+   of the set (~120 MB) to history to save on files that may never change
+   again. Locally regenerated `react-local/` and RN goldens are not covered.
 4. **Move goldens out of the repo** (separate repo/submodule or object
    storage keyed by a committed hash manifest) — stops screenshot growth
    entirely; a real project.
