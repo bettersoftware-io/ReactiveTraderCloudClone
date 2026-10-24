@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { AccountStatus } from "@rtc/domain";
+
 import type { AccountLookup } from "#/accounts/AccountDirectory";
 import {
-  type CachedStatus,
+  type CachedAccount,
   createAccountStatusCache,
 } from "#/accounts/accountStatusCache";
 import { AuthService, parseAuthUsers } from "#/auth/AuthService";
@@ -170,7 +172,7 @@ const NOW = 1_000;
 interface GateOverrides {
   readonly maxPerIp?: number;
   readonly maxTotal?: number;
-  readonly status?: CachedStatus;
+  readonly status?: AccountStatus | "missing" | "unavailable";
 }
 
 interface GateFixture extends UpgradeGateDeps {
@@ -202,11 +204,18 @@ function createDeps(overrides: GateOverrides = {}): GateFixture {
       maxPerIp: overrides.maxPerIp ?? 10,
     }),
     accountStatus: {
-      statusOf: (accountId: string): Promise<CachedStatus> => {
+      read: (accountId: string): Promise<CachedAccount> => {
         asked.push(accountId);
 
-        return Promise.resolve(overrides.status ?? "active");
+        const status = overrides.status ?? "active";
+
+        return Promise.resolve(
+          status === "missing" || status === "unavailable"
+            ? { status }
+            : { status, sessionsNotBefore: null },
+        );
       },
+      invalidate: (): void => {},
     },
     now: (): number => {
       return NOW;

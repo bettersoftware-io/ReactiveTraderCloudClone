@@ -54,7 +54,7 @@ export async function decideUpgrade(
     return { ok: true, status: 200 };
   }
 
-  const status = await deps.accountStatus.statusOf(decision.token.accountId);
+  const { status } = await deps.accountStatus.read(decision.token.accountId);
 
   if (status === "unavailable") {
     return { ok: false, status: 503, reason: "accounts-unavailable" };
