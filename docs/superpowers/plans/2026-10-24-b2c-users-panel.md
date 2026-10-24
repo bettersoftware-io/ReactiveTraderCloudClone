@@ -739,7 +739,9 @@ values are `admin@rtc.test` / `trader@rtc.test` / `pending@rtc.test` and
 - `client-core-rxjs`: `WorkspaceNavMachine.ts`, `AuthPresenter.ts`,
   `composition.ts`;
 - `core-contract/src/suites/{auth,workspaceNav}.ts`,
-  `harness/workspaceTabs.ts`.
+  `harness/workspaceTabs.ts`;
+- `layout-dockview/src/dockBlob.ts` (+ test) and the engine's load path
+  (the old Admin tab's Dockview blob, below).
 
 **Interfaces (produces):**
 
