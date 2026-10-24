@@ -188,7 +188,7 @@ export interface HarnessSeed {
 type TransportCall = "connect" | "disconnect";
 
 /** One `accountAdmin.actOn(accountId, action)` the core has subscribed. */
-export interface AccountActionCall {
+interface AccountActionCall {
   readonly accountId: string;
   readonly action: AccountAdminAction;
 }

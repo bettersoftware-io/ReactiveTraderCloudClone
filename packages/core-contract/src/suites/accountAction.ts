@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AccountActionState } from "@rtc/core-api";
+import type { AccountSummary } from "@rtc/domain";
 
 import { createAdminSeed } from "#/harness/adminSession";
 import { collect } from "#/harness/collect";
@@ -16,6 +17,7 @@ const DISPLAY_NAME_INPUT_ERROR =
 const UNAVAILABLE_COPY =
   "The live desk is unavailable right now. Try again shortly";
 const SELF_REFUSED = "You cannot change your own account";
+const NOT_FOUND_REFUSED = "That account no longer exists";
 
 const IDLE: AccountActionState = { phase: "idle" };
 
@@ -260,6 +262,43 @@ export function describeAccountActionContract(
       }
     });
 
+    it("a not_found refusal is failed with its text and re-reads the list once, so a row deleted elsewhere disappears", async () => {
+      const h = makeHarness(createAdminSeed(0));
+      const m = h.machines.accountAction("acc-1");
+
+      try {
+        const c = collect(m.state$);
+        const list = collect(h.app.presenters.accountList.state$);
+        const gone = createPendingAccount("acc-1");
+        const kept = createPendingAccount("acc-2");
+        h.driver.emitAccountList({ ok: true, accounts: [gone, kept] });
+        await settle();
+        m.intents.approve();
+        await settle();
+        h.driver.answerAction({ ok: false, reason: "not_found" });
+        await settle();
+        expect(c.values.at(-1)).toEqual({
+          phase: "failed",
+          action: "approve",
+          message: NOT_FOUND_REFUSED,
+        });
+        expect(h.driver.portCalls("accountAdmin.listAccounts")).toBe(2);
+        expect(h.driver.pendingAccountLists()).toBe(1);
+        h.driver.emitAccountList({ ok: true, accounts: [kept] });
+        await settle();
+        expect(list.values.at(-1)).toEqual({
+          status: "ready",
+          rows: [kept],
+          pendingCount: 1,
+        });
+        list.unsubscribe();
+        c.unsubscribe();
+      } finally {
+        m.dispose();
+        await h.teardown();
+      }
+    });
+
     it("a port that errors reads as failed with the unavailable copy", async () => {
       const h = makeHarness(createAdminSeed(0));
       const m = h.machines.accountAction("acc-1");
@@ -316,4 +355,16 @@ export function describeAccountActionContract(
       }
     });
   });
+}
+
+function createPendingAccount(id: string): AccountSummary {
+  return {
+    id,
+    email: `${id}@desk.io`,
+    displayName: `Name ${id}`,
+    access: "user",
+    status: "pending",
+    joinedAt: 1,
+    isSelf: false,
+  };
 }

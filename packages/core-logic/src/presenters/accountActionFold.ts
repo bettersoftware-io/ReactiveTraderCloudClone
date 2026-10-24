@@ -49,9 +49,15 @@ export function stepAccountAction(
 }
 
 /** A success re-reads the list; so does a `forbidden` refusal, which sends
- * the list into its own `forbidden` state. */
+ * the list into its own `forbidden` state, and a `not_found` one — the
+ * account went elsewhere (another administrator deleted it), so its row
+ * leaves the list instead of offering actions that can only fail again. */
 export function refreshesAccountList(outcome: AccountActionOutcome): boolean {
-  return outcome.ok || outcome.reason === "forbidden";
+  return (
+    outcome.ok ||
+    outcome.reason === "forbidden" ||
+    outcome.reason === "not_found"
+  );
 }
 
 function stepIdle(

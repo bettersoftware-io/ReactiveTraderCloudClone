@@ -191,11 +191,13 @@ describe("stepAccountAction", () => {
 });
 
 describe("refreshesAccountList", () => {
-  it("is true for success and for a forbidden refusal, false for any other refusal", () => {
+  it("is true for success and for a forbidden or not_found refusal, false for any other refusal", () => {
     expect(refreshesAccountList({ ok: true })).toBe(true);
     expect(refreshesAccountList({ ok: false, reason: "forbidden" })).toBe(true);
+    // A row deleted elsewhere: re-reading the list makes it disappear.
+    expect(refreshesAccountList({ ok: false, reason: "not_found" })).toBe(true);
     expect(refreshesAccountList({ ok: false, reason: "self" })).toBe(false);
-    expect(refreshesAccountList({ ok: false, reason: "not_found" })).toBe(
+    expect(refreshesAccountList({ ok: false, reason: "invalid_name" })).toBe(
       false,
     );
     expect(refreshesAccountList({ ok: false, reason: "unavailable" })).toBe(
