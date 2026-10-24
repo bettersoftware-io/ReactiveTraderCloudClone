@@ -774,6 +774,24 @@ The rules:
 - **`WORKSPACE_TAB_MARKERS`** gains `admin`.
 - **The persistence test** from PR 1 is re-pinned: a saved `admin` tab
   whose tree holds `admin-dashboard` reads as `null`.
+- **The Dockview blob of the old Admin tab** (added after PR 1's final
+  review). The default engine persists each tab under
+  `rtc-dock-layout-${tab}` (`web-boot/src/adapters/LocalStorageDockLayoutStore.ts`).
+  A browser that used the old Admin tab still holds
+  `rtc-dock-layout-admin`, with the panel `admin-dashboard` and a current
+  `rtcBlobVersion`.
+  - **What goes wrong today.** The engine's load path checks only the
+    version (`isCurrentDockBlob` in `layout-dockview/src/dockBlob.ts`), so it
+    restores that blob. Reconciliation then drops `admin-dashboard`, and
+    nothing adds the seed's `admin-users`, so the Admin workspace opens
+    empty.
+  - **The fix.** A blob counts as current only if it also holds at least
+    one of the tab's seed (static) panel ids. Otherwise the seed restores,
+    as it does for an old version. This makes any tab whose seed changed
+    under a saved blob self-heal.
+  - **Presets.** Pre-rename presets under `rtc-layout-presets-admin` stay
+    and read as the codec's existing "unreadable" entries. That is accepted
+    and noted in `docs/STATUS.md` (rulings, 2026-10-24).
 
 - [ ] **Step 1: Write the failing tests.**
   - **`workspaceNavFold` unit tests (Review Focus 4):**
@@ -792,6 +810,10 @@ The rules:
       "unauthenticated"`, `failure: "session_ended"`, the copy, and a
       cleared store; while unauthenticated it changes nothing;
     - the transport-gate suite already proves that sign-out disconnects.
+  - `layout-dockview`: a blob for tab `admin` holding only
+    `admin-dashboard`, with the current `rtcBlobVersion`, restores the seed
+    (`admin-users`). A blob holding a seed panel plus a docked Jarvis panel
+    still restores as saved, so the existing restore cases stay green.
 
   Run `pnpm --filter @rtc/core-logic test` and
   `pnpm --filter @rtc/client-core-rxjs test`. Expected: FAIL.

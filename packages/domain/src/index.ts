@@ -30,10 +30,6 @@ export type { SessionUser } from "./auth/sessionUser.js";
 
 // FX
 
-// FX
-
-// FX
-
 export {
   aggregatePositionsByCurrency,
   type CurrencyPositionNode,
@@ -360,9 +356,9 @@ export {
   type TradeListener,
   TradeStoreSimulator,
 } from "./simulators/index.js";
+// Telemetry
 export type { LogEvent, Severity } from "./telemetry/log.js";
 export type { MetricSample } from "./telemetry/metrics.js";
-// Telemetry
 export {
   DEFAULT_THROUGHPUT,
   MAX_LOG_ROWS,

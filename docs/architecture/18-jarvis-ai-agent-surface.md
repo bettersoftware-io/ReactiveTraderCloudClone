@@ -1395,12 +1395,12 @@ it already cost the round-trip.
    the `concatMap` queue has already committed to running it once dequeued.
    A candidate follow-up — parallel to P3's existing "multi-orphan reconnect
    burns tokens" item in `docs/STATUS.md` — not fixed in this round.
-4. **The ops usage stream is auth-gated but role-less**, like every other
-   `OPS_*` effect: `OPS_JARVIS_USAGE_SUBSCRIBE` requires an
-   authenticated connection but checks no separate "admin" role — one
-   doesn't exist in this system — so any of the four demo-roster users can
-   subscribe, exactly like `GET_THROUGHPUT` and the rest of the ops
-   surface.
+4. **The ops usage stream is auth-gated but not access-gated**:
+   `OPS_JARVIS_USAGE_SUBSCRIBE` requires an authenticated connection but
+   checks no `access` level (`"user" | "admin"`, B2a), so any signed-in
+   connection can subscribe, exactly like `GET_THROUGHPUT` and the rest of
+   the ops dashboard, whose effects act per connection. Account
+   administration is a separate, access-gated surface (B2a/B2c).
 5. **The pre-handshake availability-cache seed fix.** `JarvisMachine` keeps
    a mutable "current availability" cache so `send()` can read it
    *synchronously* (`state$.getValue()` is not reliably synchronous — see
