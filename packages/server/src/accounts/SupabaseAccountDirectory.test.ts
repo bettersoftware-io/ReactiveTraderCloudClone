@@ -829,6 +829,30 @@ describe("SupabaseAccountDirectory — admin operations", () => {
     });
   });
 
+  it.each([
+    ["sessions_not_before not a date", { sessions_not_before: "not-a-date" }],
+    ["sessions_not_before a number", { sessions_not_before: 123 }],
+    ["created_at missing", { created_at: undefined }],
+    ["created_at null", { created_at: null }],
+    ["created_at not a date", { created_at: "not-a-date" }],
+  ])(
+    "a row with %s is unavailable, in findAccount and listAccounts",
+    async (_name, override) => {
+      const row = { ...createProfileRow(), ...override };
+
+      expect(
+        await createDirectory(
+          createFakeFetch([createReply(200, [row])]),
+        ).findAccount(ACCOUNT_ID),
+      ).toEqual({ outcome: "unavailable" });
+      expect(
+        await createDirectory(
+          createFakeFetch([createReply(200, [row])]),
+        ).listAccounts(10),
+      ).toEqual({ outcome: "unavailable" });
+    },
+  );
+
   it("approves with one PATCH asking for the row back", async () => {
     const fake = createFakeFetch([createReply(200, [{ id: ACCOUNT_ID }])]);
 
@@ -942,6 +966,14 @@ describe("SupabaseAccountDirectory — admin operations", () => {
 
     expect(await createDirectory(fake).deleteAccount(ACCOUNT_ID)).toBe(
       "not_found",
+    );
+  });
+
+  it("a 404 that is not GoTrue's user_not_found is unavailable", async () => {
+    const fake = createFakeFetch([createReply(404, { message: "no route" })]);
+
+    expect(await createDirectory(fake).deleteAccount(ACCOUNT_ID)).toBe(
+      "unavailable",
     );
   });
 

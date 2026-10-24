@@ -613,7 +613,11 @@ export function createSupabaseAccountDirectory(
         return "ok";
       }
 
-      return reply.kind === "refused" && reply.status === 404
+      // Only GoTrue's own answer says the account is gone; a gateway or
+      // route 404 says nothing about the account.
+      return reply.kind === "refused" &&
+        reply.status === 404 &&
+        reply.errorCode === "user_not_found"
         ? "not_found"
         : "unavailable";
     },
