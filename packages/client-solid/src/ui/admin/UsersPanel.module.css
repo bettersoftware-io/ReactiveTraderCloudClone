@@ -49,14 +49,27 @@
 }
 
 /* One grid for the labels and every row; the rows (and the list holding
- * them) are subgrids of it, so the columns line up down the list while the
- * date, status and actions columns still size to their widest content. */
+ * them) are subgrids of it, so the columns line up down the list. The status
+ * and actions tracks are FIXED, each wide enough for its widest state, so no
+ * state change (a confirm, a busy label, a refresh that drops the last
+ * unconfirmed row) moves a column. They are sized in the mono face the cells
+ * use — the table's own font, which every cell overrides — so they follow a
+ * skin's font rather than a pixel guess:
+ *   status  — the UNCONFIRMED chip: 11 letters at 9px (0.9ch each, plus
+ *             0.1em tracking), 16px padding, 2px border;
+ *   actions — the inline delete confirmation, the widest state: "Delete this
+ *             account?" at 11px (22ch) + Confirm (7 letters) + Cancel (6) at
+ *             10px with 0.06em tracking, two 22px button frames, two 6px gaps.
+ *             Every other state fits inside it ("Unblocking…" + Rename +
+ *             Delete is ~45px narrower). */
 .table {
   display: grid;
   grid-template-columns:
-    minmax(140px, 1fr) minmax(180px, 1.4fr) max-content max-content
-    max-content;
+    minmax(140px, 1fr) minmax(180px, 1.4fr) max-content
+    calc(11ch + 1em + 18px) calc(36ch + 1em + 56px);
   column-gap: 20px;
+  font-family: var(--font-mono);
+  font-size: 10px;
 }
 
 .columns,
@@ -86,6 +99,11 @@
 }
 
 .row {
+  /* The cells' line is at least the 27px a plain row's content box is (the
+   * 40px border box less 12px padding and the 1px rule), so a row whose
+   * failure line adds a second grid row keeps its cells on the same centre
+   * line as its siblings. */
+  grid-template-rows: minmax(27px, auto);
   align-items: center;
   row-gap: 6px;
   min-height: 40px;
@@ -209,8 +227,12 @@
   border-color: var(--border-strong);
 }
 
+/* Disabled, but readable: the muted text token (the house treatment of a
+ * disabled row control, as in the header's view rows and the presets list)
+ * at full opacity, the tone dropped so it cannot read as live. */
 .action:disabled {
-  opacity: 0.4;
+  color: var(--text-muted);
+  border-color: var(--border-primary);
   cursor: default;
 }
 
