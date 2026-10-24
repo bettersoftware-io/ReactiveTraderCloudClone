@@ -141,6 +141,22 @@ export class UsersPanelPage extends MountedComponent<Record<string, never>> {
     }
   }
 
+  /** Presses Enter or Escape in the rename field. */
+  async pressNameKey(id: string, key: "Enter" | "Escape"): Promise<void> {
+    await this.user.type(
+      within(this.root).getByTestId(`user-name-input-${id}`),
+      `{${key}}`,
+    );
+  }
+
+  /** True when the rename field holds the focus. */
+  isNameInputFocused(id: string): boolean {
+    return (
+      within(this.root).getByTestId(`user-name-input-${id}`) ===
+      this.root.ownerDocument.activeElement
+    );
+  }
+
   /** The rename field's error text, or null when none is shown. */
   nameError(id: string): string | null {
     return (
@@ -156,6 +172,14 @@ export class UsersPanelPage extends MountedComponent<Record<string, never>> {
       within(this.root)
         .queryByTestId(`user-error-${id}`)
         ?.textContent?.trim() ?? null
+    );
+  }
+
+  /** The list-failure line shown over the rows kept, or null when none. */
+  failedText(): string | null {
+    return (
+      within(this.root).queryByTestId("users-failed")?.textContent?.trim() ??
+      null
     );
   }
 

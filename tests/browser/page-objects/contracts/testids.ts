@@ -109,6 +109,7 @@ export const TESTIDS = {
     refresh: "users-refresh",
     empty: "users-empty",
     forbidden: "users-forbidden",
+    failed: "users-failed",
     rowPrefix: "user-row-",
     row: (id: string) => {
       return `user-row-${id}`;

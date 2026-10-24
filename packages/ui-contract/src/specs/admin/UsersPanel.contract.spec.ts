@@ -20,6 +20,7 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  ACCOUNT_ACTION_PROGRESS_LABELS,
   ACCOUNT_ADMIN_COPY,
   checkDisplayNameInput,
   describeAccountAdminRefusal,
@@ -264,6 +265,56 @@ describe("UsersPanel — rename", () => {
     expect(panel.isButtonDisabled("a2", "save")).toBe(true);
   });
 
+  it("puts the focus in the field Rename opens", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: {
+        status: "ready",
+        rows: [createAccount("a1", "active"), createAccount("a2", "active")],
+      },
+    });
+
+    await panel.click("a2", "rename");
+
+    expect(panel.isNameInputFocused("a2")).toBe(true);
+  });
+
+  it("saves the rename on Enter", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: {
+        status: "ready",
+        rows: [createAccount("a1", "active"), createAccount("a2", "active")],
+      },
+      accountActions: {
+        a2: { phase: "renaming", draft: "Ann", draftError: null },
+      },
+    });
+
+    await panel.pressNameKey("a2", "Enter");
+
+    expect(panel.actionCalls()).toEqual([
+      { accountId: "a2", intent: "submitRename" },
+    ]);
+  });
+
+  it("cancels the rename on Escape", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: {
+        status: "ready",
+        rows: [createAccount("a1", "active"), createAccount("a2", "active")],
+      },
+      accountActions: {
+        a2: { phase: "renaming", draft: "Ann", draftError: null },
+      },
+    });
+
+    await panel.pressNameKey("a2", "Escape");
+
+    expect(panel.hasNameInput("a2")).toBe(false);
+    expect(panel.actionCalls()).toEqual([
+      { accountId: "a2", intent: "cancel" },
+    ]);
+  });
+
   it("cancels a rename back to the row's actions", async () => {
     const panel = mount(UsersPanel, {
       accountList: {
@@ -301,6 +352,33 @@ describe("UsersPanel — a request in flight, and a failure", () => {
     expect(panel.isButtonDisabled("a2", "delete")).toBe(false);
   });
 
+  it("reads the chosen button in progress, and leaves the others' labels", () => {
+    const panel = mount(UsersPanel, {
+      accountList: {
+        status: "ready",
+        rows: [
+          createAccount("a1", "pending"),
+          createAccount("a2", "active"),
+          createAccount("a3", "active"),
+        ],
+      },
+      accountActions: {
+        a2: { phase: "inFlight", action: "block" },
+        a3: { phase: "inFlight", action: "delete" },
+      },
+    });
+
+    expect(panel.buttonLabel("a2", "block")).toBe(
+      ACCOUNT_ACTION_PROGRESS_LABELS.block,
+    );
+    expect(panel.buttonLabel("a2", "delete")).toBe(ACCOUNT_ADMIN_COPY.delete);
+    expect(panel.buttonLabel("a3", "delete")).toBe(
+      ACCOUNT_ACTION_PROGRESS_LABELS.delete,
+    );
+    expect(panel.buttonLabel("a3", "block")).toBe(ACCOUNT_ADMIN_COPY.block);
+    expect(panel.buttonLabel("a1", "approve")).toBe(ACCOUNT_ADMIN_COPY.approve);
+  });
+
   it("shows a failed row's message with Dismiss, and Dismiss clears it", async () => {
     const message = describeAccountAdminRefusal("not_found", "approve");
     const panel = mount(UsersPanel, {
@@ -322,6 +400,46 @@ describe("UsersPanel — a request in flight, and a failure", () => {
     expect(panel.actionCalls()).toEqual([
       { accountId: "a2", intent: "dismiss" },
     ]);
+  });
+});
+
+describe("UsersPanel — loading and a failed re-read", () => {
+  it("shows no rows and no pending count before the first answer", () => {
+    const world = createWorld({ accountList: { status: "loading" } });
+    const panel = mountWith(world, UsersPanel);
+    const head = mountWith(world, UsersHead);
+
+    expect(panel.status()).toBe("loading");
+    expect(panel.rowIds()).toEqual([]);
+    expect(panel.isEmpty()).toBe(false);
+    expect(head.pendingText()).toBeNull();
+    expect(head.hasRefresh()).toBe(true);
+  });
+
+  it("keeps the rows already shown under the list-failure line", () => {
+    const world = createWorld({
+      accountList: {
+        status: "failed",
+        rows: [createAccount("a1", "pending"), createAccount("a2", "active")],
+      },
+    });
+    const panel = mountWith(world, UsersPanel);
+    const head = mountWith(world, UsersHead);
+
+    expect(panel.status()).toBe("failed");
+    expect(panel.failedText()).toBe(
+      describeAccountAdminRefusal("unavailable", "list"),
+    );
+    expect(panel.rowIds()).toEqual(["a1", "a2"]);
+    expect(head.pendingText()).toBe(describePendingCount(1));
+  });
+
+  it("shows no failure line on a list that read", () => {
+    const panel = mount(UsersPanel, {
+      accountList: { status: "ready", rows: [createAccount("a1", "active")] },
+    });
+
+    expect(panel.failedText()).toBeNull();
   });
 });
 
