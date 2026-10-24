@@ -124,7 +124,7 @@ export interface JarvisAvailability {
 }
 
 /**
- * App-layer port for the rolling Jarvis usage/cost telemetry (Admin
+ * App-layer port for the rolling Jarvis usage/cost telemetry (Ops
  * surface): per-brain turn counts, token counts, and estimated spend, both
  * for the current rolling window and since server boot, PLUS the optional
  * budget-gate envelope (`budgetUsd`/`softBudgetUsd`/`spentWindowUsd`/

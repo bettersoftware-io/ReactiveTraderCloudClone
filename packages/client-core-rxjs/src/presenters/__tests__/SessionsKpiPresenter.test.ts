@@ -74,7 +74,7 @@ describe("SessionsKpiPresenter", () => {
   });
 
   // Regression for the same-class bug EventLogPresenter's doc comment
-  // describes: the Admin KPI row is the sole consumer, and App.tsx remounts a
+  // describes: the Ops KPI row is the sole consumer, and App.tsx remounts a
   // tab's whole subtree on switch, unsubscribing it. The rolling series must
   // survive that unsubscribe/resubscribe, not reset to [].
   it("survives unsubscribe/resubscribe (tab remount) without losing accumulated samples", () => {

@@ -8,7 +8,7 @@
  * the two descriptions of "what kinds exist" cannot drift apart.
  */
 
-export const DRIVE_TABS = ["fx", "credit", "equities", "admin"] as const;
+export const DRIVE_TABS = ["fx", "credit", "equities", "ops"] as const;
 export type DriveTab = (typeof DRIVE_TABS)[number];
 
 export const DRIVE_LAYOUT_OPS = [

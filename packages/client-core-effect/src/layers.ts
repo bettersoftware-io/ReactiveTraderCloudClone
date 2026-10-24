@@ -66,13 +66,6 @@ import { createEqDrawingsMachine } from "#/machines/eqDrawings";
 import { createEqWorkspaceMachine } from "#/machines/eqWorkspace";
 import { createIncidentMachine } from "#/machines/incident";
 import { createWorkspaceNavMachine } from "#/machines/workspaceNav";
-import {
-  createEventLogPresenter,
-  createMetricWindowPresenter,
-  createSessionsKpiPresenter,
-  createSessionsPresenter,
-  createTopologyPresenter,
-} from "#/presenters/admin";
 import { createBlotterPresenter } from "#/presenters/blotter";
 import { createCandleSeriesPresenter } from "#/presenters/candleSeries";
 import { createConnectionPresenter } from "#/presenters/connection";
@@ -83,6 +76,13 @@ import {
   createJarvisPreferencesPresenter,
   createLoginWaitPreferencesPresenter,
 } from "#/presenters/groupedPreferences";
+import {
+  createEventLogPresenter,
+  createMetricWindowPresenter,
+  createSessionsKpiPresenter,
+  createSessionsPresenter,
+  createTopologyPresenter,
+} from "#/presenters/ops";
 import { createOrdersBlotterPresenter } from "#/presenters/ordersBlotter";
 import {
   createAmbientStylePresenter,
@@ -489,7 +489,7 @@ const PositionsLive = presenterLayer(PositionsTag, (host, ports) => {
   return createPositionsPresenter(host, ports.positions);
 });
 
-// Slice 5: the admin nine. The metric windows, eventLog and sessionsKpi are
+// Slice 5: the ops nine. The metric windows, eventLog and sessionsKpi are
 // retained folds, topology and sessions retained mirrors; incident is an
 // app-lifetime singleton whose connection events go out through
 // `ports.connectionIntents.injectIncident`.

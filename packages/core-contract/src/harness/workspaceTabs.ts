@@ -5,5 +5,5 @@ export const WORKSPACE_TABS: readonly WorkspaceTab[] = [
   "fx",
   "credit",
   "equities",
-  "admin",
+  "ops",
 ];

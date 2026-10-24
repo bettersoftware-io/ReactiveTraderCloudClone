@@ -7,7 +7,7 @@ import { warmReplay } from "./warmReplay.js";
 
 /** Implements `SessionsPresenter` (`@rtc/core-api`) — see the interface for
  * the contract. A thin `warmReplay` wrapper around
- * `SessionsPort.sessions$()`, kept warm across the Admin tab's
+ * `SessionsPort.sessions$()`, kept warm across the Ops tab's
  * `key={activeTab}` remount. */
 export class SessionsPresenter implements SessionsPresenterApi {
   readonly sessions$: Observable<readonly SessionInfo[]>;

@@ -127,7 +127,7 @@ bridges, `resetWorkspaceLayout`, `dockedPanelIdsFor`,
 `commands.reportDetachedPanels` — all wired through `@rtc/core-logic`'s
 rxjs-free `createWorkspaceDock` / `createLayoutPresetsController` /
 `writeWorkspaceLayout`; the preference has one writer, this core's
-debounce. Slice 5 added the nine admin
+debounce. Slice 5 added the nine ops
 members: the three metric windows, `eventLog` and `sessionsKpi` as warm
 folds over `kernel/foldTopic.ts`, `topology` and `sessions` as warm
 mirrors, `throughput`, and the `incident` singleton, whose connection

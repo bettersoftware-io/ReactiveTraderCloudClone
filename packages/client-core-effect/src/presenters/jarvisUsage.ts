@@ -18,7 +18,7 @@ type UsageSnapshot = ObservedValueOf<JarvisUsagePresenter["usage$"]>;
  * `presenters.jarvisUsage` on the Effect core: `null` first, then the
  * port's snapshots, the latest replayed. The port is reached on the FIRST
  * subscription only and its relay is held on the host scope for the app's
- * life (the RxJS `warmReplay`), so leaving and re-entering the Admin tab
+ * life (the RxJS `warmReplay`), so leaving and re-entering the Ops tab
  * never re-sends the wire subscribe.
  */
 export function createJarvisUsagePresenter(

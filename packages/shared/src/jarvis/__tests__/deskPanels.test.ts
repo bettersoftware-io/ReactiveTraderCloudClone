@@ -23,8 +23,8 @@ describe("DESK_PANEL_ROSTER", () => {
         return p.id;
       }),
     ).toEqual(["credit-new-rfq", "credit-rfqs", "credit-blotter"]);
-    expect(DESK_PANEL_ROSTER.admin).toEqual([
-      { id: "admin-dashboard", title: "Admin" },
+    expect(DESK_PANEL_ROSTER.ops).toEqual([
+      { id: "ops-dashboard", title: "Ops" },
     ]);
     expect(
       DESK_PANEL_ROSTER.equities.map((p) => {

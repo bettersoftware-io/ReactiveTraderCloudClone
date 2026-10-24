@@ -87,4 +87,4 @@ export interface LayoutPort {
   readonly initial: LayoutState;
 }
 
-export type WorkspaceTab = "fx" | "credit" | "admin" | "equities";
+export type WorkspaceTab = "fx" | "credit" | "ops" | "equities";

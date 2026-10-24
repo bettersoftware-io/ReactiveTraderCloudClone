@@ -7,7 +7,7 @@ import { warmReplay } from "./warmReplay.js";
 
 /** Implements `ServiceTopologyPresenter` (`@rtc/core-api`) — see the
  * interface for the contract. A thin `warmReplay` wrapper around
- * `ServiceHealthPort.topology$()`, kept warm across the Admin tab's
+ * `ServiceHealthPort.topology$()`, kept warm across the Ops tab's
  * `key={activeTab}` remount so the graph isn't re-subscribed. */
 export class ServiceTopologyPresenter implements ServiceTopologyPresenterApi {
   readonly topology$: Observable<ServiceTopology>;

@@ -114,7 +114,7 @@ describe("EventLogPresenter", () => {
   });
 
   // Regression for the same-class bug found alongside BlotterPresenter's
-  // Activity feed: LiveEventLog (Admin tab) is this stream's only
+  // Activity feed: LiveEventLog (Ops tab) is this stream's only
   // consumer, and App.tsx remounts a tab's whole subtree on switch
   // (`<WorkspaceEngine key={activeTab}>`), unsubscribing it. The rolling
   // log must survive that unsubscribe/resubscribe, not reset to [].

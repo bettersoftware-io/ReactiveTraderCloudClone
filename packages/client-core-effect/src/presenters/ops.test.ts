@@ -21,9 +21,9 @@ import {
   createSessionsKpiPresenter,
   createSessionsPresenter,
   createTopologyPresenter,
-} from "#/presenters/admin";
+} from "#/presenters/ops";
 
-describe("admin presenters (effect)", () => {
+describe("ops presenters (effect)", () => {
   afterEach(async () => {
     while (hosts.length > 0) {
       const host = hosts.pop();

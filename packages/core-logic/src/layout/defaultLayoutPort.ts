@@ -50,7 +50,7 @@ export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
   // dock slot yet (Task 4 flips the tabbed workspace to the three-panel dock;
   // sell-side isn't one of the three).
   "credit-sell-side": { id: "credit-sell-side", title: "Sell Side" },
-  "admin-dashboard": { id: "admin-dashboard", title: "Admin" },
+  "ops-dashboard": { id: "ops-dashboard", title: "Ops" },
   "eq-chart": { id: "eq-chart", title: "Equities" },
   "eq-blotter": { id: "eq-blotter", title: "Orders & Positions" },
   "eq-ticket": {
@@ -128,7 +128,7 @@ const CREDIT_ROOT: LayoutNode = {
   ],
 };
 
-const ADMIN_ROOT: LayoutNode = { kind: "panel", panelId: "admin-dashboard" };
+const OPS_ROOT: LayoutNode = { kind: "panel", panelId: "ops-dashboard" };
 
 // initialPx is the first-layout allocation for the ticket/watchlist rail (the
 // prototype's 290px design width); the width lock comes from the panels'
@@ -163,7 +163,7 @@ const EQUITIES_ROOT: LayoutNode = {
 const ROOTS: Record<WorkspaceTab, LayoutNode> = {
   fx: FX_ROOT,
   credit: CREDIT_ROOT,
-  admin: ADMIN_ROOT,
+  ops: OPS_ROOT,
   equities: EQUITIES_ROOT,
 };
 

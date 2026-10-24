@@ -4360,7 +4360,7 @@ describe("dynamic-panel reconciliation at construction", () => {
   });
 
   it("does not degrade a single-panel seed tab to seed when its dock corrupts (root stays a branch)", async () => {
-    // The real Admin-tab shape: a single-panel seed. With one Jarvis-docked
+    // The real Ops-tab shape: a single-panel seed. With one Jarvis-docked
     // panel, its root serializes as exactly [static leaf, dynamic leaf] —
     // removing the corrupt dynamic leaf must not collapse that root down to
     // a bare leaf, which dockview's own fromJSON rejects outright ("root
@@ -4370,42 +4370,40 @@ describe("dynamic-panel reconciliation at construction", () => {
     // GROUP ID: fromJSON restores a leaf's persisted `data.id` verbatim,
     // while a fresh seed build assigns its own auto id, oblivious to
     // anything the blob said — stamping a distinctive marker onto the
-    // admin leaf before corrupting the blob makes scrub-success and seed
+    // ops leaf before corrupting the blob makes scrub-success and seed
     // fallback unambiguously distinguishable.
     const seen = trackLayout();
     const first = createDockEngine({
       ...createBase(),
-      seed: ADMIN_LIKE,
+      seed: OPS_LIKE,
       ...seen.options,
       dynamicPanels: [DYN],
     });
     await waitForSize(seen, "panel-dyn-1", 360);
     const parsed = JSON.parse(seen.blob());
-    const adminLeaf = (
+    const opsLeaf = (
       parsed.grid.root.data as { data: { views: string[]; id: string } }[]
     ).find((leaf) => {
-      return leaf.data.views.includes("admin");
+      return leaf.data.views.includes("ops");
     });
 
-    if (!adminLeaf) {
-      throw new Error("admin leaf missing from the captured blob");
+    if (!opsLeaf) {
+      throw new Error("ops leaf missing from the captured blob");
     }
 
-    adminLeaf.data.id = "g-admin-marker"; // only a real restore preserves this
+    opsLeaf.data.id = "g-ops-marker"; // only a real restore preserves this
     delete parsed.panels["panel-dyn-1"]; // unrestorable node: no panels entry
     first.dispose();
     const reloaded = trackLayout();
     const second = createDockEngine({
       ...createBase(),
-      seed: ADMIN_LIKE,
+      seed: OPS_LIKE,
       ...reloaded.options,
       blob: JSON.stringify(parsed),
       dynamicPanels: [DYN],
     });
 
-    expect(lastDockviewApi().getPanel("admin")?.group.id).toBe(
-      "g-admin-marker",
-    );
+    expect(lastDockviewApi().getPanel("ops")?.group.id).toBe("g-ops-marker");
     await waitForSize(reloaded, "panel-dyn-1", 360);
     second.dispose();
   });
@@ -8959,12 +8957,12 @@ const RAIL_LIKE = {
   ],
 } as const;
 
-/** A single-panel seed — the real shape of the Admin tab. With one dynamic
+/** A single-panel seed — the real shape of the Ops tab. With one dynamic
  * panel docked, its root serializes as exactly `[static leaf, dynamic
  * leaf]`: the reproduction for the root-collapse scrub bug (a corrupt
  * dynamic leaf's removal must not turn this root into a bare, dockview-
  * rejected leaf). */
-const ADMIN_LIKE = { kind: "panel", panelId: "admin" } as const;
+const OPS_LIKE = { kind: "panel", panelId: "ops" } as const;
 
 /** FX_LIKE with a THIRD panel in the main column — so the column survives
  * one of its panels floating out, which a two-panel column does not. */

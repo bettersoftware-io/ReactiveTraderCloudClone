@@ -13,7 +13,7 @@ type UsageSnapshot = ObservedValueOf<JarvisUsagePresenter["usage$"]>;
  * `presenters.jarvisUsage` on the async core: `null` first, then the port's
  * snapshots, the latest replayed to a late subscriber. The port is reached
  * on the first subscription only and held for the app's life (the RxJS
- * `warmReplay`), so leaving and re-entering the Admin tab never re-sends the
+ * `warmReplay`), so leaving and re-entering the Ops tab never re-sends the
  * wire subscribe.
  */
 export function createJarvisUsagePresenter(

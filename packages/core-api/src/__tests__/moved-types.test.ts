@@ -14,7 +14,7 @@ import type {
 describe("moved pure-type modules", () => {
   it("WorkspaceTab is the closed four-tab union", () => {
     expectTypeOf<WorkspaceTab>().toEqualTypeOf<
-      "fx" | "credit" | "admin" | "equities"
+      "fx" | "credit" | "ops" | "equities"
     >();
   });
 

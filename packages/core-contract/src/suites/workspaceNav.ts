@@ -52,11 +52,11 @@ export function describeWorkspaceNavContract(
       try {
         const nav = h.app.presenters.workspaceNav;
         const first = collect(nav.state$);
-        nav.intents.switchTab("admin");
+        nav.intents.switchTab("ops");
         await settle();
         first.unsubscribe();
         const late = collect(nav.state$);
-        expect(late.values.at(0)).toEqual({ activeTab: "admin" });
+        expect(late.values.at(0)).toEqual({ activeTab: "ops" });
         late.unsubscribe();
       } finally {
         await h.teardown();

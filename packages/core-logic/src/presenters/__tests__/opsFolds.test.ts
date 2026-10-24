@@ -12,9 +12,9 @@ import {
   prependLogEvent,
   THROUGHPUT_SET_ERROR,
   throughputSetMessage,
-} from "#/presenters/adminFolds";
+} from "#/presenters/opsFolds";
 
-describe("adminFolds", () => {
+describe("opsFolds", () => {
   it("appendMetricSample appends the new sample at the end", () => {
     const a = createSample(1);
     const b = createSample(2);

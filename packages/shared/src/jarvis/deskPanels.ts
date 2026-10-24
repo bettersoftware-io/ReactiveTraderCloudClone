@@ -34,5 +34,5 @@ export const DESK_PANEL_ROSTER: Record<DriveTab, readonly DeskPanelInfo[]> = {
     { id: "eq-ticket", title: "Order Ticket" },
     { id: "eq-watchlist", title: "Watchlist" },
   ],
-  admin: [{ id: "admin-dashboard", title: "Admin" }],
+  ops: [{ id: "ops-dashboard", title: "Ops" }],
 };

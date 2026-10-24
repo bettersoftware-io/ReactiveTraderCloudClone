@@ -360,6 +360,8 @@ export {
   type TradeListener,
   TradeStoreSimulator,
 } from "./simulators/index.js";
+export type { LogEvent, Severity } from "./telemetry/log.js";
+export type { MetricSample } from "./telemetry/metrics.js";
 // Telemetry
 export {
   DEFAULT_THROUGHPUT,
@@ -367,9 +369,7 @@ export {
   METRIC_WINDOW,
   THROUGHPUT_DEBOUNCE_MS,
   THROUGHPUT_MESSAGE_DISMISS_MS,
-} from "./telemetry/adminCadence.js";
-export type { LogEvent, Severity } from "./telemetry/log.js";
-export type { MetricSample } from "./telemetry/metrics.js";
+} from "./telemetry/opsCadence.js";
 export { mulberry32 } from "./telemetry/prng.js";
 export type { SessionInfo } from "./telemetry/session.js";
 export type {

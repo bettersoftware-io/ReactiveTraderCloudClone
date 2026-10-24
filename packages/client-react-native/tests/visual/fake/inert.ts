@@ -164,7 +164,7 @@ export const inertSlice: InertSlice = {
  * in here, it is the resting value. */
 const EMPTY_EVENT_LOG: readonly LogEvent[] = [];
 
-/** Rolling session-count series for the Admin "Active Sessions" KPI card —
+/** Rolling session-count series for the Ops "Active Sessions" KPI card —
  * starts empty, mirroring `useMetrics`'s three series below in shape. */
 const EMPTY_SESSION_COUNT_SERIES: readonly MetricSample[] = [];
 

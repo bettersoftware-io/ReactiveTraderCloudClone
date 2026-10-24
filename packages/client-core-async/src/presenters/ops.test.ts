@@ -19,9 +19,9 @@ import {
   createSessionsKpiPresenter,
   createSessionsPresenter,
   createTopologyPresenter,
-} from "#/presenters/admin";
+} from "#/presenters/ops";
 
-describe("admin presenters (async)", () => {
+describe("ops presenters (async)", () => {
   it("metric window: [] synchronously, one window per sample, truncated to the newest METRIC_WINDOW", () => {
     const samples = new Subject<MetricSample>();
     const presenter = createMetricWindowPresenter(

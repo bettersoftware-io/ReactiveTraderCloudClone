@@ -70,7 +70,7 @@ describe("JarvisUsagePresenter", () => {
 
     expect(seen).toEqual(SNAPSHOT);
     // One warmReplay-held subscription for the whole presenter lifetime —
-    // not one per UI subscriber (the Admin tab's key={activeTab} remount
+    // not one per UI subscriber (the Ops tab's key={activeTab} remount
     // pattern this mirrors ServiceTopologyPresenter/warmReplay for).
     expect(port.callCount).toBe(1);
     keepWarm.unsubscribe();

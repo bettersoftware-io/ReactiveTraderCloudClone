@@ -230,7 +230,7 @@ describe("real-WS branch gates the socket on authentication", () => {
   it("routes idle-lifecycle events from ports.connectionIntents to the transport", () => {
     // Pins the pairConnectionPorts wiring: `connectionIntents` and
     // `connectionEvents` must come from the SAME pair, or a Reconnect command
-    // (and the admin incident injection) push into a stream nothing observes,
+    // (and the ops incident injection) push into a stream nothing observes,
     // and the transport is never told to reopen/close for idle.
     const entry = findRosterUser("demo");
 

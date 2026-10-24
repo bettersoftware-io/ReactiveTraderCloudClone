@@ -285,7 +285,7 @@ function describeJarvisTurnCases(makeHarness: MakeHarness): void {
           status: "applied",
         });
         record({
-          command: { kind: "switchTab", tab: "admin" },
+          command: { kind: "switchTab", tab: "ops" },
           status: "skipped",
           reason: "noop",
         });

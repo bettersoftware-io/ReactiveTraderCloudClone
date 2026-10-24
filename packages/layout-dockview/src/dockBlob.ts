@@ -140,7 +140,7 @@ interface RemovalTally {
  * because dockview's `fromJSON` rejects a leaf root outright ("root must be
  * of type branch", verified against 7.0.4; `convertSeed`'s own lone-panel
  * wrap exists for the identical reason). Reachable in practice: a
- * single-panel seed tab (e.g. Admin) with one Jarvis-docked panel serializes
+ * single-panel seed tab (e.g. Ops) with one Jarvis-docked panel serializes
  * as exactly `[static leaf, dynamic leaf]` at the root, and scrubbing the
  * dynamic leaf must not turn that root into a bare leaf. Membership is
  * checked against `staticIds` directly, not against the `panels`

@@ -71,7 +71,7 @@ export interface WorkspaceLayoutV1 {
 const WORKSPACE_TAB_MARKERS: Readonly<Record<WorkspaceTab, true>> = {
   fx: true,
   credit: true,
-  admin: true,
+  ops: true,
   equities: true,
 };
 

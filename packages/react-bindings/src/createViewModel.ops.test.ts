@@ -1,5 +1,5 @@
 // TDD — RED: written before useSessionCountSeries existed on ViewModel.
-//   pnpm --filter @rtc/react-bindings test -- createViewModel.admin  → FAIL (property missing)
+//   pnpm --filter @rtc/react-bindings test -- createViewModel.ops  → FAIL (property missing)
 // GREEN: SessionsKpiPresenter wired into composition + createViewModel → passes.
 
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -24,7 +24,7 @@ import {
 
 import { createViewModel, type ViewModel } from "#/createViewModel";
 
-describe("createViewModel — admin hooks", () => {
+describe("createViewModel — ops hooks", () => {
   it("wires a SessionsKpiPresenter into the composition root", () => {
     const { presenters } = createApp(createSimPorts());
     expect(presenters.sessionsKpi).toBeInstanceOf(SessionsKpiPresenter);

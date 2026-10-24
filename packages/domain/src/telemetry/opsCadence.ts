@@ -1,4 +1,4 @@
-/** Admin-view cadence, shared by every application core (ADR-006 slice 5):
+/** Ops-view cadence, shared by every application core (ADR-006 slice 5):
  * the contract suites assert these, and `@rtc/core-contract` may not import
  * a core (`@rtc/client-core-rxjs`), so they live here — the slice-4 cooldown precedent. */
 

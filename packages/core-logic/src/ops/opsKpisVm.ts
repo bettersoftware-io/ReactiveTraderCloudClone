@@ -23,10 +23,10 @@ const TPUT_H = 96;
 const TPUT_TOP = 92;
 const TPUT_SPAN = 84;
 
-export type AdminKpiKey = "tput" | "lat" | "err" | "sess";
+export type OpsKpiKey = "tput" | "lat" | "err" | "sess";
 
-export interface AdminKpiVm {
-  readonly key: AdminKpiKey;
+export interface OpsKpiVm {
+  readonly key: OpsKpiKey;
   readonly label: string;
   readonly value: string;
   readonly unit: string;
@@ -61,7 +61,7 @@ interface KpiCfg {
   warns(v: number): boolean;
 }
 
-const KPI_ORDER: readonly AdminKpiKey[] = ["tput", "lat", "err", "sess"];
+const KPI_ORDER: readonly OpsKpiKey[] = ["tput", "lat", "err", "sess"];
 
 function fmtTput(v: number): string {
   return (v / 1000).toFixed(2);
@@ -89,7 +89,7 @@ function warnErr(v: number): boolean {
 
 // PROTO adminVm.ts L1375-1378 (KPI_CFG): per-metric label, unit, formatter and
 // warn threshold, ported verbatim.
-const KPI_CFG: Record<AdminKpiKey, KpiCfg> = {
+const KPI_CFG: Record<OpsKpiKey, KpiCfg> = {
   tput: { label: "Throughput", unit: "k msg/s", fmt: fmtTput, warns: noWarn },
   lat: { label: "P99 Latency", unit: "ms", fmt: fmtRound, warns: warnLat },
   err: { label: "Error Rate", unit: "%", fmt: fmtErr, warns: warnErr },
@@ -103,7 +103,7 @@ function valuesOf(samples: readonly MetricSample[]): readonly number[] {
 }
 
 function seriesFor(
-  key: AdminKpiKey,
+  key: OpsKpiKey,
   input: KpisVmInput,
 ): readonly MetricSample[] {
   switch (key) {
@@ -200,7 +200,7 @@ export function sparkPath(values: readonly number[]): string {
 
 // PROTO adminVm.ts L1374: current value, delta vs the lookback sample, warn
 // state, spark. An empty series reads as a flat zero (no NaN in the output).
-export function kpisVm(input: KpisVmInput): readonly AdminKpiVm[] {
+export function kpisVm(input: KpisVmInput): readonly OpsKpiVm[] {
   return KPI_ORDER.map((key) => {
     const values = valuesOf(seriesFor(key, input));
     const cfg = KPI_CFG[key];

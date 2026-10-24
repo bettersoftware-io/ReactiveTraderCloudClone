@@ -149,11 +149,11 @@ describe("createDefaultLayoutPort", () => {
     ]);
   });
 
-  it("admin: a single dashboard panel, no pinned slot", () => {
-    const { initial } = createDefaultLayoutPort("admin");
+  it("ops: a single dashboard panel, no pinned slot", () => {
+    const { initial } = createDefaultLayoutPort("ops");
     expect(initial.root).toEqual({
       kind: "panel",
-      panelId: "admin-dashboard",
+      panelId: "ops-dashboard",
     });
   });
 
@@ -259,7 +259,7 @@ describe("createDefaultLayoutPort", () => {
     }
   });
 
-  it.each<WorkspaceTab>(["fx", "credit", "admin", "equities"])(
+  it.each<WorkspaceTab>(["fx", "credit", "ops", "equities"])(
     "every adjacent pair in every split of the %s tab's default tree yields a resize handle",
     (tab) => {
       const { initial } = createDefaultLayoutPort(tab);
@@ -278,7 +278,7 @@ describe("staticPanelIdsFor", () => {
       "fx-analytics",
       "fx-positions",
     ]);
-    expect(staticPanelIdsFor("admin")).toHaveLength(1);
+    expect(staticPanelIdsFor("ops")).toHaveLength(1);
   });
 });
 

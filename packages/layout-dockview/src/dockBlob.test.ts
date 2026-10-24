@@ -169,22 +169,22 @@ describe("withoutDynamicNodes (partial net for an unrestorable dynamic leaf)", (
   });
 
   it("keeps a one-child root a branch — dockview rejects a leaf root", () => {
-    // A single-panel seed tab (e.g. Admin) with one Jarvis-docked panel: the
+    // A single-panel seed tab (e.g. Ops) with one Jarvis-docked panel: the
     // root branch has exactly [static leaf, dynamic leaf]. Removing the
     // dynamic leaf must NOT collapse root down to a bare leaf — dockview's
     // own fromJSON rejects that shape outright ("root must be of type
     // branch"), which would otherwise force the whole tab to seed.
     const blob = createSingleLeafBlob([
-      ["admin", 833],
+      ["ops", 833],
       ["panel-dyn-1", 367],
     ]);
 
-    const scrubbed = JSON.parse(withoutDynamicNodes(blob, ["admin"]) ?? "null");
+    const scrubbed = JSON.parse(withoutDynamicNodes(blob, ["ops"]) ?? "null");
 
-    expect(scrubbed.panels).toEqual({ admin: { id: "admin" } });
+    expect(scrubbed.panels).toEqual({ ops: { id: "ops" } });
     expect(scrubbed.grid.root.type).toBe("branch");
     expect(scrubbed.grid.root.data).toHaveLength(1);
-    expect(scrubbed.grid.root.data[0].data.views).toEqual(["admin"]);
+    expect(scrubbed.grid.root.data[0].data.views).toEqual(["ops"]);
     // the removed leaf's freed size (367) is donated to the sole survivor —
     // the same donation rule as any other branch, not dropped on the floor.
     expect(scrubbed.grid.root.data[0].size).toBe(833 + 367);

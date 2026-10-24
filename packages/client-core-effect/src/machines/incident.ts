@@ -24,7 +24,7 @@ export interface IncidentDeps {
   readonly pushConnectionEvent: (event: ConnectionEvent) => void;
 }
 
-/** The admin incident singleton: the imported fold over a `SyncRef`,
+/** The ops incident singleton: the imported fold over a `SyncRef`,
  * warm for the app's lifetime, in a child of the app host's scope (so
  * `app.dispose()` disposes it, as `eqWorkspace`). Each intent runs
  * synchronously in the RxJS core's order — every control first, then the

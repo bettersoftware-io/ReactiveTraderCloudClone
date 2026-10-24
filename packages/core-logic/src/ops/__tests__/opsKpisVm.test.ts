@@ -1,6 +1,6 @@
-// TDD — RED: written before adminKpisVm existed.
-//   pnpm --filter @rtc/core-logic test -- adminKpisVm  → FAIL (module missing)
-// GREEN: adminKpisVm created → all cases pass.
+// TDD — RED: written before opsKpisVm existed.
+//   pnpm --filter @rtc/core-logic test -- opsKpisVm  → FAIL (module missing)
+// GREEN: opsKpisVm created → all cases pass.
 
 import { describe, expect, it } from "vitest";
 
@@ -12,7 +12,7 @@ import {
   smoothPath,
   sparkPath,
   throughputPaths,
-} from "../adminKpisVm";
+} from "../opsKpisVm";
 
 describe("smoothPath", () => {
   it("emits a Catmull-Rom cubic-Bézier path through every data point", () => {

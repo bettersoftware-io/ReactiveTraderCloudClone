@@ -70,7 +70,7 @@ describe("accountRouteShows", () => {
       true,
     );
 
-    for (const tab of ["fx", "credit", "equities", "admin"] as const) {
+    for (const tab of ["fx", "credit", "equities", "ops"] as const) {
       expect(accountRouteShows(ACCOUNT_ACCESS_IDLE, workspaceRoute(tab))).toBe(
         true,
       );

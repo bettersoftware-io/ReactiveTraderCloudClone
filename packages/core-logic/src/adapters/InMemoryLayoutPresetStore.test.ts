@@ -20,7 +20,7 @@ describe("InMemoryLayoutPresetStore", () => {
     store.save("credit", '[{"id":"b"}]');
     expect(store.load("fx")).toBe('[{"id":"a"}]');
     expect(store.load("credit")).toBe('[{"id":"b"}]');
-    expect(store.load("admin")).toBeNull();
+    expect(store.load("ops")).toBeNull();
   });
 
   it("overwrites a tab's serialized list on a second save", () => {

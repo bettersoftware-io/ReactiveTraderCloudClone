@@ -27,8 +27,8 @@ describe("WorkspaceNavMachine", () => {
     m.intents.switchTab("credit");
     expect(await firstValueFrom(m.state$)).toEqual({ activeTab: "credit" });
 
-    m.intents.switchTab("admin");
-    expect(await firstValueFrom(m.state$)).toEqual({ activeTab: "admin" });
+    m.intents.switchTab("ops");
+    expect(await firstValueFrom(m.state$)).toEqual({ activeTab: "ops" });
 
     m.intents.switchTab("equities");
     expect(await firstValueFrom(m.state$)).toEqual({ activeTab: "equities" });
@@ -82,7 +82,7 @@ describe("WorkspaceNavMachine", () => {
     const m = createWorkspaceNavMachine();
     m.dispose();
     expect(() => {
-      m.intents.switchTab("admin");
+      m.intents.switchTab("ops");
     }).not.toThrow();
   });
 });

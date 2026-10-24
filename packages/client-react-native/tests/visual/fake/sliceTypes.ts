@@ -132,7 +132,7 @@ export type AnalyticsSlice = Pick<
 >;
 
 /**
- * Every hook no React Native surface reads today — Jarvis, the admin/telemetry
+ * Every hook no React Native surface reads today — Jarvis, the ops/telemetry
  * lenses, the web-only workspace and layout seams.
  *
  * These exist for type completeness alone, so their values are inert: empty

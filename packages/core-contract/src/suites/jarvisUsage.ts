@@ -6,7 +6,7 @@ import { collect } from "#/harness/collect";
 import type { MakeHarness } from "#/harness/harness";
 import { settle } from "#/harness/settle";
 
-/** `presenters.jarvisUsage` — the admin surface's Jarvis spend: null until
+/** `presenters.jarvisUsage` — the ops surface's Jarvis spend: null until
  * the port's first snapshot, then the latest one, replayed. */
 export function describeJarvisUsageContract(
   label: string,

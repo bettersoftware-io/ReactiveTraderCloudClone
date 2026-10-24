@@ -24,12 +24,12 @@ function createConnectionUsageStream(ws: IWsAdapter): Observable<JarvisUsage> {
 }
 
 /** Wire-mode `JarvisUsagePort`: streams the rolling Jarvis usage/cost
- * snapshot (Admin surface) over an `IWsAdapter`.
+ * snapshot (Ops surface) over an `IWsAdapter`.
  *
  * Mirrors `WsJarvisAdapter.availability$()`'s reconnect-re-arm shape: a
  * fresh `ops.jarvisUsage.subscribe` on every `gatewayConnected` event
  * (not just once at subscribe time), so a subscriber that outlives one
- * connection (the Admin usage panel) keeps receiving pushes across a
+ * connection (the Ops usage panel) keeps receiving pushes across a
  * reconnect, including the one after a server restart — a subscribe sent on
  * a since-dropped socket reaches nobody. `switchMap` tears down the previous
  * connection's listener before arming the new one. */
