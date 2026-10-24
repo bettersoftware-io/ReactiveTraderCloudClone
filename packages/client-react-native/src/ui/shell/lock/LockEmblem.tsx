@@ -4,7 +4,7 @@ import { StyleSheet, View } from "react-native";
 import Animated, {
   cancelAnimation,
   Easing,
-  useAnimatedProps,
+  useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withTiming,
@@ -60,8 +60,8 @@ export function LockEmblem(): JSX.Element {
     };
   }, [enabled, orbitAngle]);
 
-  const orbitProps = useAnimatedProps(() => {
-    return { rotation: orbitAngle.value };
+  const orbitStyle = useAnimatedStyle(() => {
+    return { transform: [{ rotate: `${orbitAngle.value}deg` }] };
   });
 
   return (
@@ -92,35 +92,33 @@ export function LockEmblem(): JSX.Element {
           <Circle cx={CENTER} cy={CENTER} r={3.4} fill={t.accentPrimary} />
         </G>
       </Svg>
-      {/* Outside the filtered layer, and rotated through react-native-svg's
-          own `rotation`/`origin` rather than an RN transform on an animated
-          <G>: at this size the <G> route drew the orbit displaced off the
-          emblem, and under the `filter` not at all (react-native-svg 15.15,
-          iOS). Loses the glow, which a 1px dashed hairline barely carried. */}
-      <Svg
-        style={StyleSheet.absoluteFill}
-        width={SIZE}
-        height={SIZE}
-        viewBox={VIEW_BOX}
-      >
-        <AnimatedCircle
-          animatedProps={orbitProps}
-          origin={`${CENTER}, ${CENTER}`}
-          cx={CENTER}
-          cy={CENTER}
-          r={11}
-          fill="none"
-          stroke={t.accent2}
-          strokeWidth={1}
-          strokeDasharray="3 5"
-          opacity={0.85}
-        />
-      </Svg>
+      {/* Outside the filtered layer (loses the glow, which a 1px dashed
+          hairline barely carried), and turned by rotating the whole layer as
+          a native view: the compositor applies the transform, so no SVG is
+          redrawn per frame. The viewBox scales uniformly, so the view's centre
+          IS the orbit's centre (24, 24). Two earlier routes failed on iOS
+          (react-native-svg 15.15): an animated SVG `rotation`/`origin` prop
+          never moved the ring at all, because native SVG has no such prop
+          (`rotation` becomes a matrix only in JS), so every update only
+          marked the <Svg> dirty; and a transform on an animated <G> drew the
+          orbit displaced off the emblem. */}
+      <Animated.View style={[StyleSheet.absoluteFill, orbitStyle]}>
+        <Svg width={SIZE} height={SIZE} viewBox={VIEW_BOX}>
+          <Circle
+            cx={CENTER}
+            cy={CENTER}
+            r={11}
+            fill="none"
+            stroke={t.accent2}
+            strokeWidth={1}
+            strokeDasharray="3 5"
+            opacity={0.85}
+          />
+        </Svg>
+      </Animated.View>
     </View>
   );
 }
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 /** Both layers share it, so the orbit sits exactly where it did inside the
  * one `<Svg>` it used to share with the hexes. */

@@ -1,5 +1,6 @@
 // packages/client-react-native/tests/pages/LockEmblemPage.tsx
 import { cleanup, screen } from "@testing-library/react-native";
+import { type StyleProp, StyleSheet, type ViewStyle } from "react-native";
 
 import { LockEmblem } from "#/ui/shell/lock/LockEmblem";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
@@ -10,6 +11,14 @@ export interface LockEmblemPage {
   exists(testId: string): boolean;
   /** What each `<Svg>` in the emblem holds, in render order. */
   layers(): EmblemLayer[];
+  /** How the orbit is turned: the rotation of the view wrapping its layer,
+   * and any SVG `rotation` prop on the orbit circle itself. */
+  orbitTurn(): OrbitTurn;
+}
+
+interface OrbitTurn {
+  readonly viewRotation: string | null;
+  readonly svgRotation: unknown;
 }
 
 interface EmblemLayer {
@@ -31,15 +40,39 @@ export function lockEmblemPage(): LockEmblemPage {
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;
     },
+    orbitTurn(): OrbitTurn {
+      // The view whose DIRECT child is the orbit's <Svg> — the emblem's outer
+      // View holds the orbit too, one level further down.
+      const wrapper = findHosts(screen.toJSON(), "View").find((view) => {
+        return (view.children ?? []).some((child) => {
+          return (
+            findHosts(child, "RNSVGSvgView")[0] === child &&
+            findHosts(child, "RNSVGCircle").some(isOrbit)
+          );
+        });
+      });
+
+      const transform = StyleSheet.flatten(
+        wrapper?.props.style as StyleProp<ViewStyle>,
+      ).transform;
+
+      const rotate = Array.isArray(transform)
+        ? (transform as readonly Record<string, unknown>[]).find((step) => {
+            return "rotate" in step;
+          })?.rotate
+        : undefined;
+
+      return {
+        viewRotation: typeof rotate === "string" ? rotate : null,
+        svgRotation: findHosts(screen.toJSON(), "RNSVGCircle").find(isOrbit)
+          ?.props.rotation,
+      };
+    },
     layers(): EmblemLayer[] {
       return findHosts(screen.toJSON(), "RNSVGSvgView").map((layer) => {
         return {
           holdsGlowFilter: findHosts(layer, "RNSVGFilter").length > 0,
-          holdsOrbit: findHosts(layer, "RNSVGCircle").some((circle) => {
-            return (
-              JSON.stringify(circle.props.strokeDasharray) === ORBIT_DASHES
-            );
-          }),
+          holdsOrbit: findHosts(layer, "RNSVGCircle").some(isOrbit),
         };
       });
     },
@@ -64,6 +97,11 @@ function findHosts(node: unknown, type: string): RenderedNode[] {
   });
 
   return host.type === type ? [host, ...children] : children;
+}
+
+/** The orbit is the one dashed circle in the emblem. */
+function isOrbit(circle: RenderedNode): boolean {
+  return JSON.stringify(circle.props.strokeDasharray) === ORBIT_DASHES;
 }
 
 /** The slice of a `screen.toJSON()` node this page reads. */
