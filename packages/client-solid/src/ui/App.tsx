@@ -58,7 +58,11 @@ export function App(): JSX.Element {
   return (
     <div class={styles.app}>
       <AmbientBackground />
-      <HeaderChrome activeTab={navState().activeTab} onTabChange={switchTab} />
+      <HeaderChrome
+        activeTab={navState().activeTab}
+        visibleTabs={navState().visibleTabs}
+        onTabChange={switchTab}
+      />
       <div
         ref={pulse.ref}
         data-jarvis-driven={pulse.pulsing() ? "true" : "false"}
