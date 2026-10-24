@@ -50,6 +50,19 @@ test("with motion enabled, the orbit runs an endless linear spin", async () => {
   expect(withRepeatSpy).toHaveBeenCalledWith(expect.anything(), -1);
 });
 
+// On iOS an animated SVG `rotation` prop never moved the ring: native SVG has
+// no such prop, so each update only redrew the layer. The orbit turns by
+// rotating its layer as a view, which the compositor applies.
+test("the orbit turns as a view transform on its layer, not an SVG prop", async () => {
+  mockMotionEnabled.mockReturnValue(false);
+  await page.mount();
+
+  expect(page.orbitTurn()).toEqual({
+    viewRotation: "0deg",
+    svgRotation: undefined,
+  });
+});
+
 test("with motion disabled, no spin is started and the orbit rests at 0°", async () => {
   mockMotionEnabled.mockReturnValue(false);
   const withRepeatSpy = jest.spyOn(Reanimated, "withRepeat");
