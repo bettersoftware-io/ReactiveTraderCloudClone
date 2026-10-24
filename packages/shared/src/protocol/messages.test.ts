@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { CLIENT_MSG, SERVER_MSG } from "#/protocol/messages.js";
 
 describe("protocol messages", () => {
-  it("keeps the FX/Credit/Admin wire names stable", () => {
+  it("keeps the FX/Credit/Ops wire names stable", () => {
     expect(CLIENT_MSG.SUBSCRIBE_PRICING).toBe("subscribe.pricing");
     expect(CLIENT_MSG.EXECUTE_TRADE).toBe("rpc.executeTrade");
     expect(SERVER_MSG.PRICE_TICK).toBe("stream.priceTick");
@@ -40,11 +40,20 @@ describe("protocol messages", () => {
     expect(SERVER_MSG.JARVIS_AVAILABILITY).toBe("jarvis.availability");
   });
 
-  it("includes the Jarvis usage-snapshot wire names", () => {
-    expect(CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE).toBe(
-      "admin.jarvisUsage.subscribe",
+  it("includes the ops throughput wire names", () => {
+    expect(CLIENT_MSG.GET_THROUGHPUT).toBe("ops.getThroughput");
+    expect(CLIENT_MSG.SET_THROUGHPUT).toBe("ops.setThroughput");
+    expect(SERVER_MSG.THROUGHPUT_RESPONSE).toBe("ops.getThroughput.response");
+    expect(SERVER_MSG.SET_THROUGHPUT_RESPONSE).toBe(
+      "ops.setThroughput.response",
     );
-    expect(SERVER_MSG.ADMIN_JARVIS_USAGE).toBe("admin.jarvisUsage");
+  });
+
+  it("includes the Jarvis usage-snapshot wire names", () => {
+    expect(CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE).toBe(
+      "ops.jarvisUsage.subscribe",
+    );
+    expect(SERVER_MSG.OPS_JARVIS_USAGE).toBe("ops.jarvisUsage");
   });
 
   it("keeps every CLIENT_MSG and SERVER_MSG wire name unique within its own map", () => {

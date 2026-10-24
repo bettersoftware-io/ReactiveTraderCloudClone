@@ -111,11 +111,11 @@ const scenarioActions: Record<string, ScenarioAction> = {
     click: "tab-credit",
     waitForText: "▤ Credit Blotter",
   },
-  "app/admin": {
+  "app/ops": {
     fullPage: true,
-    click: "tab-admin",
-    // "Throughput Control" now appears twice (engine panel header + AdminPanel h2);
-    // "Updates/sec" is unique to the AdminPanel slider row and proves the panel loaded.
+    click: "tab-ops",
+    // "Throughput Control" now appears twice (engine panel header + OpsPanel h2);
+    // "Updates/sec" is unique to the OpsPanel slider row and proves the panel loaded.
     waitForText: "Updates/sec",
   },
   // Light theme is seeded through the seam (fixture app-fx-light, theme "light"),
@@ -139,8 +139,8 @@ const scenarioActions: Record<string, ScenarioAction> = {
   // (LiveRatesHead, outside this standalone component) once the panel head
   // grew tabs; the screenshot alone proves the price-mode arm (charts
   // suppressed) rendered.
-  // Admin panel loaded state: the seam fake provides a loaded value (250).
-  "admin/panel-loaded": { waitForText: "Throughput Control" },
+  // Ops panel loaded state: the seam fake provides a loaded value (250).
+  "ops/panel-loaded": { waitForText: "Throughput Control" },
 
   // Dockview engine (spec 2026-08-11): the 4 fx panels mount async via a
   // useEffect-driven portal (DockviewLayoutEngine's `mounted` state, set
@@ -353,7 +353,7 @@ const scenarioActions: Record<string, ScenarioAction> = {
   // --- Phase 4: Equities panel ---
   // Full App shot: click the equities tab, wait for the watchlist head's "☰
   // Watchlist" tab label to confirm the four-panel dock rendered (analogous to
-  // app/credit + app/admin patterns). Task 6 flipped the layout from the flat
+  // app/credit + app/ops patterns). Task 6 flipped the layout from the flat
   // EquitiesPanel (which rendered a "WATCHLIST" section heading) to the dock —
   // WorkspaceEngine remounts per tab (App.tsx `key={activeTab}`), so this text
   // is unique to the equities tab even though FX's LiveRatesHead renders the
@@ -397,9 +397,9 @@ const scenarioActions: Record<string, ScenarioAction> = {
     click: "tab-equities",
     waitForText: "Microsoft Corp. · NASDAQ",
   },
-  "app/admin-dockview": {
+  "app/ops-dockview": {
     fullPage: true,
-    click: "tab-admin",
+    click: "tab-ops",
     waitForText: "Updates/sec",
   },
 

@@ -149,7 +149,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 
 | | |
 |---|---|
-| **What it is** | The pure rules, with no stream library, shared by the three cores and the UIs: the pure folds (`blotterFolds`, `staleFlagFold`, `incidentFold`, …), view derivations, the layout reducer and workspace/Jarvis controllers (`createWorkspaceDock`, `createJarvisController`, …), `createAuthDeps`, and the view helpers a UI calls directly (`blotter/` sort and filter, `admin/adminKpisVm`, `layout/` `lockedWidthPx` · `maximizeBoundaryPath` · `visibleRootOf` -- moved in from `client-core` on 2026-10-04). |
+| **What it is** | The pure rules, with no stream library, shared by the three cores and the UIs: the pure folds (`blotterFolds`, `staleFlagFold`, `incidentFold`, …), view derivations, the layout reducer and workspace/Jarvis controllers (`createWorkspaceDock`, `createJarvisController`, …), `createAuthDeps`, and the view helpers a UI calls directly (`blotter/` sort and filter, `ops/opsKpisVm`, `layout/` `lockedWidthPx` · `maximizeBoundaryPath` · `visibleRootOf` -- moved in from `client-core` on 2026-10-04). |
 | **Ring** | ③ Interface Adapters -- application rules below the stream shell of each core |
 | **Depends on** | `@rtc/core-api`, `@rtc/domain`, `@rtc/shared` (`packages/core-logic/package.json` `dependencies`) -- `core-api` for types only |
 | **Consumed by** | The three cores; the three clients and `ui-contract`, which call its view rules directly (`client-react-native` from its visual fakes, which the app bundle includes) |
@@ -308,7 +308,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Ring** | ④ Frameworks & Drivers -- a test-only leaf, not part of either client's runtime bundle |
 | **Depends on** | `@rtc/client-core-rxjs`, `@rtc/core-api`, `@rtc/core-logic`, `@rtc/domain`, `@rtc/motion-core`, `rxjs` (`packages/ui-contract/package.json` `dependencies`) |
 | **Consumed by** | `client-react` and `client-solid`, both as a **devDependency** -- it never appears in either client's `src/` (only their `tests/`) |
-| **Non-obvious** | `src/visual/` is the piece with the highest leverage: `scenarios.ts`, `scenarioActions.ts`, `fixtures.ts`, `appData.ts`, `goldenPath.ts`, and `freezeClock.ts` are the single source of truth every visual tier-runner loops over -- adding a scenario here gives all three (react's CI-asserted `playwright` tier, solid's assert-only `playwright` tier, and react's coverage-only `vitest-browser` instrument) the test for free. `src/specs/` holds the shared `*.contract.spec.ts` files (fx/credit/equities/admin/shell), the same set run by each client; each client supplies only its own render-target "swap trio" (`react/` vs `solid/`) that the specs mount against. `goldens/` -- the committed golden PNG trees for the single asserted `playwright` tier, generated only from `client-react` renders -- sits beside `src/` at the package root; it is not compiled, not exported, and not part of the `tsconfig`/knip/biome surface. |
+| **Non-obvious** | `src/visual/` is the piece with the highest leverage: `scenarios.ts`, `scenarioActions.ts`, `fixtures.ts`, `appData.ts`, `goldenPath.ts`, and `freezeClock.ts` are the single source of truth every visual tier-runner loops over -- adding a scenario here gives all three (react's CI-asserted `playwright` tier, solid's assert-only `playwright` tier, and react's coverage-only `vitest-browser` instrument) the test for free. `src/specs/` holds the shared `*.contract.spec.ts` files (fx/credit/equities/ops/shell), the same set run by each client; each client supplies only its own render-target "swap trio" (`react/` vs `solid/`) that the specs mount against. `goldens/` -- the committed golden PNG trees for the single asserted `playwright` tier, generated only from `client-react` renders -- sits beside `src/` at the package root; it is not compiled, not exported, and not part of the `tsconfig`/knip/biome surface. |
 | **README** | [`packages/ui-contract/README.md`](../../packages/ui-contract/README.md) |
 
 #### `@rtc/ws-effects`
@@ -381,7 +381,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 
 | | |
 |---|---|
-| **What it is** | The WebSocket server: a thin Node.js host whose declarative effects over `@rtc/ws-effects` are assembled by `buildEffects(loops)` (`src/effects/index.ts`: FX, Credit, Admin, Equities, plus the `JARVIS_*` effects), with token auth (`src/auth/`), `/login` (`src/http/`), the scripted and Anthropic agent loops (`src/agent/`) and the `/mcp` endpoint (`src/mcp/`). |
+| **What it is** | The WebSocket server: a thin Node.js host whose declarative effects over `@rtc/ws-effects` are assembled by `buildEffects(loops)` (`src/effects/index.ts`: FX, Credit, Ops, Equities, plus the `JARVIS_*` effects), with token auth (`src/auth/`), `/login` (`src/http/`), the scripted and Anthropic agent loops (`src/agent/`) and the `/mcp` endpoint (`src/mcp/`). |
 | **Ring** | ④ host (`src/index.ts`, `node:http` + `ws`) + ③ effects/gateways (`src/effects/`, `src/agent/`, `src/mcp/`, `src/socket/`'s `toSocket`) |
 | **Depends on** | `@rtc/domain`, `@rtc/shared`, `@rtc/ws-effects`, `@rtc/agent-tools`, `@anthropic-ai/sdk`, `@modelcontextprotocol/sdk`, `rxjs`, `ws` (`packages/server/package.json` `dependencies`) |
 | **Consumed by** | `tests` |
@@ -514,7 +514,7 @@ src/
 ├── ui/fx/          tiles · blotter · analytics · positions
 ├── ui/credit/      RFQ form · RFQ tiles · sell-side panel
 ├── ui/equities/    watchlist · candles · depth · ticket · blotters
-├── ui/admin/       KPIs · throughput · latency · topology · event log
+├── ui/ops/       KPIs · throughput · latency · topology · event log
 └── ui/shell/       layout engine · header · boot gate · lock screen
 ```
 
@@ -537,14 +537,14 @@ src/
 ├── ui/fx/          tiles · blotter · analytics · positions
 ├── ui/credit/      RFQ form · RFQ tiles · sell-side panel
 ├── ui/equities/    watchlist · candles · depth · ticket · blotters
-├── ui/admin/       KPIs · throughput · latency · topology · event log
+├── ui/ops/       KPIs · throughput · latency · topology · event log
 └── ui/shell/       layout engine · header · boot gate · lock screen · power-saver
 ```
 
 `@rtc/client-prototype`:
 ```
 src/
-├── fx/ credit/ equities/ admin/    per-domain screen ports (readable React re-implementation)
+├── fx/ credit/ equities/ ops/    per-domain screen ports (readable React re-implementation)
 ├── shell/                           boot · header · lock screen · ambient background
 ├── layout/                           workspace layout port
 ├── mock/                              seeded random-walk mock data (no domain, no rxjs)
@@ -593,7 +593,7 @@ src/
 `@rtc/ui-contract`:
 ```
 src/
-├── specs/fx/ credit/ equities/ admin/ shell/    the shared *.contract.spec.ts files, sociable RTL over a render-target prop
+├── specs/fx/ credit/ equities/ ops/ shell/    the shared *.contract.spec.ts files, sociable RTL over a render-target prop
 ├── shared/harness/, shared/pages/                mount helper + Page-Object-ish query helpers, framework-neutral
 ├── shared/components.ts, shared/mount.ts          the render-target seam each client's swap-trio implements
 └── visual/     scenarios.ts · scenarioActions.ts · fixtures.ts · appData.ts · goldenPath.ts · freezeClock.ts
@@ -664,7 +664,7 @@ src/
 `@rtc/server`:
 ```
 src/
-├── effects/        declarative WsEffects — fx · credit · admin · equities · jarvis, assembled by buildEffects(loops)
+├── effects/        declarative WsEffects — fx · credit · ops · equities · jarvis, assembled by buildEffects(loops)
 ├── services/         serviceContainer (ServiceContainer) · ThroughputService · UsageMeter · JarvisGateService
 ├── agent/             ScriptedAgentLoop · AnthropicAgentLoop (@anthropic-ai/sdk confined here) · Jarvis persona + tools
 ├── auth/               AuthService · token · rateLimit · loadUsers

@@ -598,6 +598,11 @@ shape; the three new failure reasons read as a failed sign-in there.
   (§5.5), so the gate B2c adds replaces that refusal and must check the
   account's **current** status, not only the token's claim.
 
+*Amended 2026-10-18 — B2c's own design:* [2026-10-18-b2c-users-panel-design.md](2026-10-18-b2c-users-panel-design.md).
+Two changes against this section. A refusal is a typed answer (`forbidden`,
+`self`, …), not a nack. The panel lives in a new **Admin** tab, and today's
+operations dashboard is renamed **Ops**.
+
 *Amended 2026-10-04 (final review) — B2c requirements found in B2a's
 review:*
 

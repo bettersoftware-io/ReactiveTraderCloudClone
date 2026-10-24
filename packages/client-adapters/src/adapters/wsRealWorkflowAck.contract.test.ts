@@ -10,7 +10,7 @@ import { InMemorySessionStore } from "./InMemorySessionStore";
 import { createWsRealPorts } from "./portFactory";
 
 /**
- * Success (ack) outcomes for the void-returning workflow/admin RPC ports: an
+ * Success (ack) outcomes for the void-returning workflow/ops RPC ports: an
  * acked command emits `undefined` and completes. The nack and transport-reject
  * arms live in the *.errors.test.ts files; this pins the happy path so all
  * three outcomes of each command are observed.
@@ -40,10 +40,10 @@ describe("wsReal void RPC ports :: ack emits undefined and completes", () => {
     }, "rpc.accept");
   });
 
-  it("admin.setThroughput completes on ack", () => {
+  it("ops.setThroughput completes on ack", () => {
     return expectAckCompletes((p) => {
-      return firstValueFrom(p.admin.setThroughput(500));
-    }, "admin.setThroughput");
+      return firstValueFrom(p.ops.setThroughput(500));
+    }, "ops.setThroughput");
   });
 
   async function expectAckCompletes(

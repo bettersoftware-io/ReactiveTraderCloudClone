@@ -3,7 +3,7 @@ import type { JarvisUsage } from "@rtc/domain";
 import type { Stream } from "#/stream";
 
 /**
- * Per-brain turn/token/cost telemetry (Admin surface), for the current rolling
+ * Per-brain turn/token/cost telemetry (Ops surface), for the current rolling
  * window and since server boot, plus the optional budget-gate envelope fields.
  *
  * Null-start: `usage$` emits `null` immediately, before the port's first real

@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 
 import type { ThroughputView } from "@rtc/core-api";
 import {
-  type AdminPort,
   THROUGHPUT_DEBOUNCE_MS as DEBOUNCE_MS,
   THROUGHPUT_MESSAGE_DISMISS_MS as MESSAGE_DISMISS_MS,
+  type OpsPort,
 } from "@rtc/domain";
 
 import { ThroughputPresenter } from "../ThroughputPresenter";
@@ -14,7 +14,7 @@ import { ThroughputPresenter } from "../ThroughputPresenter";
 describe("ThroughputPresenter", () => {
   it("seeds loading:true synchronously, then the loaded value", () => {
     const { states } = run((ts) => {
-      return createFakeAdmin(ts, {
+      return createFakeOps(ts, {
         get: { marble: "10ms (a|)", values: { a: 250 } },
       });
     });
@@ -27,7 +27,7 @@ describe("ThroughputPresenter", () => {
   it("reflects setValue optimistically before the write resolves", () => {
     const { states } = run(
       (ts) => {
-        return createFakeAdmin(ts, {
+        return createFakeOps(ts, {
           get: { marble: "(a|)", values: { a: 100 } },
         });
       },
@@ -53,7 +53,7 @@ describe("ThroughputPresenter", () => {
   it("coalesces rapid setValue into a single debounced write", () => {
     const { states, sets } = run(
       (ts) => {
-        return createFakeAdmin(ts, {
+        return createFakeOps(ts, {
           get: { marble: "(a|)", values: { a: 100 } },
         });
       },
@@ -84,7 +84,7 @@ describe("ThroughputPresenter", () => {
     const events: MessageEvent[] = [];
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const built = createFakeAdmin(ts, {
+      const built = createFakeOps(ts, {
         get: { marble: "(a|)", values: { a: 100 } },
       });
       const presenter = new ThroughputPresenter(built.port);
@@ -125,7 +125,7 @@ describe("ThroughputPresenter", () => {
   it("shows an error banner when the write fails", () => {
     const { states } = run(
       (ts) => {
-        return createFakeAdmin(ts, {
+        return createFakeOps(ts, {
           get: { marble: "(a|)", values: { a: 100 } },
           set: () => {
             return ts.createColdObservable<void>("#", {}, new Error("boom"));
@@ -150,7 +150,7 @@ describe("ThroughputPresenter", () => {
 
   it("falls back to the default value when the initial load fails", () => {
     const { states } = run((ts) => {
-      return createFakeAdmin(ts, {
+      return createFakeOps(ts, {
         get: { marble: "10ms #", error: new Error("network down") },
       });
     });
@@ -172,7 +172,7 @@ describe("ThroughputPresenter", () => {
     const events: MessageEvent[] = [];
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const built = createFakeAdmin(ts, {
+      const built = createFakeOps(ts, {
         get: { marble: "(a|)", values: { a: 100 } },
       });
       const presenter = new ThroughputPresenter(built.port);
@@ -248,8 +248,8 @@ function scheduler(): TestScheduler {
   });
 }
 
-interface FakeAdmin {
-  port: AdminPort;
+interface FakeOps {
+  port: OpsPort;
   sets: number[];
 }
 
@@ -265,7 +265,7 @@ interface GetOpts {
   error?: unknown;
 }
 
-interface FakeAdminOpts {
+interface FakeOpsOpts {
   get: GetOpts;
   set?: (value: number) => Observable<void>;
 }
@@ -280,14 +280,14 @@ interface MessageEvent {
   message: ThroughputView["message"];
 }
 
-/** Build a fake AdminPort whose get/set are marble-driven cold observables. */
-function createFakeAdmin(
+/** Build a fake OpsPort whose get/set are marble-driven cold observables. */
+function createFakeOps(
   ts: TestScheduler,
   /** Factory for setThroughput()'s observable, given the value written. */
-  opts: FakeAdminOpts,
-): FakeAdmin {
+  opts: FakeOpsOpts,
+): FakeOps {
   const sets: number[] = [];
-  const port: AdminPort = {
+  const port: OpsPort = {
     getThroughput: () => {
       return ts.createColdObservable<number>(
         opts.get.marble,
@@ -310,7 +310,7 @@ function createFakeAdmin(
  * `drive` schedules intents on the virtual timeline.
  */
 function run(
-  buildPort: (ts: TestScheduler) => FakeAdmin,
+  buildPort: (ts: TestScheduler) => FakeOps,
   drive?: (ctx: PresenterCtx) => void,
 ): RunResult {
   const states: ThroughputView[] = [];

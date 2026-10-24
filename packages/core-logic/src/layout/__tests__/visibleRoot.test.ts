@@ -60,7 +60,7 @@ describe("visibleRootOf", () => {
   it("returns the SAME reference when closed is empty or matches nothing", () => {
     expect(visibleRootOf(FX_LIKE_ROOT, [])).toBe(FX_LIKE_ROOT);
     expect(visibleRootOf(FX_LIKE_ROOT, ["not-a-panel"])).toBe(FX_LIKE_ROOT);
-    const sole: LayoutNode = { kind: "panel", panelId: "admin-dashboard" };
+    const sole: LayoutNode = { kind: "panel", panelId: "ops-dashboard" };
     expect(visibleRootOf(sole, ["bogus"])).toBe(sole);
   });
 });

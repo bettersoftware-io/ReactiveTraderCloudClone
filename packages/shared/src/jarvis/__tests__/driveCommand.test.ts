@@ -235,6 +235,11 @@ describe("parseDriveBatch — per-variant field validation", () => {
     expect(parseDriveBatch(batch).ok).toBe(false);
   });
 
+  it("switchTab: rejects the pre-rename tab value admin", () => {
+    const batch = { v: 1, commands: [{ kind: "switchTab", tab: "admin" }] };
+    expect(parseDriveBatch(batch).ok).toBe(false);
+  });
+
   it("layout: rejects a missing op", () => {
     const batch = {
       v: 1,

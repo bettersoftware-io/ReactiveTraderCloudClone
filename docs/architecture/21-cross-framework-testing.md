@@ -407,7 +407,7 @@ text-width-driven element crop of it varies with the runner's system fonts —
 and GitHub-hosted runners were observed resolving them non-deterministically
 across runs. The assert-only tiers surfaced this during the Solid port
 (PR #230): 4 classic-skin CT assertions (`chrome/header` and
-`admin/event-log`, × light/dark) are skipped on CI only in solid's
+`ops/event-log`, × light/dark) are skipped on CI only in solid's
 `ct-fallback` tier, still verified by the other two x86 tiers and all three
 tiers on darwin. Neither tier's designers anticipated host-font
 non-determinism when the goldens were first built — the cross-framework

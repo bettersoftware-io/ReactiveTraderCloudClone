@@ -4,7 +4,7 @@ export interface WorkspacePO {
   openAt(path: string): Promise<void>;
   openFx(): Promise<void>;
   openCredit(): Promise<void>;
-  openAdmin(): Promise<void>;
+  openOps(): Promise<void>;
   openEquities(): Promise<void>;
   /**
    * Navigate to "/" with the `?narratorThresholds=test` query param
@@ -61,13 +61,13 @@ export interface WorkspacePO {
    *  Playwright-only), this reads the SAME page every other `WorkspacePO`
    *  method drives. */
   waitCoreImpl(expected: string, timeoutMs: number): Promise<void>;
-  clickTab(tab: "fx" | "credit" | "admin" | "equities"): Promise<void>;
+  clickTab(tab: "fx" | "credit" | "ops" | "equities"): Promise<void>;
   /** Snapshot: is the given tab's nav button currently marked active
    *  (`data-active`, NavTab.tsx). */
-  isTabActive(tab: "fx" | "credit" | "admin" | "equities"): Promise<boolean>;
+  isTabActive(tab: "fx" | "credit" | "ops" | "equities"): Promise<boolean>;
   /** Wait until the given tab's nav button is (or is not) marked active. */
   waitTabActive(
-    tab: "fx" | "credit" | "admin" | "equities",
+    tab: "fx" | "credit" | "ops" | "equities",
     timeoutMs: number,
   ): Promise<void>;
   /** The browser's own Back button (history). */

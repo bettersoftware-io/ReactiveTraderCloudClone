@@ -684,7 +684,7 @@ interface PanelLeafProps {
 
 /** A panel leaf — no ref, no imperative event wiring. `parentDir` is the
  * `dir` of the split whose cell holds this panel (null at the tree root, for
- * a single-panel tab like Admin); `stripDir`, when non-null, is the dir of
+ * a single-panel tab like Ops); `stripDir`, when non-null, is the dir of
  * the nearest ancestor split that is NOT itself fully stripped — the axis
  * along which this panel's collapsed space actually reclaims. Together they
  * decide the strip's restore-bar orientation below. Panel leaf objects in

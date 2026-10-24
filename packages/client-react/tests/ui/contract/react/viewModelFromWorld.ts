@@ -1872,7 +1872,7 @@ export function reactViewModel(world: World): ViewModel {
       const state = useMachineState(machine.state$);
       return { state, switchTab: machine.intents.switchTab };
     },
-    // Admin / telemetry (Phase 5): World-backed fakes that re-render subscribing
+    // Ops / telemetry (Phase 5): World-backed fakes that re-render subscribing
     // components when the test pushes new data. The incident fake mirrors the real
     // IncidentMachine's connection-status asymmetry via world.injectIncident.
     useMetrics: () => {

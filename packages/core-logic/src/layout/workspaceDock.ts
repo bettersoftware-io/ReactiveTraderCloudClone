@@ -51,7 +51,7 @@ export const WORKSPACE_TABS: readonly WorkspaceTab[] = [
   "fx",
   "credit",
   "equities",
-  "admin",
+  "ops",
 ];
 
 /** `JarvisDriverMachine`'s `knownLayoutPanelIds` dep source: the static panel
@@ -78,7 +78,7 @@ export const LAYOUT_PANEL_IDS: Readonly<
  * (`{...appPanelRegistry, ...dockedRegistryFor(dockedPanels, ...)}`) is
  * GLOBAL — one `PanelId → renderer` map shared by every tab's
  * `InhouseLayoutEngine` — so a wire-minted "fx-rates" panel would shadow
- * Live Rates' body/head/title in `credit`/`equities`/`admin` too, not only
+ * Live Rates' body/head/title in `credit`/`equities`/`ops` too, not only
  * in `fx`. A wire-minted panelId only needs to collide with SOME tab's
  * static roster to poison all of them.
  */

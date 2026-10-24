@@ -30,7 +30,7 @@ A small declarative RxJS effects framework for dispatching WebSocket messages --
 
 ## How it's used
 
-`@rtc/server` composes its effects (`fx`/`credit`/`equities`/`admin`/`jarvis` `.effects.ts`, assembled by `buildEffects`) into one via `combineEffects`, then wires it to every incoming connection via `createWsListener` -- the dispatch layer itself is a few lines in `packages/server/src/index.ts`:
+`@rtc/server` composes its effects (`fx`/`credit`/`equities`/`ops`/`jarvis` `.effects.ts`, assembled by `buildEffects`) into one via `combineEffects`, then wires it to every incoming connection via `createWsListener` -- the dispatch layer itself is a few lines in `packages/server/src/index.ts`:
 
 ```ts
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
@@ -47,7 +47,7 @@ const listen = createWsListener(
 );
 ```
 
-A single effect, built from the `rpc` sugar (`packages/server/src/effects/admin.effects.ts`):
+A single effect, built from the `rpc` sugar (`packages/server/src/effects/ops.effects.ts`):
 
 ```ts
 const getThroughput$: WsEffect<Ctx> = rpc(

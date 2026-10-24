@@ -121,7 +121,7 @@ describe("buildDriveAppTool", () => {
     });
 
     expect(result).toBe(
-      "commands[1].tab: must be one of fx, credit, equities, admin.",
+      "commands[1].tab: must be one of fx, credit, equities, ops.",
     );
     expect(emitDrive).not.toHaveBeenCalled();
   });

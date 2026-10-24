@@ -329,7 +329,7 @@ classDiagram
 
 > **WS-real port adapters are factory functions, not classes.** The `<<factory>>` boxes above (`createPricingPort`, `createExecutionPort`, ...) are the real-mode port implementations: plain functions in `packages/client-adapters/src/adapters/portFactory.ts`, each closing over a shared `IWsAdapter` and assembled by `createWsRealPorts`. The only adapter *classes* in `client-adapters/src/adapters/` are `WsAdapter` itself, `HttpAuthAdapter`, `WsConnectionEventsAdapter`, the Jarvis adapters (`WsJarvisAdapter`, `WsJarvisUsageAdapter`, plus the sim-mode `ScriptedJarvisAdapter`) and `InMemorySessionStore`. The eight classic transport ports plus `ConnectionEventsPort` (which has no contract-test layer — see [§9.6](09-test-strategy.md#96-port-contract-test-layer)) are shown above; the port surface has since grown the families below.
 
-**Newer port families** (added by the Equities, HUD, and Admin/telemetry workstreams; same dependency-inversion rules), again in two readable groups.
+**Newer port families** (added by the Equities, HUD, and Ops/telemetry workstreams; same dependency-inversion rules), again in two readable groups.
 
 *D — equities market data, orders, positions:*
 
@@ -375,13 +375,13 @@ classDiagram
     PositionPort <|.. EquitySimulators : implements
 ```
 
-*E — admin, preferences, and the (simulator-only) telemetry family:*
+*E — ops, preferences, and the (simulator-only) telemetry family:*
 
 ```mermaid
 classDiagram
     direction TB
 
-    class AdminPort {
+    class OpsPort {
         <<interface>>
         +getThroughput() Observable~number~
         +setThroughput(value) Observable~void~
@@ -511,7 +511,7 @@ execute(pair: CurrencyPair): Observable<Price> {
 
 ### 3.5 Presenters, Machines & State Streams
 
-Presenters are the client-side glue between use cases (which already emit `Observable<T>`) and the UI (which consumes hooks). The presenter layer is where multicasting and UI-shaping happen -- `share`/`shareReplay` so the underlying port subscription is started once per symbol, `combineLatest` to fan in derived state, `scan` for accumulators that the UI snapshots. In the default (RxJS) core they live in `packages/client-core-rxjs/src/presenters/`, across FX, Credit, Equities, Admin/telemetry, and shell concerns; the full member list is the `Presenters` / `MachineFactories` / `AppCommands` interfaces in `@rtc/core-api` (`packages/core-api/src/app.ts`, `machine.ts`), which the two alternative cores implement too ([§22](22-pluggable-application-core.md#22-pluggable-application-core)).
+Presenters are the client-side glue between use cases (which already emit `Observable<T>`) and the UI (which consumes hooks). The presenter layer is where multicasting and UI-shaping happen -- `share`/`shareReplay` so the underlying port subscription is started once per symbol, `combineLatest` to fan in derived state, `scan` for accumulators that the UI snapshots. In the default (RxJS) core they live in `packages/client-core-rxjs/src/presenters/`, across FX, Credit, Equities, Ops/telemetry, and shell concerns; the full member list is the `Presenters` / `MachineFactories` / `AppCommands` interfaces in `@rtc/core-api` (`packages/core-api/src/app.ts`, `machine.ts`), which the two alternative cores implement too ([§22](22-pluggable-application-core.md#22-pluggable-application-core)).
 
 Alongside plain stream presenters, the core defines **state machines** -- the framework-neutral `Machine<TState, TIntents>` type (`{ state$, intents, dispose }`, declared in `packages/core-api/src/machine.ts` so all three cores share it). Machines model per-component-instance lifecycles: `TileExecutionMachine`, `NotionalMachine`, `OrderTicketMachine`, `RfqCountdownMachine`, `BootSequenceMachine`, `LayoutMachine`, `IncidentMachine`, and friends. Their `state$` is a `StateObservable` from **`@rx-state/core`** -- the rxjs-only, framework-neutral half of react-rxjs -- which is what lets shareable, defaulted observable state live in the core while React (via `@react-rxjs/core` in the bindings) consumes it downstream. The split matters: `@rx-state/core` in `client-core-rxjs`, `@react-rxjs/core` only in `react-bindings`.
 
@@ -576,7 +576,7 @@ classDiagram
     ViewModel ..> ConnectionStatusPresenter : binds
 ```
 
-The diagram shows representative presenters. The full set in `packages/client-core-rxjs/src/presenters/` also includes `PriceHistoryPresenter`, `CurrencyPairsPresenter`, `InstrumentsPresenter`, `DealersPresenter`, `TradeExecutionPresenter`, `RfqQuotePresenter`, the equities set (`WatchlistPresenter`, `CandleSeriesPresenter`, `OrdersBlotterPresenter`, `DepthPresenter`), the admin/telemetry set (`ThroughputMetricPresenter`, `LatencyPresenter`, `ErrorRatePresenter`, `ServiceTopologyPresenter`, `EventLogPresenter`, `SessionsPresenter`), and shell presenters (`SessionPresenter`, `AnimationDirector`, theme/boot/view preference presenters). **Command methods return `Observable<T>`, not `Promise<T>`** — they are one-shot streams. The UI no longer calls `firstValueFrom` itself: command hooks in the bindings (`useAcceptQuote`, `useCancelRfq`, ...) wrap it, so the UI layer imports **zero** RxJS symbols.
+The diagram shows representative presenters. The full set in `packages/client-core-rxjs/src/presenters/` also includes `PriceHistoryPresenter`, `CurrencyPairsPresenter`, `InstrumentsPresenter`, `DealersPresenter`, `TradeExecutionPresenter`, `RfqQuotePresenter`, the equities set (`WatchlistPresenter`, `CandleSeriesPresenter`, `OrdersBlotterPresenter`, `DepthPresenter`), the ops/telemetry set (`ThroughputMetricPresenter`, `LatencyPresenter`, `ErrorRatePresenter`, `ServiceTopologyPresenter`, `EventLogPresenter`, `SessionsPresenter`), and shell presenters (`SessionPresenter`, `AnimationDirector`, theme/boot/view preference presenters). **Command methods return `Observable<T>`, not `Promise<T>`** — they are one-shot streams. The UI no longer calls `firstValueFrom` itself: command hooks in the bindings (`useAcceptQuote`, `useCancelRfq`, ...) wrap it, so the UI layer imports **zero** RxJS symbols.
 
 **Replacing react-rxjs (or React itself)**: react-rxjs is a small library (a few hundred lines, see [re-rxjs/react-rxjs](https://github.com/re-rxjs/react-rxjs)), and this repo already uses it split into its two halves: `@rx-state/core` (framework-neutral, in `client-core-rxjs`) + `@react-rxjs/core` (React-facing, in `react-bindings`). This is exactly what the SolidJS port did: `@rtc/solid-bindings` maps the same `StateObservable`s to Solid signals -- presenters and below were unchanged. The UI components were rewritten -- but their contracts (the ViewModel hook signatures) are mirrored 1:1, and the behavioural spec suite verified the rewrite. See [§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port).
 

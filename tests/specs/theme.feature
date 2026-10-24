@@ -28,6 +28,6 @@ Feature: Theme
     When the trader toggles the theme
     And the trader switches to the "credit" tab
     Then the credit dock is visible
-    When the trader switches to the "admin" tab
+    When the trader switches to the "ops" tab
     And the trader switches to the "fx" tab
     Then a price tile is visible

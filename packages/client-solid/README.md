@@ -18,7 +18,7 @@ SolidJS + RxJS + Vite client, at full parity with `@rtc/client-react`. Same clea
 | `src/app/` | The tree mount (`solidTreeMount.ts`): one reactive root's `mount` / `unmount` / `destroy` for the core host, disposing a partly built root before it rethrows a first-render error. The browser platform adapters, the core host, the core selection and the page's composition root (`startWebClient`) live in `@rtc/web-boot` |
 | `src/ui/` | Dumb SolidJS UI (Ring ④) — every component reads data through `useViewModel()`; gates 34–37 keep it framework-swappable, same discipline `client-react`'s gates 26–29 enforce there |
 | `src/ui/fx/`, `src/ui/credit/`, `src/ui/equities/` | Per-domain panels, blotters, and tickets — same domain split as `client-react` |
-| `src/ui/admin/` | Admin dashboard — health KPIs, service topology, sessions, live event log |
+| `src/ui/ops/` | Ops dashboard — health KPIs, service topology, sessions, live event log |
 | `src/ui/shell/` | Chrome, layout engine, boot sequence, theme, lock screen, connection overlay, power-saver |
 | `tests/setup/` | jsdom test-environment polyfills (e.g. local-storage shim for Node 26), ported from `client-react` |
 | `tests/ui/contract/solid/` | This client's half of the ui-contract swap-trio — the Solid `UiContractDriver` (see "Full parity, concretely" below) |

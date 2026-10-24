@@ -6,7 +6,7 @@ export const TESTIDS = {
     /** The cover a core swap puts over the page (CoreSwapOverlay); in the
      * DOM only while a swap is under way. */
     coreSwapOverlay: "core-swap-overlay",
-    tab: (tab: "fx" | "credit" | "admin" | "equities") => {
+    tab: (tab: "fx" | "credit" | "ops" | "equities") => {
       return `tab-${tab}`;
     },
   },
@@ -98,7 +98,7 @@ export const TESTIDS = {
     },
     blotterHeadTitle: "credit-blotter-head-title",
   },
-  admin: {
+  ops: {
     incident: {
       inject: (kind: string) => {
         return `incident-${kind}`;

@@ -9,7 +9,7 @@ import { createMetricStream } from "./metricWalk.js";
 import type { ThroughputSimulator } from "./ThroughputSimulator.js";
 
 // Walk step size and clamp band, both expressed as a fraction of the current
-// admin-set setpoint (PROTO's throughput feed is a lively random walk, not a
+// ops-set setpoint (PROTO's throughput feed is a lively random walk, not a
 // flat line glued to the slider value — see final-review I-2).
 const WALK_STEP_FRACTION = 0.08;
 const WALK_CLAMP_FRACTION = 0.25;
@@ -45,7 +45,7 @@ export class TelemetrySimulator implements TelemetryPort {
     });
 
     if (this.lastSetpoint !== setpoint) {
-      // First sample, or the admin slider moved: recenter the walk exactly
+      // First sample, or the ops slider moved: recenter the walk exactly
       // on the new setpoint instead of carrying over a stale offset.
       this.lastSetpoint = setpoint;
       this.walkOffset = 0;

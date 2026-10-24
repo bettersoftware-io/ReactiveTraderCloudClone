@@ -284,7 +284,7 @@ const WORKSPACE_TABS: readonly WorkspaceTab[] = [
   "fx",
   "credit",
   "equities",
-  "admin",
+  "ops",
 ];
 
 const SAVED_AT = "2026-09-20T10:00:00.000Z";

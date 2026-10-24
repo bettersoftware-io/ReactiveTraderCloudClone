@@ -39,7 +39,7 @@ import {
 } from "../browser/authSeed.ts";
 import { type MotionSample, sampleMotion } from "../browser/motionProbe.ts";
 
-const VIEWS = ["fx", "credit", "equities", "admin"] as const;
+const VIEWS = ["fx", "credit", "equities", "ops"] as const;
 const ALL_LEVELS = ["off", "calm", "freeze"] as const;
 
 type Level = (typeof ALL_LEVELS)[number];

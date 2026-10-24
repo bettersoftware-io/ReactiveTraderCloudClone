@@ -300,8 +300,8 @@ function createJarvisWorld(): JarvisWorld {
   return { port, confirms, emit, narrate, registerNarrate };
 }
 
-/** Seed values for the ADMIN / telemetry hooks (Phase 5). */
-export interface AdminSeed {
+/** Seed values for the OPS / telemetry hooks (Phase 5). */
+export interface OpsSeed {
   topology?: ServiceTopology | null;
   eventLog?: readonly LogEvent[];
   sessions?: readonly SessionInfo[];
@@ -426,11 +426,11 @@ const DEFAULT_AUTH: AuthViewState = {
 
 export interface World {
   readonly sources: { [K in keyof HookValues]: BehaviorSubject<HookValues[K]> };
-  /** Reactive throughput view backing useThroughput (drives AdminPanel). */
+  /** Reactive throughput view backing useThroughput (drives OpsPanel). */
   readonly throughput: BehaviorSubject<ThroughputView>;
   /** Values captured from useThroughput().setValue calls. */
   readonly throughputSets: number[];
-  /** Push a new throughput view (drives the AdminPanel's re-render). */
+  /** Push a new throughput view (drives the OpsPanel's re-render). */
   setThroughputView(patch: Partial<ThroughputView>): void;
   /** Reactive theme-mode preference backing useThemePreference (drives ThemeProvider). */
   readonly themeMode: BehaviorSubject<ThemeModePreference>;
@@ -496,7 +496,7 @@ export interface World {
    * DEFAULT_JARVIS_NARRATOR. */
   readonly jarvisNarrator: BehaviorSubject<JarvisNarratorPreference>;
   /** Jarvis token-usage/cost telemetry backing useJarvisUsage() (the
-   * JarvisUsageCard admin surface, Task 10 of Phase 3) — mirrors `topology$`
+   * JarvisUsageCard ops surface, Task 10 of Phase 3) — mirrors `topology$`
    * above (null until first push / not seeded). */
   readonly jarvisUsage$: BehaviorSubject<JarvisUsage | null>;
   /** Push a new Jarvis usage snapshot (drives the JarvisUsageCard's re-render). */
@@ -628,7 +628,7 @@ export interface World {
   readonly eqWatchlistSort: BehaviorSubject<EqWatchlistSort>;
   /** Reactive blotter tab preference backing useEqBlotterView. */
   readonly eqBlotterView: BehaviorSubject<EqBlotterView>;
-  // Admin / telemetry streams (Phase 5)
+  // Ops / telemetry streams (Phase 5)
   /** Reactive service topology backing useTopology. Null until first push. */
   readonly topology$: BehaviorSubject<ServiceTopology | null>;
   /** Reactive newest-first event log backing useEventLog. */
@@ -716,7 +716,7 @@ export interface WorldSeeds {
   animatedBackground?: boolean;
   auth?: Partial<AuthViewState>;
   equities?: EquitiesSeed;
-  admin?: AdminSeed;
+  ops?: OpsSeed;
   creditRfqFilter?: CreditRfqFilter;
   powerSaverLevel?: PowerSaverLevel;
   ambientStyle?: AmbientStyle;
@@ -783,7 +783,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     animatedBackground: animatedBackgroundSeed,
     auth: authSeed = {},
     equities: equitiesSeed = {},
-    admin: adminSeed = {},
+    ops: opsSeed = {},
     creditRfqFilter: creditRfqFilterSeed,
     powerSaverLevel: powerSaverLevelSeed,
     ambientStyle: ambientStyleSeed,
@@ -1046,7 +1046,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
   );
 
   const jarvisUsage$ = new BehaviorSubject<JarvisUsage | null>(
-    adminSeed.jarvisUsage ?? null,
+    opsSeed.jarvisUsage ?? null,
   );
 
   // panelStreamDeps (Task 9): a PanelStreamDeps façade wired straight to
@@ -1133,28 +1133,28 @@ export function createWorld(seeds: WorldSeeds = {}): World {
   });
   const bootGate = new BehaviorSubject<boolean>(true);
 
-  // Admin / telemetry subjects (Phase 5). Seeded from adminSeed; default to
+  // Ops / telemetry subjects (Phase 5). Seeded from opsSeed; default to
   // null/empty so components render their "no data" placeholders before a spec
   // pushes live data — mirroring the app's start-before-first-emission state.
   const topology$ = new BehaviorSubject<ServiceTopology | null>(
-    adminSeed.topology !== undefined ? adminSeed.topology : null,
+    opsSeed.topology !== undefined ? opsSeed.topology : null,
   );
 
   const eventLog$ = new BehaviorSubject<readonly LogEvent[]>(
-    adminSeed.eventLog ?? [],
+    opsSeed.eventLog ?? [],
   );
 
   const sessions$ = new BehaviorSubject<readonly SessionInfo[]>(
-    adminSeed.sessions ?? [],
+    opsSeed.sessions ?? [],
   );
 
   const sessionCountSeries$ = new BehaviorSubject<readonly MetricSample[]>(
-    adminSeed.sessionCountSeries ?? [],
+    opsSeed.sessionCountSeries ?? [],
   );
 
   const metrics$ = new BehaviorSubject<MetricsView>({
     ...DEFAULT_METRICS_VIEW,
-    ...adminSeed.metrics,
+    ...opsSeed.metrics,
   });
 
   // Incident state tracks which kinds are currently active. Separate from the
@@ -1337,7 +1337,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     eqDrawings,
     eqWatchlistSort,
     eqBlotterView,
-    // Admin subjects
+    // Ops subjects
     topology$,
     eventLog$,
     sessions$,

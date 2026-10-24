@@ -204,7 +204,7 @@ export type UseJarvisDemoResult = {
   stopDemo: () => void;
 };
 
-/** The AdminPanel throughput view: slider/input value, initial-load flag, and
+/** The OpsPanel throughput view: slider/input value, initial-load flag, and
  * the optional confirmation/error banner — every read field as an accessor. */
 interface UseThroughputResult {
   value: Accessor<number>;
@@ -646,7 +646,7 @@ export interface ViewModel {
   /** The two Jarvis desk-assistant preferences (brain + effort) — the
    * Preferences modal's JARVIS section writer. */
   useJarvisPreferences: () => UseJarvisPreferencesResult;
-  /** Rolling Jarvis usage/cost telemetry (Admin surface) — null until the
+  /** Rolling Jarvis usage/cost telemetry (Ops surface) — null until the
    * first snapshot. */
   useJarvisUsage: () => Accessor<JarvisUsage | null>;
   /** The generative-UI desk panels J.A.R.V.I.S. has spawned this session,
@@ -673,7 +673,7 @@ export interface ViewModel {
    * plus the `startDemo`/`stopDemo` intents. Starts `{ running: false,
    * stepIndex: 0, stepCount: JARVIS_DEMO_STEPS.length, label: null }`. */
   useJarvisDemo: () => UseJarvisDemoResult;
-  // Admin / telemetry streams (Phase 5)
+  // Ops / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
   /** Live service-topology graph — null until the first emission. */
@@ -682,7 +682,7 @@ export interface ViewModel {
   useEventLog: () => Accessor<readonly LogEvent[]>;
   /** Active trader sessions — starts empty. */
   useSessions: () => Accessor<readonly SessionInfo[]>;
-  /** Rolling session-count series for the Admin "Active Sessions" KPI card —
+  /** Rolling session-count series for the Ops "Active Sessions" KPI card —
    * starts empty, mirrors useMetrics()'s three streams in shape. */
   useSessionCountSeries: () => Accessor<readonly MetricSample[]>;
   /** Shared incident-machine state + inject/clear intents. */
@@ -1067,7 +1067,7 @@ export function createViewModel(
     [] as readonly EquityPosition[],
   );
 
-  // Admin / telemetry streams (Phase 5) — plain `state()`s (shared, not per-mount).
+  // Ops / telemetry streams (Phase 5) — plain `state()`s (shared, not per-mount).
   const throughputSamplesState = state(
     presenters.throughputMetric.samples$,
     [] as readonly MetricSample[],

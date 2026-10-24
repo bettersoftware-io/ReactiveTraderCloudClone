@@ -139,7 +139,7 @@ export function describeUndockPanelContract(
         const initial = await readLayout(h, "fx");
         await spawnPanels(h, ["p1"]);
         h.app.presenters.dockPanel("p1");
-        h.app.presenters.workspaceNav.intents.switchTab("admin");
+        h.app.presenters.workspaceNav.intents.switchTab("ops");
         await settle();
         h.app.presenters.undockPanel("p1");
         expect((await readLayout(h, "fx")).root).toEqual(initial.root);
@@ -204,7 +204,7 @@ export function describeDismissPanelContract(
           return `f${i}`;
         });
         await spawnPanels(h, floating);
-        h.app.presenters.workspaceNav.intents.switchTab("admin");
+        h.app.presenters.workspaceNav.intents.switchTab("ops");
         await settle();
         h.app.presenters.dismissPanel("d");
         expect((await readLayout(h, "fx")).root).toEqual(initial.root);

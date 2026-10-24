@@ -44,12 +44,12 @@ import type {
   PageContext,
 } from "./harness/component";
 import {
-  type AdminSeed,
   type CommandResults,
   createWorld,
   type EquitiesSeed,
   type HookValues,
   type MetricsView,
+  type OpsSeed,
   type ParametricSeed,
   type World,
 } from "./harness/world";
@@ -84,8 +84,8 @@ export interface MountOptions<P> {
   auth?: Partial<AuthViewState>;
   /** Seed the equities streams (useWatchlist / useEquityQuote / useEquityOrders / …). */
   equities?: EquitiesSeed;
-  /** Seed the admin / telemetry streams (useTopology / useEventLog / useSessions / useMetrics). */
-  admin?: AdminSeed;
+  /** Seed the ops / telemetry streams (useTopology / useEventLog / useSessions / useMetrics). */
+  ops?: OpsSeed;
   /** Seed the initial Credit RFQs filter preference (useCreditRfqFilterPreference); defaults to DEFAULT_CREDIT_RFQ_FILTER. */
   creditRfqFilter?: CreditRfqFilter;
   /** Seed the initial Jarvis backend availability (useJarvis's `state.available`
@@ -197,7 +197,7 @@ function buildContext<P>(
     throughputSets: world.throughputSets,
     commands: world.commands,
     routes: world.routes,
-    // Admin / telemetry setters: flush-wrapped so React re-renders are flushed
+    // Ops / telemetry setters: flush-wrapped so React re-renders are flushed
     // synchronously before the next assertion (mirrors ctx.emit behaviour).
     setTopology: (value: ServiceTopology | null) => {
       return flush(() => {
@@ -314,7 +314,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     animatedBackground: opts.animatedBackground,
     auth: opts.auth,
     equities: opts.equities,
-    admin: opts.admin,
+    ops: opts.ops,
     creditRfqFilter: opts.creditRfqFilter,
     powerSaverLevel: opts.powerSaverLevel,
     ambientStyle: opts.ambientStyle,

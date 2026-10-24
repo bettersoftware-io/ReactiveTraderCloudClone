@@ -21,7 +21,7 @@ const SEEDED_BLOBS: Partial<Record<WorkspaceTab, string>> = {
   fx: "fx-blob",
   credit: "credit-blob",
   equities: "equities-blob",
-  admin: "admin-blob",
+  ops: "ops-blob",
 };
 
 /** `presenters.resetWorkspaceLayout` — discard the whole persisted
@@ -91,22 +91,20 @@ export function describeResetWorkspaceLayoutContract(
         let stored: string | null = null;
 
         try {
-          const [a] = leafIds(
-            (await readLayout(h1, "admin", clock.settle)).root,
-          );
-          h1.app.presenters.layoutFor("admin").intents.maximize(a);
+          const [a] = leafIds((await readLayout(h1, "ops", clock.settle)).root);
+          h1.app.presenters.layoutFor("ops").intents.maximize(a);
           await clock.advance(WORKSPACE_PERSIST_DEBOUNCE_MS);
           stored = h1.driver.storedWorkspaceLayout();
         } finally {
           await h1.teardown();
         }
 
-        expect(stored).toContain('"maximized":"admin-dashboard"');
+        expect(stored).toContain('"maximized":"ops-dashboard"');
         const h2 = makeHarness({ workspaceLayout: stored });
 
         try {
           h2.app.presenters.resetWorkspaceLayout();
-          expect((await readLayout(h2, "admin", clock.settle)).maximized).toBe(
+          expect((await readLayout(h2, "ops", clock.settle)).maximized).toBe(
             null,
           );
         } finally {

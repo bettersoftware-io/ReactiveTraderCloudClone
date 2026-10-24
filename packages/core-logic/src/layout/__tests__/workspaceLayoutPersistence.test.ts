@@ -12,12 +12,7 @@ import {
   type WorkspaceLayoutV1,
 } from "../workspaceLayoutPersistence";
 
-const REAL_TABS: readonly WorkspaceTab[] = [
-  "fx",
-  "credit",
-  "admin",
-  "equities",
-];
+const REAL_TABS: readonly WorkspaceTab[] = ["fx", "credit", "ops", "equities"];
 
 describe("serializeWorkspaceLayout / parseWorkspaceLayout — round trip", () => {
   it.each(REAL_TABS)(
@@ -476,6 +471,26 @@ describe("parseWorkspaceLayout — corrupt corpus, every case → null", () => {
   it("unknown tab key", () => {
     const raw = corruptedJson((obj) => {
       obj.tabs.bogusTab = obj.tabs.fx;
+      return obj;
+    });
+    expect(parseWorkspaceLayout(raw)).toBeNull();
+  });
+
+  it("a layout saved before the Ops rename reads as no saved layout", () => {
+    // The pre-rename shape: a tab keyed `admin` holding the old panel id.
+    // `admin` is no longer a workspace tab, so the whole payload is refused
+    // (fail-closed) and boot falls back to the default layouts. A pre-rename
+    // client wrote fx, credit, equities, admin — never `ops`.
+    const raw = corruptedJson((obj) => {
+      delete obj.tabs.ops;
+      obj.tabs.admin = {
+        layout: {
+          root: { kind: "panel", panelId: "admin-dashboard" },
+          maximized: null,
+          collapsed: [],
+        },
+        docked: [],
+      };
       return obj;
     });
     expect(parseWorkspaceLayout(raw)).toBeNull();

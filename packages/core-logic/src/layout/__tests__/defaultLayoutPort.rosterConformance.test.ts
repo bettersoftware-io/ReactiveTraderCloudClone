@@ -7,7 +7,7 @@ import { LAYOUT_PANEL_IDS } from "#/layout/workspaceDock";
 
 describe("DESK_PANEL_ROSTER ↔ defaultLayoutPort conformance", () => {
   it("roster ids per tab equal the default-tree ids (order included)", () => {
-    for (const tab of ["fx", "credit", "equities", "admin"] as const) {
+    for (const tab of ["fx", "credit", "equities", "ops"] as const) {
       expect(
         DESK_PANEL_ROSTER[tab].map((p) => {
           return p.id;

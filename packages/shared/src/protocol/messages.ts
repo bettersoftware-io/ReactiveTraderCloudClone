@@ -36,11 +36,11 @@ export const CLIENT_MSG = {
   QUOTE: "rpc.quote",
   PASS: "rpc.pass",
   ACCEPT: "rpc.accept",
-  // Admin
-  GET_THROUGHPUT: "admin.getThroughput",
-  SET_THROUGHPUT: "admin.setThroughput",
-  // Subscribes to periodic JarvisUsageSnapshot pushes (see SERVER_MSG.ADMIN_JARVIS_USAGE).
-  ADMIN_JARVIS_USAGE_SUBSCRIBE: "admin.jarvisUsage.subscribe",
+  // Ops
+  GET_THROUGHPUT: "ops.getThroughput",
+  SET_THROUGHPUT: "ops.setThroughput",
+  // Subscribes to periodic JarvisUsageSnapshot pushes (see SERVER_MSG.OPS_JARVIS_USAGE).
+  OPS_JARVIS_USAGE_SUBSCRIBE: "ops.jarvisUsage.subscribe",
   // Equities
   SUBSCRIBE_WATCHLIST: "subscribe.watchlist",
   SUBSCRIBE_EQ_QUOTES: "subscribe.eqQuotes",
@@ -86,11 +86,11 @@ export const SERVER_MSG = {
   QUOTE_RESPONSE: "rpc.quote.response",
   PASS_RESPONSE: "rpc.pass.response",
   ACCEPT_RESPONSE: "rpc.accept.response",
-  // Admin
-  THROUGHPUT_RESPONSE: "admin.getThroughput.response",
-  SET_THROUGHPUT_RESPONSE: "admin.setThroughput.response",
-  // JarvisUsageSnapshot push, sent in reply to CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE.
-  ADMIN_JARVIS_USAGE: "admin.jarvisUsage",
+  // Ops
+  THROUGHPUT_RESPONSE: "ops.getThroughput.response",
+  SET_THROUGHPUT_RESPONSE: "ops.setThroughput.response",
+  // JarvisUsageSnapshot push, sent in reply to CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE.
+  OPS_JARVIS_USAGE: "ops.jarvisUsage",
   // Equities
   WATCHLIST: "stream.watchlist",
   EQ_QUOTE: "stream.eqQuote",

@@ -39,14 +39,12 @@ describe("dockedLeafIds", () => {
 
 describe("insertDockedLeaf", () => {
   it("wraps a non-row root into a new row split [root, dockLeaf], 0.75/0.25, initialPx on the dock slot", () => {
-    const result = insertDockedLeaf(ADMIN_LEAF, "jarvis-1", [
-      "admin-dashboard",
-    ]);
+    const result = insertDockedLeaf(OPS_LEAF, "jarvis-1", ["ops-dashboard"]);
 
     expect(result).toEqual({
       kind: "split",
       dir: "row",
-      children: [ADMIN_LEAF, { kind: "panel", panelId: "jarvis-1" }],
+      children: [OPS_LEAF, { kind: "panel", panelId: "jarvis-1" }],
       sizes: [0.75, 0.25],
       initialPx: [undefined, DOCK_COLUMN_INITIAL_PX],
     });
@@ -178,11 +176,11 @@ describe("removeDockedLeaf", () => {
   });
 
   it("removing the sole docked leaf collapses the wrapping row back to the original root", () => {
-    const result = removeDockedLeaf(ADMIN_LEAF, "admin-dashboard");
-    // admin-dashboard IS present as the whole (non-split) root here — removing
+    const result = removeDockedLeaf(OPS_LEAF, "ops-dashboard");
+    // ops-dashboard IS present as the whole (non-split) root here — removing
     // the only leaf of a non-split root is a degenerate case handled by the
     // "no parent split to collapse into" path: nothing to collapse, no-op.
-    expect(result).toBe(ADMIN_LEAF);
+    expect(result).toBe(OPS_LEAF);
   });
 
   it("removing a leaf from a 2-child split collapses the split to the remaining sibling", () => {
@@ -405,4 +403,4 @@ function expectSameTreeShape(actual: LayoutNode, expected: LayoutNode): void {
   }
 }
 
-const ADMIN_LEAF: LayoutNode = { kind: "panel", panelId: "admin-dashboard" };
+const OPS_LEAF: LayoutNode = { kind: "panel", panelId: "ops-dashboard" };

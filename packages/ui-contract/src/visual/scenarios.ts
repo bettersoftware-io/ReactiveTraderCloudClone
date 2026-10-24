@@ -185,8 +185,8 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "NewRfqPanel",
     fixtureKey: "credit-new-rfq-confirmed",
   },
-  // Admin tab — App with the throughput fetch stubbed by the spec.
-  "app/admin": { componentKey: "App", fixtureKey: "app-fx" },
+  // Ops tab — App with the throughput fetch stubbed by the spec.
+  "app/ops": { componentKey: "App", fixtureKey: "app-fx" },
   // Light-theme variant of the FX page (fixture seeds theme "light" through the seam).
   "app/fx-light": {
     componentKey: "App",
@@ -502,7 +502,7 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "App",
     fixtureKey: "equities-loaded-dockview",
   },
-  "app/admin-dockview": { componentKey: "App", fixtureKey: "app-fx-dockview" },
+  "app/ops-dockview": { componentKey: "App", fixtureKey: "app-fx-dockview" },
 
   // Phase 4 (dynamic chart instances): two extra pinned chart panels (AAPL,
   // MSFT) open on the equities workspace, seeded via the fixture's
@@ -566,24 +566,24 @@ const baseScenarios: Record<string, Scenario> = {
     fixtureKey: "app-fx-rail-collapsed-dockview",
   },
 
-  // Admin panel loaded (slider) state — throughput fetch stubbed.
-  "admin/panel-loaded": { componentKey: "AdminPanel", fixtureKey: "app-fx" },
+  // Ops panel loaded (slider) state — throughput fetch stubbed.
+  "ops/panel-loaded": { componentKey: "OpsPanel", fixtureKey: "app-fx" },
   // Seeded render-state arm with no interaction (the state is only transiently
   // reachable at runtime, so it is seeded through the seam for a stable golden):
-  // AdminPanel loading.
-  "admin/panel-loading": {
-    componentKey: "AdminPanel",
-    fixtureKey: "admin-loading",
+  // OpsPanel loading.
+  "ops/panel-loading": {
+    componentKey: "OpsPanel",
+    fixtureKey: "ops-loading",
   },
-  // AdminPanel throughput banner arms (the `{message && …}` block): the
+  // OpsPanel throughput banner arms (the `{message && …}` block): the
   // confirmation (accent-primary) and error (status-error) colour arms.
-  "admin/panel-message": {
-    componentKey: "AdminPanel",
-    fixtureKey: "admin-message",
+  "ops/panel-message": {
+    componentKey: "OpsPanel",
+    fixtureKey: "ops-message",
   },
-  "admin/panel-message-error": {
-    componentKey: "AdminPanel",
-    fixtureKey: "admin-message-error",
+  "ops/panel-message-error": {
+    componentKey: "OpsPanel",
+    fixtureKey: "ops-message-error",
   },
   // TileConfirmation "You Sold" verb arm (a Done execution with a Sell trade).
   "tile/execution-done-sell": {
@@ -1032,54 +1032,54 @@ const baseScenarios: Record<string, Scenario> = {
     fixtureKey: "prefs-open",
   },
 
-  // --- Phase 5: Admin observability dashboard scenarios ---
-  // Full AdminDashboard with all telemetry cards rendered from seeded data.
-  "admin/dashboard": {
-    componentKey: "AdminDashboard",
-    fixtureKey: "admin-loaded",
+  // --- Phase 5: Ops observability dashboard scenarios ---
+  // Full OpsDashboard with all telemetry cards rendered from seeded data.
+  "ops/dashboard": {
+    componentKey: "OpsDashboard",
+    fixtureKey: "ops-loaded",
   },
   // ServiceTopologyGraph isolated: seeded nodes + edges with a degraded credit node.
-  "admin/topology": {
+  "ops/topology": {
     componentKey: "ServiceTopologyGraph",
-    fixtureKey: "admin-loaded",
+    fixtureKey: "ops-loaded",
   },
   // LiveEventLog isolated: seeded events across info/warn/error severity arms.
-  "admin/event-log": {
+  "ops/event-log": {
     componentKey: "LiveEventLog",
-    fixtureKey: "admin-loaded",
+    fixtureKey: "ops-loaded",
   },
   // IncidentControls with serviceDown active: "Inject service down" button has
   // data-active="true"; state is injected through the seam — no click needed.
-  "admin/incident-active": {
+  "ops/incident-active": {
     componentKey: "IncidentControls",
-    fixtureKey: "admin-incident-active",
+    fixtureKey: "ops-incident-active",
   },
   // KpiRow isolated: the "loaded" baseline arm — all four cards warn=false.
-  "admin/kpi-row": {
+  "ops/kpi-row": {
     componentKey: "KpiRow",
-    fixtureKey: "admin-loaded",
+    fixtureKey: "ops-loaded",
   },
   // KpiRow isolated warn arm: latency + error-rate cross their warn thresholds
   // (lat>60, err>0.8) → the accent-negative value/delta colour on those cards.
-  "admin/kpi-row-warn": {
+  "ops/kpi-row-warn": {
     componentKey: "KpiRow",
-    fixtureKey: "admin-kpi-warn",
+    fixtureKey: "ops-kpi-warn",
   },
   // ServiceHealth isolated: mixed status arms (ok/degraded/down) in one
   // topology snapshot — "down" is a real-app extra with no PROTO equivalent.
-  "admin/service-health": {
+  "ops/service-health": {
     componentKey: "ServiceHealth",
-    fixtureKey: "admin-service-mixed",
+    fixtureKey: "ops-service-mixed",
   },
-  // AdminHead isolated: nominal (no incident active) vs incident-active pill
+  // OpsHead isolated: nominal (no incident active) vs incident-active pill
   // arms — the real useIncident() wiring IncidentControls also drives.
-  "admin/head-nominal": {
-    componentKey: "AdminHead",
-    fixtureKey: "admin-loaded",
+  "ops/head-nominal": {
+    componentKey: "OpsHead",
+    fixtureKey: "ops-loaded",
   },
-  "admin/head-incident": {
-    componentKey: "AdminHead",
-    fixtureKey: "admin-incident-active",
+  "ops/head-incident": {
+    componentKey: "OpsHead",
+    fixtureKey: "ops-incident-active",
   },
 
   // --- Phase 1: J.A.R.V.I.S orb + overlay scenarios ---
@@ -1125,11 +1125,11 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "StatusBar",
     fixtureKey: "jarvis-status-chip-haiku",
   },
-  // Admin usage/cost telemetry card, isolated (mirrors admin/service-health's
+  // Ops usage/cost telemetry card, isolated (mirrors ops/service-health's
   // standalone-card precedent above) — two brains across both windows.
-  "admin/jarvis-usage-card": {
+  "ops/jarvis-usage-card": {
     componentKey: "JarvisUsageCard",
-    fixtureKey: "admin-jarvis-usage",
+    fixtureKey: "ops-jarvis-usage",
   },
 
   // Task 10 (generative-UI round 1): one JarvisPanelLayer scenario per

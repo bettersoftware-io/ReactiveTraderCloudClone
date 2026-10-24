@@ -166,7 +166,7 @@ export function convertSeed(
 
   // dockview's `fromJSON` rejects a grid whose root is a leaf ("root must be
   // of type branch" — verified against 7.0.4, and it threw for real on the
-  // single-panel Admin tab), so a lone panel is wrapped in a one-child
+  // single-panel Ops tab), so a lone panel is wrapped in a one-child
   // branch spanning the whole extent — which IS the lone view's model size
   // (its card insets from it in CSS), whichever axis the root picks.
   const root =

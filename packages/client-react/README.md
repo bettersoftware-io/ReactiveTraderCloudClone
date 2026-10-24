@@ -25,7 +25,7 @@ through `useViewModel()` (`ViewModel` interface); production wires presenters vi
 | `src/ui/shell/boot/` | Boot splash overlay — see [§17.4 The Boot Splash](../../docs/architecture/17-web-client-up-close.md#174-the-boot-splash) |
 | `src/ui/shell/lock/` | Session lock screen overlay — see [§17.5 The Session Lock](../../docs/architecture/17-web-client-up-close.md#175-the-session-lock) |
 | `src/ui/fx/`, `src/ui/credit/`, `src/ui/equities/` | Per-domain panels, blotters, and tickets |
-| `src/ui/admin/` | Admin dashboard — health KPIs, service topology, sessions, live event log |
+| `src/ui/ops/` | Ops dashboard — health KPIs, service topology, sessions, live event log |
 | `tests/setup/` | jsdom test-environment polyfills (e.g. `localStorage` shim for Node 26) |
 | `tests/ui/contract/` | UI contract tier — the React runner for the framework-neutral sociable RTL specs, which live in `@rtc/ui-contract` (own [README](tests/ui/contract/README.md)) |
 | `tests/ui/visual/` | Visual tier — the React scenario host, the Playwright runner and the coverage instrument; the scenario matrix and the pixel goldens live in `@rtc/ui-contract` (own [README](tests/ui/visual/README.md)) |

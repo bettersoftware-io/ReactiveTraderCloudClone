@@ -22,7 +22,7 @@ export interface IncidentDeps {
   readonly pushConnectionEvent: (event: ConnectionEvent) => void;
 }
 
-/** The admin incident singleton: the imported fold over a Store, warm for
+/** The ops incident singleton: the imported fold over a Store, warm for
  * the app's lifetime. Each intent runs synchronously in the RxJS core's
  * order — every control first, then the connection event, then the state. */
 export function createIncidentMachine(

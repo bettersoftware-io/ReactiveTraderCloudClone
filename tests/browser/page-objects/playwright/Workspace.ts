@@ -50,9 +50,9 @@ export class PlaywrightWorkspace implements WorkspacePO {
     await this.page.getByTestId(TESTIDS.shell.tab("credit")).click();
   }
 
-  async openAdmin(): Promise<void> {
+  async openOps(): Promise<void> {
     await this.gotoMounted("/");
-    await this.page.getByTestId(TESTIDS.shell.tab("admin")).click();
+    await this.page.getByTestId(TESTIDS.shell.tab("ops")).click();
   }
 
   async openEquities(): Promise<void> {
@@ -174,12 +174,12 @@ export class PlaywrightWorkspace implements WorkspacePO {
     );
   }
 
-  async clickTab(tab: "fx" | "credit" | "admin" | "equities"): Promise<void> {
+  async clickTab(tab: "fx" | "credit" | "ops" | "equities"): Promise<void> {
     await this.page.getByTestId(TESTIDS.shell.tab(tab)).click();
   }
 
   async isTabActive(
-    tab: "fx" | "credit" | "admin" | "equities",
+    tab: "fx" | "credit" | "ops" | "equities",
   ): Promise<boolean> {
     return (
       (await this.page
@@ -189,7 +189,7 @@ export class PlaywrightWorkspace implements WorkspacePO {
   }
 
   async waitTabActive(
-    tab: "fx" | "credit" | "admin" | "equities",
+    tab: "fx" | "credit" | "ops" | "equities",
     timeoutMs: number,
   ): Promise<void> {
     await expect(this.page.getByTestId(TESTIDS.shell.tab(tab))).toHaveAttribute(

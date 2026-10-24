@@ -48,7 +48,7 @@ export interface PairedConnectionPorts {
 
 /**
  * Builds one instance-scoped `connectionIntents`/`connectionEvents` pair:
- * `commands.reconnect` and the admin incident injection push into Subjects
+ * `commands.reconnect` and the ops incident injection push into Subjects
  * private to THIS call, merged into the `events$` a caller supplies (a real
  * gateway's events, a simulator's, or both plus browser lifecycle events —
  * see each branch in `buildBrowserPorts`/`buildNativePorts`). Every call

@@ -78,7 +78,7 @@ is dev-only — a devDependency of all three cores, never imported from any
 
 `@rtc/core-logic` (slice 8) holds the rules all three cores share and that
 need no stream library: the pure folds (`blotterFolds`, `staleFlagFold`,
-`incidentFold`, the admin and RFQ folds), the view derivations, the shared
+`incidentFold`, the ops and RFQ folds), the view derivations, the shared
 workspace and Jarvis controllers (`createWorkspaceDock`,
 `createJarvisController`, `applyDriveCommand`, …) and `createAuthDeps`. Its
 runtime dependencies are `domain` and `shared` only, and it takes
@@ -524,7 +524,7 @@ LIVE subscriptions to a port's streams.
 **Two app-level ports (slice 8).** `AppPorts.connectionIntents`
 (`reconnect()`, `injectIncident(event)`) carries the pushes into the
 connection-event stream that originate inside the app — the Reconnect
-button and the admin incident machine — so no core imports a module-level
+button and the ops incident machine — so no core imports a module-level
 Subject. `@rtc/core-api`'s `TransportPorts` omits `connectionEvents` AND
 `connectionIntents` together (ADR-006 Follow-up 5), so a port factory can no
 longer typecheck while supplying one without the other. `@rtc/client-adapters`'s

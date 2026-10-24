@@ -931,7 +931,7 @@ describe("createJarvisDriverMachine", () => {
       // Fires well before batch 1 completes (its 2nd command lands at
       // 1 + DRIVE_STAGGER_MS = 351): a genuine mid-stagger arrival.
       h.ts.schedule(() => {
-        h.events$.next(commandEvent([{ kind: "switchTab", tab: "admin" }]));
+        h.events$.next(commandEvent([{ kind: "switchTab", tab: "ops" }]));
       }, 100);
     });
 
@@ -948,7 +948,7 @@ describe("createJarvisDriverMachine", () => {
       }),
     ).toEqual([1, 1 + DRIVE_STAGGER_MS, 1 + DRIVE_STAGGER_MS]);
     expect(growing.at(-1)?.lastBatch).toEqual([
-      { command: { kind: "switchTab", tab: "admin" }, status: "applied" },
+      { command: { kind: "switchTab", tab: "ops" }, status: "applied" },
     ]);
   });
 
@@ -1246,6 +1246,6 @@ function run(
 const KNOWN_PANEL_IDS: Record<WorkspaceTab, readonly string[]> = {
   fx: collectPanelIds(createDefaultLayoutPort("fx").initial.root),
   credit: collectPanelIds(createDefaultLayoutPort("credit").initial.root),
-  admin: collectPanelIds(createDefaultLayoutPort("admin").initial.root),
+  ops: collectPanelIds(createDefaultLayoutPort("ops").initial.root),
   equities: collectPanelIds(createDefaultLayoutPort("equities").initial.root),
 };

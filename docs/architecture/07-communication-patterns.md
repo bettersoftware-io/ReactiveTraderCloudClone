@@ -97,7 +97,7 @@ flowchart TD
 | How it is run | Switch | Where prices / blotter / charts come from |
 |---|---|---|
 | **`pnpm dev` locally** (web, default) | `VITE_SERVER_URL` unset | **No backend at all.** The simulators run *inside the browser tab*. The `@rtc/server` package is not even started. |
-| **Deployed site** (Vercel client → Fly server) | `VITE_SERVER_URL` set (baked at build) | **Backend over WebSocket** — all four domains: FX + Credit + Admin + Equities. |
+| **Deployed site** (Vercel client → Fly server) | `VITE_SERVER_URL` set (baked at build) | **Backend over WebSocket** — all four domains: FX + Credit + Ops + Equities. |
 | **Fullstack e2e** (`tests/fullstack/`) | `VITE_SERVER_URL` set (harness spins up a real server) | Backend over WebSocket — this is the path that actually exercises `@rtc/server`. |
 | **Mobile app, live mode** (default) | `EXPO_PUBLIC_SERVER_URL` (defaults to the Fly URL) | Backend over WebSocket, session-token-authenticated (`?access=` from a `/login` token, obtained by signing in through the login screen against the real server's `AUTH_USERS`). |
 | **Mobile app, simulator mode** | `EXPO_PUBLIC_SERVER_URL=""` or the in-app sim toggle | Simulators run **on the device**; toggling re-mounts `AppRoot` under a new React `key`. |
@@ -124,7 +124,7 @@ flowchart LR
     end
 ```
 
-A few ports are **always local**, even in Mode B: the telemetry family (`telemetry`, `serviceHealth`, `eventLog`, `sessions`) has no wire RPC, so `createWsRealPorts` instantiates those simulators in-process regardless of transport — mirroring how `preferences` is handled (injected per platform: localStorage on web, AsyncStorage on mobile). Note the deliberate split: the `admin` throughput port **is** WS-backed (`GET/SET_THROUGHPUT` RPC), while telemetry *sampling* uses its own local `ThroughputSimulator`. Everything else in Mode B is served over the wire.
+A few ports are **always local**, even in Mode B: the telemetry family (`telemetry`, `serviceHealth`, `eventLog`, `sessions`) has no wire RPC, so `createWsRealPorts` instantiates those simulators in-process regardless of transport — mirroring how `preferences` is handled (injected per platform: localStorage on web, AsyncStorage on mobile). Note the deliberate split: the `ops` throughput port **is** WS-backed (`GET/SET_THROUGHPUT` RPC), while telemetry *sampling* uses its own local `ThroughputSimulator`. Everything else in Mode B is served over the wire.
 
 > The per-tick sequence (subscribe → stream, and RPC with correlation) is the same in both modes — see [§4.1 FX Price Streaming](04-sequence-diagrams.md#41-fx-price-streaming) and [§4.2 FX Trade Execution](04-sequence-diagrams.md#42-fx-trade-execution-rpc), whose `alt` branches already show the mock-vs-real split.
 
@@ -147,7 +147,7 @@ flowchart TD
     Core["WsEffect primitive<br/>(in$, ctx) => out$   — pure, marble-tested"]
     Sugar1["stream(type, project)<br/>subscription fan-out"] --> Core
     Sugar2["rpc(type, outType, handle)<br/>ack/nack + correlationId"] --> Core
-    App["24 app effects<br/>FX (6) · Credit (8) · Admin (2) · Equities (8)"] --> Sugar1
+    App["24 app effects<br/>FX (6) · Credit (8) · Ops (2) · Equities (8)"] --> Sugar1
     App --> Sugar2
     Core --> Combine["combineEffects(...allEffects)<br/>→ createWsListener(ctx)"]
     Combine --> Socket["toSocket(ws)<br/>one Socket per connection"]
@@ -170,7 +170,7 @@ The wire protocol survived the rewrite unchanged (same `{ type, payload, correla
 
 ### Equities Over the Wire (gap closed)
 
-Earlier revisions of this document described an **equities coverage gap**: the panels were built simulator-first and the old `wsHandler` served FX + Credit + Admin only, so equities data silently vanished in Mode B. The ws-effects rewrite closed that gap — `createServices()` now instantiates the equities trio (`EquityMarketDataSimulator`, `EquityOrderSimulator`, `EquityPositionSimulator`) and eight equities effects serve the full surface:
+Earlier revisions of this document described an **equities coverage gap**: the panels were built simulator-first and the old `wsHandler` served FX + Credit + Ops only, so equities data silently vanished in Mode B. The ws-effects rewrite closed that gap — `createServices()` now instantiates the equities trio (`EquityMarketDataSimulator`, `EquityOrderSimulator`, `EquityPositionSimulator`) and eight equities effects serve the full surface:
 
 | Concern | Wire messages | Client consumer (in `@rtc/client-adapters`) |
 |---|---|---|
@@ -187,7 +187,7 @@ Earlier revisions of this document described an **equities coverage gap**: the p
 |---|---|---|
 | FX pricing / blotter / analytics | ✅ | ✅ |
 | Credit RFQ | ✅ | ✅ |
-| Admin throughput | ✅ | ✅ |
+| Ops throughput | ✅ | ✅ |
 | Telemetry / incidents | ✅ | ✅ *(always in-process by design)* |
 | Equities (watchlist, charts, depth, orders, positions) | ✅ | ✅ |
 

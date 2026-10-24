@@ -492,7 +492,7 @@ describe("createViewModel — candle backfill", () => {
   });
 });
 
-describe("createViewModel — admin/telemetry streams", () => {
+describe("createViewModel — ops/telemetry streams", () => {
   it("useMetrics exposes throughput/latency/errorRate as accessors over the seeded rolling windows", () => {
     const vm = createViewModelFixture();
     const { result } = renderHook(() => {

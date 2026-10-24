@@ -132,7 +132,7 @@ mode.
 **Per-user model preference and usage surfacing shipped 2026-08-02** — see
 [architecture §18.15](architecture/18-jarvis-ai-agent-surface.md#1815-the-brain-picker--usage-display-round--the-receipt).
 Every signed-in user now picks their own brain (including Scripted) in
-Preferences, and both the footer chip and an Admin-tab card show which brain
+Preferences, and both the footer chip and an Ops-tab card show which brain
 is live and what it has cost. That gives every user a **manual** run-dry
 escape hatch already: flipping to Scripted in Preferences is a client-side
 preference write, live on the next message, no server restart and no env
@@ -243,7 +243,7 @@ as the offered middle option. One caveat the picker surfaces that this note
 didn't originally anticipate: Haiku 4.5's minimum cacheable prefix is 4,096
 tokens (vs. 512 on Sonnet/Opus), comfortably above today's ~1.3k-token
 persona+tools prefix — so `cacheReadTokens: 0` on every Haiku turn, visible
-in the Admin usage card, is expected, not a broken cache (§18.15 has the
+in the Ops usage card, is expected, not a broken cache (§18.15 has the
 full explanation).
 
 **Prompt-prefix cost note (generative-UI round, 2026-08-04):** the
@@ -271,7 +271,7 @@ whatever the user asks for, and only if the `JarvisNarrator` preference
 (default `"on"`) is left on and a real anomaly actually crosses threshold.
 Each narration turn goes through the exact same `UsageMeter` accounting as
 an ordinary `send()` turn — no special-casing, so it shows up in the footer
-chip and the Admin usage card like any other turn. Flip the preference to
+chip and the Ops usage card like any other turn. Flip the preference to
 `"off"` in Preferences → JARVIS to kill that spend outright: the detector
 stays subscribed (cheap — it's a pure `scan` over ticks already flowing) but
 drops every anomaly before it ever reaches `narrate()`, so nothing is billed.

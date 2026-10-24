@@ -1,13 +1,13 @@
 import type { StateStream } from "#/stream";
 
-/** The status banner the AdminPanel renders. The single definition —
+/** The status banner the OpsPanel renders. The single definition —
  * `@rtc/client-core-rxjs`'s presenter imports it. */
 export interface ThroughputMessage {
   text: string;
   isError: boolean;
 }
 
-/** The view the AdminPanel reads: the slider/input value, the initial-load
+/** The view the OpsPanel reads: the slider/input value, the initial-load
  *  flag, and the optional confirmation/error banner. */
 export interface ThroughputView {
   value: number;

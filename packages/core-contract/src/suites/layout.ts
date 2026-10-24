@@ -219,17 +219,17 @@ export function describeLayoutForContract(
         let seeded: string | null = null;
 
         try {
-          const [admin] = leafIds(
-            (await readLayout(h1, "admin", clock.settle)).root,
+          const [ops] = leafIds(
+            (await readLayout(h1, "ops", clock.settle)).root,
           );
-          h1.app.presenters.layoutFor("admin").intents.maximize(admin);
+          h1.app.presenters.layoutFor("ops").intents.maximize(ops);
           await clock.advance(WORKSPACE_PERSIST_DEBOUNCE_MS);
           seeded = h1.driver.storedWorkspaceLayout();
         } finally {
           await h1.teardown();
         }
 
-        expect(seeded).toContain("admin-dashboard");
+        expect(seeded).toContain("ops-dashboard");
         const h2 = makeHarness({ workspaceLayout: seeded });
         let rewritten: string | null = null;
 
@@ -246,8 +246,8 @@ export function describeLayoutForContract(
         const h3 = makeHarness({ workspaceLayout: rewritten });
 
         try {
-          expect((await readLayout(h3, "admin", clock.settle)).maximized).toBe(
-            "admin-dashboard",
+          expect((await readLayout(h3, "ops", clock.settle)).maximized).toBe(
+            "ops-dashboard",
           );
           expect((await readLayout(h3, "fx", clock.settle)).maximized).not.toBe(
             null,
@@ -265,7 +265,7 @@ export function describeLayoutForContract(
         try {
           const writes = collect(h.app.ports.preferences.workspaceLayout$());
           const baseline = writes.values.length;
-          await readLayout(h, "admin", clock.settle);
+          await readLayout(h, "ops", clock.settle);
           h.app.presenters.dockPanel("nobody");
           await clock.advance(WORKSPACE_PERSIST_DEBOUNCE_MS * 2);
           expect(writes.values.length).toBe(baseline);
@@ -373,7 +373,7 @@ export function describeMachinesLayoutContract(
       const h = makeHarness();
 
       try {
-        for (const tab of ["fx", "credit", "equities", "admin"] as const) {
+        for (const tab of ["fx", "credit", "equities", "ops"] as const) {
           expect(h.machines.layout(tab)).toBe(h.app.presenters.layoutFor(tab));
         }
       } finally {

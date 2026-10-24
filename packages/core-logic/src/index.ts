@@ -1,7 +1,6 @@
 export * from "#/adapters/authDeps";
 export * from "#/adapters/InMemoryDockLayoutStore";
 export * from "#/adapters/InMemoryLayoutPresetStore";
-export * from "#/admin/adminKpisVm";
 export * from "#/blotter/columnSort";
 export * from "#/blotter/filterState";
 export * from "#/layout/defaultLayoutPort";
@@ -33,10 +32,10 @@ export * from "#/layout/workspaceDock";
 // serialization would prove nothing about the real round trip.
 export * from "#/layout/workspaceLayoutPersistence";
 export * from "#/layout/workspaceLayoutWrite";
+export * from "#/ops/opsKpisVm";
 export * from "#/presenters/accountAccessCopy";
 export * from "#/presenters/accountAccessFold";
 export * from "#/presenters/accountFieldFeedback";
-export * from "#/presenters/adminFolds";
 export * from "#/presenters/blotterFolds";
 export * from "#/presenters/candleStitch";
 export * from "#/presenters/eqDrawingsFold";
@@ -49,6 +48,7 @@ export * from "#/presenters/jarvisGuideCatalog";
 export * from "#/presenters/jarvisPanelsFolds";
 export * from "#/presenters/narratorGate";
 export * from "#/presenters/notionalView";
+export * from "#/presenters/opsFolds";
 export * from "#/presenters/orderTicketFold";
 export * from "#/presenters/panelFrames";
 export * from "#/presenters/panelStreamDeps";

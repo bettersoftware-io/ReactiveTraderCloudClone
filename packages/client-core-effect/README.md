@@ -410,7 +410,7 @@ panel's data as a `sharedFold` over the shared frame steps
 `sharedFold` that switches with the roster, and the persist debounce as an
 `Effect.sleep` fiber — all over `@rtc/core-logic`'s shared
 `createWorkspaceDock` / `createLayoutPresetsController` /
-`writeWorkspaceLayout`. Slice 5 added the nine admin
+`writeWorkspaceLayout`. Slice 5 added the nine ops
 members: the three metric windows, `eventLog` and `sessionsKpi` as retained
 `sharedFold`s seeded `[]`, `topology` and `sessions` as retained mirrors,
 `throughput` (a `SyncRef`, a debounce fiber and `createRunSlot`), and

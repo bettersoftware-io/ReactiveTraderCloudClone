@@ -12,7 +12,7 @@ import { warmReplay } from "./warmReplay.js";
  *
  * Mirrored shape: one stream, shared via `warmReplay` — `shareReplay(1)` with
  * `refCount: false`, not the usual `true` (see BlotterPresenter.activity$
- * for the fuller writeup of this pattern). `LiveEventLog` (Admin tab) is
+ * for the fuller writeup of this pattern). `LiveEventLog` (Ops tab) is
  * this stream's only consumer, and `App.tsx` remounts a tab's whole subtree
  * on switch (`<WorkspaceEngine key={activeTab}>`), which unsubscribes it.
  * With `refCount: true` that would tear down the `scan` accumulator on every

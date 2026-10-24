@@ -46,20 +46,20 @@ describe("Workspace routes — tab changes push", () => {
     const app = mount(AppShell, { routePath: "/fx" });
 
     await app.overlay.pressHotkey();
-    await app.overlay.send("switch to admin");
+    await app.overlay.send("switch to ops");
 
     vi.useFakeTimers();
     app.overlay.emitEvents([
       {
         type: "command",
-        batch: { v: 1, commands: [{ kind: "switchTab", tab: "admin" }] },
+        batch: { v: 1, commands: [{ kind: "switchTab", tab: "ops" }] },
       },
       { type: "done" },
     ]);
     await vi.advanceTimersByTimeAsync(DRIVE_SETTLE_MS);
 
-    expect(app.header.isActive("admin")).toBe(true);
-    expect(app.routeWrites()).toEqual(["push /admin"]);
+    expect(app.header.isActive("ops")).toBe(true);
+    expect(app.routeWrites()).toEqual(["push /ops"]);
   });
 });
 

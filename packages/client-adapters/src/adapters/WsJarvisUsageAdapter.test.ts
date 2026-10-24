@@ -7,7 +7,7 @@ import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import { WsJarvisUsageAdapter } from "./WsJarvisUsageAdapter";
 
 describe("WsJarvisUsageAdapter", () => {
-  it("does nothing until a gatewayConnected event, then registers the handler and sends admin.jarvisUsage.subscribe", () => {
+  it("does nothing until a gatewayConnected event, then registers the handler and sends ops.jarvisUsage.subscribe", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisUsageAdapter(ws);
     const received: JarvisUsageSnapshot[] = [];
@@ -20,12 +20,12 @@ describe("WsJarvisUsageAdapter", () => {
     ws.emitConnectionEvent("gatewayConnected");
 
     expect(ws.sentMessages()).toEqual([
-      { type: CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE, payload: undefined },
+      { type: CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE, payload: undefined },
     ]);
     expect(received).toEqual([]);
   });
 
-  it("forwards every SERVER_MSG.ADMIN_JARVIS_USAGE push", () => {
+  it("forwards every SERVER_MSG.OPS_JARVIS_USAGE push", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisUsageAdapter(ws);
     const received: JarvisUsageSnapshot[] = [];
@@ -34,12 +34,12 @@ describe("WsJarvisUsageAdapter", () => {
     });
 
     ws.emitConnectionEvent("gatewayConnected");
-    ws.emit(SERVER_MSG.ADMIN_JARVIS_USAGE, SNAPSHOT);
+    ws.emit(SERVER_MSG.OPS_JARVIS_USAGE, SNAPSHOT);
 
     expect(received).toEqual([SNAPSHOT]);
   });
 
-  it("RECONNECT: a new gatewayConnected event re-sends admin.jarvisUsage.subscribe and re-arms the listener", () => {
+  it("RECONNECT: a new gatewayConnected event re-sends ops.jarvisUsage.subscribe and re-arms the listener", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisUsageAdapter(ws);
     const received: JarvisUsageSnapshot[] = [];
@@ -48,7 +48,7 @@ describe("WsJarvisUsageAdapter", () => {
     });
 
     ws.emitConnectionEvent("gatewayConnected");
-    ws.emit(SERVER_MSG.ADMIN_JARVIS_USAGE, SNAPSHOT);
+    ws.emit(SERVER_MSG.OPS_JARVIS_USAGE, SNAPSHOT);
 
     ws.emitConnectionEvent("gatewayDisconnected");
     ws.emitConnectionEvent("gatewayConnected");
@@ -56,11 +56,11 @@ describe("WsJarvisUsageAdapter", () => {
       ...SNAPSHOT,
       windowStartMs: 3_000,
     };
-    ws.emit(SERVER_MSG.ADMIN_JARVIS_USAGE, secondSnapshot);
+    ws.emit(SERVER_MSG.OPS_JARVIS_USAGE, secondSnapshot);
 
     expect(
       ws.sentMessages().filter((m) => {
-        return m.type === CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE;
+        return m.type === CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE;
       }),
     ).toHaveLength(2);
     expect(received).toEqual([SNAPSHOT, secondSnapshot]);
@@ -76,7 +76,7 @@ describe("WsJarvisUsageAdapter", () => {
     ws.emitConnectionEvent("gatewayConnected");
     subscription.unsubscribe();
 
-    ws.emit(SERVER_MSG.ADMIN_JARVIS_USAGE, SNAPSHOT);
+    ws.emit(SERVER_MSG.OPS_JARVIS_USAGE, SNAPSHOT);
     ws.emitConnectionEvent("gatewayConnected");
     expect(received).toEqual([]);
   });

@@ -20,7 +20,7 @@
  * "bottom of the stacking context" but positioned z-0 content paints ABOVE
  * in-flow static content, so every layer here — aurora curtains included —
  * washed over the panels themselves; imperceptible on busy tiles, but on the
- * admin dashboard's large flat surface the curtain shafts visibly hazed the
+ * ops dashboard's large flat surface the curtain shafts visibly hazed the
  * panel and its header. Translucent skins still show the backdrop through
  * their glass panels; it just no longer paints on top of them. The wrap
  * still creates its own stacking context, so the z-index: 1 vignette below

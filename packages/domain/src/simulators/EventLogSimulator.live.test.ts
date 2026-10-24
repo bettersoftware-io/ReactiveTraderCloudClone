@@ -52,7 +52,7 @@ describe("EventLogSimulator live generator", () => {
 
     const events = generate(sim, 400);
 
-    // 80% error by design — the visible payoff of the Admin incident control.
+    // 80% error by design — the visible payoff of the Ops incident control.
     expect(shareOf(events, "error")).toBeGreaterThan(0.6);
     expect(shareOf(events, "info")).toBeLessThan(0.25);
   });
@@ -106,7 +106,7 @@ function trace(seed: number): string {
 
 // The sibling EventLogSimulator.test.ts pins the six back-dated seed events.
 // Everything after those seeds — the 500ms generator, its severity mix, and the
-// errorBurst perturbation that the Admin incident controls drive — had no test
+// errorBurst perturbation that the Ops incident controls drive — had no test
 // at all. That generator is what the log panel shows for the entire rest of the
 // session, and errorBurst is the only observable effect of the incident button.
 

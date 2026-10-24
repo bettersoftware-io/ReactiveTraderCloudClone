@@ -85,7 +85,7 @@ function checkRouteTreeHoldsOnlyRoutes(appDir: string): string[] {
 /**
  * Maps a `specs/` feature file to its `presenter/vitest-fake-timers/` test
  * file. `feature` is the path under `specs/` (without `.feature`) — most
- * features sit directly in `specs/`, but some (e.g. admin/incident) live in a
+ * features sit directly in `specs/`, but some (e.g. ops/incident) live in a
  * subdirectory. `test` is the presenter test file's basename (without
  * `.test.ts`) — usually matches `feature`, but diverges when the feature path
  * has a directory segment the test file naming doesn't mirror.
@@ -103,7 +103,7 @@ const FEATURE_NAMES: PresenterFeatureMapping[] = [
   { feature: "blotter", test: "blotter" },
   { feature: "fxRfq", test: "fxRfq" },
   { feature: "creditRfq", test: "creditRfq" },
-  { feature: "admin/incident", test: "adminIncident" },
+  { feature: "ops/incident", test: "opsIncident" },
 ];
 
 function checkPresenterScenarioCounts(): string[] {

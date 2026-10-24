@@ -1,16 +1,16 @@
 import { type Observable, of } from "rxjs";
 
-import type { AdminPort } from "../ports/adminPort.js";
+import type { OpsPort } from "../ports/opsPort.js";
 
 const DEFAULT_THROUGHPUT = 100;
 const MIN_THROUGHPUT = 0;
 const MAX_THROUGHPUT = 1000;
 
 /**
- * In-memory AdminPort. Mirrors the server's ThroughputService validation:
+ * In-memory OpsPort. Mirrors the server's ThroughputService validation:
  * rejects non-finite values and values outside [0, 1000] by throwing.
  */
-export class ThroughputSimulator implements AdminPort {
+export class ThroughputSimulator implements OpsPort {
   private value = DEFAULT_THROUGHPUT;
 
   getThroughput(): Observable<number> {

@@ -22,7 +22,7 @@ describe("ThroughputMetricPresenter", () => {
     expect(first).toEqual([]);
   });
 
-  it("keeps its rolling window warm across a refCount cycle (survives the Admin tab remount)", () => {
+  it("keeps its rolling window warm across a refCount cycle (survives the Ops tab remount)", () => {
     const subject = new Subject<MetricSample>();
     const presenter = new ThroughputMetricPresenter(
       createFakePort(subject),
@@ -32,7 +32,7 @@ describe("ThroughputMetricPresenter", () => {
     const first = presenter.samples$.subscribe();
     subject.next(sample(1, 10));
     subject.next(sample(2, 20));
-    first.unsubscribe(); // Admin tab away → last UI subscriber unmounts
+    first.unsubscribe(); // Ops tab away → last UI subscriber unmounts
 
     // warmReplay (refCount:false) keeps the source subscribed with no observer…
     expect(subject.observed).toBe(true);

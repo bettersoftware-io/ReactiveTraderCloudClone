@@ -167,24 +167,24 @@ export interface AppData {
   /** Whether the build offers create-account / reset (useRegistrationAvailable);
    * defaults to false → no links under the sign-in form. */
   registrationAvailable?: boolean;
-  // ── Admin / telemetry fields (Phase 5) ───────────────────────────────────
+  // ── Ops / telemetry fields (Phase 5) ───────────────────────────────────
   /** Metric windows for the radial gauges / charts (useMetrics); defaults to empty series. */
-  adminMetrics?: {
+  opsMetrics?: {
     throughput: readonly MetricSample[];
     latency: readonly MetricSample[];
     errorRate: readonly MetricSample[];
   };
   /** Service topology graph (useTopology); defaults to null. */
-  adminTopology?: ServiceTopology | null;
+  opsTopology?: ServiceTopology | null;
   /** Event log entries (useEventLog); defaults to []. */
-  adminEventLog?: readonly LogEvent[];
+  opsEventLog?: readonly LogEvent[];
   /** Active trader sessions (useSessions); defaults to []. */
-  adminSessions?: readonly SessionInfo[];
+  opsSessions?: readonly SessionInfo[];
   /** Rolling session-count series for the Active Sessions KPI card
    * (useSessionCountSeries); defaults to []. */
-  adminSessionCountSeries?: readonly MetricSample[];
+  opsSessionCountSeries?: readonly MetricSample[];
   /** Incident machine state (useIncident); defaults to { active: [] }. */
-  adminIncident?: { active: readonly IncidentKind[] };
+  opsIncident?: { active: readonly IncidentKind[] };
   // ── Equities fields (Phase 4) ─────────────────────────────────────────────
   /** Watchlist of equity instruments (useWatchlist); defaults to []. */
   equityWatchlist?: readonly EquityInstrument[];

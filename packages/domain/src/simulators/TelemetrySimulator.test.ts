@@ -77,13 +77,13 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
     }
   });
 
-  it("recenters the walk when the admin slider changes the setpoint", async () => {
-    const { telemetry, admin } = createTelemetry();
+  it("recenters the walk when the ops slider changes the setpoint", async () => {
+    const { telemetry, ops } = createTelemetry();
     const p1 = firstValueFrom(telemetry.throughput$().pipe(take(3), toArray()));
     await vi.advanceTimersByTimeAsync(4_000);
     await p1;
 
-    await firstValueFrom(admin.setThroughput(500));
+    await firstValueFrom(ops.setThroughput(500));
 
     const p2 = firstValueFrom(telemetry.throughput$().pipe(take(1), toArray()));
     await vi.advanceTimersByTimeAsync(0);
@@ -122,10 +122,10 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
   });
 
   it("existing incident perturbations on latency/errorRate keep working unperturbed by the throughput walk", async () => {
-    const admin = new ThroughputSimulator();
+    const ops = new ThroughputSimulator();
     const latency = new LatencySimulator(1);
     const errorRate = new ErrorRateSimulator(2);
-    const telemetry = new TelemetrySimulator(admin, latency, errorRate);
+    const telemetry = new TelemetrySimulator(ops, latency, errorRate);
 
     latency.perturb("latencySpike");
     errorRate.perturb("errorBurst");
@@ -153,23 +153,23 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
 
 interface TelemetryHarness {
   telemetry: TelemetrySimulator;
-  admin: ThroughputSimulator;
+  ops: ThroughputSimulator;
 }
 
 function createTelemetry(seed?: number): TelemetryHarness {
-  const admin = new ThroughputSimulator();
+  const ops = new ThroughputSimulator();
   const telemetry =
     seed === undefined
       ? new TelemetrySimulator(
-          admin,
+          ops,
           new LatencySimulator(1),
           new ErrorRateSimulator(2),
         )
       : new TelemetrySimulator(
-          admin,
+          ops,
           new LatencySimulator(1),
           new ErrorRateSimulator(2),
           seed,
         );
-  return { telemetry, admin };
+  return { telemetry, ops };
 }

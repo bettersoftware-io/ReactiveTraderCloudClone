@@ -1,7 +1,7 @@
 /**
- * Jarvis token usage, as the admin usage card shows it. It also travels
- * unchanged as the `SERVER_MSG.ADMIN_JARVIS_USAGE` payload, sent in reply to
- * `CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE`.
+ * Jarvis token usage, as the ops usage card shows it. It also travels
+ * unchanged as the `SERVER_MSG.OPS_JARVIS_USAGE` payload, sent in reply to
+ * `CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE`.
  *
  * Per-brain usage totals over two windows: `currentWindow` (the live
  * rate-limit window) and `sinceBoot` (cumulative since server start).
@@ -31,9 +31,9 @@ export interface JarvisUsageSnapshot {
   readonly sinceBoot: readonly JarvisBrainUsageRow[];
 }
 
-/** Jarvis usage as the admin card shows it: the meter snapshot plus the
+/** Jarvis usage as the ops card shows it: the meter snapshot plus the
  * budget-gate envelope. It travels unchanged as the
- * `SERVER_MSG.ADMIN_JARVIS_USAGE` payload (named `AdminJarvisUsagePayload`
+ * `SERVER_MSG.OPS_JARVIS_USAGE` payload (named `OpsJarvisUsagePayload`
  * until 2026-10-05). All four gate fields are absent on pre-round servers.
  * `budgetUsd: null` means gating is disabled (`RTC_JARVIS_BUDGET_USD=off`);
  * `softBudgetUsd` is server-computed (budget × soft ratio) so the client

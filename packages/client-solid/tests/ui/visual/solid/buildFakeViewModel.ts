@@ -588,31 +588,31 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         reset: noop,
       };
     },
-    // Admin / telemetry (Phase 5): data-driven fakes reading from AppData admin
+    // Ops / telemetry (Phase 5): data-driven fakes reading from AppData ops
     // fields. Fixtures that don't set these fields return the same empty defaults
-    // as the old no-op stubs, so all pre-admin goldens stay pixel-identical.
+    // as the old no-op stubs, so all pre-ops goldens stay pixel-identical.
     useMetrics: () => {
       return {
-        throughput: at(data.adminMetrics?.throughput ?? []),
-        latency: at(data.adminMetrics?.latency ?? []),
-        errorRate: at(data.adminMetrics?.errorRate ?? []),
+        throughput: at(data.opsMetrics?.throughput ?? []),
+        latency: at(data.opsMetrics?.latency ?? []),
+        errorRate: at(data.opsMetrics?.errorRate ?? []),
       };
     },
     useTopology: () => {
-      return at(data.adminTopology ?? null);
+      return at(data.opsTopology ?? null);
     },
     useEventLog: () => {
-      return at(data.adminEventLog ?? []);
+      return at(data.opsEventLog ?? []);
     },
     useSessions: () => {
-      return at(data.adminSessions ?? []);
+      return at(data.opsSessions ?? []);
     },
     useSessionCountSeries: () => {
-      return at(data.adminSessionCountSeries ?? []);
+      return at(data.opsSessionCountSeries ?? []);
     },
     useIncident: () => {
       return {
-        state: at(data.adminIncident ?? { active: [] }),
+        state: at(data.opsIncident ?? { active: [] }),
         inject: noop,
         clear: noop,
       };

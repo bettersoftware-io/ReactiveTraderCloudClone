@@ -34,13 +34,6 @@ import { createRowHighlightMachine } from "#/machines/rowHighlight";
 import { createStaleFlagMachine } from "#/machines/staleFlag";
 import { createTileExecutionMachine } from "#/machines/tileExecution";
 import { createWorkspaceNavMachine } from "#/machines/workspaceNav";
-import {
-  createEventLogPresenter,
-  createMetricWindowPresenter,
-  createSessionsKpiPresenter,
-  createSessionsPresenter,
-  createTopologyPresenter,
-} from "#/presenters/admin";
 import { createBlotterPresenter } from "#/presenters/blotter";
 import { createCandleSeriesPresenter } from "#/presenters/candleSeries";
 import { createConnectionPresenter } from "#/presenters/connection";
@@ -52,6 +45,13 @@ import {
   createLoginWaitPreferencesPresenter,
 } from "#/presenters/groupedPreferences";
 import { createJarvisFamily } from "#/presenters/jarvisFamily";
+import {
+  createEventLogPresenter,
+  createMetricWindowPresenter,
+  createSessionsKpiPresenter,
+  createSessionsPresenter,
+  createTopologyPresenter,
+} from "#/presenters/ops";
 import { createOrdersBlotterPresenter } from "#/presenters/ordersBlotter";
 import {
   createAmbientStylePresenter,
@@ -120,7 +120,7 @@ type NativePresenters = Omit<
  * `instruments` hold their port subscriptions until `lifetime` aborts;
  * slice 4: the five equities presenters — `watchlist`, `orders$` and
  * `positions` retained — and the two workspace singletons; slice 5: the
- * admin nine — the three metric windows, `eventLog` and `sessionsKpi` as
+ * ops nine — the three metric windows, `eventLog` and `sessionsKpi` as
  * warm folds, `topology` and `sessions` as warm mirrors, `throughput`, and
  * the `incident` singleton, whose connection events go out through
  * `ports.connectionIntents.injectIncident`; slice 6: the five shell members.
@@ -219,7 +219,7 @@ function nativePresenters(
       rfqEvents$: rfqs.events$,
       equityFills$: ordersBlotter.fills$,
     }),
-    throughput: createThroughputPresenter(ports.admin, lifetime),
+    throughput: createThroughputPresenter(ports.ops, lifetime),
     throughputMetric: createMetricWindowPresenter(
       ports.telemetry.throughput$(),
       lifetime,

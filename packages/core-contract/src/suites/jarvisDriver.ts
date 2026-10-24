@@ -40,7 +40,7 @@ export function describeJarvisDriverContract(
           const outcomes = collect(h.app.presenters.jarvisDriver.outcomes$);
           await driveBatch(
             h,
-            [switchTo("credit"), switchTo("equities"), switchTo("admin")],
+            [switchTo("credit"), switchTo("equities"), switchTo("ops")],
             pause,
           );
           expect(await batchTabs(h, pause)).toEqual(["credit"]);
@@ -55,12 +55,12 @@ export function describeJarvisDriverContract(
           expect(tabsOf(outcomes.values)).toEqual([
             "credit",
             "equities",
-            "admin",
+            "ops",
           ]);
           expect(
             (await readLatest(h.app.presenters.workspaceNav.state$, pause))
               .activeTab,
-          ).toBe("admin");
+          ).toBe("ops");
           outcomes.unsubscribe();
         } finally {
           await h.teardown();
@@ -78,14 +78,14 @@ export function describeJarvisDriverContract(
           await pause();
           await driveBatch(
             h,
-            [switchTo("credit"), switchTo("equities"), switchTo("admin")],
+            [switchTo("credit"), switchTo("equities"), switchTo("ops")],
             pause,
           );
           await applyZeroStagger(clock);
           expect(await batchTabs(h, pause)).toEqual([
             "credit",
             "equities",
-            "admin",
+            "ops",
           ]);
         } finally {
           await h.teardown();
@@ -105,16 +105,16 @@ export function describeJarvisDriverContract(
             [switchTo("credit"), switchTo("equities")],
             pause,
           );
-          await driveBatch(h, [switchTo("admin")], pause);
+          await driveBatch(h, [switchTo("ops")], pause);
           expect(await batchTabs(h, pause)).toEqual(["credit"]);
           await clock.advance(DRIVE_STAGGER_MS);
           await applyZeroStagger(clock);
           expect(tabsOf(outcomes.values)).toEqual([
             "credit",
             "equities",
-            "admin",
+            "ops",
           ]);
-          expect(await batchTabs(h, pause)).toEqual(["admin"]);
+          expect(await batchTabs(h, pause)).toEqual(["ops"]);
           outcomes.unsubscribe();
         } finally {
           await h.teardown();
@@ -363,7 +363,7 @@ export function describeJarvisDriverContract(
   });
 }
 
-function switchTo(tab: "credit" | "equities" | "admin"): DriveCommandV1 {
+function switchTo(tab: "credit" | "equities" | "ops"): DriveCommandV1 {
   return { kind: "switchTab", tab };
 }
 

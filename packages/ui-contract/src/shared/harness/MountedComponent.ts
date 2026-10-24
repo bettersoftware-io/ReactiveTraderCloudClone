@@ -46,7 +46,7 @@ export interface PageContext<P> {
   readonly commands: CommandLog;
   /** The world's fake page history, or null on an unrouted mount. */
   readonly routes: FakeRouteHistory | null;
-  // Admin / telemetry setters (Phase 5 — flush-wrapped so re-renders are immediate).
+  // Ops / telemetry setters (Phase 5 — flush-wrapped so re-renders are immediate).
   /** Push a new service topology snapshot (useTopology source). */
   setTopology(value: ServiceTopology | null): void;
   /** Push a new event log (useEventLog source). */
@@ -144,7 +144,7 @@ export abstract class MountedComponent<P> {
     this.ctx.setIntent(target, intent);
   }
 
-  /** Push a new throughput view → re-render the AdminPanel. */
+  /** Push a new throughput view → re-render the OpsPanel. */
   protected setThroughputView(patch: Partial<ThroughputView>): void {
     this.ctx.setThroughputView(patch);
   }
@@ -164,7 +164,7 @@ export abstract class MountedComponent<P> {
     return this.ctx.commands;
   }
 
-  // Admin / telemetry drivers (Phase 5).
+  // Ops / telemetry drivers (Phase 5).
 
   /** Push a new service topology → re-render the subscribing panel. */
   setTopology(value: ServiceTopology | null): void {

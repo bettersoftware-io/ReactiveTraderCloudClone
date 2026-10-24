@@ -22,8 +22,8 @@ ruleTester.run("component-newspaper", componentNewspaper, {
   valid: [
     {
       name: "single exported component as lede, private subcomponent below",
-      filename: "AdminDashboard.tsx",
-      code: "export function AdminDashboard() {\n  return <div />;\n}\n\nfunction Card() {\n  return <div />;\n}\n",
+      filename: "OpsDashboard.tsx",
+      code: "export function OpsDashboard() {\n  return <div />;\n}\n\nfunction Card() {\n  return <div />;\n}\n",
     },
     {
       name: "lone component matching filename",
@@ -54,11 +54,11 @@ ruleTester.run("component-newspaper", componentNewspaper, {
   invalid: [
     {
       name: "private component above the export is reordered to the lede",
-      filename: "AdminDashboard.tsx",
-      code: "function Card() {\n  return <div />;\n}\n\nexport function AdminDashboard() {\n  return <div />;\n}\n",
-      errors: [{ messageId: "notLede", data: { name: "AdminDashboard" } }],
+      filename: "OpsDashboard.tsx",
+      code: "function Card() {\n  return <div />;\n}\n\nexport function OpsDashboard() {\n  return <div />;\n}\n",
+      errors: [{ messageId: "notLede", data: { name: "OpsDashboard" } }],
       output:
-        "export function AdminDashboard() {\n  return <div />;\n}\n\nfunction Card() {\n  return <div />;\n}\n\n\n",
+        "export function OpsDashboard() {\n  return <div />;\n}\n\nfunction Card() {\n  return <div />;\n}\n\n\n",
     },
     {
       name: "non-component const above the export is reordered below it",
@@ -78,11 +78,11 @@ ruleTester.run("component-newspaper", componentNewspaper, {
     },
     {
       name: "leading comment on private subcomponent above the export is preserved after autofix",
-      filename: "AdminDashboard.tsx",
-      code: "// keep me\nfunction Card() {\n  return <div />;\n}\n\nexport function AdminDashboard() {\n  return <div />;\n}\n",
-      errors: [{ messageId: "notLede", data: { name: "AdminDashboard" } }],
+      filename: "OpsDashboard.tsx",
+      code: "// keep me\nfunction Card() {\n  return <div />;\n}\n\nexport function OpsDashboard() {\n  return <div />;\n}\n",
+      errors: [{ messageId: "notLede", data: { name: "OpsDashboard" } }],
       output:
-        "export function AdminDashboard() {\n  return <div />;\n}\n\n// keep me\nfunction Card() {\n  return <div />;\n}\n\n\n",
+        "export function OpsDashboard() {\n  return <div />;\n}\n\n// keep me\nfunction Card() {\n  return <div />;\n}\n\n\n",
     },
     {
       name: "two exported components: report the second, no autofix",

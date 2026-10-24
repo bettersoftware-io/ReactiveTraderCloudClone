@@ -20,7 +20,7 @@ describe("InMemoryDockLayoutStore", () => {
     store.save("credit", '{"b":2}');
     expect(store.load("fx")).toBe('{"a":1}');
     expect(store.load("credit")).toBe('{"b":2}');
-    expect(store.load("admin")).toBeNull();
+    expect(store.load("ops")).toBeNull();
   });
 
   it("overwrites a tab's blob on a second save", () => {

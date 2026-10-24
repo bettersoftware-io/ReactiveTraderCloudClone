@@ -19,7 +19,7 @@ import type { Ctx } from "./context.js";
 import { allEffects, buildEffects } from "./index.js";
 
 describe("allEffects composition", () => {
-  it("routes one representative message from each domain (fx, credit, admin, equities) to an outbound frame", () => {
+  it("routes one representative message from each domain (fx, credit, ops, equities) to an outbound frame", () => {
     const tick = {
       symbol: "EURUSD",
       bid: 1.1,

@@ -167,7 +167,7 @@ export function describeThroughputContract(
           h.driver.resolveThroughputWrite();
           await clock.settle();
           // "Throughput has been set to 2" is `throughputSetMessage(2)` in
-          // @rtc/core-logic's adminFolds.ts; this suite may not import
+          // @rtc/core-logic's opsFolds.ts; this suite may not import
           // client-core-rxjs, so the banner text is spelled literally.
           expect(c.values.at(-1)?.message).toEqual({
             text: "Throughput has been set to 2",
@@ -199,7 +199,7 @@ export function describeThroughputContract(
           h.driver.failThroughputWrite(new Error("nope"));
           await clock.settle();
           // "Error setting throughput" is `THROUGHPUT_SET_ERROR` in
-          // @rtc/core-logic's adminFolds.ts — spelled literally, as above.
+          // @rtc/core-logic's opsFolds.ts — spelled literally, as above.
           expect(c.values.at(-1)?.message).toEqual({
             text: "Error setting throughput",
             isError: true,
@@ -273,7 +273,7 @@ export function describeThroughputContract(
     });
 
     // Verified directly against the RxJS core (ruling 5): `write$`'s outer
-    // `switchMap` — from the debounced value to `admin.setThroughput(value)
+    // `switchMap` — from the debounced value to `ops.setThroughput(value)
     // .pipe(…, switchMap(message => concat(banner, dismissTimer)))` — is ONE
     // operator spanning both the write AND its banner's dismiss timer. A
     // newer debounced value unsubscribes the whole previous inner

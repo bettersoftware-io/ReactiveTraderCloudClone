@@ -4,7 +4,7 @@
 
 | Area | Path | Description |
 |------|------|-------------|
-| **Domain Ports** | `packages/domain/src/ports/*.ts` | Port interfaces: the 8 classic transport ports + `ConnectionEventsPort` + equities (`MarketDataPort`, `OrderPort`, `PositionPort`) + admin/preferences/telemetry families |
+| **Domain Ports** | `packages/domain/src/ports/*.ts` | Port interfaces: the 8 classic transport ports + `ConnectionEventsPort` + equities (`MarketDataPort`, `OrderPort`, `PositionPort`) + ops/preferences/telemetry families |
 | **FX Entities** | `packages/domain/src/fx/*.ts` | CurrencyPair, Price, Trade, Notional |
 | **Credit Entities** | `packages/domain/src/credit/*.ts` | Instrument, Dealer, Rfq, Quote |
 | **Connection** | `packages/domain/src/connection/*.ts` | ConnectionStatus state machine |
@@ -26,7 +26,7 @@
 | **Solid ViewModel Bridge** | `packages/solid-bindings/src/{createViewModel,useMachine,toSignal,ViewModelProvider}.ts(x)` | The same `ViewModel` member list over Solid signals; `toSignal` is the stream → signal seam |
 | **Web Composition Root** | `packages/client-react/src/main.tsx` + `src/AppRoot.tsx` (+ the same files in `client-solid`) + `packages/web-boot/src/startWebClient.ts`, `buildBrowserPorts.ts` and `coreHost.ts` (shared) | `main.tsx` is the fonts, a view factory and one `startWebClient` call; `startWebClient` builds the ports once per page (`buildBrowserPorts({ env, devtoolsHub })`, the `VITE_SERVER_URL` switch); the core host calls `core.createApp(ports)` per composition and swaps the core in place; `AppRoot` builds the ViewModel, once per mount |
 | **Web Platform Adapters** | `packages/web-boot/src/adapters/*.ts`, `src/theme/*.ts` | LocalStorage preferences, browser connection events, matchMedia color scheme |
-| **Web UI Components** | `packages/client-react/src/ui/{fx,credit,equities,admin,shell}/**/*.tsx` | React components grouped by trading domain (no rxjs — gates 26–29) |
+| **Web UI Components** | `packages/client-react/src/ui/{fx,credit,equities,ops,shell}/**/*.tsx` | React components grouped by trading domain (no rxjs — gates 26–29) |
 | **Solid Web Client** | `packages/client-solid/src/{main.tsx,AppRoot.tsx,app/,ui/}` | Same composition recipe as `client-react` over `solid-bindings`; UI at full parity (no rxjs in `src/ui` — gates 34–37) |
 | **RN Composition Root** | `packages/client-react-native/src/app/{AppRoot.tsx,buildNativePorts.ts}` | Same recipe with `EXPO_PUBLIC_SERVER_URL` + sim/live toggle |
 | **RN Platform Adapters** | `packages/client-react-native/src/app/adapters/*.ts` | AsyncStorage preferences, Appearance color scheme |
@@ -38,7 +38,7 @@
 | **Jarvis Desk Tools** | `packages/agent-tools/src/{buildJarvisTools,jarvisToolDefinition}.ts` | The seven tools as JSON Schema + `run()`; SDK-free, consumed by the server's agent loop and `/mcp` |
 | **Server Entry** | `packages/server/src/index.ts` | node:http (`/health`, `/login`, `/mcp`) + `ws` + token auth (`src/auth/`); a few lines of effect composition |
 | **Server Auth + Login** | `packages/server/src/auth/` (`AuthService`, `token`, `rateLimit`, `loadUsers`), `src/http/loginHandler.ts` | Token issue/verify, rate limiting, `AUTH_USERS` parsing; the `/login` handler |
-| **Server Effects** | `packages/server/src/effects/*.effects.ts` + `index.ts` | FX, Credit, Admin, Equities and Jarvis effects, assembled by `buildEffects(loops)` |
+| **Server Effects** | `packages/server/src/effects/*.effects.ts` + `index.ts` | FX, Credit, Ops, Equities and Jarvis effects, assembled by `buildEffects(loops)` |
 | **Server Agent + MCP** | `packages/server/src/agent/`, `src/mcp/` | Scripted and Anthropic agent loops (`@anthropic-ai/sdk` confined here); the `/mcp` Streamable-HTTP endpoint over `@rtc/agent-tools` |
 | **Server Services** | `packages/server/src/services/{serviceContainer,ThroughputService}.ts` | `createServices()` — the `ServiceContainer` of simulators and services |
 | **Socket Adapter** | `packages/server/src/socket/toSocket.ts` | `ws.WebSocket` → transport-agnostic `Socket` |

@@ -441,7 +441,7 @@ packages/client-react/src/
 **Specs:**
 - `specs/services/protocol.md`
 - All service YAML contracts
-- `specs/features/admin/throughput.feature`
+- `specs/features/ops/throughput.feature`
 
 ### Files to create:
 

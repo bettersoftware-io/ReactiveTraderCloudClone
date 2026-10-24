@@ -1,7 +1,7 @@
-import { describeAdminPortContract } from "../ports/__contracts__/AdminPortContract.js";
+import { describeOpsPortContract } from "../ports/__contracts__/OpsPortContract.js";
 import { ThroughputSimulator } from "./ThroughputSimulator.js";
 
-describeAdminPortContract("ThroughputSimulator", () => {
+describeOpsPortContract("ThroughputSimulator", () => {
   const port = new ThroughputSimulator();
   return {
     port,

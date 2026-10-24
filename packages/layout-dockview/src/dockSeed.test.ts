@@ -50,7 +50,7 @@ describe("toSerializedDockview", () => {
 
   it("maps a single-panel tree to a one-leaf BRANCH (a leaf root is rejected by dockview)", () => {
     const s = toSerializedDockview(
-      { kind: "panel", panelId: "admin-dashboard" },
+      { kind: "panel", panelId: "ops-dashboard" },
       640,
       480,
     );
@@ -59,7 +59,7 @@ describe("toSerializedDockview", () => {
     const [leaf] = root.data as SerializedNode[];
     expect(leaf.type).toBe("leaf");
     expect(leaf.size).toBe(640);
-    expect(Object.keys(s.panels)).toEqual(["admin-dashboard"]);
+    expect(Object.keys(s.panels)).toEqual(["ops-dashboard"]);
   });
 
   it("gives every leaf a unique group id and an activeView", () => {
@@ -390,10 +390,10 @@ describe("toSerializedDockview × dockview-core round trip", () => {
     api.dispose();
   });
 
-  it("restores a single-panel seed (the Admin tab) instead of throwing", () => {
-    // Regression pin: the Admin tab's seed is one panel, and dockview's
+  it("restores a single-panel seed (the Ops tab) instead of throwing", () => {
+    // Regression pin: the Ops tab's seed is one panel, and dockview's
     // fromJSON throws "root must be of type branch" on a leaf root — the
-    // shipped engine crashed the whole Admin workspace until the converter
+    // shipped engine crashed the whole Ops workspace until the converter
     // wrapped the lone panel in a branch.
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -411,7 +411,7 @@ describe("toSerializedDockview × dockview-core round trip", () => {
     expect(() => {
       api.fromJSON(
         toSerializedDockview(
-          { kind: "panel", panelId: "admin-dashboard" },
+          { kind: "panel", panelId: "ops-dashboard" },
           640,
           480,
           { gap: 7 },
@@ -422,7 +422,7 @@ describe("toSerializedDockview × dockview-core round trip", () => {
       api.panels.map((p) => {
         return p.id;
       }),
-    ).toEqual(["admin-dashboard"]);
+    ).toEqual(["ops-dashboard"]);
     expect(api.groups).toHaveLength(1);
     api.dispose();
   });

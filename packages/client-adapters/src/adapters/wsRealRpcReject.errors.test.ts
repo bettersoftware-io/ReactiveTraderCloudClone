@@ -81,16 +81,16 @@ describe("wsReal RPC ports :: transport reject propagates to subscriber", () => 
     }, "rpc.accept");
   });
 
-  it("admin.getThroughput propagates a transport reject", () => {
+  it("ops.getThroughput propagates a transport reject", () => {
     return expectPropagates((p) => {
-      return firstValueFrom(p.admin.getThroughput());
-    }, "admin.getThroughput");
+      return firstValueFrom(p.ops.getThroughput());
+    }, "ops.getThroughput");
   });
 
-  it("admin.setThroughput propagates a transport reject", () => {
+  it("ops.setThroughput propagates a transport reject", () => {
     return expectPropagates((p) => {
-      return firstValueFrom(p.admin.setThroughput(500));
-    }, "admin.setThroughput");
+      return firstValueFrom(p.ops.setThroughput(500));
+    }, "ops.setThroughput");
   });
 
   const boom = new Error("socket dropped");

@@ -25,7 +25,7 @@ Entity slices, one per business/cross-cutting concern, plus the ring-crossing fo
 | `src/boot/` | `bootCadence.ts` — the boot splash's `BOOT_DURATION_MS` / `BOOT_TICK_MS`, here so `@rtc/core-contract` can assert them |
 | `src/jarvis/` | Jarvis domain rules — copy/caps/cadences (`jarvisConstants.ts`), the pricing `anomalyDetector`, and the vocabulary a brain emits and the UIs render: turn events (`jarvisEvent.ts`), panel specs (`panelSpec.ts`), drive commands (`driveCommand.ts`) and token usage (`jarvisUsage.ts`). Their parsers and JSON Schemas are in `@rtc/shared` (the `JarvisBrain` roster lives in `src/preferences/preferences.ts`) |
 | `src/workspace/` | `workspaceLimits.ts` — the workspace's panel caps and cadences |
-| `src/telemetry/` | Admin/ops entities — `LogEvent`, `MetricSample`, `SessionInfo`, `ServiceTopology`, the `mulberry32` PRNG |
+| `src/telemetry/` | Ops entities — `LogEvent`, `MetricSample`, `SessionInfo`, `ServiceTopology`, the `mulberry32` PRNG |
 | `src/ports/` | Port interfaces — the dependency-inverted boundaries every adapter (simulator or `WsAdapter`-backed) implements. Inventory below. |
 | `src/usecases/` | Application orchestration — the use cases that sit between presenters and ports (`src/usecases/index.ts`). |
 | `src/simulators/` | Production in-memory port implementations, used in both simulator mode (in-process) and live mode (hosted on `@rtc/server` behind `@rtc/ws-effects`). Inventory below. |
@@ -37,7 +37,7 @@ Every interface, its declaring file, and the shape it commits adapters to. All 1
 
 | File | Port interface | Shape |
 |---|---|---|
-| `adminPort.ts` | `AdminPort` | `getThroughput()` / `setThroughput(value)` — admin-set throughput setpoint |
+| `opsPort.ts` | `OpsPort` | `getThroughput()` / `setThroughput(value)` — ops-set throughput setpoint |
 | `analyticsPort.ts` | `AnalyticsPort` | `getAnalytics(currency)` → `PositionUpdates` |
 | `authPort.ts` | `AuthPort` (+ `AuthOutcome`) | `login(username, password)` → `AuthOutcome` — the credential exchange behind sign-in |
 | `blotterPort.ts` | `BlotterPort` | `getTradeStream()` → `readonly Trade[]` |
@@ -74,7 +74,7 @@ One class per port (plus the metric simulators), each a production `implements` 
 | `EquityOrderSimulator.ts` | `OrderPort` — advances orders `new → working → partiallyFilled → filled`/`rejected` |
 | `EquityPositionSimulator.ts` | `PositionPort` — updates positions via `bookFill(fill)` |
 | `ErrorRateSimulator.ts` | `MetricControl` — error-rate metric walk with perturbation support |
-| `EventLogSimulator.ts` | `EventLogPort`, `MetricControl` — admin event-log stream |
+| `EventLogSimulator.ts` | `EventLogPort`, `MetricControl` — ops event-log stream |
 | `ExecutionSimulator.ts` | `ExecutionPort` — trade execution (GBPJPY always rejects, EURJPY carries an extra 4s delay, others resolve in 0–2s) |
 | `InstrumentSimulator.ts` | `InstrumentPort` — serves the `INSTRUMENTS_CATALOG` constant |
 | `LatencySimulator.ts` | `MetricControl` — latency metric walk with perturbation support |
@@ -85,7 +85,7 @@ One class per port (plus the metric simulators), each a production `implements` 
 | `ServiceTopologySimulator.ts` | `ServiceHealthPort`, `MetricControl` — service-topology graph with perturbable node health |
 | `SessionSimulator.ts` | `SessionsPort` — active-session list |
 | `TelemetrySimulator.ts` | `TelemetryPort` — wraps `ThroughputSimulator` + `LatencySimulator` + `ErrorRateSimulator` behind one facade, `mulberry32`-seeded |
-| `ThroughputSimulator.ts` | `AdminPort` — in-memory admin throughput setpoint; rejects non-finite or out-of-`[0,1000]` values by throwing |
+| `ThroughputSimulator.ts` | `OpsPort` — in-memory ops throughput setpoint; rejects non-finite or out-of-`[0,1000]` values by throwing |
 | `TradeStoreSimulator.ts` | `BlotterPort` — FX trade blotter stream |
 | `gbm.ts` | Helper — `gbmStep()` (one geometric-Brownian-motion-ish price step) and `aggregateCandle()`; re-exports `mulberry32` |
 | `metricWalk.ts` | Helper — `METRIC_TICK_MS` cadence constant + pre-seeded rolling-window sample generation shared by the telemetry simulators |

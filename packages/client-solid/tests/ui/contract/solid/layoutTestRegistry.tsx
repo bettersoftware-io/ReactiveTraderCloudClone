@@ -25,8 +25,8 @@ export const layoutTestRegistry: PanelRegistry = {
   "credit-blotter": () => {
     return <div data-testid="credit-blotter-body">CREDIT BLOTTER</div>;
   },
-  "admin-throughput": () => {
-    return <div data-testid="admin-throughput-body">ADMIN</div>;
+  "ops-throughput": () => {
+    return <div data-testid="ops-throughput-body">OPS</div>;
   },
   // The Task 7 docked-fixture panel: a stand-in for a real Jarvis desk panel
   // once it's docked into a tab (id shape mirrors DOCKED_PANEL_ID in

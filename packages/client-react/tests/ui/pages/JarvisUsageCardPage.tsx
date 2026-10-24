@@ -3,7 +3,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import type { JarvisUsageSnapshot } from "@rtc/domain";
 import { type ViewModel, ViewModelContext } from "@rtc/react-bindings";
 
-import { JarvisUsageCard } from "#/ui/admin/jarvis/JarvisUsageCard";
+import { JarvisUsageCard } from "#/ui/ops/jarvis/JarvisUsageCard";
 
 export interface JarvisUsageCardPage {
   mount(usage: JarvisUsageSnapshot | null): void;

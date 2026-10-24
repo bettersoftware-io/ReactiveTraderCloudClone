@@ -20,7 +20,7 @@ styles) because they are only observable on a **live, streaming** app:
 2. **Residents** — infinite loops held `paused` forever instead of removed.
 
 The instrument is `tests/scripts/motion-audit.ts`: it drives every workspace
-view (fx, credit, equities, admin) at each power-saver level, samples
+view (fx, credit, equities, ops) at each power-saver level, samples
 `document.getAnimations()` (CSS animations + CSS transitions + WAAPI, with
 timing and target identity) and counts `requestAnimationFrame` registrations.
 
@@ -49,7 +49,7 @@ timing and target identity) and counts `requestAnimationFrame` registrations.
      `rtcDiagnosticRafLoop` marker and is reported separately as
      `+N/s diagnostic` (expected ≈ refresh rate at every level).
    - **off** is inventory: the expected roster (ambient layers, spins,
-     pulseDot, tick flashes, rank-glide WAAPI, admin pulses). Flag anything
+     pulseDot, tick flashes, rank-glide WAAPI, ops pulses). Flag anything
      NEW here against `docs/performance.md`'s rules (compositor-only
      properties, one animation per property per element).
    - **calm** should show loop animations `paused` and data-feedback flashes

@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 
 import type { LayoutPanelInstance, PanelId } from "@rtc/core-api";
 
-import { AdminDashboard } from "#/ui/admin/AdminDashboard";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
 import { NewRfqPanel } from "#/ui/credit/newRfq/NewRfqPanel";
 import { RfqsPanel } from "#/ui/credit/rfqs/RfqsPanel";
@@ -18,6 +17,7 @@ import { AnalyticsPanel } from "#/ui/fx/analytics/AnalyticsPanel";
 import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
 import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
 import { PositionsPanel } from "#/ui/fx/positions/PositionsPanel";
+import { OpsDashboard } from "#/ui/ops/OpsDashboard";
 
 import {
   appPanelRegistry,
@@ -52,7 +52,7 @@ const expected: ReadonlyArray<readonly [PanelId, ComponentType<never>]> = [
   ["credit-rfqs", RfqsPanel],
   ["credit-blotter", CreditBlotter],
   ["credit-sell-side", SellSidePanel],
-  ["admin-dashboard", AdminDashboard],
+  ["ops-dashboard", OpsDashboard],
   ["eq-chart", ChartPanel],
   ["eq-blotter", EqBlotterPanel],
   ["eq-ticket", OrderTicket],

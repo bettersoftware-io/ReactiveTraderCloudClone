@@ -3,7 +3,7 @@
 The pure rules, with no stream library, shared by the application cores
 (`@rtc/client-core-rxjs`, `@rtc/client-core-async`, `@rtc/client-core-effect`) and
 the UIs: reducers, folds, patches, the synchronous workspace / Jarvis
-controllers, and the view helpers a UI calls directly (`blotter/`, `admin/`,
+controllers, and the view helpers a UI calls directly (`blotter/`, `ops/`,
 and `layout/`'s `lockedWidthPx`, `maximizeBoundaryPath`, `visibleRootOf`). Pluggable-core
 slice 8 moved them here so the alternative cores need no runtime dependency
 on the RxJS core.

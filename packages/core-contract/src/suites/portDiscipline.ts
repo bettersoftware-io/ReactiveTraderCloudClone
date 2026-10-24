@@ -449,9 +449,9 @@ export function describePortDisciplineContract(
     // it warm), but the port method itself is obtained once, when the
     // presenter is built. A core that called `getThroughput()` afresh per
     // subscriber would fail here, which is the constancy this file exists for.
-    it("throughput: two warm periods of state$ do not call admin.getThroughput() again", async () => {
+    it("throughput: two warm periods of state$ do not call ops.getThroughput() again", async () => {
       const h = makeHarness();
-      const before = h.driver.portCalls("admin.getThroughput");
+      const before = h.driver.portCalls("ops.getThroughput");
       // Exactly one construction-time call: zero would mean the counted
       // wrapper was bypassed or the presenter never built; two, a member
       // built twice.
@@ -465,7 +465,7 @@ export function describePortDisciplineContract(
         const second = collect(p.state$);
         await settle();
         second.unsubscribe();
-        expect(h.driver.portCalls("admin.getThroughput")).toBe(before);
+        expect(h.driver.portCalls("ops.getThroughput")).toBe(before);
       } finally {
         await h.teardown();
       }

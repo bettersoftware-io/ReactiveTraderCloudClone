@@ -154,24 +154,24 @@ describe("App (shell chrome)", () => {
     expect(page.exists("blotter-table")).toBe(true);
   });
 
-  it("switches to the admin tab and shows the live layout engine with the real admin dashboard", async () => {
+  it("switches to the ops tab and shows the live layout engine with the real ops dashboard", async () => {
     page.mount();
     page.signIn();
     await page.waitFor(() => {
       expect(page.exists("login-screen")).toBe(false);
     });
 
-    page.click("tab-admin");
+    page.click("tab-ops");
 
-    expect(page.isActiveTab("tab-admin")).toBe(true);
+    expect(page.isActiveTab("tab-ops")).toBe(true);
     expect(page.exists("layout-engine")).toBe(true);
-    // The admin tab is fully live (Task 16): the (now default) real Dockview
-    // engine renders with the single admin-dashboard panel, whose body is
-    // the REAL admin subtree — no more `pending-panel` placeholders
+    // The ops tab is fully live (Task 16): the (now default) real Dockview
+    // engine renders with the single ops-dashboard panel, whose body is
+    // the REAL ops subtree — no more `pending-panel` placeholders
     // anywhere in the app (all four domains are ported as of Phase 3). See
     // the FX tab test above for why `dock-tab-*`, not `panel-*`, is the
     // engine-neutral witness here.
-    expect(page.exists("dock-tab-admin-dashboard")).toBe(true);
+    expect(page.exists("dock-tab-ops-dashboard")).toBe(true);
     expect(page.pendingPanelCount()).toBe(0);
   });
 

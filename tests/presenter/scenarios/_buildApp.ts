@@ -48,7 +48,7 @@ export interface IncidentPresenterCtx {
 }
 
 /**
- * Builds a simulator-ports app whose admin incident injections reach its own
+ * Builds a simulator-ports app whose ops incident injections reach its own
  * connection presenter — the production path: `presenters.incident` pushes
  * each connection event through `ports.connectionIntents`, which this
  * builder merges into `connectionEvents`, as a client's port builder does.

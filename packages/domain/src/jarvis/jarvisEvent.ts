@@ -49,7 +49,7 @@ export interface JarvisHistoryEntry {
 }
 
 /** Tri-state budget-gate level; "none" never crosses the wire on the
- * availability payload — `gate` is simply absent. The admin usage payload
+ * availability payload — `gate` is simply absent. The ops usage payload
  * carries the full tri-state. */
 export type JarvisGateLevel = "none" | "soft" | "hard";
 

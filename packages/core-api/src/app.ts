@@ -1,5 +1,4 @@
 import type {
-  AdminPort,
   AnalyticsPort,
   AnomalyDetectorConfig,
   AuthPort,
@@ -12,6 +11,7 @@ import type {
   InstrumentPort,
   MarketDataPort,
   MetricControl,
+  OpsPort,
   OrderPort,
   PositionPort,
   PreferencesPort,
@@ -107,21 +107,21 @@ export interface AppPorts {
   instruments: InstrumentPort;
   dealers: DealerPort;
   workflow: WorkflowPort;
-  admin: AdminPort;
+  ops: OpsPort;
   preferences: PreferencesPort;
   /** J.A.R.V.I.S. chat backend — constructed internally by both port
    * factories, never platform-supplied. Simulator mode gets the scripted
    * (offline) brain (`ScriptedJarvisAdapter`); WS-real mode speaks the
    * `JARVIS_*` wire protocol over the live socket (`WsJarvisAdapter`). */
   jarvis: JarvisPort;
-  /** Rolling Jarvis usage/cost telemetry (Admin surface) — constructed
+  /** Rolling Jarvis usage/cost telemetry (Ops surface) — constructed
    * internally by both port factories, never platform-supplied, mirroring
    * `jarvis` above. Simulator mode gets an always-empty snapshot; WS-real
-   * mode streams `SERVER_MSG.ADMIN_JARVIS_USAGE` (`WsJarvisUsageAdapter`). */
+   * mode streams `SERVER_MSG.OPS_JARVIS_USAGE` (`WsJarvisUsageAdapter`). */
   jarvisUsage: JarvisUsagePort;
   connectionEvents: ConnectionEventsPort;
   /** The pushes into `connectionEvents` that originate INSIDE the app — the
-   * Reconnect button (`commands.reconnect`) and the admin console's incident
+   * Reconnect button (`commands.reconnect`) and the ops console's incident
    * injection. Supplied by the client beside `connectionEvents`, which merges
    * what it carries, so a core never imports a module-level Subject. */
   connectionIntents: ConnectionIntentsPort;
@@ -174,7 +174,7 @@ export interface AppPorts {
   narratorConfig?: Partial<AnomalyDetectorConfig>;
 }
 
-/** The user's and the admin console's pushes into the connection-event
+/** The user's and the ops console's pushes into the connection-event
  * stream. The client builds it and merges what it carries into
  * `connectionEvents`, so a core never imports a module-level Subject. */
 export interface ConnectionIntentsPort {
@@ -241,7 +241,7 @@ export interface Presenters {
   depth: DepthPresenter;
   ordersBlotter: OrdersBlotterPresenter;
   positions: PositionsPresenter;
-  /** Phase 5 Admin: incident injection + connection-seam control. */
+  /** Phase 5 Ops: incident injection + connection-seam control. */
   incident: Machine<IncidentState, IncidentIntents>;
   /** Equities: cross-panel selected-symbol / open-tabs / timeframe state,
    * shared by the chart, instrument-tabs, and watchlist panels. */
@@ -282,23 +282,23 @@ export interface Presenters {
    * the active draw tool, and the current selection — shared by the chart
    * head's tool pills and the plot. */
   eqDrawings: Machine<EqDrawingsState, EqDrawingsIntents>;
-  /** Phase 5 Admin: per-metric rolling window series for charts. */
+  /** Phase 5 Ops: per-metric rolling window series for charts. */
   throughputMetric: ThroughputMetricPresenter;
   latencyMetric: LatencyPresenter;
   errorRateMetric: ErrorRatePresenter;
-  /** Phase 5 Admin: service-topology graph stream. */
+  /** Phase 5 Ops: service-topology graph stream. */
   topology: ServiceTopologyPresenter;
-  /** Phase 5 Admin: newest-first rolling event log. */
+  /** Phase 5 Ops: newest-first rolling event log. */
   eventLog: EventLogPresenter;
-  /** Phase 5 Admin: active trader sessions feed. */
+  /** Phase 5 Ops: active trader sessions feed. */
   sessions: SessionsPresenter;
-  /** Plan E Admin: rolling session-count series for the "Active Sessions" KPI card. */
+  /** Plan E Ops: rolling session-count series for the "Active Sessions" KPI card. */
   sessionsKpi: SessionsKpiPresenter;
   /** J.A.R.V.I.S. chat overlay: entries, skin, pending confirmation, phase.
    * Widened with `events$` (every turn's reply events) — Task 6's
    * `jarvisPanels` below is composed from it. */
   jarvis: JarvisMachineHandle;
-  /** J.A.R.V.I.S. usage/cost telemetry (Admin surface) — null until the
+  /** J.A.R.V.I.S. usage/cost telemetry (Ops surface) — null until the
    * first snapshot. */
   jarvisUsage: JarvisUsagePresenter;
   /** J.A.R.V.I.S. generative-UI desk panels: spawned/edited/dismissed via
