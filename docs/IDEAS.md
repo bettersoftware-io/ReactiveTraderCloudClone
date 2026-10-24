@@ -159,9 +159,11 @@ under 5 GB strongly recommended — but the first three stop the growth:
    `publish-to-pages.mts` now force-pushes one parentless commit under a lease
    ([`docs/pages/README.md`](pages/README.md)). The old ~266 MB of `gh-pages`
    history stops being reachable; GitHub reclaims it on its own schedule.
-3. **Cut golden churn.** Still open: decide whether `react-local/darwin-arm64`
-   needs to be committed at all (git-ignored or regenerated on demand would
-   roughly halve future growth). **Done 2026-10-24:** `update-visual-goldens.yml`
+3. **Cut golden churn.** **Decided 2026-10-24: keep committing
+   `react-local/darwin-arm64`** for now, though git-ignoring it (or
+   regenerating on demand) would roughly halve future golden growth — the
+   largest saving still available. Revisit if repo size starts to hurt.
+   **Done 2026-10-24:** `update-visual-goldens.yml`
    losslessly recompresses the goldens each run changed with a pinned `oxipng`
    (~26% smaller, pixel-identical on a 201-golden sample). Deliberately not a
    one-off pass over all existing goldens — that would add a full second copy
