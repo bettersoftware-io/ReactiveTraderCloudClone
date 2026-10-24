@@ -1,6 +1,7 @@
 import type { WsEffect } from "@rtc/ws-effects";
 
 import type { JarvisLoops } from "../agent/agentLoop.js";
+import { accountAdminEffects } from "./accountAdmin.effects.js";
 import type { Ctx } from "./context.js";
 import { creditEffects } from "./credit.effects.js";
 import { equitiesEffects } from "./equities.effects.js";
@@ -20,6 +21,7 @@ export const allEffects: WsEffect<Ctx>[] = [
   ...opsEffects,
   ...opsJarvisUsageEffects,
   ...equitiesEffects,
+  ...accountAdminEffects,
 ];
 
 /** `allEffects` plus the JARVIS_* effects. `jarvisEffects` itself always

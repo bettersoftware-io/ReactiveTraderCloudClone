@@ -12,6 +12,7 @@ import { SESSION_ENDED_CLOSE_CODE } from "@rtc/shared";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
 import { createAccountService } from "./accounts/AccountService.js";
+import { createAccountAdminService } from "./accounts/accountAdminService.js";
 import { createAccountStatusCache } from "./accounts/accountStatusCache.js";
 import {
   createAccountDirectory,
@@ -32,6 +33,7 @@ import {
   ACCOUNT_STATUS_CACHE_MAX_ENTRIES,
   ACCOUNT_STATUS_CACHE_TTL_MS,
   ACCOUNTS_HEALTH_CACHE_MS,
+  ADMIN_ACCOUNT_LIST_MAX,
   BAN_DURATION_MS,
   BAN_MAX_ENTRIES,
   BAN_STRIKE_WINDOW_MS,
@@ -238,6 +240,21 @@ const accounts = createAccountService({
     sessionRegistry.closeAll(accountId);
   },
 });
+
+// ONE service for the process; each connection reaches it through its scoped
+// container. With accounts disabled the disabled directory makes every call
+// `unavailable`.
+const accountAdmin = createAccountAdminService({
+  directory: accountDirectory,
+  statusCache: accountStatus,
+  sessions: sessionRegistry,
+  revocations,
+  now: readClock,
+  listLimit: ADMIN_ACCOUNT_LIST_MAX,
+});
+
+// The shared container every connection's scoped one is made from.
+const connectionServices: ServiceContainer = { ...services, accountAdmin };
 
 const accountsHealth = createAccountsHealth({
   directory: accountDirectory,
@@ -556,7 +573,7 @@ wss.on("connection", (ws, req) => {
   // connection-scoped service container (its own ThroughputService).
   createWsListener(
     effect,
-    scopeServicesToConnection(services, caller),
+    scopeServicesToConnection(connectionServices, caller),
   )(
     toSocket(ws, {
       bucket: createTokenBucket(INBOUND_BURST, INBOUND_REFILL_PER_SECOND),

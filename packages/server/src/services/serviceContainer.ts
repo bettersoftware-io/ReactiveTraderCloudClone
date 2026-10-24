@@ -19,6 +19,7 @@ import {
   TradeStoreSimulator,
 } from "@rtc/domain";
 
+import type { AccountAdminService } from "../accounts/accountAdminService.js";
 import { JarvisGateService } from "./JarvisGateService.js";
 import { parseJarvisGateConfig } from "./jarvisGate.js";
 import { ThroughputService } from "./ThroughputService.js";
@@ -51,6 +52,21 @@ export interface ServiceContainer {
   readonly jarvisGate: JarvisGateService;
   /** Null on the shared container; set on a connection's scoped one. */
   readonly caller: Caller | null;
+  /** The administrator rules behind the `admin.accounts.*` RPCs. */
+  readonly accountAdmin: AccountAdminService;
+}
+
+/** The service of a container built without an account directory: every
+ * call answers `unavailable`. */
+function createUnavailableAccountAdminService(): AccountAdminService {
+  return {
+    list: () => {
+      return Promise.resolve({ ok: false, refusal: "unavailable" });
+    },
+    act: () => {
+      return Promise.resolve({ ok: false, refusal: "unavailable" });
+    },
+  };
 }
 
 /**
@@ -65,6 +81,7 @@ export interface ServiceContainer {
  */
 export function createServices(
   env: NodeJS.ProcessEnv = process.env,
+  accountAdmin: AccountAdminService = createUnavailableAccountAdminService(),
 ): ServiceContainer {
   const referenceData = new ReferenceDataSimulator();
   const pricing = new PricingSimulator();
@@ -111,5 +128,6 @@ export function createServices(
     usageMeter,
     jarvisGate,
     caller: null,
+    accountAdmin,
   };
 }
