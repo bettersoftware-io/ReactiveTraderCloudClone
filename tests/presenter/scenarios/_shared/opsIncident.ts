@@ -1,4 +1,4 @@
-// tests/presenter/scenarios/_shared/adminIncident.ts
+// tests/presenter/scenarios/_shared/opsIncident.ts
 
 import { filter } from "rxjs";
 

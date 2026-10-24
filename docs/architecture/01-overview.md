@@ -4,7 +4,7 @@
 
 ### 1.1 Purpose
 
-**Reactive Trader Cloud Clone** is a real-time FX trading, Credit RFQ (Request for Quote), Equities, and Admin-telemetry platform. It serves equally as a working trading app and as a reference for clean, framework-agnostic architecture.
+**Reactive Trader Cloud Clone** is a real-time FX trading, Credit RFQ (Request for Quote), Equities, and Ops-telemetry platform. It serves equally as a working trading app and as a reference for clean, framework-agnostic architecture.
 
 The codebase is organised so that any single technology -- React, RxJS, react-rxjs, Vite, the WebSocket transport, Vitest, Playwright -- can be replaced with another by changing only its layer. The rest of the system, and the behavioural test suite, continue to work unchanged.
 
@@ -235,7 +235,7 @@ Where legitimate platform differences go instead:
 | Difference | Where it lives | Repo example |
 |---|---|---|
 | Same behaviour, different mechanism | One shared **port**, one adapter per platform (ring ③) | One `PreferencesPort`; `LocalStoragePreferencesAdapter` (web) vs `AsyncStoragePreferencesAdapter` (RN) |
-| Feature mounted on one platform only | A **composition/UI decision** (ring ④), not a use-case fork | Admin/telemetry workspace: presenters are platform-neutral; the web client mounts them, the RN tabs don't |
+| Feature mounted on one platform only | A **composition/UI decision** (ring ④), not a use-case fork | Ops/telemetry workspace: presenters are platform-neutral; the web client mounts them, the RN tabs don't |
 | Genuinely different business behaviour | A real, *additional* use case in the shared core -- named by **what it does**, never `MobileFoo` | (none yet -- both clients run the same workflows) |
 
 Litmus test: if two candidate use cases differ *only because one runs in a browser and one on a phone*, it isn't a use-case difference -- push it out to an adapter or the UI and keep one use case. If the *business* does something genuinely different, it's a separate use case, available to whichever client needs it.

@@ -16,7 +16,7 @@ only about **where the `.feature` files are and how one corpus feeds two layers.
 
 ```
 tests/specs/                      ← the ONE Gherkin corpus (9 files)
-  admin/incident.feature
+  ops/incident.feature
   analytics.feature
   blotter.feature
   connection.feature
@@ -67,7 +67,7 @@ runs:
 | Scenario tags | Presenter peer<br/>(`--tags @presenter`) | Browser peer<br/>(`--tags "not @presenterOnly"`) | Example scenario |
 |---|:---:|:---:|---|
 | `@presenter` | ✅ runs | ✅ runs | `fxTrading` → "execute a buy trade and see confirmation" |
-| `@presenter` **+** `@presenterOnly` | ✅ runs | ❌ skipped | `admin/incident` → "Injecting a service-down incident…" |
+| `@presenter` **+** `@presenterOnly` | ✅ runs | ❌ skipped | `ops/incident` → "Injecting a service-down incident…" |
 | *(no `@presenter`)* | ❌ skipped | ✅ runs | `theme` → "clicking theme toggle changes the theme" |
 
 Read it as two independent filters over the same corpus:

@@ -109,7 +109,7 @@ function buildJarvisToolsFor(
  * real `AnthropicAgentLoop`, wiring each session's own `buildJarvisTools`
  * call (see `AnthropicAgentLoopOptions.buildTools`'s doc comment for why that
  * must happen per session, not once here) and `services.usageMeter` so every
- * real Claude turn's token usage reaches the admin usage dock.
+ * real Claude turn's token usage reaches the ops usage dock.
  * `createJarvisLoops` only invokes this when `env.ANTHROPIC_API_KEY` is
  * already known truthy, hence the `?? ""` fallback below is unreachable in
  * practice, not a silent-empty-key path. Satisfies `AnthropicLoopBuilder`

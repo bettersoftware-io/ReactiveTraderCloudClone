@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { createServices } from "../serviceContainer.js";
 
 describe("createServices", () => {
-  it("wires the existing FX and admin services", () => {
+  it("wires the existing FX and ops services", () => {
     const services = createServices();
 
     expect(services.referenceData).toBeDefined();

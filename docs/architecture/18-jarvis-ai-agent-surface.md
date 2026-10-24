@@ -1226,7 +1226,7 @@ Jarvis entry.
 
 Round 1 (2026-08-02) of the "Jarvis LLM usage governance + model preferences"
 workstream — the `docs/STATUS.md` ⚪ entry P3 opened. It builds items (1)
-server-side usage metering, (3) footer/Admin surfacing, and (4) model+effort
+server-side usage metering, (3) footer/Ops surfacing, and (4) model+effort
 preference, plus a brain picker with Scripted as a first-class choice — the
 run-out-of-credits demo escape hatch. **Display-only, by design:** usage is
 measured and shown; nothing automatically swaps the loop. Item (2)
@@ -1330,7 +1330,7 @@ cacheable prefix is model-specific: 512 tokens on the Sonnet/Opus class,
 **4,096 on Haiku 4.5**. Today's persona-plus-seven-tool-schema prefix is
 ~1.3k tokens — comfortably over the Sonnet/Opus floor, comfortably under
 Haiku's. So `cacheReadTokens: 0` on every Haiku turn — the exact figure the
-Admin usage card now surfaces per-brain — is the **expected** signature of
+Ops usage card now surfaces per-brain — is the **expected** signature of
 "prefix under this model's minimum," not a broken cache tap. This was a real
 review finding: a stale comment (dating to the single-pinned-model era)
 claimed a flat 512-token floor for every model; corrected, comment-only, in
@@ -1340,7 +1340,7 @@ the same round that made the model selectable.
 
 `packages/server/src/services/UsageMeter.ts`, one instance in
 `serviceContainer` — **in-memory only**; a server restart zeroes it, and the
-Admin card's own copy says so ("resets on server restart") rather than
+Ops card's own copy says so ("resets on server restart") rather than
 implying persistence exists. Rolling **5h windows**
 (`JARVIS_USAGE_WINDOW_MS = 18_000_000` ms) anchor lazily — re-set at the
 first `recordTurn`/`recordTokens` call *after* expiry, not on a timer;
@@ -1395,11 +1395,11 @@ it already cost the round-trip.
    the `concatMap` queue has already committed to running it once dequeued.
    A candidate follow-up — parallel to P3's existing "multi-orphan reconnect
    burns tokens" item in `docs/STATUS.md` — not fixed in this round.
-4. **The admin usage stream is auth-gated but role-less**, like every other
-   `ADMIN_*` effect: `ADMIN_JARVIS_USAGE_SUBSCRIBE` requires an
+4. **The ops usage stream is auth-gated but role-less**, like every other
+   `OPS_*` effect: `OPS_JARVIS_USAGE_SUBSCRIBE` requires an
    authenticated connection but checks no separate "admin" role — one
    doesn't exist in this system — so any of the four demo-roster users can
-   subscribe, exactly like `GET_THROUGHPUT` and the rest of the admin
+   subscribe, exactly like `GET_THROUGHPUT` and the rest of the ops
    surface.
 5. **The pre-handshake availability-cache seed fix.** `JarvisMachine` keeps
    a mutable "current availability" cache so `send()` can read it
@@ -1434,7 +1434,7 @@ it already cost the round-trip.
   "absent" as "none offered" — would make a brand-new client's picker show
   nothing against an old-but-functioning server, which is worse.
 
-### The footer chip + Admin card + Preferences group
+### The footer chip + Ops card + Preferences group
 
 - **Footer:** `JarvisStatusChip` (testid `jarvis-status-chip`,
   `data-brain={effectiveBrain}`) mounts in `StatusBar` after the operator
@@ -1447,7 +1447,7 @@ it already cost the round-trip.
   disabled; it is the offline fallback, not a server-side offering), and the
   effort row disabled wholesale when the **stored** brain preference (not
   the resolved *effective* one) is `"scripted"`.
-- **Admin:** `JarvisUsageCard` (testid `admin-jarvis-usage-card`) —
+- **Ops:** `JarvisUsageCard` (testid `ops-jarvis-usage-card`) —
   current-window and since-boot sections, one row per brain with activity,
   the literal caveat line "resets on server restart", and a window-reset
   clock with a `"—"` special case for `windowEndMs === 0` (the snapshot's
@@ -1459,7 +1459,7 @@ Both web clients ship byte-parallel components — `PrefSegment`'s per-option
 the same `@rtc/ui-contract` specs: 706/706 passing on both clients (up from
 692 before this round). Goldens: 30 new (the chip in scripted/Haiku states
 plus the usage card, ×10 skins) and 92 resynced, including an **82-golden
-Tasks-8/9 catch-up** — `AdminDashboard`'s new five-column grid and
+Tasks-8/9 catch-up** — `OpsDashboard`'s new five-column grid and
 `StatusBar`'s new chip had shipped in earlier tasks' production code but
 were never captured against the local goldens, because nobody had run the
 full local visual suite on this branch until the ui-contract task did.
@@ -1786,7 +1786,7 @@ directly, so the vocabulary re-declares them as frozen local `const` arrays.
 A `DriveBatchV1` is `{ v: 1; commands: readonly DriveCommandV1[] }`, 1–8
 commands applied in order. `parseDriveBatch` is the same hand-rolled,
 field-scoped validator shape as `parsePanelSpec` — every rejection is a
-`"commands[2].tab: must be one of fx, credit, equities, admin."`-style
+`"commands[2].tab: must be one of fx, credit, equities, ops."`-style
 string the model can read verbatim — and `DRIVE_COMMAND_JSON_SCHEMA`'s
 `enum`/`const` values spread from the identical arrays the validator checks,
 so schema and validator cannot drift. One deliberate scope cut: **panel

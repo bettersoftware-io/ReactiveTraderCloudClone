@@ -67,7 +67,7 @@ The initial retirement deleted all three non-winner peers. A later decision kept
 
 **Verdict: `cucumber-fake-timers`.** It is the literal presenter-tier twin of `playwright-cucumber` — same Cucumber.js runner, same structure, same `tests/specs/` corpus — so the repo tells one coherent story: *the Gherkin corpus is executed by Cucumber.js at both the browser and presenter layers.* Its runner dependency was already retained for the browser peer, so it adds the least, and it was the fastest of the four. The counter-case for quickpickle (it keeps the presenter tier single-runner, Gherkin inside Vitest) was real but lost to the mirroring argument.
 
-**Parked, not gating:** it is never in `run-all.ts` (so it can't touch the PR gate), is runnable via `pnpm --filter @rtc/tests test:presenter:cucumber-fake-timers`, and is exercised every Monday by `.github/workflows/e2e-gherkin-weekly.yml` so its step tree can't silently rot. It runs all 21 `@presenter` scenarios (incl. `admin/incident`), green.
+**Parked, not gating:** it is never in `run-all.ts` (so it can't touch the PR gate), is runnable via `pnpm --filter @rtc/tests test:presenter:cucumber-fake-timers`, and is exercised every Monday by `.github/workflows/e2e-gherkin-weekly.yml` so its step tree can't silently rot. It runs all 21 `@presenter` scenarios (incl. `ops/incident`), green.
 
 ### Contract tier — untouched
 
@@ -94,7 +94,7 @@ Its four "variants" were never a bake-off: they are `{react, solid} × {plain, c
 
 ### The gap this found and closed
 
-`admin/incident.feature`'s `@presenter` scenario had been exercised **only** by the deleted cucumber peers, and was never listed in gate 21's checked feature set — so retiring those peers would have silently dropped it. It was recovered into the surviving vitest peer (**21 → 22 presenter scenarios**) and gate 21 was extended to enforce it mechanically. The retirement improved correctness.
+`ops/incident.feature`'s `@presenter` scenario had been exercised **only** by the deleted cucumber peers, and was never listed in gate 21's checked feature set — so retiring those peers would have silently dropped it. It was recovered into the surviving vitest peer (**21 → 22 presenter scenarios**) and gate 21 was extended to enforce it mechanically. The retirement improved correctness.
 
 ## Two accepted reductions (by design, not oversight)
 

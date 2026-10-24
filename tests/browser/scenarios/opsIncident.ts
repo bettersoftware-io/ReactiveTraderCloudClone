@@ -1,27 +1,27 @@
-// tests/browser/scenarios/adminIncident.ts
+// tests/browser/scenarios/opsIncident.ts
 //
-// Driver-agnostic scenario helpers for the Admin incident injection flow.
+// Driver-agnostic scenario helpers for the Ops incident injection flow.
 // Consume through the WorkspacePO + ConnectionOverlayPO contracts only —
 // no direct page.* or ctx.po.* in native Playwright test bodies (gates 10/11).
 import { TESTIDS } from "../page-objects/contracts/testids.ts";
 import type { TestContext } from "../testContext.ts";
 import * as connection from "./connection.ts";
 
-/** Navigate to the Admin tab (workspace must already be open). */
-export async function navigateToAdmin(ctx: TestContext): Promise<void> {
-  await ctx.po.workspace.clickTab("admin");
+/** Navigate to the Ops tab (workspace must already be open). */
+export async function navigateToOps(ctx: TestContext): Promise<void> {
+  await ctx.po.workspace.clickTab("ops");
 }
 
 /**
  * Click the inject button for the given incident kind.
- * Pass TESTIDS.admin.incident.inject(kind) through WorkspacePO.clickTestId
+ * Pass TESTIDS.ops.incident.inject(kind) through WorkspacePO.clickTestId
  * so no raw testid string appears in the scenario layer (gate 1).
  */
 export async function injectIncident(
   ctx: TestContext,
   kind: string,
 ): Promise<void> {
-  await ctx.po.workspace.clickTestId(TESTIDS.admin.incident.inject(kind));
+  await ctx.po.workspace.clickTestId(TESTIDS.ops.incident.inject(kind));
 }
 
 /**

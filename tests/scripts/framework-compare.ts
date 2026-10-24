@@ -254,7 +254,7 @@ const SCENARIOS: readonly Scenario[] = [
     name: "view-switch",
     run: async (page: Page): Promise<void> => {
       for (let round = 0; round < 4; round += 1) {
-        for (const view of ["credit", "admin", "equities", "fx"] as const) {
+        for (const view of ["credit", "ops", "equities", "fx"] as const) {
           await openView(page, view);
           await page.waitForTimeout(250);
         }
@@ -265,7 +265,7 @@ const SCENARIOS: readonly Scenario[] = [
 
 async function openView(
   page: Page,
-  view: "fx" | "credit" | "equities" | "admin",
+  view: "fx" | "credit" | "equities" | "ops",
 ): Promise<void> {
   await page.getByTestId(`tab-${view}`).click();
 

@@ -1,4 +1,4 @@
-// tests/presenter/steps/adminIncident.steps.ts
+// tests/presenter/steps/opsIncident.steps.ts
 //
 // Drives the IncidentMachine → ConnectionStatusPresenter coupling via the
 // real in-process app. buildIncidentPresenterApp() merges the app's own
@@ -64,7 +64,7 @@ Given(
 );
 
 When(
-  "the operator injects a {string} incident from the admin panel",
+  "the operator injects a {string} incident from the ops panel",
   function operatorInjectsIncident(this: PresenterWorld, kind: string) {
     const ctx = incidentMap.get(this);
 

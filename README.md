@@ -99,8 +99,8 @@ and diagrams:
 |---|---|
 | ![Equities: three candlestick chart panels with SMA, EMA and RSI, order ticket, watchlist and filled orders](docs/readme/web-equities-multichart.jpg) | ![Credit: three live RFQs with competing dealer quotes, countdowns and accept buttons](docs/readme/web-credit-rfqs.jpg) |
 | **Equities** — any number of chart panels, indicators, order ticket, live watchlist | **Credit** — multi-dealer RFQs racing their countdowns, best quote starred |
-| ![Admin: throughput, P99 latency, error rate, latency histogram, service health, live events, topology and incident injection](docs/readme/web-admin.jpg) | ![Dockview workspace: a Jarvis panel docked as a new column and the Positions panel floating over the grid](docs/readme/web-dockview.jpg) |
-| **Admin** — live observability, plus incident injection to watch the system degrade | **Dockable workspace** — dock, tab, float, pop out, maximize and collapse any panel |
+| ![Ops: throughput, P99 latency, error rate, latency histogram, service health, live events, topology and incident injection](docs/readme/web-ops.jpg) | ![Dockview workspace: a Jarvis panel docked as a new column and the Positions panel floating over the grid](docs/readme/web-dockview.jpg) |
+| **Ops** — live observability, plus incident injection to watch the system degrade | **Dockable workspace** — dock, tab, float, pop out, maximize and collapse any panel |
 | ![J.A.R.V.I.S. conversation ending in a confirm-gated EURUSD trade awaiting approval](docs/readme/web-jarvis-confirm.jpg) | ![The workspace after Jarvis rearranged it: maximized chart, collapsed side rails and a floating GBP volatility panel](docs/readme/web-jarvis-drives-layout.jpg) |
 | **J.A.R.V.I.S.** — quotes, briefs, charts on request; trades only after you approve | **…and drives the app** — the same intents the UI emits, so it can re-lay-out your workspace |
 | ![The FX workspace on the Terminal 3D skin](docs/readme/web-fx-terminal3d.jpg) | ![The equities workspace on the Classic light skin](docs/readme/web-equities-classic-light.jpg) |
@@ -147,7 +147,7 @@ and [every iOS golden before and after the harness moved to a static fake](https
 - **Equities** — interactive candlestick charts (indicators, comparisons,
   drawing tools) in as many panels as you like, order ticket, watchlist,
   depth, orders and positions.
-- **Admin** — an observability console: throughput, latency, service topology,
+- **Ops** — an observability console: throughput, latency, service topology,
   sessions, live events, and incident injection to watch the system degrade.
 - **J.A.R.V.I.S.** — an AI assistant backed by Claude (or a deterministic
   scripted brain offline) that can quote, brief, chart, lay out your workspace

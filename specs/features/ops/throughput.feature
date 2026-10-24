@@ -1,12 +1,12 @@
-Feature: Admin Throughput Control
+Feature: Ops Throughput Control
 
-  The admin panel allows controlling the rate of price updates from the server.
+  The ops panel allows controlling the rate of price updates from the server.
 
   Background:
-    Given the user has navigated to the admin page
+    Given the user has navigated to the ops page
 
   Scenario: Display current throughput
-    When the admin panel loads
+    When the ops panel loads
     Then it should fetch the current throughput from the server
     And display the value in the number input field
     And the slider should reflect the same value

@@ -38,7 +38,7 @@ test.describe("Theme", () => {
     await theme.toggleAndCaptureBackgrounds(ctx);
     await common.clickTab(ctx, "credit");
     await theme.expectCreditDockVisible(ctx);
-    await common.clickTab(ctx, "admin");
+    await common.clickTab(ctx, "ops");
     await common.clickTab(ctx, "fx");
     await theme.expectFirstPriceTileVisible(ctx, 5_000);
   });

@@ -956,7 +956,7 @@ write keeps the fragment.
 
 | Route | Path | Area |
 |---|---|---|
-| FX, Credit, Equities, Admin tab | `/fx`, `/credit`, `/equities`, `/admin` | workspace |
+| FX, Credit, Equities, Ops tab | `/fx`, `/credit`, `/equities`, `/ops` | workspace |
 | Sign in | `/sign-in` | account |
 | Create account | `/create-account` | account |
 | Forgot password | `/forgot-password` | account |

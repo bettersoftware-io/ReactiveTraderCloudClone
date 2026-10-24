@@ -5,9 +5,9 @@ import {
   buildIncidentPresenterApp,
   type IncidentPresenterCtx,
 } from "../scenarios/_buildApp.ts";
-import * as incident from "../scenarios/_shared/adminIncident.ts";
+import * as incident from "../scenarios/_shared/opsIncident.ts";
 
-describe("@presenter Feature: Admin incident injection breaks the live connection", () => {
+describe("@presenter Feature: Ops incident injection breaks the live connection", () => {
   beforeEach(() => {
     // Install fake timers BEFORE buildIncidentPresenterApp so simulators
     // capture patched setTimeout/setInterval. Same ordering as

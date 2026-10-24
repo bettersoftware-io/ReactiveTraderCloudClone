@@ -253,9 +253,9 @@ flowchart TB
 
 Same message exchange, including the "ack + stream from one shared source" detail: [§4.4 Equities Order Lifecycle](04-sequence-diagrams.md#44-equities-order-lifecycle).
 
-### 15.6 Admin Telemetry -- Simulated Metrics to Chart
+### 15.6 Ops Telemetry -- Simulated Metrics to Chart
 
-This flow never touches the wire in *either* mode — confirmed by grepping `packages/shared/src/protocol/messages.ts` for any `telemetry`/throughput-sampling message name and finding none. `TelemetrySimulator` is constructed directly in both `createSimulatorPorts` and `createWsRealPorts` (`packages/client-adapters/src/adapters/portFactory.ts`), mirroring how `preferences` is handled — see the "always local" callout in [§7 Runtime Topology](07-communication-patterns.md#runtime-topology-what-runs-when). (The `admin` throughput *setpoint* is the one exception: `GET_THROUGHPUT`/`SET_THROUGHPUT` *is* WS-backed in Mode B — only the sampled telemetry series are always local.)
+This flow never touches the wire in *either* mode — confirmed by grepping `packages/shared/src/protocol/messages.ts` for any `telemetry`/throughput-sampling message name and finding none. `TelemetrySimulator` is constructed directly in both `createSimulatorPorts` and `createWsRealPorts` (`packages/client-adapters/src/adapters/portFactory.ts`), mirroring how `preferences` is handled — see the "always local" callout in [§7 Runtime Topology](07-communication-patterns.md#runtime-topology-what-runs-when). (The `ops` throughput *setpoint* is the one exception: `GET_THROUGHPUT`/`SET_THROUGHPUT` *is* WS-backed in Mode B — only the sampled telemetry series are always local.)
 
 ```mermaid
 flowchart TB
@@ -278,10 +278,10 @@ flowchart TB
     sim -->|"1 MetricSample every tick"| port -->|"2"| presT & presL & presE -->|"3 samples$"| hook -->|"4"| chart
 ```
 
-1. `TelemetrySimulator` (`packages/domain/src/simulators/TelemetrySimulator.ts`) walks each metric as a seeded random offset around the admin-set throughput setpoint (`mulberry32` PRNG, `WALK_STEP_FRACTION`/`WALK_CLAMP_FRACTION`), emitting a `MetricSample { t, value }` per tick from `throughput$()`/`latency$()`/`errorRate$()` (`packages/domain/src/ports/telemetryPort.ts`).
+1. `TelemetrySimulator` (`packages/domain/src/simulators/TelemetrySimulator.ts`) walks each metric as a seeded random offset around the ops-set throughput setpoint (`mulberry32` PRNG, `WALK_STEP_FRACTION`/`WALK_CLAMP_FRACTION`), emitting a `MetricSample { t, value }` per tick from `throughput$()`/`latency$()`/`errorRate$()` (`packages/domain/src/ports/telemetryPort.ts`).
 2. Each `*MetricPresenter` (`packages/client-core-rxjs/src/presenters/ThroughputMetricPresenter.ts` and its `LatencyPresenter`/`ErrorRatePresenter` siblings) pipes the port stream through `windowedSamples()` (`packages/client-core-rxjs/src/presenters/windowedSamples.ts`), rolling the last N samples oldest-first for a chart series.
 3. `useMetrics()` (bound in `createViewModel.ts`) plain-`bind`s all three `samples$` streams (not per-mount — one shared subscription for every consumer).
-4. `ThroughputChart.tsx`, `LatencyHistogram.tsx`, and `KpiRow.tsx` (`packages/client-react/src/ui/admin/`) re-render on each new sample.
+4. `ThroughputChart.tsx`, `LatencyHistogram.tsx`, and `KpiRow.tsx` (`packages/client-react/src/ui/ops/`) re-render on each new sample.
 
 There is no §4/§5 message-level companion for this flow — it is the one flow in this document with no wire protocol at all, which is itself the point: the same seam (`TelemetryPort`) that would carry a WS message in a wire-backed flow here just wraps a local class, and nothing above the port can tell the difference.
 
