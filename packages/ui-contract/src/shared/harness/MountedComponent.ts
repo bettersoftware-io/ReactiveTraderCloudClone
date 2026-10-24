@@ -43,6 +43,8 @@ export interface PageContext<P> {
   setThroughputView(patch: Partial<ThroughputView>): void;
   /** Advance the OrderTicket lifecycle by emitting one EquityOrder into place(). */
   pushOrderLifecycle(order: EquityOrder): void;
+  /** Fail the OrderTicket's place() stream with this error. */
+  failOrderLifecycle(error: unknown): void;
   /** Patch the account list (useAccountList source). */
   setAccountList(patch: Partial<AccountListState>): void;
   /** Push one row's action state (useAccountAction(accountId) source). */
@@ -160,6 +162,11 @@ export abstract class MountedComponent<P> {
   /** Emit one EquityOrder into the OrderTicket's place() lifecycle. */
   protected pushOrderLifecycle(order: EquityOrder): void {
     this.ctx.pushOrderLifecycle(order);
+  }
+
+  /** Fail the OrderTicket's place() stream with this error. */
+  protected failOrderLifecycle(error: unknown): void {
+    this.ctx.failOrderLifecycle(error);
   }
 
   /** Values recorded by the faked useThroughput().setValue (PUT equivalent). */

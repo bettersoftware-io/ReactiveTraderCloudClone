@@ -2,7 +2,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type ConnectionEvent, RECONNECT_INTERVAL_MS } from "@rtc/domain";
+import {
+  type ConnectionEvent,
+  isTransportLost,
+  RECONNECT_INTERVAL_MS,
+} from "@rtc/domain";
 
 import { lastMock, MockWebSocket } from "./MockWebSocket.testHelpers";
 import { WsAdapter } from "./WsAdapter";
@@ -917,6 +921,32 @@ describe("WsAdapter :: a session the server ended (close 4401)", () => {
     await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS);
     expect(events).toContainEqual({ type: "reconnectAttempt" });
     adapter.dispose();
+  });
+
+  it("rejects an in-flight rpc with a typed transport-lost error, but an rpc with no socket with a plain one", async () => {
+    const { adapter } = createEndedSession();
+    lastMock.onopen?.(new Event("open"));
+    lastMock.readyState = MockWebSocket.OPEN;
+    const pending = adapter.rpc("admin.accounts.approve", { id: "a" });
+    const failure = pending.catch((error: unknown) => {
+      return error;
+    });
+
+    lastMock.onclose?.(new CloseEvent("close", { code: 1006 }));
+    expect(isTransportLost(await failure)).toBe(true);
+    adapter.dispose();
+
+    const never = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
+
+    const notSent = await never
+      .rpc("rpc.executeTrade", {})
+      .catch((error: unknown) => {
+        return error;
+      });
+    expect(isTransportLost(notSent)).toBe(false);
+    never.dispose();
   });
 
   it("rejects an rpc in flight on a deliberate disconnect()", async () => {

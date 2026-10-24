@@ -1,5 +1,9 @@
 import type { OrderTicketForm, OrderTicketState } from "@rtc/core-api";
-import type { EquityOrder, PlaceOrderRequest } from "@rtc/domain";
+import {
+  type EquityOrder,
+  isTransportLost,
+  type PlaceOrderRequest,
+} from "@rtc/domain";
 
 /** The ticket fold's accumulator: the state consumers see, and whether a
  * valid order is in flight — which gates stray form edits off. */
@@ -68,10 +72,20 @@ export function orderToTicketPhase(order: EquityOrder): OrderTicketState {
  * own — the wording `orderToTicketPhase` gives a rejected order. */
 const ORDER_REJECTED_REASON = "Order rejected";
 
-/** A FAILED `place()` call — a nack, a dropped socket — is a rejection the
- * user can retry from, not a dead machine: it lands on the same `rejected`
- * phase a rejected order does, carrying the failure's own message. */
+/** The copy for an order whose connection dropped in flight. */
+const ORDER_CONNECTION_LOST_MESSAGE =
+  "Connection lost — check the orders blotter";
+
+/** A FAILED `place()` call — a nack — is a rejection the user can retry from,
+ * not a dead machine: it lands on the same `rejected` phase a rejected order
+ * does, carrying the failure's own message. A LOST TRANSPORT is not a
+ * rejection: the order may have reached the server, so it lands on
+ * `connectionLost` and points the user at the blotter. */
 export function placeFailureToTicketPhase(error: unknown): OrderTicketState {
+  if (isTransportLost(error)) {
+    return { phase: "connectionLost", message: ORDER_CONNECTION_LOST_MESSAGE };
+  }
+
   const reason =
     error instanceof Error && error.message.length > 0
       ? error.message
@@ -109,11 +123,18 @@ export function reduceOrderTicket(
   // the `place()` stream after it delivered the fill (a socket dropping on
   // the way out) — telling the user a filled order was rejected would be a
   // lie about money.
-  if (acc.state.phase === "filled" && next.phase === "rejected") {
+  if (
+    acc.state.phase === "filled" &&
+    (next.phase === "rejected" || next.phase === "connectionLost")
+  ) {
     return acc;
   }
 
-  if (next.phase === "filled" || next.phase === "rejected") {
+  if (
+    next.phase === "filled" ||
+    next.phase === "rejected" ||
+    next.phase === "connectionLost"
+  ) {
     return { inFlight: false, state: next };
   }
 

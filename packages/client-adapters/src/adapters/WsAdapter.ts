@@ -6,7 +6,7 @@
 import { type Observable, ReplaySubject, Subject } from "rxjs";
 
 import type { IWsAdapter, MessageHandler } from "@rtc/core-api";
-import type { ConnectionEvent } from "@rtc/domain";
+import { type ConnectionEvent, createTransportLostError } from "@rtc/domain";
 import { SESSION_ENDED_CLOSE_CODE } from "@rtc/shared";
 
 import { buildWsUrl } from "#/wsUrl";
@@ -428,7 +428,7 @@ export class WsAdapter implements IWsAdapter {
 
   private rejectPendingRpcs(reason: string): void {
     for (const rpc of this.pendingRpcs.values()) {
-      rpc.reject(new Error(reason));
+      rpc.reject(createTransportLostError(reason));
     }
 
     this.pendingRpcs.clear();

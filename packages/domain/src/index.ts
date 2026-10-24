@@ -70,6 +70,11 @@ export {
   nextConnectionStatus,
   RECONNECT_INTERVAL_MS,
 } from "./connection/connectionStatus.js";
+export {
+  createTransportLostError,
+  isTransportLost,
+  TRANSPORT_LOST_ERROR_NAME,
+} from "./connection/transportLost.js";
 export type { CreditTrade } from "./credit/creditTrade.js";
 export { ADAPTIVE_BANK_NAME, type Dealer } from "./credit/dealer.js";
 // Credit

@@ -203,6 +203,11 @@ function buildContext<P>(
         return world.pushOrderLifecycle(order);
       });
     },
+    failOrderLifecycle: (error: unknown) => {
+      return flush(() => {
+        return world.failOrderLifecycle(error);
+      });
+    },
     setAccountList: (patch: Partial<AccountListState>) => {
       return flush(() => {
         return world.accountList.next({

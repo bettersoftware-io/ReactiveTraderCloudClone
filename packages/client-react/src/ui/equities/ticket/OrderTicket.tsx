@@ -161,6 +161,26 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
     );
   }
 
+  if (state.phase === "connectionLost") {
+    return (
+      <div
+        data-testid="order-ticket"
+        data-phase="connectionLost"
+        data-anim={animAttr}
+        className={styles.ticket}
+      >
+        <div className={styles.status}>{state.message}</div>
+        <button
+          type="button"
+          className={styles.resetBtn}
+          onClick={ticket.reset}
+        >
+          NEW ORDER
+        </button>
+      </div>
+    );
+  }
+
   // ── Editing phase ──────────────────────────────────────────────────────────
 
   const { form, error } = state;

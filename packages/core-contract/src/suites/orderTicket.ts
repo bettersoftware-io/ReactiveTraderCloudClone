@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { OrderTicketForm, OrderTicketState } from "@rtc/core-api";
+import { createTransportLostError } from "@rtc/domain";
 
 import { collect } from "#/harness/collect";
 import { createEquityOrder } from "#/harness/fixtures";
@@ -292,6 +293,39 @@ export function describeOrderTicketContract(
         await settle();
         expect(c.values.at(-1)).toEqual({ phase: "working", order: working });
         expect(c.errors).toEqual([]);
+        c.unsubscribe();
+      } finally {
+        m.dispose();
+        await h.teardown();
+      }
+    });
+
+    it("a place() failing with a lost transport leaves the ticket connectionLost — not rejected — and resettable", async () => {
+      const h = makeHarness();
+      const m = h.machines.orderTicket("AAPL");
+
+      try {
+        const c = collect(m.state$);
+        m.intents.setQty(1);
+        m.intents.submit();
+        await settle();
+        h.driver.failOrder(
+          createTransportLostError("WsAdapter connection lost"),
+        );
+        await settle();
+        expect(c.values.at(-1)).toEqual({
+          phase: "connectionLost",
+          message: "Connection lost — check the orders blotter",
+        });
+        expect(phases(c.values)).not.toContain("rejected");
+        expect(c.errors).toEqual([]);
+        m.intents.reset();
+        await settle();
+        expect(c.values.at(-1)).toEqual({
+          phase: "editing",
+          form: DEFAULT_FORM,
+          error: null,
+        });
         c.unsubscribe();
       } finally {
         m.dispose();

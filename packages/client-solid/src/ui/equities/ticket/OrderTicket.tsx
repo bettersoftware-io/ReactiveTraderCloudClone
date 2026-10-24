@@ -145,6 +145,11 @@ function TicketBody(props: TicketBodyProps): JSX.Element {
     return s.phase === "rejected" ? s.reason : undefined;
   });
 
+  const connectionLostMessage = createMemo((): string | undefined => {
+    const s = props.ticket.state();
+    return s.phase === "connectionLost" ? s.message : undefined;
+  });
+
   const editing = createMemo((): boolean => {
     return props.ticket.state().phase === "editing";
   });
@@ -254,6 +259,27 @@ function TicketBody(props: TicketBodyProps): JSX.Element {
                 onClick={props.ticket.reset}
               >
                 RETRY
+              </button>
+            </div>
+          );
+        }}
+      </Match>
+      <Match when={connectionLostMessage()}>
+        {(message: Accessor<string>): JSX.Element => {
+          return (
+            <div
+              data-testid="order-ticket"
+              data-phase="connectionLost"
+              data-anim={animAttr()}
+              class={styles.ticket}
+            >
+              <div class={styles.status}>{message()}</div>
+              <button
+                type="button"
+                class={styles.resetBtn}
+                onClick={props.ticket.reset}
+              >
+                NEW ORDER
               </button>
             </div>
           );

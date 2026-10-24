@@ -267,6 +267,10 @@
   color: var(--accent-negative);
 }
 
+.ticket[data-phase="connectionLost"] .status {
+  color: var(--accent-2);
+}
+
 .resetBtn {
   font-family: var(--font-mono);
   font-size: 10px;

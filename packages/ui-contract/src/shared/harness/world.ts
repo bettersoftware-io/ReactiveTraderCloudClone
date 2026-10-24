@@ -634,6 +634,8 @@ export interface World {
   setDepth(symbol: string, value: DepthBook | null): void;
   /** Advance the OrderTicket lifecycle by emitting one EquityOrder into place(). */
   pushOrderLifecycle(order: EquityOrder): void;
+  /** Fail the OrderTicket's place() stream (the transport dropped in flight). */
+  failOrderLifecycle(error: unknown): void;
   /** The REAL createEqWorkspaceMachine, one shared instance for the whole
    * World — mirrors the composition root's singleton wiring so every panel
    * reading useEqWorkspace() through this World observes the same selection/
@@ -1497,6 +1499,9 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     },
     pushOrderLifecycle: (order: EquityOrder) => {
       return orderLifecycle.next(order);
+    },
+    failOrderLifecycle: (error: unknown) => {
+      return orderLifecycle.error(error);
     },
     eqWorkspace,
     eqDrawings,

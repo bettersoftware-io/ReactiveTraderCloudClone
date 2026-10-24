@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { EquityOrder } from "@rtc/domain";
+import { createTransportLostError, type EquityOrder } from "@rtc/domain";
 
 import {
   createOrderTicketAcc,
@@ -56,6 +56,20 @@ describe("placeFailureToTicketPhase", () => {
       phase: "rejected",
       reason: "venue down",
     });
+  });
+
+  it("maps a lost transport to connectionLost — not a rejection — whatever its message", () => {
+    expect(
+      placeFailureToTicketPhase(
+        createTransportLostError("WsAdapter connection lost"),
+      ),
+    ).toEqual({
+      phase: "connectionLost",
+      message: "Connection lost — check the orders blotter",
+    });
+    expect(
+      placeFailureToTicketPhase(new Error("WsAdapter connection lost")),
+    ).toEqual({ phase: "rejected", reason: "WsAdapter connection lost" });
   });
 
   it("rejects with the generic reason for a non-Error failure or an empty message", () => {
@@ -198,6 +212,26 @@ describe("reduceOrderTicket", () => {
     expect(
       reduceOrderTicket(acc, { phase: "rejected", reason: "socket closed" }),
     ).toBe(acc);
+  });
+
+  it("connectionLost clears inFlight, and arriving AFTER a filled it is dropped", () => {
+    const lost = placeFailureToTicketPhase(createTransportLostError("x"));
+    const inFlight: ReturnType<typeof createOrderTicketAcc> = {
+      inFlight: true,
+      state: { phase: "submitting" },
+    };
+
+    expect(reduceOrderTicket(inFlight, lost)).toEqual({
+      inFlight: false,
+      state: lost,
+    });
+
+    const filled: ReturnType<typeof createOrderTicketAcc> = {
+      inFlight: false,
+      state: { phase: "filled", order: createOrder("filled") },
+    };
+
+    expect(reduceOrderTicket(filled, lost)).toBe(filled);
   });
 
   it("an editing state WITH an error clears inFlight", () => {
