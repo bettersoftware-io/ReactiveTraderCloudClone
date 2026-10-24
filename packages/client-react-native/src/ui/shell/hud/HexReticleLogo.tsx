@@ -1,10 +1,10 @@
 // packages/client-react-native/src/ui/shell/hud/HexReticleLogo.tsx
 import { type JSX, useEffect } from "react";
-import { StyleSheet, type ViewStyle } from "react-native";
+import { StyleSheet, View, type ViewStyle } from "react-native";
 import Animated, {
   cancelAnimation,
   Easing,
-  useAnimatedProps,
+  useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withTiming,
@@ -22,7 +22,18 @@ import { useShellMotionEnabled } from "./useShellMotionEnabled";
  * `useShellMotionEnabled()` — reduced-motion / power-saver Freeze leave a
  * static reticle and cancel the worklets (no orphaned `withRepeat(-1)` left
  * running on the UI thread, per the perf doctrine — mirrors
- * `AmbientBackground`). Only `transform` animates. */
+ * `AmbientBackground`). Only `transform` animates.
+ *
+ * Four stacked `<Svg>` layers in paint order: the static hexes and ticks, the
+ * dashed ring, the twin triangles, and the static core on top. The ring and
+ * triangle layers rotate as native views, which the compositor applies, so no
+ * SVG is redrawn per frame; the viewBox scales uniformly, so each view's
+ * centre is the reticle's centre (24, 24). They used to be animated `<G>`s
+ * with a `transform` prop inside one `<Svg>`. At rest (motion off, as in the
+ * visual goldens) those drew correctly, but once the loops ran on iOS
+ * (react-native-svg 15.15) the live header showed neither the ring nor the
+ * triangles: the turning groups were displaced out of the 30 pt view, as an
+ * animated <G> transform also displaced the lock emblem's orbit. */
 export function HexReticleLogo({
   size = 30,
 }: HexReticleLogoProps): JSX.Element {
@@ -57,96 +68,109 @@ export function HexReticleLogo({
     };
   }, [enabled, ringAngle, triAngle]);
 
-  const ringProps = useAnimatedProps(() => {
+  const ringStyle = useAnimatedStyle(() => {
     return { transform: [{ rotate: `${ringAngle.value}deg` }] };
   });
 
-  const triProps = useAnimatedProps(() => {
+  const triStyle = useAnimatedStyle(() => {
     return { transform: [{ rotate: `${triAngle.value}deg` }] };
   });
 
+  const box = { width: size, height: size };
+
   return (
-    <Svg
-      testID="hud-logo"
-      width={size}
-      height={size}
-      viewBox="0 0 48 48"
-      style={styles.logo}
-    >
-      <G
-        fill="none"
-        stroke={t.accentPrimary}
-        strokeWidth={1.4}
-        strokeLinejoin="round"
+    <View testID="hud-logo" style={[styles.logo, box]}>
+      <Svg width={size} height={size} viewBox={VIEW_BOX}>
+        <G
+          fill="none"
+          stroke={t.accentPrimary}
+          strokeWidth={1.4}
+          strokeLinejoin="round"
+        >
+          <Polygon
+            points="24,3 40.6,13.5 40.6,34.5 24,45 7.4,34.5 7.4,13.5"
+            opacity={0.9}
+          />
+          <Polygon
+            points="24,8 36.3,15.75 36.3,31.25 24,39 11.7,31.25 11.7,15.75"
+            stroke={t.accent2}
+            strokeWidth={1}
+            opacity={0.6}
+          />
+        </G>
+        <G
+          stroke={t.accentPrimary}
+          strokeWidth={1.6}
+          strokeLinecap="round"
+          opacity={0.85}
+        >
+          <Line x1="24" y1="2" x2="24" y2="6" />
+          <Line x1="24" y1="42" x2="24" y2="46" />
+          <Line x1="5" y1="13" x2="8.5" y2="15" />
+          <Line x1="43" y1="13" x2="39.5" y2="15" />
+          <Line x1="5" y1="35" x2="8.5" y2="33" />
+          <Line x1="43" y1="35" x2="39.5" y2="33" />
+        </G>
+      </Svg>
+      <Animated.View
+        testID="hud-logo-ring"
+        style={[StyleSheet.absoluteFill, ringStyle]}
       >
-        <Polygon
-          points="24,3 40.6,13.5 40.6,34.5 24,45 7.4,34.5 7.4,13.5"
-          opacity={0.9}
-        />
-        <Polygon
-          points="24,8 36.3,15.75 36.3,31.25 24,39 11.7,31.25 11.7,15.75"
-          stroke={t.accent2}
-          strokeWidth={1}
-          opacity={0.6}
-        />
-      </G>
-      <G
-        stroke={t.accentPrimary}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        opacity={0.85}
+        <Svg width={size} height={size} viewBox={VIEW_BOX}>
+          <Circle
+            cx="24"
+            cy="24"
+            r="11"
+            fill="none"
+            stroke={t.accent2}
+            strokeWidth={1}
+            strokeDasharray="3 5"
+            opacity={0.85}
+          />
+        </Svg>
+      </Animated.View>
+      <Animated.View
+        testID="hud-logo-triangles"
+        style={[StyleSheet.absoluteFill, triStyle]}
       >
-        <Line x1="24" y1="2" x2="24" y2="6" />
-        <Line x1="24" y1="42" x2="24" y2="46" />
-        <Line x1="5" y1="13" x2="8.5" y2="15" />
-        <Line x1="43" y1="13" x2="39.5" y2="15" />
-        <Line x1="5" y1="35" x2="8.5" y2="33" />
-        <Line x1="43" y1="35" x2="39.5" y2="33" />
-      </G>
-      <AnimatedG animatedProps={ringProps} originX={CENTER} originY={CENTER}>
+        <Svg width={size} height={size} viewBox={VIEW_BOX}>
+          <Path
+            d="M24 15 L31.8 28.5 L16.2 28.5 Z"
+            fill="none"
+            stroke={t.accentPrimary}
+            strokeWidth={1.2}
+            strokeLinejoin="round"
+            opacity={0.8}
+          />
+          <Path
+            d="M24 33 L16.2 19.5 L31.8 19.5 Z"
+            fill="none"
+            stroke={t.accentPrimary}
+            strokeWidth={1.2}
+            strokeLinejoin="round"
+            opacity={0.5}
+          />
+        </Svg>
+      </Animated.View>
+      <Svg
+        width={size}
+        height={size}
+        viewBox={VIEW_BOX}
+        style={StyleSheet.absoluteFill}
+      >
+        <Circle cx="24" cy="24" r="3.4" fill={t.accentPrimary} />
         <Circle
           cx="24"
           cy="24"
-          r="11"
+          r="6.4"
           fill="none"
-          stroke={t.accent2}
+          stroke={t.accentPrimary}
           strokeWidth={1}
-          strokeDasharray="3 5"
-          opacity={0.85}
         />
-      </AnimatedG>
-      <AnimatedG animatedProps={triProps} originX={CENTER} originY={CENTER}>
-        <Path
-          d="M24 15 L31.8 28.5 L16.2 28.5 Z"
-          fill="none"
-          stroke={t.accentPrimary}
-          strokeWidth={1.2}
-          strokeLinejoin="round"
-          opacity={0.8}
-        />
-        <Path
-          d="M24 33 L16.2 19.5 L31.8 19.5 Z"
-          fill="none"
-          stroke={t.accentPrimary}
-          strokeWidth={1.2}
-          strokeLinejoin="round"
-          opacity={0.5}
-        />
-      </AnimatedG>
-      <Circle cx="24" cy="24" r="3.4" fill={t.accentPrimary} />
-      <Circle
-        cx="24"
-        cy="24"
-        r="6.4"
-        fill="none"
-        stroke={t.accentPrimary}
-        strokeWidth={1}
-      />
-    </Svg>
+      </Svg>
+    </View>
   );
 }
-
-const AnimatedG = Animated.createAnimatedComponent(G);
 
 export interface HexReticleLogoProps {
   readonly size?: number;
@@ -154,7 +178,9 @@ export interface HexReticleLogoProps {
 
 const OUTER_SPIN_MS = 16_000;
 const INNER_SPIN_MS = 22_000;
-const CENTER = 24;
+/** Every layer shares it, so the rotating parts sit exactly where they did
+ * in the single <Svg> they used to share with the static reticle. */
+const VIEW_BOX = "0 0 48 48";
 
 interface HexReticleLogoStyles {
   logo: ViewStyle;
