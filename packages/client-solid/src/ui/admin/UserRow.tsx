@@ -1,4 +1,11 @@
-import { type JSX, onMount, Show, untrack } from "solid-js";
+import {
+  type Accessor,
+  createMemo,
+  type JSX,
+  onMount,
+  Show,
+  untrack,
+} from "solid-js";
 
 import type { AccountActionIntents, AccountActionState } from "@rtc/core-api";
 import {
@@ -18,18 +25,44 @@ import styles from "./UsersPanel.module.css";
  * One account: name, email (always beside the name, so a lookalike name
  * cannot pass for another account), joined date, status chip, and the
  * actions its status offers. The row owns its action machine
- * (`useAccountAction(account.id)`, read once at mount — the list is a keyed
- * `<For>`, so a row is never reused for another account). The
+ * (`useAccountAction(accountId)`, read once at mount). The list keys rows by
+ * account id, so a refresh that re-emits the list does not remount the row:
+ * it looks its current summary up by id and the machine lives on. The
  * administrator's own row reads "You" and offers nothing.
  */
 export function UserRow(props: UserRowProps): JSX.Element {
   const { useAccountAction } = useViewModel();
-  // Read once, on purpose: the machine is per mount and keyed on the id, and
-  // the keyed `<For>` never hands this row another account.
-  const accountId = untrack((): string => {
-    return props.account.id;
+  // The machine reads the id once, at mount; the row is keyed by it, so the
+  // id never changes under a mounted row.
+  const { state, intents } = useAccountAction(
+    untrack((): string => {
+      return props.accountId;
+    }),
+  );
+
+  const account = createMemo((): AccountSummary | undefined => {
+    return props.rows.find((row) => {
+      return row.id === props.accountId;
+    });
   });
-  const { state, intents } = useAccountAction(accountId);
+
+  return (
+    <Show when={account()}>
+      {(current: Accessor<AccountSummary>): JSX.Element => {
+        // Not `keyed`: a re-emitted summary updates the body in place. A
+        // keyed Show would rebuild it, taking a rename field's focus with it.
+        return (
+          <UserRowBody account={current()} state={state()} intents={intents} />
+        );
+      }}
+    </Show>
+  );
+}
+
+function UserRowBody(props: UserRowBodyProps): JSX.Element {
+  function state(): AccountActionState {
+    return props.state;
+  }
 
   return (
     <li
@@ -50,7 +83,7 @@ export function UserRow(props: UserRowProps): JSX.Element {
             accountId={props.account.id}
             draft={renamingDraft(state())}
             draftError={renamingError(state())}
-            intents={intents}
+            intents={props.intents}
           />
         </Show>
       </div>
@@ -77,7 +110,7 @@ export function UserRow(props: UserRowProps): JSX.Element {
           <UserRowActions
             account={props.account}
             state={state()}
-            intents={intents}
+            intents={props.intents}
           />
         </Show>
       </div>
@@ -91,7 +124,7 @@ export function UserRow(props: UserRowProps): JSX.Element {
               <RowButton
                 action="dismiss"
                 account={props.account}
-                onPress={intents.dismiss}
+                onPress={props.intents.dismiss}
               />
             </div>
           );
@@ -346,7 +379,14 @@ const STATUS_TONE: Readonly<Record<AccountStatus, string>> = {
 };
 
 interface UserRowProps {
+  accountId: string;
+  rows: readonly AccountSummary[];
+}
+
+interface UserRowBodyProps {
   account: AccountSummary;
+  state: AccountActionState;
+  intents: AccountActionIntents;
 }
 
 interface UserRowActionsProps {

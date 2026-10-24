@@ -3,7 +3,13 @@ import {
   type JarvisWorld,
   type World,
 } from "@ui-contract/harness/world";
-import { useCallback, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   BehaviorSubject,
   combineLatest,
@@ -1954,6 +1960,12 @@ export function reactViewModel(world: World): ViewModel {
       };
     },
     useAccountAction: (accountId: string) => {
+      useEffect(() => {
+        return () => {
+          world.releaseAccountAction(accountId);
+        };
+      }, [accountId]);
+
       return {
         state: useSubject(world.accountActionFor(accountId)),
         intents: world.accountActionIntentsFor(accountId),

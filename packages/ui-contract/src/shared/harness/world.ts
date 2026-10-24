@@ -725,6 +725,11 @@ export interface World {
   /** One row's action state backing useAccountAction(accountId); `idle`
    * until seeded or moved by one of that row's intents. */
   accountActionFor(accountId: string): BehaviorSubject<AccountActionState>;
+  /** A row's machine was disposed (its view unmounted): the real machine is
+   * per mount and starts `idle`, so the row's state goes back to `idle`. A
+   * view that remounts a row mid-action therefore shows it reset, which is
+   * what lets a spec tell a row keyed by account id from one that is not. */
+  releaseAccountAction(accountId: string): void;
   /** One row's useAccountAction intents, stable per row. Each records its
    * call and moves that row's state through the REAL `stepAccountAction`
    * fold, so a click on Delete opens the confirmation and Cancel closes it.
@@ -1094,6 +1099,10 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     return subject;
   }
 
+  function releaseAccountAction(accountId: string): void {
+    accountActionStates.get(accountId)?.next(ACCOUNT_ACTION_IDLE);
+  }
+
   function accountActionIntentsFor(accountId: string): AccountActionIntents {
     const cached = accountActionIntents.get(accountId);
 
@@ -1403,6 +1412,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     navigateAccountAccess,
     accountList,
     accountActionFor,
+    releaseAccountAction,
     accountActionIntentsFor,
     refreshAccountList,
     signOut,

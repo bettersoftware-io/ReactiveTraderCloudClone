@@ -58,6 +58,11 @@ export class UsersPanelPage extends MountedComponent<Record<string, never>> {
     return this.row(id).getAttribute("data-status");
   }
 
+  /** The row's `data-phase` (its action machine's phase). */
+  rowPhase(id: string): string | null {
+    return this.row(id).getAttribute("data-phase");
+  }
+
   /** True when the row is flagged as the administrator's own. */
   isSelf(id: string): boolean {
     return this.row(id).getAttribute("data-self") === "true";

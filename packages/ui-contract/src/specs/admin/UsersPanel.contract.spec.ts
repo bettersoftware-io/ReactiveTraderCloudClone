@@ -451,6 +451,53 @@ describe("UsersPanel — a request in flight, and a failure", () => {
   });
 });
 
+describe("UsersPanel — a re-emitted list keeps each row's action", () => {
+  // Every list refresh hands over NEW row objects for the same accounts. A
+  // row is its account's action machine's owner, so it must be keyed by the
+  // account id: keyed by the object, a refresh would remount the row and
+  // reset the machine (the world models that: a released row goes `idle`).
+  it("keeps a row's request in flight across a re-emission of the list", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: { status: "ready", rows: createPendingPair() },
+      accountActions: { a2: { phase: "inFlight", action: "approve" } },
+    });
+
+    await panel.setAccountList({ rows: createPendingPair() });
+
+    expect(panel.rowPhase("a2")).toBe("inFlight");
+    expect(panel.areRowButtonsDisabled("a2")).toBe(true);
+    expect(panel.buttonLabel("a2", "approve")).toBe(
+      ACCOUNT_ACTION_PROGRESS_LABELS.approve,
+    );
+  });
+
+  it("keeps a failed row's message and Dismiss across a re-emission", async () => {
+    const message = describeAccountAdminRefusal("not_found", "approve");
+    const panel = mount(UsersPanel, {
+      accountList: { status: "ready", rows: createPendingPair() },
+      accountActions: { a2: { phase: "failed", action: "approve", message } },
+    });
+
+    await panel.setAccountList({ rows: createPendingPair() });
+
+    expect(panel.errorText("a2")).toBe(message);
+    expect(panel.hasButton("a2", "dismiss")).toBe(true);
+  });
+
+  it("keeps a rename's draft across a re-emission", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: { status: "ready", rows: createPendingPair() },
+      accountActions: {
+        a2: { phase: "renaming", draft: "Ann Lee", draftError: null },
+      },
+    });
+
+    await panel.setAccountList({ rows: createPendingPair() });
+
+    expect(panel.nameDraft("a2")).toBe("Ann Lee");
+  });
+});
+
 describe("UsersPanel — loading and a failed re-read", () => {
   it("shows no rows and no pending count before the first answer", () => {
     const world = createWorld({ accountList: { status: "loading" } });
@@ -519,6 +566,10 @@ describe("UsersPanel — empty and forbidden", () => {
     expect(panel.rowIds()).toEqual(["a1"]);
   });
 });
+
+function createPendingPair(): AccountSummary[] {
+  return [createAccount("a1", "pending"), createAccount("a2", "pending")];
+}
 
 function createAccount(id: string, status: AccountStatus): AccountSummary {
   return {

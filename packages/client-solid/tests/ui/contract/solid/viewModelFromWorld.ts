@@ -15,7 +15,7 @@ import {
   throwError,
 } from "rxjs";
 import { catchError, distinctUntilChanged, map, skip } from "rxjs/operators";
-import { type Accessor, createSignal } from "solid-js";
+import { type Accessor, createSignal, onCleanup } from "solid-js";
 
 import {
   CandleSeriesPresenter,
@@ -1873,6 +1873,10 @@ export function solidViewModel(world: World): ViewModel {
       };
     },
     useAccountAction: (accountId: string) => {
+      onCleanup(() => {
+        world.releaseAccountAction(accountId);
+      });
+
       return {
         state: wrapSubject(world.accountActionFor(accountId)),
         intents: world.accountActionIntentsFor(accountId),

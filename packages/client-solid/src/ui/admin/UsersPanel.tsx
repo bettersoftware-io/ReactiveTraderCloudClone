@@ -1,4 +1,4 @@
-import { For, type JSX, Match, Show, Switch } from "solid-js";
+import { createMemo, For, type JSX, Match, Show, Switch } from "solid-js";
 
 import type { AccountListState } from "@rtc/core-api";
 import {
@@ -76,6 +76,12 @@ function UsersPanelBody(props: UsersPanelBodyProps): JSX.Element {
 /** The column labels and the rows, on one grid: each row is a subgrid of
  * it, so the email, date and status columns line up down the list. */
 function UsersTable(props: UsersTableProps): JSX.Element {
+  const ids = createMemo((): string[] => {
+    return props.rows.map((row) => {
+      return row.id;
+    });
+  });
+
   return (
     <div class={styles.table}>
       <div class={styles.columns} aria-hidden="true">
@@ -86,12 +92,16 @@ function UsersTable(props: UsersTableProps): JSX.Element {
         <span />
       </div>
       <ul class={styles.rows}>
-        {/* `<For>` keys by item reference — never `<Index>`: each row's
-            action machine reads its id once, at mount, so a row must never
-            be reused for another account. */}
-        <For each={props.rows}>
-          {(row: AccountSummary): JSX.Element => {
-            return <UserRow account={row} />;
+        {/* Keyed by account id, the analogue of React's `key={row.id}`:
+            every list refresh hands over NEW row objects for the same
+            accounts, and `<For>` over the objects would remount each row
+            and dispose its action machine (a request in flight, a failure,
+            a rename draft would all be lost). Over the id strings a row
+            stays mounted and looks up its current summary. Never `<Index>`:
+            a row's machine reads its id once, at mount. */}
+        <For each={ids()}>
+          {(id: string): JSX.Element => {
+            return <UserRow accountId={id} rows={props.rows} />;
           }}
         </For>
       </ul>
