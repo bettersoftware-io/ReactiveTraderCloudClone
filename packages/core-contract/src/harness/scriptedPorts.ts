@@ -474,12 +474,17 @@ export interface ScriptedDriver {
   /** Answer the OLDEST pending `listAccounts()` (next + complete). A no-op
    * when nothing is pending. */
   emitAccountList(outcome: AccountListOutcome): void;
+  /** Error the OLDEST pending `listAccounts()`. A no-op when nothing is
+   * pending. */
+  failAccountList(error: unknown): void;
   /** Every `accountAdmin.actOn` the core has subscribed and the driver has
    * not answered, oldest first. */
   pendingAccountActions(): readonly AccountActionCall[];
   /** Answer the OLDEST pending `actOn` (next + complete). A no-op when
    * nothing is pending. */
   answerAction(outcome: AccountActionOutcome): void;
+  /** Error the OLDEST pending `actOn`. A no-op when nothing is pending. */
+  failAction(error: unknown): void;
   /** Every `auth.login` the core has subscribed and the driver has not
    * settled, oldest first. */
   pendingLogins(): readonly LoginCall[];
@@ -1320,8 +1325,10 @@ export function scriptPorts(
         return accountLists.pending().length;
       },
       emitAccountList: accountLists.resolve,
+      failAccountList: accountLists.fail,
       pendingAccountActions: accountActions.pending,
       answerAction: accountActions.resolve,
+      failAction: accountActions.fail,
       pendingLogins: logins.pending,
       resolveLogin: logins.resolve,
       pendingAccountCalls: accountCalls.pending,

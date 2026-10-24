@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { AccountActionState } from "@rtc/core-api";
 
+import { createAdminSeed } from "#/harness/adminSession";
 import { collect } from "#/harness/collect";
 import type { MakeHarness } from "#/harness/harness";
 import { settle } from "#/harness/settle";
@@ -11,6 +12,9 @@ import { settle } from "#/harness/settle";
 // test would not notice them change.
 const DISPLAY_NAME_INPUT_ERROR =
   "Display name: 2 to 40 characters, with at least one letter or digit";
+
+const UNAVAILABLE_COPY =
+  "The live desk is unavailable right now. Try again shortly";
 const SELF_REFUSED = "You cannot change your own account";
 
 const IDLE: AccountActionState = { phase: "idle" };
@@ -21,7 +25,7 @@ export function describeAccountActionContract(
 ): void {
   describe(label, () => {
     it("starts idle synchronously and sends nothing", async () => {
-      const h = makeHarness();
+      const h = makeHarness(createAdminSeed(0));
       const m = h.machines.accountAction("acc-1");
 
       try {
@@ -39,7 +43,7 @@ export function describeAccountActionContract(
     it.each([["approve"], ["block"], ["unblock"]] as const)(
       "%s is inFlight with exactly one actOn(id, action), and success returns to idle",
       async (kind) => {
-        const h = makeHarness();
+        const h = makeHarness(createAdminSeed(0));
         const m = h.machines.accountAction("acc-1");
 
         try {
@@ -66,7 +70,7 @@ export function describeAccountActionContract(
     );
 
     it("a delete asks first: requestDelete sends nothing, cancel sends nothing, confirmDelete sends one delete", async () => {
-      const h = makeHarness();
+      const h = makeHarness(createAdminSeed(0));
       const m = h.machines.accountAction("acc-2");
 
       try {
@@ -100,7 +104,7 @@ export function describeAccountActionContract(
     });
 
     it("a rename sends the NORMALIZED name; an invalid draft shows the live error and sends nothing", async () => {
-      const h = makeHarness();
+      const h = makeHarness(createAdminSeed(0));
       const m = h.machines.accountAction("acc-3");
 
       try {
@@ -154,7 +158,7 @@ export function describeAccountActionContract(
     });
 
     it("cancel leaves a rename without sending anything", async () => {
-      const h = makeHarness();
+      const h = makeHarness(createAdminSeed(0));
       const m = h.machines.accountAction("acc-3");
 
       try {
@@ -172,7 +176,7 @@ export function describeAccountActionContract(
     });
 
     it("success triggers exactly one list re-read", async () => {
-      const h = makeHarness();
+      const h = makeHarness(createAdminSeed(0));
       const m = h.machines.accountAction("acc-1");
 
       try {
@@ -194,7 +198,7 @@ export function describeAccountActionContract(
     });
 
     it("a refusal is failed with its text until dismissed, and does not re-read the list", async () => {
-      const h = makeHarness();
+      const h = makeHarness(createAdminSeed(0));
       const m = h.machines.accountAction("acc-1");
 
       try {
@@ -227,7 +231,7 @@ export function describeAccountActionContract(
     });
 
     it("a forbidden refusal flips the list to forbidden", async () => {
-      const h = makeHarness();
+      const h = makeHarness(createAdminSeed(0));
       const m = h.machines.accountAction("acc-1");
 
       try {
@@ -256,8 +260,34 @@ export function describeAccountActionContract(
       }
     });
 
+    it("a port that errors reads as failed with the unavailable copy", async () => {
+      const h = makeHarness(createAdminSeed(0));
+      const m = h.machines.accountAction("acc-1");
+
+      try {
+        const c = collect(m.state$);
+        m.intents.approve();
+        await settle();
+        h.driver.failAction(new Error("socket closed"));
+        await settle();
+        expect(c.values.at(-1)).toEqual({
+          phase: "failed",
+          action: "approve",
+          message: UNAVAILABLE_COPY,
+        });
+        expect(c.errors).toEqual([]);
+        m.intents.dismiss();
+        await settle();
+        expect(c.values.at(-1)).toEqual(IDLE);
+        c.unsubscribe();
+      } finally {
+        m.dispose();
+        await h.teardown();
+      }
+    });
+
     it("dispose in flight cancels the request: a later answer writes nothing and re-reads nothing", async () => {
-      const h = makeHarness();
+      const h = makeHarness(createAdminSeed(0));
       const m = h.machines.accountAction("acc-1");
 
       try {

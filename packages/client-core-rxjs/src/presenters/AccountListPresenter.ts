@@ -1,17 +1,14 @@
 import { type StateObservable, state } from "@rx-state/core";
 import {
-  concat,
+  BehaviorSubject,
   defer,
-  map,
-  type Observable,
+  distinctUntilChanged,
+  Observable,
   of,
-  Subject,
-  shareReplay,
-  startWith,
-  switchMap,
-  takeUntil,
+  type Subscription,
+  take,
 } from "rxjs";
-import { catchError, scan } from "rxjs/operators";
+import { catchError } from "rxjs/operators";
 
 import type {
   AccountListPresenter as AccountListPresenterApi,
@@ -22,58 +19,121 @@ import type { AccountAdminPort, AccountListOutcome } from "@rtc/domain";
 
 const UNAVAILABLE: AccountListOutcome = { ok: false, reason: "unavailable" };
 
-/** A load starting (rows stay), or the answer to one. */
-type ListStep =
-  | { readonly kind: "loading" }
-  | { readonly kind: "answered"; readonly outcome: AccountListOutcome };
-
-const LOADING_STEP: ListStep = { kind: "loading" };
-
 /** Implements `AccountListPresenter` (`@rtc/core-api`) — see the interface
- * for the contract. Nothing is read at construction: the first subscription
- * to `state$` opens the first load, `refresh()` supersedes any load in flight
- * with a new one (the rows already shown stay), and the held subscription is
- * warm for the session (`refCount: false`) and released by `disposed$`. */
+ * for the contract. Keyed on the signed-in user (`userKey$`, the email or
+ * null): a null or changed key resets to `ACCOUNT_LIST_LOADING` with no rows
+ * and cancels a load in flight, then loads at once if a subscriber is
+ * attached, else on the next first subscription. For one user the state is
+ * warm: unsubscribing everyone and subscribing again does not reload. */
 export class AccountListPresenter implements AccountListPresenterApi {
   readonly state$: StateObservable<AccountListState>;
 
   readonly admin: AccountAdminPort;
 
-  private readonly refreshes$ = new Subject<void>();
+  private readonly subject = new BehaviorSubject<AccountListState>(
+    ACCOUNT_LIST_LOADING,
+  );
 
-  constructor(port: AccountAdminPort, disposed$: Observable<unknown>) {
+  private readonly port: AccountAdminPort;
+
+  private key: string | null = null;
+
+  private loadStarted = false;
+
+  private attached = 0;
+
+  private disposed = false;
+
+  private load: Subscription | null = null;
+
+  constructor(
+    port: AccountAdminPort,
+    userKey$: Observable<string | null>,
+    disposed$: Observable<unknown>,
+  ) {
+    this.port = port;
     this.admin = port;
+    const keys = userKey$
+      .pipe(distinctUntilChanged())
+      .subscribe((key: string | null): void => {
+        this.useKey(key);
+      });
+    disposed$.pipe(take(1)).subscribe((): void => {
+      this.dispose(keys);
+    });
     this.state$ = state(
-      this.refreshes$.pipe(
-        startWith(undefined),
-        switchMap(() => {
-          return concat(
-            of(LOADING_STEP),
-            defer(() => {
-              return port.listAccounts();
-            }).pipe(
-              catchError((): Observable<AccountListOutcome> => {
-                return of(UNAVAILABLE);
-              }),
-              map((outcome: AccountListOutcome): ListStep => {
-                return { kind: "answered", outcome };
-              }),
-            ),
-          );
-        }),
-        scan((previous: AccountListState, step: ListStep) => {
-          return step.kind === "loading"
-            ? { ...previous, status: "loading" as const }
-            : foldAccountList(step.outcome, previous);
-        }, ACCOUNT_LIST_LOADING),
-        takeUntil(disposed$),
-        shareReplay<AccountListState>({ bufferSize: 1, refCount: false }),
-      ),
+      new Observable<AccountListState>((subscriber) => {
+        this.attached += 1;
+        this.startFirstLoad();
+        const inner = this.subject.subscribe(subscriber);
+
+        return (): void => {
+          this.attached -= 1;
+          inner.unsubscribe();
+        };
+      }),
       ACCOUNT_LIST_LOADING,
     );
   }
 
   refresh(): void {
-    this.refreshes$.next();
+    if (this.disposed || this.key === null || !this.loadStarted) {
+      return;
+    }
+
+    this.startLoad();
+  }
+
+  private useKey(key: string | null): void {
+    this.key = key;
+    this.loadStarted = false;
+    this.cancelLoad();
+
+    if (this.subject.value !== ACCOUNT_LIST_LOADING) {
+      this.subject.next(ACCOUNT_LIST_LOADING);
+    }
+
+    if (this.attached > 0) {
+      this.startFirstLoad();
+    }
+  }
+
+  private startFirstLoad(): void {
+    if (!this.disposed && this.key !== null && !this.loadStarted) {
+      this.startLoad();
+    }
+  }
+
+  private startLoad(): void {
+    this.loadStarted = true;
+    this.cancelLoad();
+
+    if (this.subject.value.status !== "loading") {
+      this.subject.next({ ...this.subject.value, status: "loading" });
+    }
+
+    this.load = defer(() => {
+      return this.port.listAccounts();
+    })
+      .pipe(
+        catchError((): Observable<AccountListOutcome> => {
+          return of(UNAVAILABLE);
+        }),
+      )
+      .subscribe((outcome: AccountListOutcome): void => {
+        this.subject.next(foldAccountList(outcome, this.subject.value));
+      });
+  }
+
+  private cancelLoad(): void {
+    this.load?.unsubscribe();
+    this.load = null;
+  }
+
+  private dispose(keys: Subscription): void {
+    this.disposed = true;
+    keys.unsubscribe();
+    this.cancelLoad();
+    this.subject.complete();
   }
 }

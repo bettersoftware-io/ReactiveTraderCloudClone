@@ -1,8 +1,6 @@
 import type { AccountActionKind } from "@rtc/core-api";
 import type { AccountAdminRefusal, AccountStatus } from "@rtc/domain";
 
-import { DISPLAY_NAME_INPUT_ERROR } from "#/presenters/accountAccessCopy";
-
 /** Every line the Admin tab's Users panel shows, once: both web clients
  * read their copy from here, so the two cannot drift. */
 export const ACCOUNT_ADMIN_COPY = {
@@ -52,7 +50,7 @@ export function describeAccountAdminRefusal(
     case "not_found":
       return "That account no longer exists";
     case "invalid_name":
-      return DISPLAY_NAME_INPUT_ERROR;
+      return "That display name was not accepted";
     case "unavailable":
       return action === "list"
         ? "The account list could not be loaded. Try again shortly"

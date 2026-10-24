@@ -41,7 +41,7 @@ describe("describeAccountAdminRefusal", () => {
       "That account no longer exists",
     );
     expect(describeAccountAdminRefusal("invalid_name", "rename")).toBe(
-      "Display name: 2 to 40 characters, with at least one letter or digit",
+      "That display name was not accepted",
     );
     expect(describeAccountAdminRefusal("unavailable", "approve")).toBe(
       "The live desk is unavailable right now. Try again shortly",

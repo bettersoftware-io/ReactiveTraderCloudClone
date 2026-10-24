@@ -889,7 +889,15 @@ export function createApp(givenPorts: AppPorts): App {
     eventLog: new EventLogPresenter(ports.eventLog, disposed$),
     sessions: new SessionsPresenter(ports.sessions, disposed$),
     sessionsKpi: new SessionsKpiPresenter(ports.sessions, disposed$),
-    accountList: new AccountListPresenter(ports.accountAdmin, disposed$),
+    accountList: new AccountListPresenter(
+      ports.accountAdmin,
+      auth.state$.pipe(
+        map((authState): string | null => {
+          return authState.user?.email ?? null;
+        }),
+      ),
+      disposed$,
+    ),
     jarvis,
     jarvisUsage: new JarvisUsagePresenter(ports.jarvisUsage, disposed$),
     jarvisPanels,
