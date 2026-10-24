@@ -132,6 +132,16 @@ async function serveMcpRequest(
     return;
   }
 
+  // Deny-only use of the signed claim: a token minted for a user is refused
+  // before any directory read, so a user's token cannot turn each request
+  // into a store round trip. Admission still needs the directory below — the
+  // claim alone never admits (a demoted administrator's token still says
+  // admin).
+  if (verified.access !== "admin") {
+    rejectRequest(res, 403, "admin_only");
+    return;
+  }
+
   const gate = await readAdminGate(verified.accountId, verified.issuedAt, deps);
 
   if (gate === "unavailable") {

@@ -195,15 +195,21 @@ describe("AccountAdminService", () => {
       },
     );
 
-    it("passes unavailable through and closes nothing", async () => {
-      const { service, cache, sessions } = createFixture({ writesDown: true });
+    it.each(createActions())(
+      "passes unavailable through for $kind, invalidates the cached status (the write may have landed) and closes nothing",
+      async (action) => {
+        const { service, cache, sessions } = createFixture({
+          writesDown: true,
+        });
 
-      expect(
-        await service.act(createCaller(ADMIN_ID), OTHER_ID, { kind: "block" }),
-      ).toEqual({ ok: false, refusal: "unavailable" });
-      expect(cache.invalidate).not.toHaveBeenCalled();
-      expect(sessions.closeAll).not.toHaveBeenCalled();
-    });
+        expect(
+          await service.act(createCaller(ADMIN_ID), OTHER_ID, action),
+        ).toEqual({ ok: false, refusal: "unavailable" });
+        expect(cache.invalidate).toHaveBeenCalledTimes(1);
+        expect(cache.invalidate).toHaveBeenCalledWith(OTHER_ID);
+        expect(sessions.closeAll).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe("act successes", () => {

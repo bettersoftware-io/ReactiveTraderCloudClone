@@ -192,6 +192,16 @@ export function createAccountAdminService(
 
       const written = await write(target, action, displayName);
 
+      if (written === "unavailable") {
+        // The write may still have landed (a timeout after the store
+        // committed): dropping the cached status is always safe, so the next
+        // upgrade reads the truth. Closing sockets on an unknown outcome is
+        // not, so that waits for an answer that says the write happened.
+        deps.statusCache.invalidate(target);
+
+        return refused(written);
+      }
+
       if (written !== "ok") {
         return refused(written);
       }

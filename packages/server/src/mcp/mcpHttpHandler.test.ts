@@ -20,6 +20,7 @@ import { createMcpRequestHandler } from "./mcpHttpHandler.js";
 describe("createMcpRequestHandler", () => {
   beforeEach(async () => {
     findAccountError = null;
+    directoryReads = 0;
     lookup = { outcome: "found", account: createRecord({}) };
     revocations = createRevocationLedger(10);
     auth = new AuthService({
@@ -37,6 +38,7 @@ describe("createMcpRequestHandler", () => {
       tools,
       accounts: {
         findAccount: (): Promise<AccountLookup> => {
+          directoryReads += 1;
           return findAccountError === null
             ? Promise.resolve(lookup)
             : Promise.reject(findAccountError);
@@ -113,6 +115,20 @@ describe("createMcpRequestHandler", () => {
     await expectAdminOnly(adminToken());
   });
 
+  it("refuses a token whose claim says user with 403 admin_only, reading the directory zero times", async () => {
+    // The directory still holds an administrator: only the claim can refuse.
+    await expectAdminOnly(userClaimToken());
+
+    expect(directoryReads).toBe(0);
+  });
+
+  it("an administrator's claim still reads the directory once before admitting", async () => {
+    const response = await postToolsList(adminToken());
+
+    expect(response.status).toBe(200);
+    expect(directoryReads).toBe(1);
+  });
+
   it("refuses an administrator who has since been blocked", async () => {
     lookup = { outcome: "found", account: createRecord({ status: "blocked" }) };
 
@@ -186,10 +202,19 @@ describe("createMcpRequestHandler", () => {
 
   let revocations: ReturnType<typeof createRevocationLedger>;
 
+  let directoryReads: number;
+
   function adminToken(): string {
     return signToken("ann@desk.io", SECRET, 60_000, Date.now(), {
       accountId: ADMIN_ID,
       access: "admin",
+    });
+  }
+
+  function userClaimToken(): string {
+    return signToken("ann@desk.io", SECRET, 60_000, Date.now(), {
+      accountId: ADMIN_ID,
+      access: "user",
     });
   }
 
