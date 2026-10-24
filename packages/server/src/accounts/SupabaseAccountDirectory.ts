@@ -3,8 +3,10 @@ import { isIP } from "node:net";
 
 import {
   type AccountDirectory,
+  type AccountListing,
   type AccountLookup,
   type AccountRecord,
+  type AdminWrite,
   type ConfirmOutcome,
   deriveAccountStatus,
   type PasswordCheck,
@@ -35,7 +37,7 @@ const UUID_SHAPE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CONTENT_RANGE_TOTAL = /\/(\d+)$/;
 const PROFILE_COLUMNS =
-  "id,email,display_name,role,approved,blocked,email_confirmed_at";
+  "id,email,display_name,role,approved,blocked,email_confirmed_at,created_at,sessions_not_before";
 
 type Reply =
   | {
@@ -51,7 +53,7 @@ type Reply =
   | { readonly kind: "unreachable" };
 
 interface Call {
-  readonly method: "GET" | "POST" | "PUT" | "DELETE";
+  readonly method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   readonly path: string;
   readonly body?: unknown;
   /** Replaces the secret key as the bearer (a user's own session). */
@@ -212,6 +214,34 @@ export function createSupabaseAccountDirectory(
     await closeSession(session);
 
     return { step: "password-answered", reply };
+  }
+
+  /**
+   * One PATCH of a profile row, asking for the row back so an empty answer
+   * can mean "no such account". The id is checked before it enters a query
+   * string; the filter is the plain value — a double-quoted top-level
+   * PostgREST filter matches nothing.
+   */
+  async function patchProfile(
+    accountId: string,
+    columns: Record<string, unknown>,
+  ): Promise<AdminWrite> {
+    if (!UUID_SHAPE.test(accountId)) {
+      return "not_found";
+    }
+
+    const reply = await call({
+      method: "PATCH",
+      path: `/rest/v1/profiles?id=eq.${accountId}`,
+      body: columns,
+      headers: { Prefer: "return=representation" },
+    });
+
+    if (reply.kind !== "ok" || !Array.isArray(reply.body)) {
+      return "unavailable";
+    }
+
+    return reply.body.length === 0 ? "not_found" : "ok";
   }
 
   return {
@@ -502,6 +532,91 @@ export function createSupabaseAccountDirectory(
 
       return reply.kind === "ok";
     },
+
+    async listAccounts(limit: number): Promise<AccountListing> {
+      if (!Number.isInteger(limit) || limit <= 0) {
+        return { outcome: "unavailable" };
+      }
+
+      const reply = await call({
+        method: "GET",
+        path: `/rest/v1/profiles?select=${PROFILE_COLUMNS}&order=created_at.desc&limit=${limit}`,
+      });
+
+      if (reply.kind !== "ok" || !Array.isArray(reply.body)) {
+        return { outcome: "unavailable" };
+      }
+
+      const accounts: AccountRecord[] = [];
+
+      for (const row of reply.body) {
+        const account = toAccountRecord(row);
+
+        // One unreadable row fails the whole listing: a partial list would
+        // pass for the full one.
+        if (account === null) {
+          return { outcome: "unavailable" };
+        }
+
+        accounts.push(account);
+      }
+
+      return { outcome: "listed", accounts };
+    },
+
+    setApproved(accountId: string): Promise<AdminWrite> {
+      return patchProfile(accountId, { approved: true });
+    },
+
+    setBlocked(
+      accountId: string,
+      blocked: boolean,
+      stampAtMs: number,
+    ): Promise<AdminWrite> {
+      return patchProfile(
+        accountId,
+        blocked
+          ? { blocked, sessions_not_before: toIso(stampAtMs) }
+          : { blocked },
+      );
+    },
+
+    rename(
+      accountId: string,
+      displayName: string,
+      stampAtMs: number,
+    ): Promise<AdminWrite> {
+      return patchProfile(accountId, {
+        display_name: displayName,
+        sessions_not_before: toIso(stampAtMs),
+      });
+    },
+
+    revokeSessions(accountId: string, stampAtMs: number): Promise<AdminWrite> {
+      return patchProfile(accountId, {
+        sessions_not_before: toIso(stampAtMs),
+      });
+    },
+
+    async deleteAccount(accountId: string): Promise<AdminWrite> {
+      if (!UUID_SHAPE.test(accountId)) {
+        return "not_found";
+      }
+
+      // The cascade removes the profile.
+      const reply = await call({
+        method: "DELETE",
+        path: `/auth/v1/admin/users/${accountId}`,
+      });
+
+      if (reply.kind === "ok") {
+        return "ok";
+      }
+
+      return reply.kind === "refused" && reply.status === 404
+        ? "not_found"
+        : "unavailable";
+    },
   };
 }
 
@@ -584,6 +699,29 @@ function readErrorCode(body: unknown): string {
     : "invalid_credentials";
 }
 
+/** The stamp as the database column wants it: the SERVER's time. */
+function toIso(epochMs: number): string {
+  return new Date(epochMs).toISOString();
+}
+
+/** A timestamptz column as epoch ms; null when absent, undefined when set
+ * but unreadable. */
+function readInstant(row: unknown, field: string): number | null | undefined {
+  const text = readField(row, field);
+
+  if (text === null) {
+    return null;
+  }
+
+  if (typeof text !== "string") {
+    return undefined;
+  }
+
+  const ms = Date.parse(text);
+
+  return Number.isNaN(ms) ? undefined : ms;
+}
+
 function toAccountRecord(row: unknown): AccountRecord | null {
   const id = readString(row, "id");
   const email = readString(row, "email");
@@ -591,6 +729,8 @@ function toAccountRecord(row: unknown): AccountRecord | null {
   const role = readField(row, "role");
   const approved = readField(row, "approved");
   const blocked = readField(row, "blocked");
+  const createdAt = readInstant(row, "created_at");
+  const sessionsNotBefore = readInstant(row, "sessions_not_before");
 
   if (
     id === null ||
@@ -598,7 +738,10 @@ function toAccountRecord(row: unknown): AccountRecord | null {
     displayName === null ||
     (role !== "user" && role !== "admin") ||
     typeof approved !== "boolean" ||
-    typeof blocked !== "boolean"
+    typeof blocked !== "boolean" ||
+    createdAt === null ||
+    createdAt === undefined ||
+    sessionsNotBefore === undefined
   ) {
     return null;
   }
@@ -613,5 +756,7 @@ function toAccountRecord(row: unknown): AccountRecord | null {
       approved,
       blocked,
     }),
+    createdAt,
+    sessionsNotBefore,
   };
 }

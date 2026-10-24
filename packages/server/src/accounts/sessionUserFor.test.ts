@@ -33,5 +33,7 @@ function createAccount(access: "user" | "admin"): AccountRecord {
     displayName: "Ann Lee",
     access,
     status: "active",
+    createdAt: 0,
+    sessionsNotBefore: null,
   };
 }

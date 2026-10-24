@@ -90,6 +90,8 @@ describe("InMemoryAccountDirectory", () => {
         displayName: "Ann Lee",
         access: "user",
         status: "pending",
+        createdAt: 1_000,
+        sessionsNotBefore: null,
       },
     });
   });
@@ -299,6 +301,8 @@ describe("InMemoryAccountDirectory", () => {
           displayName: "Desk Admin",
           access: "admin",
           status: "active",
+          createdAt: 1_000,
+          sessionsNotBefore: null,
         },
       },
     );
@@ -516,6 +520,139 @@ describe("InMemoryAccountDirectory", () => {
   });
 });
 
+describe("InMemoryAccountDirectory — admin operations", () => {
+  it("lists newest first, a seed stamped with the construction time", async () => {
+    let now = 1_000;
+    const directory = createInMemoryAccountDirectory({
+      now: (): number => {
+        return now;
+      },
+      seeds: [createUnconfirmedSeed()],
+    });
+
+    now = 2_000;
+    await directory.signUp(createSignUp("old@desk.io"), IP);
+    now = 3_000;
+    await directory.signUp(createSignUp("new@desk.io"), IP);
+
+    const listing = await directory.listAccounts(10);
+
+    expect(listing.outcome).toBe("listed");
+
+    if (listing.outcome !== "listed") {
+      return;
+    }
+
+    expect(
+      listing.accounts.map((account) => {
+        return [account.email, account.createdAt, account.sessionsNotBefore];
+      }),
+    ).toEqual([
+      ["new@desk.io", 3_000, null],
+      ["old@desk.io", 2_000, null],
+      ["seed@rtc.test", 1_000, null],
+    ]);
+  });
+
+  it("caps the listing at the limit", async () => {
+    const listing = await createDirectory().listAccounts(2);
+
+    expect(listing.outcome === "listed" && listing.accounts).toHaveLength(2);
+  });
+
+  it("approves an account, and answers not_found for a stranger", async () => {
+    const directory = createDirectory();
+
+    await directory.signUp(createSignUp("ann@desk.io"), IP);
+    await directory.confirmEmail(
+      "ann@desk.io",
+      DEV_CONFIRMATION_CODE,
+      PASSWORD,
+      IP,
+    );
+
+    const id = await idOf(directory, "ann@desk.io");
+
+    expect(await directory.setApproved(id)).toBe("ok");
+    expect(await directory.findAccount(id)).toMatchObject({
+      account: { status: "active" },
+    });
+    expect(await directory.setApproved("nobody")).toBe("not_found");
+  });
+
+  it("blocking blocks and stamps; unblocking clears the flag and keeps the stamp", async () => {
+    const directory = createDirectory();
+    const id = TRADER_ID;
+
+    expect(await directory.setBlocked(id, true, 5_000)).toBe("ok");
+    expect(await directory.findAccount(id)).toMatchObject({
+      account: { status: "blocked", sessionsNotBefore: 5_000 },
+    });
+    expect(await directory.setBlocked(id, false, 9_000)).toBe("ok");
+    expect(await directory.findAccount(id)).toMatchObject({
+      account: { status: "active", sessionsNotBefore: 5_000 },
+    });
+    expect(await directory.setBlocked("nobody", true, 1)).toBe("not_found");
+  });
+
+  it("renames and stamps", async () => {
+    const directory = createDirectory();
+
+    expect(await directory.rename(TRADER_ID, "Trader Two", 6_000)).toBe("ok");
+    expect(await directory.findAccount(TRADER_ID)).toMatchObject({
+      account: { displayName: "Trader Two", sessionsNotBefore: 6_000 },
+    });
+    expect(await directory.rename("nobody", "X", 1)).toBe("not_found");
+  });
+
+  it("revokeSessions stamps and nothing else", async () => {
+    const directory = createDirectory();
+
+    expect(await directory.revokeSessions(TRADER_ID, 7_000)).toBe("ok");
+    expect(await directory.findAccount(TRADER_ID)).toMatchObject({
+      account: {
+        displayName: "Guest Trader",
+        status: "active",
+        sessionsNotBefore: 7_000,
+      },
+    });
+    expect(await directory.revokeSessions("nobody", 1)).toBe("not_found");
+  });
+
+  it("a deleted account is missing everywhere", async () => {
+    const directory = createDirectory();
+
+    expect(await directory.deleteAccount(TRADER_ID)).toBe("ok");
+    expect(await directory.findAccount(TRADER_ID)).toEqual({
+      outcome: "missing",
+    });
+    expect(await directory.findByEmail("trader@rtc.test")).toEqual({
+      outcome: "missing",
+    });
+    expect(await directory.deleteAccount(TRADER_ID)).toBe("not_found");
+  });
+
+  it("seeds are not registrations", async () => {
+    expect(await createDirectory().countRegistrationsSince(0)).toEqual({
+      outcome: "counted",
+      count: 0,
+    });
+  });
+});
+
+async function idOf(
+  directory: AccountDirectory,
+  email: string,
+): Promise<string> {
+  const lookup = await directory.findByEmail(email);
+
+  if (lookup.outcome !== "found") {
+    throw new Error("account expected");
+  }
+
+  return lookup.account.id;
+}
+
 function createUnconfirmedSeed(): DevAccountSeed {
   return {
     id: "00000000-0000-4000-8000-0000000000ff",
@@ -569,5 +706,7 @@ async function createConfirmedAccount(
 }
 
 const IP = "1.2.3.4";
+
+const TRADER_ID = "00000000-0000-4000-8000-000000000002";
 
 const PASSWORD = "Mcdc2026!desk";

@@ -44,6 +44,7 @@ describe("authenticateLoginRequest", () => {
       username: "admin@rtc.test",
       accountId: "00000000-0000-4000-8000-000000000001",
       access: "admin",
+      issuedAt: 1_000,
     });
   });
 
@@ -351,7 +352,12 @@ describe("describeUpgrade", () => {
     });
     expect(describeUpgrade(`/?access=${login.token}`, auth)).toEqual({
       ok: true,
-      token: { username: "demo", accountId: null, access: "user" },
+      token: {
+        username: "demo",
+        accountId: null,
+        access: "user",
+        issuedAt: null,
+      },
     });
   });
 });

@@ -11,7 +11,56 @@ describe("token", () => {
       username: "demo",
       accountId: null,
       access: "user",
+      issuedAt: null,
     });
+  });
+
+  it("an account token round-trips its issued-at", () => {
+    const t = signToken("ann@desk.io", SECRET, 60_000, NOW, {
+      accountId: "acc-1",
+      access: "user",
+    });
+
+    expect(verifyToken(t, SECRET, NOW + 1)?.issuedAt).toBe(NOW);
+    expect(
+      JSON.parse(Buffer.from(t.split(".")[0] ?? "", "base64url").toString()),
+    ).toMatchObject({ iat: NOW });
+  });
+
+  it("a roster token carries no iat", () => {
+    const t = signToken("demo", SECRET, 60_000, NOW);
+
+    expect(
+      Buffer.from(t.split(".")[0] ?? "", "base64url").toString(),
+    ).not.toContain("iat");
+  });
+
+  it("an account token minted before B2c verifies with a null issued-at", () => {
+    const payload = JSON.stringify({
+      u: "ann",
+      exp: 9e15,
+      id: "acc-1",
+      a: "user",
+    });
+
+    expect(verifyToken(forge(payload), SECRET, NOW)).toEqual({
+      username: "ann",
+      accountId: "acc-1",
+      access: "user",
+      issuedAt: null,
+    });
+  });
+
+  it("rejects an iat that is not a number", () => {
+    const payload = JSON.stringify({
+      u: "ann",
+      exp: 9e15,
+      id: "acc-1",
+      a: "user",
+      iat: "1000",
+    });
+
+    expect(verifyToken(forge(payload), SECRET, NOW)).toBeNull();
   });
 
   it("round-trips the account id and access level", () => {
@@ -24,6 +73,7 @@ describe("token", () => {
       username: "ann@desk.io",
       accountId: "acc-1",
       access: "admin",
+      issuedAt: NOW,
     });
   });
 

@@ -1,6 +1,8 @@
 import type {
   AccountDirectory,
+  AccountListing,
   AccountLookup,
+  AdminWrite,
   ConfirmOutcome,
   PasswordCheck,
   PurgeOutcome,
@@ -50,6 +52,24 @@ export function createDisabledAccountDirectory(): AccountDirectory {
     },
     ping: (): Promise<boolean> => {
       return Promise.resolve(false);
+    },
+    listAccounts: (): Promise<AccountListing> => {
+      return Promise.resolve({ outcome: "unavailable" });
+    },
+    setApproved: (): Promise<AdminWrite> => {
+      return Promise.resolve("unavailable");
+    },
+    setBlocked: (): Promise<AdminWrite> => {
+      return Promise.resolve("unavailable");
+    },
+    rename: (): Promise<AdminWrite> => {
+      return Promise.resolve("unavailable");
+    },
+    deleteAccount: (): Promise<AdminWrite> => {
+      return Promise.resolve("unavailable");
+    },
+    revokeSessions: (): Promise<AdminWrite> => {
+      return Promise.resolve("unavailable");
     },
   };
 }

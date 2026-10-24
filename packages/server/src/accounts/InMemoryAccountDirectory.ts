@@ -10,8 +10,10 @@ import {
 } from "../auth/passwordHash.js";
 import {
   type AccountDirectory,
+  type AccountListing,
   type AccountLookup,
   type AccountRecord,
+  type AdminWrite,
   type ConfirmOutcome,
   deriveAccountStatus,
   type PasswordCheck,
@@ -45,7 +47,6 @@ interface Credential {
 interface Entry {
   readonly id: string;
   readonly email: string;
-  readonly displayName: string;
   readonly access: AccessLevel;
   readonly createdAt: number;
   /** A dev seed: never purged, whatever its age. */
@@ -57,6 +58,8 @@ interface Entry {
   approved: boolean;
   blocked: boolean;
   resetRequested: boolean;
+  displayName: string;
+  sessionsNotBefore: number | null;
 }
 
 /**
@@ -99,13 +102,14 @@ export function createInMemoryAccountDirectory(
       email: seed.email,
       displayName: seed.displayName,
       access: seed.access,
-      createdAt: 0,
+      createdAt: options.now(),
       seed: true,
       credential: devSeedCredential(),
       confirmed: seed.status !== "unconfirmed",
       approved: seed.status === "active",
       blocked: seed.status === "blocked",
       resetRequested: false,
+      sessionsNotBefore: null,
     });
   }
 
@@ -117,6 +121,21 @@ export function createInMemoryAccountDirectory(
     }
 
     return undefined;
+  }
+
+  function apply(
+    accountId: string,
+    change: (entry: Entry) => void,
+  ): AdminWrite {
+    const entry = findById(accountId);
+
+    if (entry === undefined) {
+      return "not_found";
+    }
+
+    change(entry);
+
+    return "ok";
   }
 
   return {
@@ -139,6 +158,7 @@ export function createInMemoryAccountDirectory(
           approved: false,
           blocked: false,
           resetRequested: false,
+          sessionsNotBefore: null,
         });
       }
 
@@ -295,7 +315,7 @@ export function createInMemoryAccountDirectory(
       let count = 0;
 
       for (const entry of byEmail.values()) {
-        if (entry.createdAt >= sinceMs) {
+        if (!entry.seed && entry.createdAt >= sinceMs) {
           count += 1;
         }
       }
@@ -305,6 +325,77 @@ export function createInMemoryAccountDirectory(
 
     ping(): Promise<boolean> {
       return Promise.resolve(true);
+    },
+
+    listAccounts(limit: number): Promise<AccountListing> {
+      // Newest first; the sort is stable, so equal times keep insertion order.
+      const newest = [...byEmail.values()]
+        .sort((a, b) => {
+          return b.createdAt - a.createdAt;
+        })
+        .slice(0, Math.max(0, limit));
+
+      return Promise.resolve({
+        outcome: "listed",
+        accounts: newest.map(toRecord),
+      });
+    },
+
+    setApproved(accountId: string): Promise<AdminWrite> {
+      return Promise.resolve(
+        apply(accountId, (entry) => {
+          entry.approved = true;
+        }),
+      );
+    },
+
+    setBlocked(
+      accountId: string,
+      blocked: boolean,
+      stampAtMs: number,
+    ): Promise<AdminWrite> {
+      return Promise.resolve(
+        apply(accountId, (entry) => {
+          entry.blocked = blocked;
+
+          if (blocked) {
+            entry.sessionsNotBefore = stampAtMs;
+          }
+        }),
+      );
+    },
+
+    rename(
+      accountId: string,
+      displayName: string,
+      stampAtMs: number,
+    ): Promise<AdminWrite> {
+      return Promise.resolve(
+        apply(accountId, (entry) => {
+          entry.displayName = displayName;
+          entry.sessionsNotBefore = stampAtMs;
+        }),
+      );
+    },
+
+    deleteAccount(accountId: string): Promise<AdminWrite> {
+      const entry = findById(accountId);
+
+      if (entry === undefined) {
+        return Promise.resolve("not_found");
+      }
+
+      byEmail.delete(entry.email);
+
+      return Promise.resolve("ok");
+    },
+
+    revokeSessions(accountId: string, stampAtMs: number): Promise<AdminWrite> {
+      return Promise.resolve(
+        apply(accountId, (entry) => {
+          entry.sessionsNotBefore = stampAtMs;
+        }),
+      );
     },
   };
 }
@@ -316,6 +407,8 @@ function toRecord(entry: Entry): AccountRecord {
     displayName: entry.displayName,
     access: entry.access,
     status: deriveAccountStatus(entry),
+    createdAt: entry.createdAt,
+    sessionsNotBefore: entry.sessionsNotBefore,
   };
 }
 

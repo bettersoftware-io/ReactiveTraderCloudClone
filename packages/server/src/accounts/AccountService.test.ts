@@ -200,6 +200,8 @@ describe("AccountService.login", () => {
         displayName: "Desk Admin",
         access: "admin",
         status: "active",
+        createdAt: 2 * 24 * 60 * 60 * 1_000,
+        sessionsNotBefore: null,
       },
     });
   });
@@ -1468,6 +1470,8 @@ function createUnconfirmedRecord(): AccountRecord {
     displayName: "Ann",
     access: "user",
     status: "unconfirmed",
+    createdAt: 0,
+    sessionsNotBefore: null,
   };
 }
 

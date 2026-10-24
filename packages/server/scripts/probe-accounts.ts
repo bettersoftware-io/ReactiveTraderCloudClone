@@ -24,7 +24,9 @@ import { performance } from "node:perf_hooks";
 
 import type {
   AccountDirectory,
+  AccountListing,
   AccountLookup,
+  AdminWrite,
   ConfirmOutcome,
   PasswordCheck,
   PurgeOutcome,
@@ -167,6 +169,47 @@ function timeEveryCall(inner: AccountDirectory): AccountDirectory {
     ping: (): Promise<boolean> => {
       return recordDuration(() => {
         return inner.ping();
+      });
+    },
+    listAccounts: (limit: number): Promise<AccountListing> => {
+      return recordDuration(() => {
+        return inner.listAccounts(limit);
+      });
+    },
+    setApproved: (accountId: string): Promise<AdminWrite> => {
+      return recordDuration(() => {
+        return inner.setApproved(accountId);
+      });
+    },
+    setBlocked: (
+      accountId: string,
+      blocked: boolean,
+      stampAtMs: number,
+    ): Promise<AdminWrite> => {
+      return recordDuration(() => {
+        return inner.setBlocked(accountId, blocked, stampAtMs);
+      });
+    },
+    rename: (
+      accountId: string,
+      displayName: string,
+      stampAtMs: number,
+    ): Promise<AdminWrite> => {
+      return recordDuration(() => {
+        return inner.rename(accountId, displayName, stampAtMs);
+      });
+    },
+    deleteAccount: (accountId: string): Promise<AdminWrite> => {
+      return recordDuration(() => {
+        return inner.deleteAccount(accountId);
+      });
+    },
+    revokeSessions: (
+      accountId: string,
+      stampAtMs: number,
+    ): Promise<AdminWrite> => {
+      return recordDuration(() => {
+        return inner.revokeSessions(accountId, stampAtMs);
       });
     },
   };

@@ -205,6 +205,8 @@ function createLookups(script: readonly Scripted[]): ScriptedLookups {
           displayName: "Ann Lee",
           access: "user",
           status: next,
+          createdAt: 0,
+          sessionsNotBefore: null,
         },
       });
     },
@@ -255,6 +257,8 @@ function createDeferredDirectory(): DeferredDirectory {
               displayName: "Ann Lee",
               access: "user",
               status,
+              createdAt: 0,
+              sessionsNotBefore: null,
             },
           });
         });

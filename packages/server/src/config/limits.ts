@@ -155,3 +155,8 @@ export const AUTH_SECRET_MIN_LENGTH = 32;
 
 /** B2 — `/health/accounts` re-reads the store at most this often. */
 export const ACCOUNTS_HEALTH_CACHE_MS = 60_000;
+
+/** B2c — the most accounts one admin listing returns. The panel reads a
+ * single page; an unbounded `select` on a growing table would let one admin
+ * call pull every profile through the server and the socket. */
+export const ADMIN_ACCOUNT_LIST_MAX = 500;

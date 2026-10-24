@@ -6,6 +6,11 @@ export interface AccountRecord {
   readonly displayName: string;
   readonly access: AccessLevel;
   readonly status: AccountStatus;
+  /** Epoch ms the account was created. */
+  readonly createdAt: number;
+  /** Epoch ms before which no session of this account counts; null when
+   * none was ever stamped. Always the SERVER's clock, never the store's. */
+  readonly sessionsNotBefore: number | null;
 }
 
 /**
@@ -54,6 +59,14 @@ export type PurgeOutcome =
 
 export type RegistrationCount =
   | { readonly outcome: "counted"; readonly count: number }
+  | { readonly outcome: "unavailable" };
+
+/** What an admin write answered: it landed, the account does not exist, or
+ * the store could not say. */
+export type AdminWrite = "ok" | "not_found" | "unavailable";
+
+export type AccountListing =
+  | { readonly outcome: "listed"; readonly accounts: readonly AccountRecord[] }
   | { readonly outcome: "unavailable" };
 
 export interface AccountFlags {
@@ -111,6 +124,27 @@ export interface AccountDirectory {
    * answered while the count was being read. */
   countRegistrationsSince(sinceMs: number): Promise<RegistrationCount>;
   ping(): Promise<boolean>;
+  /** Up to `limit` accounts, newest first. */
+  listAccounts(limit: number): Promise<AccountListing>;
+  /** Sets `approved`. */
+  setApproved(accountId: string): Promise<AdminWrite>;
+  /** Sets `blocked`. Blocking also stamps `sessionsNotBefore` with
+   * `stampAtMs` in the same write, so a later unblock does not bring the
+   * old tokens back; unblocking stamps nothing. */
+  setBlocked(
+    accountId: string,
+    blocked: boolean,
+    stampAtMs: number,
+  ): Promise<AdminWrite>;
+  /** Renames and stamps `sessionsNotBefore` in one write (atomic). */
+  rename(
+    accountId: string,
+    displayName: string,
+    stampAtMs: number,
+  ): Promise<AdminWrite>;
+  deleteAccount(accountId: string): Promise<AdminWrite>;
+  /** Writes `sessionsNotBefore` alone. */
+  revokeSessions(accountId: string, stampAtMs: number): Promise<AdminWrite>;
 }
 
 /** A block wins over everything; then an unconfirmed email; then approval. */
