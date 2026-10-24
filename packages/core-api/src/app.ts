@@ -51,6 +51,7 @@ import type {
   WorkspaceNavState,
 } from "#/machines/index";
 import type {
+  AccountListPresenter,
   AmbientStylePresenter,
   AnalyticsPresenter,
   AnimatedBackgroundPresenter,
@@ -299,6 +300,8 @@ export interface Presenters {
   sessions: SessionsPresenter;
   /** Plan E Ops: rolling session-count series for the "Active Sessions" KPI card. */
   sessionsKpi: SessionsKpiPresenter;
+  /** Admin: the registered accounts (loads on first subscription). */
+  accountList: AccountListPresenter;
   /** J.A.R.V.I.S. chat overlay: entries, skin, pending confirmation, phase.
    * Widened with `events$` (every turn's reply events) — Task 6's
    * `jarvisPanels` below is composed from it. */

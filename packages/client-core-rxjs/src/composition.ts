@@ -62,6 +62,7 @@ import { cutPortsOnDispose } from "#/ports/cutPortsOnDispose";
 import { withLoginDelay } from "#/ports/delayedAuthPort";
 import { readPreferenceNow } from "#/ports/readPreferenceNow";
 import {
+  AccountListPresenter,
   AmbientStylePresenter,
   AnalyticsPresenter,
   AnimatedBackgroundPresenter,
@@ -76,6 +77,7 @@ import {
   CreditRfqFilterPreferencePresenter,
   CurrencyPairsPresenter,
   createAccountAccessMachine,
+  createAccountActionMachine,
   createBootSequenceMachine,
   createEqDrawingsMachine,
   createEqWorkspaceMachine,
@@ -887,6 +889,7 @@ export function createApp(givenPorts: AppPorts): App {
     eventLog: new EventLogPresenter(ports.eventLog, disposed$),
     sessions: new SessionsPresenter(ports.sessions, disposed$),
     sessionsKpi: new SessionsKpiPresenter(ports.sessions, disposed$),
+    accountList: new AccountListPresenter(ports.accountAdmin, disposed$),
     jarvis,
     jarvisUsage: new JarvisUsagePresenter(ports.jarvisUsage, disposed$),
     jarvisPanels,
@@ -1090,6 +1093,9 @@ export function createMachineFactories(
     },
     accountAccess: () => {
       return createAccountAccessMachine(presenters.auth.accounts);
+    },
+    accountAction: (accountId: string) => {
+      return createAccountActionMachine(accountId, presenters.accountList);
     },
   };
 }
