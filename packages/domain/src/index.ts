@@ -30,6 +30,10 @@ export type { SessionUser } from "./auth/sessionUser.js";
 
 // FX
 
+// FX
+
+// FX
+
 export {
   aggregatePositionsByCurrency,
   type CurrencyPositionNode,
@@ -212,7 +216,6 @@ export {
   type PanelTransform,
   type PanelViz,
 } from "./jarvis/panelSpec.js";
-export type { AdminPort } from "./ports/adminPort.js";
 export type { AnalyticsPort } from "./ports/analyticsPort.js";
 export type {
   AccountFlowFailure,
@@ -231,6 +234,7 @@ export type { ExecutionPort } from "./ports/executionPort.js";
 export type { InstrumentPort } from "./ports/instrumentPort.js";
 // Ports
 export type { MarketDataPort } from "./ports/marketDataPort.js";
+export type { OpsPort } from "./ports/opsPort.js";
 export type { OrderPort, PlaceOrderRequest } from "./ports/orderPort.js";
 export type { PositionPort } from "./ports/positionPort.js";
 export type { PreferencesPort } from "./ports/preferencesPort.js";

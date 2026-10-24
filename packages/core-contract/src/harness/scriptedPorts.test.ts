@@ -573,7 +573,7 @@ describe("scriptPorts — equities", () => {
   });
 });
 
-describe("scriptPorts — admin", () => {
+describe("scriptPorts — ops", () => {
   it("telemetry: emitThroughputSample/emitLatencySample/emitErrorRateSample reach only their own method's subscribers (a shared Subject would leak across streams)", () => {
     const { ports, driver, teardown } = scriptPorts(createBasePorts());
     const throughput: MetricSample[] = [];
@@ -644,12 +644,12 @@ describe("scriptPorts — admin", () => {
     teardown();
   });
 
-  it("admin.getThroughput is lazy; pendingThroughputLoads counts a subscribed load; resolveThroughputLoad delivers the value then completes; failThroughputLoad errors", () => {
+  it("ops.getThroughput is lazy; pendingThroughputLoads counts a subscribed load; resolveThroughputLoad delivers the value then completes; failThroughputLoad errors", () => {
     const { ports, driver, teardown } = scriptPorts(createBasePorts());
     expect(driver.pendingThroughputLoads()).toBe(0);
     const seen: number[] = [];
     let completed = false;
-    ports.admin.getThroughput().subscribe({
+    ports.ops.getThroughput().subscribe({
       next: (value: number) => {
         seen.push(value);
       },
@@ -664,7 +664,7 @@ describe("scriptPorts — admin", () => {
     expect(driver.pendingThroughputLoads()).toBe(0);
 
     const errors: unknown[] = [];
-    ports.admin.getThroughput().subscribe({
+    ports.ops.getThroughput().subscribe({
       error: (error: unknown) => {
         errors.push(error);
       },
@@ -672,16 +672,16 @@ describe("scriptPorts — admin", () => {
     driver.failThroughputLoad(new Error("bust"));
     expect(errors).toHaveLength(1);
     expect(driver.pendingThroughputLoads()).toBe(0);
-    expect(driver.portCalls("admin.getThroughput")).toBe(2);
+    expect(driver.portCalls("ops.getThroughput")).toBe(2);
     teardown();
   });
 
-  it("admin.setThroughput queues the values asked, FIFO; resolveThroughputWrite resolves the OLDEST with undefined then completes; an unsubscribed write leaves the queue", () => {
+  it("ops.setThroughput queues the values asked, FIFO; resolveThroughputWrite resolves the OLDEST with undefined then completes; an unsubscribed write leaves the queue", () => {
     const { ports, driver, teardown } = scriptPorts(createBasePorts());
     expect(driver.pendingThroughputWrites()).toEqual([]);
     const results: unknown[] = [];
     let completed = false;
-    ports.admin.setThroughput(5).subscribe({
+    ports.ops.setThroughput(5).subscribe({
       next: (value: unknown) => {
         results.push(value);
       },
@@ -694,7 +694,7 @@ describe("scriptPorts — admin", () => {
     // `.subscribe()` would leave rxjs's default unhandled-error reporting to
     // throw and fail the run — otherwise this request is only witnessed
     // through `pendingThroughputWrites`.
-    const sub = ports.admin.setThroughput(9).subscribe({ error: () => {} });
+    const sub = ports.ops.setThroughput(9).subscribe({ error: () => {} });
     expect(driver.pendingThroughputWrites()).toEqual([5, 9]);
     driver.resolveThroughputWrite();
     expect(results).toEqual([undefined]);

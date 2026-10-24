@@ -123,10 +123,10 @@ async function runChecks(): Promise<void> {
       `  ✓ execution: trade ${trade.tradeId} ${trade.status} for ${trade.currencyPair}`,
     );
 
-    // 3. Admin throughput RPC round-trip (the WS path that replaced the old
+    // 3. Ops throughput RPC round-trip (the WS path that replaced the old
     //    HTTP /throughput route): get → set 250 → get reflects the new value.
     const initialThroughput = await firstValueFrom(
-      ports.admin
+      ports.ops
         .getThroughput()
         .pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
     );
@@ -135,12 +135,12 @@ async function runChecks(): Promise<void> {
       "initial throughput is a number",
     );
     await firstValueFrom(
-      ports.admin
+      ports.ops
         .setThroughput(250)
         .pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
     );
     const updatedThroughput = await firstValueFrom(
-      ports.admin
+      ports.ops
         .getThroughput()
         .pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
     );
@@ -149,7 +149,7 @@ async function runChecks(): Promise<void> {
       `throughput round-trip (got ${updatedThroughput})`,
     );
     console.log(
-      `  ✓ admin: throughput ${initialThroughput} → set 250 → ${updatedThroughput}`,
+      `  ✓ ops: throughput ${initialThroughput} → set 250 → ${updatedThroughput}`,
     );
   } finally {
     ws.dispose();

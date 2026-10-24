@@ -9,7 +9,7 @@ import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import { InMemorySessionStore } from "./InMemorySessionStore";
 import { createWsRealPorts } from "./portFactory";
 
-describe("wsReal admin :: nack error paths", () => {
+describe("wsReal ops :: nack error paths", () => {
   it("rejects getThroughput on nack", async () => {
     const ws = new FakeWsAdapter();
     const ports = createWsRealPorts(ws, {
@@ -17,9 +17,9 @@ describe("wsReal admin :: nack error paths", () => {
       auth: new AuthSimulator({}),
       sessionStore: new InMemorySessionStore(),
     });
-    const promise = firstValueFrom(ports.admin.getThroughput());
-    await awaitPendingRpc(ws, "admin.getThroughput");
-    ws.nextRpcResponse("admin.getThroughput", rpcNack());
+    const promise = firstValueFrom(ports.ops.getThroughput());
+    await awaitPendingRpc(ws, "ops.getThroughput");
+    ws.nextRpcResponse("ops.getThroughput", rpcNack());
     await expect(promise).rejects.toThrow(/Failed to get throughput/);
     ws.dispose();
   });
@@ -31,9 +31,9 @@ describe("wsReal admin :: nack error paths", () => {
       auth: new AuthSimulator({}),
       sessionStore: new InMemorySessionStore(),
     });
-    const promise = firstValueFrom(ports.admin.setThroughput(500));
-    await awaitPendingRpc(ws, "admin.setThroughput");
-    ws.nextRpcResponse("admin.setThroughput", rpcNack());
+    const promise = firstValueFrom(ports.ops.setThroughput(500));
+    await awaitPendingRpc(ws, "ops.setThroughput");
+    ws.nextRpcResponse("ops.setThroughput", rpcNack());
     await expect(promise).rejects.toThrow(/Failed to set throughput/);
     ws.dispose();
   });

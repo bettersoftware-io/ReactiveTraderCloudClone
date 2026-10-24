@@ -5,8 +5,8 @@ import type {
 } from "@rtc/core-api";
 import { THROUGHPUT_SET_ERROR, throughputSetMessage } from "@rtc/core-logic";
 import {
-  type AdminPort,
   DEFAULT_THROUGHPUT,
+  type OpsPort,
   THROUGHPUT_DEBOUNCE_MS,
   THROUGHPUT_MESSAGE_DISMISS_MS,
 } from "@rtc/domain";
@@ -26,7 +26,7 @@ const INITIAL: ThroughputView = {
   message: null,
 };
 
-/** The admin throughput control. The load is subscribed on the first
+/** The ops throughput control. The load is subscribed on the first
  * subscriber (the RxJS core loads lazily too), once per app and lands `{ value, loading: false }`, or
  * the default on failure. `setValue` echoes the value at once, then persists
  * it after `THROUGHPUT_DEBOUNCE_MS` of quiet: a keystroke restarts only the
@@ -36,7 +36,7 @@ const INITIAL: ThroughputView = {
  * the keystroke. Each write shows a banner that clears after
  * `THROUGHPUT_MESSAGE_DISMISS_MS`. */
 export function createThroughputPresenter(
-  admin: AdminPort,
+  ops: OpsPort,
   lifetime: AbortSignal,
 ): ThroughputPresenter {
   const store = createStore<ThroughputView>(INITIAL);
@@ -45,7 +45,7 @@ export function createThroughputPresenter(
   let loadStarted = false;
   // The port METHOD is called once, here, as the RxJS core does; only the
   // subscription to its result waits for the first subscriber.
-  const load$ = admin.getThroughput();
+  const load$ = ops.getThroughput();
 
   async function load(): Promise<void> {
     try {
@@ -80,7 +80,7 @@ export function createThroughputPresenter(
     let message: ThroughputMessage;
 
     try {
-      await once(admin.setThroughput(value), run.signal);
+      await once(ops.setThroughput(value), run.signal);
       message = { text: throughputSetMessage(value), isError: false };
     } catch (error) {
       if (error instanceof AbortError) {

@@ -16,8 +16,8 @@ import type {
 } from "@rtc/core-api";
 import { THROUGHPUT_SET_ERROR, throughputSetMessage } from "@rtc/core-logic";
 import {
-  type AdminPort,
   DEFAULT_THROUGHPUT,
+  type OpsPort,
   THROUGHPUT_DEBOUNCE_MS,
   THROUGHPUT_MESSAGE_DISMISS_MS,
 } from "@rtc/domain";
@@ -46,9 +46,9 @@ export class ThroughputPresenter implements ThroughputPresenterApi {
 
   private readonly setValue$ = new Subject<number>();
 
-  constructor(admin: AdminPort) {
+  constructor(ops: OpsPort) {
     // Initial load: loading until getThroughput resolves; default on error.
-    const load$: Observable<Patch> = admin.getThroughput().pipe(
+    const load$: Observable<Patch> = ops.getThroughput().pipe(
       map((value): Patch => {
         return { value, loading: false };
       }),
@@ -72,7 +72,7 @@ export class ThroughputPresenter implements ThroughputPresenterApi {
     const write$: Observable<Patch> = this.setValue$.pipe(
       debounceTime(THROUGHPUT_DEBOUNCE_MS),
       switchMap((value) => {
-        return admin.setThroughput(value).pipe(
+        return ops.setThroughput(value).pipe(
           map((): ThroughputMessage => {
             return {
               text: throughputSetMessage(value),

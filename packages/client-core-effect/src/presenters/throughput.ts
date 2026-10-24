@@ -7,8 +7,8 @@ import type {
 } from "@rtc/core-api";
 import { THROUGHPUT_SET_ERROR, throughputSetMessage } from "@rtc/core-logic";
 import {
-  type AdminPort,
   DEFAULT_THROUGHPUT,
+  type OpsPort,
   THROUGHPUT_DEBOUNCE_MS,
   THROUGHPUT_MESSAGE_DISMISS_MS,
 } from "@rtc/domain";
@@ -24,7 +24,7 @@ const INITIAL: ThroughputView = {
   message: null,
 };
 
-/** The admin throughput control — the async core's shape over a
+/** The ops throughput control — the async core's shape over a
  * `SyncRef`. The port METHOD is called once, here; the load is run
  * on the first subscriber and lands `{ value, loading: false }`, or the
  * default on failure. `setValue` echoes the value at once and restarts a
@@ -38,12 +38,12 @@ const INITIAL: ThroughputView = {
  * timer firing mid-close can start work in a closed scope. */
 export function createThroughputPresenter(
   parent: EffectHost,
-  admin: AdminPort,
+  ops: OpsPort,
 ): ThroughputPresenter {
   const host = createChildHost(parent);
   const ref = createSyncRef(INITIAL);
   const writes = createRunSlot(host, ref);
-  const load$ = admin.getThroughput();
+  const load$ = ops.getThroughput();
   let debounce: Fiber.RuntimeFiber<void> | null = null;
   let debounceToken: object | null = null;
   let loadStarted = false;
@@ -93,7 +93,7 @@ export function createThroughputPresenter(
     // `Effect.try`: a port that throws synchronously (the simulator's range
     // check) is a failed write, not a defect — the async core's banner.
     const written: Effect.Effect<ThroughputMessage> = Effect.try(() => {
-      return admin.setThroughput(value);
+      return ops.setThroughput(value);
     }).pipe(
       Effect.flatMap(rpc),
       Effect.as<ThroughputMessage>({

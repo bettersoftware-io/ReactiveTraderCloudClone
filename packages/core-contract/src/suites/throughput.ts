@@ -273,7 +273,7 @@ export function describeThroughputContract(
     });
 
     // Verified directly against the RxJS core (ruling 5): `write$`'s outer
-    // `switchMap` — from the debounced value to `admin.setThroughput(value)
+    // `switchMap` — from the debounced value to `ops.setThroughput(value)
     // .pipe(…, switchMap(message => concat(banner, dismissTimer)))` — is ONE
     // operator spanning both the write AND its banner's dismiss timer. A
     // newer debounced value unsubscribes the whole previous inner

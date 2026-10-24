@@ -2,7 +2,6 @@ import { defer, map, Observable, of } from "rxjs";
 
 import type { IWsAdapter, SessionStore, TransportPorts } from "@rtc/core-api";
 import {
-  type AdminPort,
   type AnalyticsPort,
   AnalyticsSimulator,
   type AuthPort,
@@ -37,6 +36,7 @@ import {
   type JarvisUsage,
   LatencySimulator,
   type MarketDataPort,
+  type OpsPort,
   type OrderPort,
   type PlaceOrderRequest,
   type PositionPort,
@@ -117,7 +117,7 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
     },
   });
   // Hoist so TelemetrySimulator can share the same ThroughputSimulator instance.
-  const admin = new ThroughputSimulator();
+  const ops = new ThroughputSimulator();
   // Perturbable telemetry simulators — fixed dev seeds (1-4) for reproducibility.
   const latency = new LatencySimulator(1);
   const errorRate = new ErrorRateSimulator(2);
@@ -136,7 +136,7 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
     instruments: new InstrumentSimulator(),
     dealers: new DealerSimulator(),
     workflow: new CreditRfqSimulator(DEALERS_CATALOG),
-    admin,
+    ops,
     preferences: deps.preferences,
     jarvis: new ScriptedJarvisAdapter({
       referenceData,
@@ -159,7 +159,7 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
     marketData,
     orders,
     positions: positionsSim,
-    telemetry: new TelemetrySimulator(admin, latency, errorRate),
+    telemetry: new TelemetrySimulator(ops, latency, errorRate),
     serviceHealth: topology,
     eventLog,
     sessions: new SessionSimulator(5),
@@ -746,7 +746,7 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
   };
 }
 
-function createAdminPort(ws: IWsAdapter): AdminPort {
+function createOpsPort(ws: IWsAdapter): OpsPort {
   return {
     getThroughput(): Observable<number> {
       return new Observable<number>((subscriber) => {
@@ -1118,7 +1118,7 @@ export function createWsRealPorts(
   const errorRate = new ErrorRateSimulator(2);
   const topology = new ServiceTopologySimulator(3);
   const eventLog = new EventLogSimulator(4);
-  // Standalone ThroughputSimulator for telemetry sampling; admin port is WS-backed.
+  // Standalone ThroughputSimulator for telemetry sampling; ops port is WS-backed.
   const throughput = new ThroughputSimulator();
   const referenceData = createReferenceDataPort(ws);
   const pricing = createPricingPort(ws);
@@ -1134,7 +1134,7 @@ export function createWsRealPorts(
     instruments: createInstrumentPort(ws),
     dealers: createDealerPort(ws),
     workflow: createWorkflowPort(ws),
-    admin: createAdminPort(ws),
+    ops: createOpsPort(ws),
     preferences: deps.preferences,
     jarvis: new WsJarvisAdapter(ws),
     jarvisUsage: new WsJarvisUsageAdapter(ws),

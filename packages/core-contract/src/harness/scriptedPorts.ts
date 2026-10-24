@@ -26,7 +26,6 @@ import type {
 } from "@rtc/core-api";
 import {
   type AccountFlowOutcome,
-  type AdminPort,
   type AnalyticsPort,
   type AnomalyDetectorConfig,
   type AuthOutcome,
@@ -59,6 +58,7 @@ import {
   type MarketDataPort,
   type MetricControl,
   type MetricSample,
+  type OpsPort,
   type OrderPort,
   type Perturbation,
   type PlaceOrderRequest,
@@ -89,14 +89,14 @@ import { countEveryPortStream, createTally } from "#/harness/portTally";
  * `colorScheme.prefersDark$`, the three FX singletons every core calls once
  * at construction, the three credit singletons every core calls once at
  * construction, the two equities singletons every core calls once at
- * construction, and the seven admin singletons every core calls once at
+ * construction, and the seven ops singletons every core calls once at
  * construction: telemetry's three streams, `serviceHealth.topology$`,
- * `eventLog.events$`, `sessions.sessions$`, and `admin.getThroughput`.
+ * `eventLog.events$`, `sessions.sessions$`, and `ops.getThroughput`.
  * `pricing.getPriceUpdates` is deliberately NOT here: a per-key stream is
  * opened per warm period through the use case's `defer`, in the RxJS core
  * as in the others. `marketData.quotes/candles/depth` are per-key and
  * `candleHistory`, `orders.place`, `orders.orders` per-invocation — none of
- * them under the constancy rule. `admin.setThroughput` is likewise NOT
+ * them under the constancy rule. `ops.setThroughput` is likewise NOT
  * here: it is called once per user edit, not once at construction. */
 export type PortMethodName =
   | Extract<keyof PreferencesPort, `${string}$`>
@@ -116,7 +116,7 @@ export type PortMethodName =
   | "serviceHealth.topology$"
   | "eventLog.events$"
   | "sessions.sessions$"
-  | "admin.getThroughput"
+  | "ops.getThroughput"
   | "auth.login"
   | "auth.register"
   | "auth.resendCode"
@@ -435,7 +435,7 @@ export interface ScriptedDriver {
   emitLogEvent(event: LogEvent): void;
   /** Push one sessions snapshot into `sessions.sessions$()`. */
   emitSessions(sessions: readonly SessionInfo[]): void;
-  /** How many `admin.getThroughput()` calls the core has subscribed and the
+  /** How many `ops.getThroughput()` calls the core has subscribed and the
    * driver has not yet settled. */
   pendingThroughputLoads(): number;
   /** Settle the OLDEST pending `getThroughput()` load with this value (next
@@ -444,7 +444,7 @@ export interface ScriptedDriver {
   /** Error the OLDEST pending `getThroughput()` load. A no-op when nothing
    * is pending. */
   failThroughputLoad(error: unknown): void;
-  /** Every value the core has subscribed to `admin.setThroughput(value)`
+  /** Every value the core has subscribed to `ops.setThroughput(value)`
    * and the driver has not settled, oldest first. */
   pendingThroughputWrites(): readonly number[];
   /** Settle the OLDEST pending `setThroughput` write (next `undefined` +
@@ -674,7 +674,7 @@ export function scriptPorts(
   // intended semantics: one shared stream.
   const events$ = merge(base.connectionEvents.events(), connection$);
 
-  // The core's own pushes (the Reconnect button, admin incident injection)
+  // The core's own pushes (the Reconnect button, ops incident injection)
   // land on the same Subject `emitConnection` drives — the harness owns the
   // merge `buildBrowserPorts` performs.
   const intentCalls = { reconnect: 0, injectIncident: 0 };
@@ -883,9 +883,9 @@ export function scriptPorts(
     },
   };
 
-  // The five admin ports are counted through the same Proxy `preferences`
+  // The five ops ports are counted through the same Proxy `preferences`
   // uses — one prefix per port — rather than a `recordCall` per method: each
-  // carries more than one method (telemetry, admin), so wrapping the whole
+  // carries more than one method (telemetry, ops), so wrapping the whole
   // port once is the same economy `preferences` gets.
   const telemetry = countCalls<TelemetryPort>(
     {
@@ -933,7 +933,7 @@ export function scriptPorts(
     "sessions.",
   );
 
-  const admin = countCalls<AdminPort>(
+  const ops = countCalls<OpsPort>(
     {
       getThroughput: (): Observable<number> => {
         return throughputLoads.open(undefined);
@@ -943,7 +943,7 @@ export function scriptPorts(
       },
     },
     calls,
-    "admin.",
+    "ops.",
   );
 
   const auth = countCalls<AuthPort>(
@@ -1096,7 +1096,7 @@ export function scriptPorts(
     serviceHealth,
     eventLog,
     sessions,
-    admin,
+    ops,
     metricControls,
   };
   const portTally = createTally();

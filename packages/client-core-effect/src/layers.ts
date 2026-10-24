@@ -494,7 +494,7 @@ const PositionsLive = presenterLayer(PositionsTag, (host, ports) => {
 // app-lifetime singleton whose connection events go out through
 // `ports.connectionIntents.injectIncident`.
 const ThroughputLive = presenterLayer(ThroughputTag, (host, ports) => {
-  return createThroughputPresenter(host, ports.admin);
+  return createThroughputPresenter(host, ports.ops);
 });
 
 const ThroughputMetricLive = presenterLayer(

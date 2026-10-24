@@ -39,7 +39,7 @@ describe("createSimulatorPorts", () => {
     expect(typeof ports.instruments.getInstruments).toBe("function");
     expect(typeof ports.dealers.getDealers).toBe("function");
     expect(typeof ports.workflow.events).toBe("function");
-    expect(typeof ports.admin.getThroughput).toBe("function");
+    expect(typeof ports.ops.getThroughput).toBe("function");
   });
   it("threads the ExecutionSimulator into the blotter so the store emits", async () => {
     const ports = createSimulatorPorts(createDeps());
@@ -213,7 +213,7 @@ describe("wsReal createRfq :: null-payload guard (line 472)", () => {
   const fakePreferences = {} as PreferencesPort;
 });
 
-describe("wsReal admin.getThroughput :: null-payload guard (line 625)", () => {
+describe("wsReal ops.getThroughput :: null-payload guard (line 625)", () => {
   it("throws when ack response has a null throughput payload", async () => {
     // Exercises the `if (value === undefined || value === null)` branch in
     // getThroughput (portFactory.ts:624-625). A server returning ack without a
@@ -224,9 +224,9 @@ describe("wsReal admin.getThroughput :: null-payload guard (line 625)", () => {
       auth: new AuthSimulator({}),
       sessionStore: new InMemorySessionStore(),
     });
-    const promise = firstValueFrom(ports.admin.getThroughput());
-    await awaitPendingRpc(ws, "admin.getThroughput");
-    ws.nextRpcResponse("admin.getThroughput", {
+    const promise = firstValueFrom(ports.ops.getThroughput());
+    await awaitPendingRpc(ws, "ops.getThroughput");
+    ws.nextRpcResponse("ops.getThroughput", {
       type: "ack",
       payload: null as unknown as number,
     });

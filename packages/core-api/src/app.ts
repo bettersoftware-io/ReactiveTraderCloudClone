@@ -1,5 +1,4 @@
 import type {
-  AdminPort,
   AnalyticsPort,
   AnomalyDetectorConfig,
   AuthPort,
@@ -12,6 +11,7 @@ import type {
   InstrumentPort,
   MarketDataPort,
   MetricControl,
+  OpsPort,
   OrderPort,
   PositionPort,
   PreferencesPort,
@@ -107,7 +107,7 @@ export interface AppPorts {
   instruments: InstrumentPort;
   dealers: DealerPort;
   workflow: WorkflowPort;
-  admin: AdminPort;
+  ops: OpsPort;
   preferences: PreferencesPort;
   /** J.A.R.V.I.S. chat backend — constructed internally by both port
    * factories, never platform-supplied. Simulator mode gets the scripted
@@ -117,7 +117,7 @@ export interface AppPorts {
   /** Rolling Jarvis usage/cost telemetry (Admin surface) — constructed
    * internally by both port factories, never platform-supplied, mirroring
    * `jarvis` above. Simulator mode gets an always-empty snapshot; WS-real
-   * mode streams `SERVER_MSG.ADMIN_JARVIS_USAGE` (`WsJarvisUsageAdapter`). */
+   * mode streams `SERVER_MSG.OPS_JARVIS_USAGE` (`WsJarvisUsageAdapter`). */
   jarvisUsage: JarvisUsagePort;
   connectionEvents: ConnectionEventsPort;
   /** The pushes into `connectionEvents` that originate INSIDE the app — the

@@ -219,7 +219,7 @@ function nativePresenters(
       rfqEvents$: rfqs.events$,
       equityFills$: ordersBlotter.fills$,
     }),
-    throughput: createThroughputPresenter(ports.admin, lifetime),
+    throughput: createThroughputPresenter(ports.ops, lifetime),
     throughputMetric: createMetricWindowPresenter(
       ports.telemetry.throughput$(),
       lifetime,

@@ -1,6 +1,6 @@
 import type { Observable } from "rxjs";
 
-export interface AdminPort {
+export interface OpsPort {
   getThroughput(): Observable<number>;
   setThroughput(value: number): Observable<void>;
 }

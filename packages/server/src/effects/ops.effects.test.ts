@@ -10,10 +10,10 @@ import {
   type Socket,
 } from "@rtc/ws-effects";
 
-import { adminEffects } from "./admin.effects.js";
 import type { Ctx } from "./context.js";
+import { opsEffects } from "./ops.effects.js";
 
-describe("admin effects", () => {
+describe("ops effects", () => {
   it("acks getThroughput with the throughput value", () => {
     const ctx = {
       throughput: {
@@ -116,6 +116,6 @@ function harness(ctx: Partial<Ctx>): Harness {
       sent.push(m);
     },
   };
-  createWsListener(combineEffects(...adminEffects), ctx as Ctx)(socket);
+  createWsListener(combineEffects(...opsEffects), ctx as Ctx)(socket);
   return { messages$, sent };
 }

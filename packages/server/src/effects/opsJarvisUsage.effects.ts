@@ -35,10 +35,10 @@ function buildPayload(
 
 /**
  * Pushes `ctx.usageMeter.snapshot$` (a `BehaviorSubject` — subscribing
- * always replays the current snapshot first, so a late-attaching admin
+ * always replays the current snapshot first, so a late-attaching ops
  * panel isn't stuck waiting for the next `recordTurn`/`recordTokens` call)
  * enriched with the budget-gate envelope (`ctx.jarvisGate`) to the
- * requesting connection as `SERVER_MSG.ADMIN_JARVIS_USAGE`.
+ * requesting connection as `SERVER_MSG.OPS_JARVIS_USAGE`.
  *
  * Two legs, `merge`d, each building the payload through the same
  * `buildPayload` helper so every emission pairs a snapshot with the gate
@@ -47,7 +47,7 @@ function buildPayload(
  * - `routine$`: `snapshot$` throttled exactly as before —
  *   `throttleTime(1_000, undefined, { leading: true, trailing: true })`,
  *   since `recordTokens` can fire many times a second during a busy
- *   Anthropic streaming turn and the admin dock only needs roughly-live
+ *   Anthropic streaming turn and the ops dock only needs roughly-live
  *   numbers — paired with `withLatestFrom(ctx.jarvisGate.state$)`, the gate
  *   level current at the moment THIS (possibly throttled/delayed) snapshot
  *   fires.
@@ -83,7 +83,7 @@ function buildPayload(
  * the card's reset line already renders `snapshot.windowEndMs`.
  */
 const jarvisUsage$: WsEffect<Ctx> = stream(
-  CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE,
+  CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE,
   (_payload, ctx) => {
     const routine$ = ctx.usageMeter.snapshot$.pipe(
       throttleTime(1_000, undefined, { leading: true, trailing: true }),
@@ -107,10 +107,10 @@ const jarvisUsage$: WsEffect<Ctx> = stream(
 
     return merge(routine$, transitions$).pipe(
       map((payload) => {
-        return out(SERVER_MSG.ADMIN_JARVIS_USAGE, payload);
+        return out(SERVER_MSG.OPS_JARVIS_USAGE, payload);
       }),
     );
   },
 );
 
-export const adminJarvisUsageEffects: WsEffect<Ctx>[] = [jarvisUsage$];
+export const opsJarvisUsageEffects: WsEffect<Ctx>[] = [jarvisUsage$];

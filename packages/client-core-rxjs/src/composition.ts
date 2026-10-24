@@ -801,7 +801,7 @@ export function createApp(givenPorts: AppPorts): App {
     dealers: new DealersPresenter(ports.dealers, disposed$),
     connection,
     rfqQuote: new RfqQuotePresenter(ports.pricing),
-    throughput: new ThroughputPresenter(ports.admin),
+    throughput: new ThroughputPresenter(ports.ops),
     themePreference: new ThemePreferencePresenter(
       ports.preferences,
       colorScheme,

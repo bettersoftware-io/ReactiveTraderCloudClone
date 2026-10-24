@@ -255,7 +255,7 @@ handlers + runtime media-query theme arm tabulated below.
 **App / domain / server coverage (machines + presenters + port contracts):**
 domain 95.93 % stmts / 96.42 % lines (169 tests); server 90.04 % / 98.94 %
 (54 tests); client app 90.85 % / 95.02 % (158 tests); contract tier 246 tests
-green. The AdminPort / PreferencesPort contracts and the execution/RFQ/throughput
+green. The OpsPort / PreferencesPort contracts and the execution/RFQ/throughput
 machines sit at ~100 % where applicable.
 
 ## Behaviour-sync coverage pass (2026-06-25)

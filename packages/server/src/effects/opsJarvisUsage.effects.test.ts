@@ -17,8 +17,8 @@ import {
   spentWindowUsd,
 } from "../services/jarvisGate.js";
 import { UsageMeter } from "../services/UsageMeter.js";
-import { adminJarvisUsageEffects } from "./adminJarvisUsage.effects.js";
 import type { Ctx } from "./context.js";
+import { opsJarvisUsageEffects } from "./opsJarvisUsage.effects.js";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -28,19 +28,19 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("admin jarvis usage effects", () => {
+describe("ops jarvis usage effects", () => {
   it("replays the current snapshot immediately on subscribe (leading emission)", () => {
     const initial = createSnapshot({ windowStartMs: 1 });
     const snapshot$ = new BehaviorSubject<JarvisUsageSnapshot>(initial);
     const { messages$, sent } = harness(snapshot$);
 
     messages$.next({
-      type: CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE,
+      type: CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE,
       payload: {},
     });
 
     expect(sent).toEqual([
-      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: ungatedPayload(initial) },
+      { type: SERVER_MSG.OPS_JARVIS_USAGE, payload: ungatedPayload(initial) },
     ]);
   });
 
@@ -50,7 +50,7 @@ describe("admin jarvis usage effects", () => {
     const { messages$, sent } = harness(snapshot$);
 
     messages$.next({
-      type: CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE,
+      type: CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE,
       payload: {},
     });
     expect(sent).toHaveLength(1);
@@ -67,8 +67,8 @@ describe("admin jarvis usage effects", () => {
     vi.advanceTimersByTime(1_000);
 
     expect(sent).toEqual([
-      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: ungatedPayload(initial) },
-      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: ungatedPayload(last) },
+      { type: SERVER_MSG.OPS_JARVIS_USAGE, payload: ungatedPayload(initial) },
+      { type: SERVER_MSG.OPS_JARVIS_USAGE, payload: ungatedPayload(last) },
     ]);
   });
 
@@ -78,7 +78,7 @@ describe("admin jarvis usage effects", () => {
     const { messages$, sent } = harness(snapshot$);
 
     messages$.next({
-      type: CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE,
+      type: CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE,
       payload: {},
     });
     vi.advanceTimersByTime(2_000);
@@ -87,8 +87,8 @@ describe("admin jarvis usage effects", () => {
     snapshot$.next(later);
 
     expect(sent).toEqual([
-      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: ungatedPayload(initial) },
-      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: ungatedPayload(later) },
+      { type: SERVER_MSG.OPS_JARVIS_USAGE, payload: ungatedPayload(initial) },
+      { type: SERVER_MSG.OPS_JARVIS_USAGE, payload: ungatedPayload(later) },
     ]);
   });
 
@@ -98,7 +98,7 @@ describe("admin jarvis usage effects", () => {
     const a = harness(snapshot$);
 
     a.messages$.next({
-      type: CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE,
+      type: CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE,
       payload: {},
     });
     vi.advanceTimersByTime(500);
@@ -107,15 +107,15 @@ describe("admin jarvis usage effects", () => {
     // immediate leading replay — throttleTime state is per-subscription.
     const b = harness(snapshot$);
     b.messages$.next({
-      type: CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE,
+      type: CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE,
       payload: {},
     });
 
     expect(a.sent).toEqual([
-      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: ungatedPayload(initial) },
+      { type: SERVER_MSG.OPS_JARVIS_USAGE, payload: ungatedPayload(initial) },
     ]);
     expect(b.sent).toEqual([
-      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: ungatedPayload(initial) },
+      { type: SERVER_MSG.OPS_JARVIS_USAGE, payload: ungatedPayload(initial) },
     ]);
   });
 
@@ -139,7 +139,7 @@ describe("admin jarvis usage effects", () => {
       const { messages$, sent } = harnessFor(meter, gate);
 
       messages$.next({
-        type: CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE,
+        type: CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE,
         payload: {},
       });
 
@@ -157,7 +157,7 @@ describe("admin jarvis usage effects", () => {
       const { messages$, sent } = harnessFor(meter, gate);
 
       messages$.next({
-        type: CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE,
+        type: CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE,
         payload: {},
       });
 
@@ -179,7 +179,7 @@ describe("admin jarvis usage effects", () => {
       const { messages$, sent } = harnessFor(meter, gate);
 
       messages$.next({
-        type: CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE,
+        type: CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE,
         payload: {},
       });
 
@@ -208,7 +208,7 @@ describe("admin jarvis usage effects", () => {
 
       // Opens the 1s throttle window: leading emission, zero spend, "none".
       messages$.next({
-        type: CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE,
+        type: CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE,
         payload: {},
       });
       expect(sent).toHaveLength(1);
@@ -293,7 +293,7 @@ function harnessFor(
       sent.push(m);
     },
   };
-  createWsListener(combineEffects(...adminJarvisUsageEffects), ctx)(socket);
+  createWsListener(combineEffects(...opsJarvisUsageEffects), ctx)(socket);
   return { messages$, sent };
 }
 

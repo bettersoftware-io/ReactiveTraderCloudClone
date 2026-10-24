@@ -31,11 +31,11 @@ The WebSocket server: a thin Node.js host that exposes the domain simulators to 
 | `fx.effects.ts` | `referenceData$`, `pricing$`, `blotter$`, `analytics$`, `executeTrade$`, `getPriceHistory$` (6) | FX: currency-pair reference data, price ticks, the trade blotter, position analytics, trade execution, and price history. |
 | `credit.effects.ts` | `instruments$`, `dealers$`, `workflow$`, `createRfq$`, `cancelRfq$`, `quote$`, `pass$`, `accept$` (8) | Credit RFQ: instrument/dealer catalogs plus the full create → quote → accept/pass/cancel workflow lifecycle. |
 | `equities.effects.ts` | `watchlist$`, `eqQuotes$`, `depth$`, `orders$`, `positions$`, `getCandles$`, `cancelOrder$`, `placeOrder$` (8) | Equities: watchlist, quotes, depth-of-book, the order and position books, candle history, and order placement/cancellation. |
-| `admin.effects.ts` | `getThroughput$`, `setThroughput$` (2) | Admin: the throughput setpoint RPC pair. |
+| `ops.effects.ts` | `getThroughput$`, `setThroughput$` (2) | Ops: the throughput setpoint RPC pair. |
 | `context.ts` | -- | Re-exports `ServiceContainer` as `Ctx`, the shared context type every effect above is generic over. |
 | `jarvis.effects.ts` | -- | The `JARVIS_*` effects: an availability responder always, and the per-connection chat session (scripted or Anthropic, by the caller's `JarvisBrain` preference) when a loop set is present. |
-| `adminJarvisUsage.effects.ts` | -- | Admin: the Jarvis usage/budget snapshot, read from `ctx.usageMeter`. |
-| `index.ts` | -- | `allEffects` (FX + Credit + Admin + Equities, plus `adminJarvisUsageEffects`) and `buildEffects(loops)`, which appends the Jarvis effects; `src/index.ts` combines the result. |
+| `opsJarvisUsage.effects.ts` | -- | Ops: the Jarvis usage/budget snapshot, read from `ctx.usageMeter`. |
+| `index.ts` | -- | `allEffects` (FX + Credit + Ops + Equities, plus `opsJarvisUsageEffects`) and `buildEffects(loops)`, which appends the Jarvis effects; `src/index.ts` combines the result. |
 
 (`*.effects.test.ts` siblings and `index.test.ts` are test files, omitted from the inventory above.)
 

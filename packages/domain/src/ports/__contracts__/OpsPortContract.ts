@@ -1,9 +1,9 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { AdminPort } from "../adminPort.js";
+import type { OpsPort } from "../opsPort.js";
 
-export interface AdminDriver {
+export interface OpsDriver {
   /** Seed the value that the next getThroughput() should resolve to. */
   primeGet(value: number): void;
   /** Resolve the pending (or seeded) getThroughput() exchange. */
@@ -12,17 +12,17 @@ export interface AdminDriver {
   ackSet(): Promise<void>;
 }
 
-export interface AdminHarness {
-  port: AdminPort;
-  driver: AdminDriver;
+export interface OpsHarness {
+  port: OpsPort;
+  driver: OpsDriver;
   teardown: () => void;
 }
 
-export function describeAdminPortContract(
+export function describeOpsPortContract(
   label: string,
-  makeHarness: () => AdminHarness,
+  makeHarness: () => OpsHarness,
 ): void {
-  describe(`${label} :: AdminPort contract`, () => {
+  describe(`${label} :: OpsPort contract`, () => {
     it("getThroughput emits the current value then completes", async () => {
       const { port, driver, teardown } = makeHarness();
 

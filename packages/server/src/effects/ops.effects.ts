@@ -30,4 +30,4 @@ const setThroughput$: WsEffect<Ctx> = rpc(
   },
 );
 
-export const adminEffects: WsEffect<Ctx>[] = [getThroughput$, setThroughput$];
+export const opsEffects: WsEffect<Ctx>[] = [getThroughput$, setThroughput$];

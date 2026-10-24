@@ -37,7 +37,7 @@ Every interface, its declaring file, and the shape it commits adapters to. All 1
 
 | File | Port interface | Shape |
 |---|---|---|
-| `adminPort.ts` | `AdminPort` | `getThroughput()` / `setThroughput(value)` — admin-set throughput setpoint |
+| `opsPort.ts` | `OpsPort` | `getThroughput()` / `setThroughput(value)` — ops-set throughput setpoint |
 | `analyticsPort.ts` | `AnalyticsPort` | `getAnalytics(currency)` → `PositionUpdates` |
 | `authPort.ts` | `AuthPort` (+ `AuthOutcome`) | `login(username, password)` → `AuthOutcome` — the credential exchange behind sign-in |
 | `blotterPort.ts` | `BlotterPort` | `getTradeStream()` → `readonly Trade[]` |
@@ -85,7 +85,7 @@ One class per port (plus the metric simulators), each a production `implements` 
 | `ServiceTopologySimulator.ts` | `ServiceHealthPort`, `MetricControl` — service-topology graph with perturbable node health |
 | `SessionSimulator.ts` | `SessionsPort` — active-session list |
 | `TelemetrySimulator.ts` | `TelemetryPort` — wraps `ThroughputSimulator` + `LatencySimulator` + `ErrorRateSimulator` behind one facade, `mulberry32`-seeded |
-| `ThroughputSimulator.ts` | `AdminPort` — in-memory admin throughput setpoint; rejects non-finite or out-of-`[0,1000]` values by throwing |
+| `ThroughputSimulator.ts` | `OpsPort` — in-memory ops throughput setpoint; rejects non-finite or out-of-`[0,1000]` values by throwing |
 | `TradeStoreSimulator.ts` | `BlotterPort` — FX trade blotter stream |
 | `gbm.ts` | Helper — `gbmStep()` (one geometric-Brownian-motion-ish price step) and `aggregateCandle()`; re-exports `mulberry32` |
 | `metricWalk.ts` | Helper — `METRIC_TICK_MS` cadence constant + pre-seeded rolling-window sample generation shared by the telemetry simulators |

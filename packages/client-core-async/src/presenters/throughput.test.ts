@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ThroughputPresenter, ThroughputView } from "@rtc/core-api";
 import { THROUGHPUT_SET_ERROR, throughputSetMessage } from "@rtc/core-logic";
 import {
-  type AdminPort,
   DEFAULT_THROUGHPUT,
+  type OpsPort,
   THROUGHPUT_DEBOUNCE_MS,
   THROUGHPUT_MESSAGE_DISMISS_MS,
 } from "@rtc/domain";
@@ -22,15 +22,15 @@ describe("createThroughputPresenter (async)", () => {
   });
 
   it("calls getThroughput() once at construction but subscribes it only on the first subscriber", () => {
-    const admin = createScriptedAdmin();
-    createThroughputPresenter(admin.port, new AbortController().signal);
+    const ops = createScriptedOps();
+    createThroughputPresenter(ops.port, new AbortController().signal);
 
-    expect(admin.loadCalls()).toBe(1);
-    expect(admin.load.observed).toBe(false);
+    expect(ops.loadCalls()).toBe(1);
+    expect(ops.load.observed).toBe(false);
   });
 
   it("starts loading, lands the loaded value, and falls back to the default when the load fails", async () => {
-    const ok = createScriptedAdmin();
+    const ok = createScriptedOps();
     const loaded = watch(
       createThroughputPresenter(ok.port, new AbortController().signal),
     );
@@ -47,7 +47,7 @@ describe("createThroughputPresenter (async)", () => {
       message: null,
     });
 
-    const bad = createScriptedAdmin();
+    const bad = createScriptedOps();
     const failed = watch(
       createThroughputPresenter(bad.port, new AbortController().signal),
     );
@@ -61,9 +61,9 @@ describe("createThroughputPresenter (async)", () => {
   });
 
   it("echoes setValue at once, writes nothing before the debounce, and writes only the LAST of a burst", async () => {
-    const admin = createScriptedAdmin();
+    const ops = createScriptedOps();
     const presenter = createThroughputPresenter(
-      admin.port,
+      ops.port,
       new AbortController().signal,
     );
     const view = watch(presenter);
@@ -73,21 +73,21 @@ describe("createThroughputPresenter (async)", () => {
 
     expect(view.last().value).toBe(300);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS - 1);
-    expect(admin.writes()).toEqual([]);
+    expect(ops.writes()).toEqual([]);
     await vi.advanceTimersByTimeAsync(1);
-    expect(admin.writes()).toEqual([300]);
+    expect(ops.writes()).toEqual([300]);
   });
 
   it("shows the success banner and clears it exactly THROUGHPUT_MESSAGE_DISMISS_MS later", async () => {
-    const admin = createScriptedAdmin();
+    const ops = createScriptedOps();
     const presenter = createThroughputPresenter(
-      admin.port,
+      ops.port,
       new AbortController().signal,
     );
     const view = watch(presenter);
     presenter.setValue(400);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
-    admin.resolveWrite(0);
+    ops.resolveWrite(0);
     await vi.advanceTimersByTimeAsync(0);
 
     expect(view.last().message).toEqual({
@@ -101,15 +101,15 @@ describe("createThroughputPresenter (async)", () => {
   });
 
   it("shows the error banner when the write fails", async () => {
-    const admin = createScriptedAdmin();
+    const ops = createScriptedOps();
     const presenter = createThroughputPresenter(
-      admin.port,
+      ops.port,
       new AbortController().signal,
     );
     const view = watch(presenter);
     presenter.setValue(400);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
-    admin.failWrite(0);
+    ops.failWrite(0);
     await vi.advanceTimersByTimeAsync(0);
 
     expect(view.last().message).toEqual({
@@ -119,9 +119,9 @@ describe("createThroughputPresenter (async)", () => {
   });
 
   it("supersedes at the DEBOUNCE, not the keystroke: a new setValue leaves write b in flight until its own debounce fires", async () => {
-    const admin = createScriptedAdmin();
+    const ops = createScriptedOps();
     const presenter = createThroughputPresenter(
-      admin.port,
+      ops.port,
       new AbortController().signal,
     );
     const view = watch(presenter);
@@ -129,26 +129,26 @@ describe("createThroughputPresenter (async)", () => {
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
     presenter.setValue(600);
 
-    expect(admin.writeObserved(0)).toBe(true);
+    expect(ops.writeObserved(0)).toBe(true);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
-    expect(admin.writeObserved(0)).toBe(false);
-    admin.resolveWrite(0);
+    expect(ops.writeObserved(0)).toBe(false);
+    ops.resolveWrite(0);
     await vi.advanceTimersByTimeAsync(0);
     expect(view.last().message).toBeNull();
-    expect(admin.writes()).toEqual([500, 600]);
+    expect(ops.writes()).toEqual([500, 600]);
   });
 
   it("a write resolved before the next debounce shows its banner, and the next debounce drops that banner's dismiss timer with it", async () => {
-    const admin = createScriptedAdmin();
+    const ops = createScriptedOps();
     const presenter = createThroughputPresenter(
-      admin.port,
+      ops.port,
       new AbortController().signal,
     );
     const view = watch(presenter);
     presenter.setValue(500);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
     presenter.setValue(600);
-    admin.resolveWrite(0);
+    ops.resolveWrite(0);
     await vi.advanceTimersByTimeAsync(0);
     expect(view.last().message).toEqual({
       text: throughputSetMessage(500),
@@ -165,9 +165,9 @@ describe("createThroughputPresenter (async)", () => {
   });
 
   it("after the lifetime aborts, setValue neither writes nor echoes", async () => {
-    const admin = createScriptedAdmin();
+    const ops = createScriptedOps();
     const lifetime = new AbortController();
-    const presenter = createThroughputPresenter(admin.port, lifetime.signal);
+    const presenter = createThroughputPresenter(ops.port, lifetime.signal);
     const view = watch(presenter);
     presenter.setValue(700);
     lifetime.abort();
@@ -175,30 +175,30 @@ describe("createThroughputPresenter (async)", () => {
     presenter.setValue(800);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
 
-    expect(admin.writes()).toEqual([]);
+    expect(ops.writes()).toEqual([]);
     expect(view.last().value).toBe(700);
   });
 
   it("a lifetime abort releases an in-flight write, and its late resolution shows no banner", async () => {
-    const admin = createScriptedAdmin();
+    const ops = createScriptedOps();
     const lifetime = new AbortController();
-    const presenter = createThroughputPresenter(admin.port, lifetime.signal);
+    const presenter = createThroughputPresenter(ops.port, lifetime.signal);
     const view = watch(presenter);
     presenter.setValue(700);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
-    expect(admin.writeObserved(0)).toBe(true);
+    expect(ops.writeObserved(0)).toBe(true);
 
     lifetime.abort();
-    expect(admin.writeObserved(0)).toBe(false);
-    admin.resolveWrite(0);
+    expect(ops.writeObserved(0)).toBe(false);
+    ops.resolveWrite(0);
     await vi.advanceTimersByTimeAsync(0);
     expect(view.last().message).toBeNull();
   });
 
   it("a lifetime abort mid-debounce leaves no timer behind", async () => {
-    const admin = createScriptedAdmin();
+    const ops = createScriptedOps();
     const lifetime = new AbortController();
-    const presenter = createThroughputPresenter(admin.port, lifetime.signal);
+    const presenter = createThroughputPresenter(ops.port, lifetime.signal);
     presenter.setValue(700);
     expect(vi.getTimerCount()).toBe(1);
 
@@ -235,8 +235,8 @@ interface PendingWrite {
   readonly reply: Subject<void>;
 }
 
-interface ScriptedAdmin {
-  readonly port: AdminPort;
+interface ScriptedOps {
+  readonly port: OpsPort;
   readonly load: Subject<number>;
   loadCalls(): number;
   writes(): readonly number[];
@@ -245,7 +245,7 @@ interface ScriptedAdmin {
   failWrite(index: number): void;
 }
 
-function createScriptedAdmin(): ScriptedAdmin {
+function createScriptedOps(): ScriptedOps {
   const load = new Subject<number>();
   let loadCalls = 0;
   const writes: PendingWrite[] = [];
