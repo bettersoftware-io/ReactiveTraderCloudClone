@@ -276,9 +276,10 @@ which either is missing from the bundle ([`DEPLOY.md`](DEPLOY.md#deploying)).
 
 One team setting serves CI rather than the clients: a **Turborepo CLI OIDC
 policy** (Settings → Build and Deployment → OIDC Policies for CLI Access) that
-lets this repository's `ci.yml` trade its GitHub OIDC token for a short-lived,
-cache-only Turborepo token. It stores nothing; deleting it turns the remote
-cache off ([ADR-008](adr/ADR-008-ci-turbo-remote-cache.md)).
+lets workflows in this repository trade their GitHub OIDC token for a
+short-lived, cache-only Turborepo token. It is scoped to the repository, not
+to a workflow: only `ci.yml`'s `checks` job is granted `id-token: write`, so
+only it can ask. It stores nothing; deleting it turns the remote cache off ([ADR-008](adr/ADR-008-ci-turbo-remote-cache.md)).
 
 ### 5.5 GitHub repository
 
