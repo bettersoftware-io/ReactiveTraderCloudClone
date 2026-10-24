@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ACCOUNT_ACTION_PROGRESS_LABELS,
+  ACCOUNT_ADMIN_COLUMNS,
   ACCOUNT_ADMIN_COPY,
   describeAccountAdminRefusal,
   describePendingCount,
+  formatJoinedDate,
 } from "#/presenters/accountAdminCopy";
 
 describe("ACCOUNT_ADMIN_COPY", () => {
@@ -13,6 +16,53 @@ describe("ACCOUNT_ADMIN_COPY", () => {
     expect(ACCOUNT_ADMIN_COPY.forbidden).toBe("Administrator access required");
     expect(ACCOUNT_ADMIN_COPY.confirmDelete).toBe("Delete this account?");
     expect(ACCOUNT_ADMIN_COPY.you).toBe("You");
+  });
+});
+
+describe("ACCOUNT_ADMIN_COLUMNS", () => {
+  it("names the four columns", () => {
+    expect(ACCOUNT_ADMIN_COLUMNS).toEqual({
+      name: "Name",
+      email: "Email",
+      joined: "Joined",
+      status: "Status",
+    });
+  });
+});
+
+describe("ACCOUNT_ACTION_PROGRESS_LABELS", () => {
+  it("reads each action in progress", () => {
+    expect(ACCOUNT_ACTION_PROGRESS_LABELS).toEqual({
+      approve: "Approving…",
+      block: "Blocking…",
+      unblock: "Unblocking…",
+      rename: "Renaming…",
+      delete: "Deleting…",
+    });
+  });
+});
+
+describe("formatJoinedDate", () => {
+  it("reads the UTC day as YYYY-MM-DD", () => {
+    expect(formatJoinedDate(1_700_000_000_000)).toBe("2023-11-14");
+  });
+
+  it("keeps the UTC day at the edges of a day, whatever the local zone", () => {
+    expect(formatJoinedDate(Date.UTC(2026, 0, 5, 0, 0, 0, 0))).toBe(
+      "2026-01-05",
+    );
+    expect(formatJoinedDate(Date.UTC(2026, 0, 5, 23, 59, 59, 999))).toBe(
+      "2026-01-05",
+    );
+  });
+
+  it("pads a single-digit month and day", () => {
+    expect(formatJoinedDate(Date.UTC(2026, 2, 7))).toBe("2026-03-07");
+  });
+
+  it("reads an instant no Date can hold as an empty cell", () => {
+    expect(formatJoinedDate(Number.NaN)).toBe("");
+    expect(formatJoinedDate(1e20)).toBe("");
   });
 });
 

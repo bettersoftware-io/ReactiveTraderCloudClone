@@ -31,9 +31,41 @@ export const ACCOUNT_STATUS_LABELS: Readonly<Record<AccountStatus, string>> = {
   blocked: "Blocked",
 };
 
+/** The mono column labels above the Users panel's rows. */
+export const ACCOUNT_ADMIN_COLUMNS = {
+  name: "Name",
+  email: "Email",
+  joined: "Joined",
+  status: "Status",
+} as const;
+
+/** What the chosen button reads while its request runs. */
+export const ACCOUNT_ACTION_PROGRESS_LABELS: Readonly<
+  Record<AccountActionKind, string>
+> = {
+  approve: "Approving…",
+  block: "Blocking…",
+  unblock: "Unblocking…",
+  rename: "Renaming…",
+  delete: "Deleting…",
+};
+
 /** The pending line beside the panel title. */
 export function describePendingCount(count: number): string {
   return `${count} pending`;
+}
+
+/** The day an account joined, `YYYY-MM-DD` in UTC, so every client and
+ * every time zone shows one date for one account. An instant no `Date` can
+ * hold reads as an empty cell. */
+export function formatJoinedDate(ms: number): string {
+  const date = new Date(ms);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString().slice(0, 10);
 }
 
 /** The line for a refused admin call. Admin refusals carry no detail beyond
