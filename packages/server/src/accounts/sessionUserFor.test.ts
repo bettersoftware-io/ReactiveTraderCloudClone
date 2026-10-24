@@ -13,6 +13,7 @@ describe("sessionUserFor", () => {
       email: "ann@desk.io",
       desk: "Guest · Cloud",
       clearance: "LEVEL 2 · DESK",
+      access: "user",
     });
   });
 
@@ -21,6 +22,7 @@ describe("sessionUserFor", () => {
 
     expect(user.role).toBe("Desk Administrator");
     expect(user.clearance).toBe("LEVEL 5 · ADMIN");
+    expect(user.access).toBe("admin");
   });
 });
 

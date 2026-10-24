@@ -411,6 +411,7 @@ const DEFAULT_AUTH_USER: SessionUser = {
   email: "a.stark@reactivetrader.io",
   desk: "G10 Spot · London",
   clearance: "LEVEL 4 · FULL",
+  access: "user",
 };
 
 /** The default auth state a fresh World reports: authenticated, unlocked, no error. */

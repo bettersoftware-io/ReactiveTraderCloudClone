@@ -22,5 +22,6 @@ export function sessionUserFor(account: AccountRecord): SessionUserDto {
     email: account.email,
     desk: "Guest · Cloud",
     clearance: admin ? "LEVEL 5 · ADMIN" : "LEVEL 2 · DESK",
+    access: account.access,
   };
 }

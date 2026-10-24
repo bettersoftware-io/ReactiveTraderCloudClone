@@ -26,6 +26,7 @@ function fakeViewModel(logout: () => void): ViewModel {
             email: "",
             desk: "",
             clearance: "",
+            access: "user",
           },
         },
         login: noop,

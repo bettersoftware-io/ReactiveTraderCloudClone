@@ -635,4 +635,5 @@ const USER: SessionUser = {
   email: "a.stark@reactivetrader.io",
   desk: "G10 Spot · London",
   clearance: "LEVEL 4 · FULL",
+  access: "user",
 };

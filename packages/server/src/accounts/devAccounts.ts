@@ -1,6 +1,4 @@
-import type { AccessLevel } from "@rtc/domain";
-
-import type { AccountStatus } from "./AccountDirectory.js";
+import type { AccessLevel, AccountStatus } from "@rtc/domain";
 
 export interface DevAccountSeed {
   readonly id: string;

@@ -28,6 +28,7 @@ const E2E_STORED_SESSION = {
     email: "demo@reactivetrader.io",
     desk: "Demo · Cloud",
     clearance: "LEVEL 1 · VIEW",
+    access: "user",
   },
   // Year 2100 — far enough out that AuthPresenter.resume() never treats it as
   // expired during a test run.

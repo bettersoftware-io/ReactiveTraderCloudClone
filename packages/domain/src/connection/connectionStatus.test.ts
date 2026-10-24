@@ -7,6 +7,15 @@ import {
 } from "./connectionStatus.js";
 
 describe("nextConnectionStatus", () => {
+  it.each(Object.values(ConnectionStatus))(
+    "leaves %s unchanged on sessionEnded",
+    (status: ConnectionStatus) => {
+      expect(nextConnectionStatus(status, { type: "sessionEnded" })).toBe(
+        status,
+      );
+    },
+  );
+
   it("CONNECTING -> CONNECTED on gatewayConnected", () => {
     expect(
       nextConnectionStatus(ConnectionStatus.CONNECTING, {

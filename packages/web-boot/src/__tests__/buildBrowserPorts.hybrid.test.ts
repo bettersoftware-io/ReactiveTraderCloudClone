@@ -208,6 +208,7 @@ function seedSession(token: string): void {
       email: "demo@reactivetrader.io",
       desk: "Demo · Cloud",
       clearance: "LEVEL 1 · VIEW",
+      access: "user",
     },
   };
   localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
@@ -225,6 +226,7 @@ function createLoginResponse(): Response {
       email: "ada@example.com",
       desk: "FX",
       clearance: "standard",
+      access: "user",
     },
     exp: Date.now() + 60_000,
   };

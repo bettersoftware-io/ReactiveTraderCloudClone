@@ -76,6 +76,7 @@ const DEMO_USER: SessionUser = {
   email: "demo@example.com",
   desk: "FX",
   clearance: "standard",
+  access: "user",
 };
 
 /** Deterministic fake AuthPort — resolves synchronously so `login`'s effect

@@ -11,6 +11,7 @@ export {
   normalizeDisplayName,
   normalizeEmail,
 } from "./auth/accountInput.js";
+export type { AccountStatus } from "./auth/accountStatus.js";
 export { DEFAULT_AUTH_TTL_MS } from "./auth/authTtl.js";
 export {
   type DemoAccount,
@@ -212,6 +213,15 @@ export {
   type PanelTransform,
   type PanelViz,
 } from "./jarvis/panelSpec.js";
+export {
+  type AccountActionOutcome,
+  type AccountAdminAction,
+  type AccountAdminPort,
+  type AccountAdminRefusal,
+  type AccountListOutcome,
+  type AccountSummary,
+  createUnavailableAccountAdmin,
+} from "./ports/accountAdminPort.js";
 export type { AnalyticsPort } from "./ports/analyticsPort.js";
 export type {
   AccountFlowFailure,

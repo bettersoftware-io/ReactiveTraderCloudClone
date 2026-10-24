@@ -367,6 +367,7 @@ function createUser(username: string): SessionUser {
     email: `${username}@example.com`,
     desk: "FX",
     clearance: "standard",
+    access: "user",
   };
 }
 

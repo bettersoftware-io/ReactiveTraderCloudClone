@@ -18,6 +18,7 @@ describe("HttpAuthAdapter", () => {
         email: "ada@example.com",
         desk: "FX",
         clearance: "standard",
+        access: "user",
       },
       exp: 1_800_000_000,
     };
@@ -48,6 +49,7 @@ describe("HttpAuthAdapter", () => {
         email: "ada@example.com",
         desk: "FX",
         clearance: "standard",
+        access: "user",
       },
       exp: 1_800_000_000,
     };

@@ -9,6 +9,36 @@ describe("protocol messages", () => {
     expect(SERVER_MSG.PRICE_TICK).toBe("stream.priceTick");
   });
 
+  it("includes the twelve account-admin wire names", () => {
+    expect([
+      CLIENT_MSG.ADMIN_ACCOUNTS_LIST,
+      CLIENT_MSG.ADMIN_ACCOUNTS_APPROVE,
+      CLIENT_MSG.ADMIN_ACCOUNTS_BLOCK,
+      CLIENT_MSG.ADMIN_ACCOUNTS_UNBLOCK,
+      CLIENT_MSG.ADMIN_ACCOUNTS_RENAME,
+      CLIENT_MSG.ADMIN_ACCOUNTS_DELETE,
+      SERVER_MSG.ADMIN_ACCOUNTS_LIST_RESPONSE,
+      SERVER_MSG.ADMIN_ACCOUNTS_APPROVE_RESPONSE,
+      SERVER_MSG.ADMIN_ACCOUNTS_BLOCK_RESPONSE,
+      SERVER_MSG.ADMIN_ACCOUNTS_UNBLOCK_RESPONSE,
+      SERVER_MSG.ADMIN_ACCOUNTS_RENAME_RESPONSE,
+      SERVER_MSG.ADMIN_ACCOUNTS_DELETE_RESPONSE,
+    ]).toEqual([
+      "admin.accounts.list",
+      "admin.accounts.approve",
+      "admin.accounts.block",
+      "admin.accounts.unblock",
+      "admin.accounts.rename",
+      "admin.accounts.delete",
+      "admin.accounts.list.response",
+      "admin.accounts.approve.response",
+      "admin.accounts.block.response",
+      "admin.accounts.unblock.response",
+      "admin.accounts.rename.response",
+      "admin.accounts.delete.response",
+    ]);
+  });
+
   it("includes the equities wire names", () => {
     expect(CLIENT_MSG.SUBSCRIBE_WATCHLIST).toBe("subscribe.watchlist");
     expect(CLIENT_MSG.PLACE_ORDER).toBe("rpc.placeOrder");

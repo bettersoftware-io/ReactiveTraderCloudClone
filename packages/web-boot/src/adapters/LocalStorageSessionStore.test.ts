@@ -103,6 +103,7 @@ const testUser: SessionUser = {
   email: "demo@example.com",
   desk: "FX",
   clearance: "standard",
+  access: "user",
 };
 
 const testSession: StoredSession = {

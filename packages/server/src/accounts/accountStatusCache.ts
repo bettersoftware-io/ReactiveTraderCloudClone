@@ -1,4 +1,6 @@
-import type { AccountDirectory, AccountStatus } from "./AccountDirectory.js";
+import type { AccountStatus } from "@rtc/domain";
+
+import type { AccountDirectory } from "./AccountDirectory.js";
 
 export type CachedStatus = AccountStatus | "missing" | "unavailable";
 

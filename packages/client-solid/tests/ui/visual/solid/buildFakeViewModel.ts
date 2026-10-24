@@ -134,6 +134,7 @@ const DEMO_USER: SessionUser = {
   email: "a.stark@reactivetrader.io",
   desk: "G10 Spot · London",
   clearance: "LEVEL 4 · FULL",
+  access: "user",
 };
 
 /** Build a static, accessor-based ViewModel from a fixture snapshot — the

@@ -1,7 +1,4 @@
-import type { AccessLevel } from "@rtc/domain";
-
-/** Derived, never stored (spec §5.1). */
-export type AccountStatus = "unconfirmed" | "pending" | "active" | "blocked";
+import type { AccessLevel, AccountStatus } from "@rtc/domain";
 
 export interface AccountRecord {
   readonly id: string;

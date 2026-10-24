@@ -123,6 +123,7 @@ describe("HeaderChrome", () => {
       id: "TRD-0042",
       desk: "G10 Spot · London",
       clearance: "LEVEL 4 · FULL",
+      access: "user",
     });
   });
 

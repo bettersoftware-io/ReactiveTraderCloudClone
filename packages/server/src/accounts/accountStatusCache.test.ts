@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { AccountLookup, AccountStatus } from "#/accounts/AccountDirectory";
+import type { AccountStatus } from "@rtc/domain";
+
+import type { AccountLookup } from "#/accounts/AccountDirectory";
 import { createAccountStatusCache } from "#/accounts/accountStatusCache";
 
 describe("accountStatusCache", () => {
