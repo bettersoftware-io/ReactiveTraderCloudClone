@@ -18,10 +18,12 @@ import type {
 
 import { authDepsPrimitives } from "#/bridge/authDepsPrimitives";
 import { cutPortsOnAbort } from "#/bridge/cutPortsOnAbort";
-import { peek } from "#/bridge/in";
+import { peek, relay } from "#/bridge/in";
 import { gateTransportOnAuth } from "#/bridge/transportGate";
 import { createCommands } from "#/commands";
+import { spawn } from "#/kernel/spawn";
 import { createAccountAccessMachine } from "#/machines/accountAccess";
+import { createAccountActionMachine } from "#/machines/accountAction";
 import { createBootMachine } from "#/machines/boot";
 import { createEqDrawingsMachine } from "#/machines/eqDrawings";
 import { createEqWorkspaceMachine } from "#/machines/eqWorkspace";
@@ -34,6 +36,7 @@ import { createRowHighlightMachine } from "#/machines/rowHighlight";
 import { createStaleFlagMachine } from "#/machines/staleFlag";
 import { createTileExecutionMachine } from "#/machines/tileExecution";
 import { createWorkspaceNavMachine } from "#/machines/workspaceNav";
+import { createAccountListPresenter } from "#/presenters/accountList";
 import { createBlotterPresenter } from "#/presenters/blotter";
 import { createCandleSeriesPresenter } from "#/presenters/candleSeries";
 import { createConnectionPresenter } from "#/presenters/connection";
@@ -131,10 +134,35 @@ function nativePresenters(
   lifetime: AbortSignal,
 ): NativePresenters {
   const { preferences } = ports;
+  // The auth presenter is built first: the nav and the account list fold
+  // the signed-in user.
+  const auth = createAuthPresenter(
+    createAuthDeps(ports, authDepsPrimitives),
+    lifetime,
+  );
   // Hoisted: `priceStream` and `priceHistory` gate their conflation on it —
   // the RxJS core's order.
   const powerSaver = createPowerSaverPresenter(preferences);
-  const connection = createConnectionPresenter(ports.connectionEvents);
+  // ONE `events()` call serves both the status fold and the session end.
+  const connectionEvents = ports.connectionEvents.events();
+  const connection = createConnectionPresenter({
+    events: () => {
+      return connectionEvents;
+    },
+  });
+  // The server ended this session (a 4401 close): sign out; the transport
+  // gate then disconnects. A failing event source is surfaced by
+  // `connection.status$`; this listener swallows it so it is not unhandled.
+  void spawn(
+    () => {
+      return relay(connectionEvents, lifetime, (event) => {
+        if (event.type === "sessionEnded") {
+          auth.endSession();
+        }
+      });
+    },
+    () => {},
+  );
   const priceStream = createPriceStreamPresenter(
     ports.pricing,
     powerSaver.isCalm$,
@@ -203,12 +231,14 @@ function nativePresenters(
     positions: createPositionsPresenter(ports.positions, lifetime),
     eqWorkspace,
     eqDrawings: createEqDrawingsMachine(lifetime),
-    workspaceNav: createWorkspaceNavMachine(lifetime),
-    bootGate: createBootGatePresenter(ports.bootSplash?.shouldPlay() ?? true),
-    auth: createAuthPresenter(
-      createAuthDeps(ports, authDepsPrimitives),
+    workspaceNav: createWorkspaceNavMachine(auth.state$, lifetime),
+    accountList: createAccountListPresenter(
+      ports.accountAdmin,
+      auth.state$,
       lifetime,
     ),
+    bootGate: createBootGatePresenter(ports.bootSplash?.shouldPlay() ?? true),
+    auth,
     animationDirector: createAnimationDirector({
       pairs$: currencyPairs.pairs$,
       priceFor: (pair: CurrencyPair) => {
@@ -370,6 +400,9 @@ function nativeMachines(presenters: Presenters): MachineFactories {
     },
     layout: (tab: WorkspaceTab) => {
       return presenters.layoutFor(tab);
+    },
+    accountAction: (accountId: string) => {
+      return createAccountActionMachine(accountId, presenters.accountList);
     },
     accountAccess: () => {
       return createAccountAccessMachine(presenters.auth.accounts);

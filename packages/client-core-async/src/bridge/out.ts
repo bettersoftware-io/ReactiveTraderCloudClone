@@ -75,17 +75,24 @@ export function promiseToStream<T>(
 /** A Store as a `StateStream`. `onSubscribe`, when given, runs each time
  * the stream goes from zero subscribers to one (`@rx-state/core` shares the
  * source) — how a presenter starts a lazy load on its first subscriber, as
- * the RxJS core's `state()` does. */
+ * the RxJS core's `state()` does. `onRelease` runs when that shared
+ * subscription ends (the last subscriber leaves), for a presenter that
+ * counts whether anyone is attached. */
 export function storeToStateStream<S>(
   store: Store<S>,
   onSubscribe: () => void = () => {},
+  onRelease: () => void = () => {},
 ): StateStream<S> {
   const changes = new Observable<S>((subscriber) => {
     onSubscribe();
-
-    return store.subscribe((value) => {
+    const release = store.subscribe((value) => {
       subscriber.next(value);
     });
+
+    return () => {
+      release();
+      onRelease();
+    };
   });
   return state(changes, store.get());
 }
