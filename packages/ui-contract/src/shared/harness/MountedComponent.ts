@@ -1,4 +1,6 @@
 import type {
+  AccountActionState,
+  AccountListState,
   AnimationIntent,
   AuthViewState,
   IncidentKind,
@@ -41,6 +43,12 @@ export interface PageContext<P> {
   setThroughputView(patch: Partial<ThroughputView>): void;
   /** Advance the OrderTicket lifecycle by emitting one EquityOrder into place(). */
   pushOrderLifecycle(order: EquityOrder): void;
+  /** Patch the account list (useAccountList source). */
+  setAccountList(patch: Partial<AccountListState>): void;
+  /** Push one row's action state (useAccountAction(accountId) source). */
+  setAccountAction(accountId: string, state: AccountActionState): void;
+  /** Sign out: no user, unauthenticated (useAuth source). */
+  signOut(): void;
   /** Values captured from useThroughput().setValue calls. */
   readonly throughputSets: number[];
   readonly commands: CommandLog;
@@ -162,6 +170,21 @@ export abstract class MountedComponent<P> {
   /** Inputs recorded by the faked command hooks (unit-mode convenience). */
   protected commandLog(): CommandLog {
     return this.ctx.commands;
+  }
+
+  /** Patch the account list → re-render the Users panel and its head. */
+  setAccountList(patch: Partial<AccountListState>): void {
+    this.ctx.setAccountList(patch);
+  }
+
+  /** Push one row's action state → re-render that row. */
+  setAccountAction(accountId: string, state: AccountActionState): void {
+    this.ctx.setAccountAction(accountId, state);
+  }
+
+  /** Sign the user out → every fold of the signed-in access sees nobody. */
+  signOut(): void {
+    this.ctx.signOut();
   }
 
   // Ops / telemetry drivers (Phase 5).

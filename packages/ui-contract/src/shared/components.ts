@@ -1,4 +1,6 @@
 import { component } from "./harness/component";
+import { UsersHeadPage } from "./pages/admin/UsersHeadPage";
+import { UsersPanelPage } from "./pages/admin/UsersPanelPage";
 import { CreditBlotterHeadPage } from "./pages/credit/blotter/CreditBlotterHeadPage";
 import { CreditBlotterPage } from "./pages/credit/blotter/CreditBlotterPage";
 import { CreditBlotterWorkspacePage } from "./pages/credit/blotter/CreditBlotterWorkspacePage";
@@ -786,6 +788,18 @@ export const SessionsPanel = component<
 >((ctx) => {
   return new SessionsPanelPage(ctx);
 });
+
+export const UsersPanel = component<Record<string, never>, UsersPanelPage>(
+  (ctx) => {
+    return new UsersPanelPage(ctx);
+  },
+);
+
+export const UsersHead = component<Record<string, never>, UsersHeadPage>(
+  (ctx) => {
+    return new UsersHeadPage(ctx);
+  },
+);
 
 export const OpsDashboard = component<Record<string, never>, OpsDashboardPage>(
   (ctx) => {

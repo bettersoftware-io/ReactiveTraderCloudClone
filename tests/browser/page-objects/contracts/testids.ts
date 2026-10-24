@@ -6,7 +6,7 @@ export const TESTIDS = {
     /** The cover a core swap puts over the page (CoreSwapOverlay); in the
      * DOM only while a swap is under way. */
     coreSwapOverlay: "core-swap-overlay",
-    tab: (tab: "fx" | "credit" | "ops" | "equities") => {
+    tab: (tab: "fx" | "credit" | "ops" | "equities" | "admin") => {
       return `tab-${tab}`;
     },
   },
@@ -97,6 +97,58 @@ export const TESTIDS = {
       quotePrefix: "rfq-quote-",
     },
     blotterHeadTitle: "credit-blotter-head-title",
+  },
+  /**
+   * The Admin tab's Users panel (UsersPanel / UsersHead / UserRow). Keep in
+   * step with the ui-contract UsersPanelPage and UsersHeadPage, which spell
+   * the same strings.
+   */
+  admin: {
+    panel: "users-panel",
+    headPending: "users-head-pending",
+    refresh: "users-refresh",
+    empty: "users-empty",
+    forbidden: "users-forbidden",
+    rowPrefix: "user-row-",
+    row: (id: string) => {
+      return `user-row-${id}`;
+    },
+    approve: (id: string) => {
+      return `user-approve-${id}`;
+    },
+    block: (id: string) => {
+      return `user-block-${id}`;
+    },
+    unblock: (id: string) => {
+      return `user-unblock-${id}`;
+    },
+    rename: (id: string) => {
+      return `user-rename-${id}`;
+    },
+    delete: (id: string) => {
+      return `user-delete-${id}`;
+    },
+    confirmDelete: (id: string) => {
+      return `user-confirm-delete-${id}`;
+    },
+    cancel: (id: string) => {
+      return `user-cancel-${id}`;
+    },
+    nameInput: (id: string) => {
+      return `user-name-input-${id}`;
+    },
+    nameError: (id: string) => {
+      return `user-name-error-${id}`;
+    },
+    save: (id: string) => {
+      return `user-save-${id}`;
+    },
+    error: (id: string) => {
+      return `user-error-${id}`;
+    },
+    dismiss: (id: string) => {
+      return `user-dismiss-${id}`;
+    },
   },
   ops: {
     incident: {

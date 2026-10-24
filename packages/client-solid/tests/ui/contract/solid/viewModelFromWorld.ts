@@ -75,6 +75,7 @@ import {
   type WorkspaceDockPanels,
 } from "@rtc/core-logic";
 import {
+  type AccessLevel,
   type AmbientStyle,
   type Candle,
   type CandleTimeframe,
@@ -135,8 +136,6 @@ interface UseTicketSubmissionFake {
   submitPrice: (quoteId: number, price: number) => void;
   pass: (quoteId: number) => void;
 }
-
-function noop(): void {}
 
 /** Wrap a warm (BehaviorSubject-backed) World stream as a Solid accessor.
  * `state()` (from `@rx-state/core`) turns any Observable into the
@@ -267,7 +266,14 @@ function getWorkspaceNav(
   let machine = workspaceNavs.get(world);
 
   if (!machine) {
-    machine = createWorkspaceNavMachine(of(null));
+    machine = createWorkspaceNavMachine(
+      world.auth.pipe(
+        map((authState): AccessLevel | null => {
+          return authState.user?.access ?? null;
+        }),
+        distinctUntilChanged(),
+      ),
+    );
     workspaceNavs.set(world, machine);
   }
 
@@ -1856,32 +1862,20 @@ export function solidViewModel(world: World): ViewModel {
         },
       };
     },
-    // Inert until the World's admin support lands.
+    // The Users panel: list and per-row action state from the World, the
+    // row's intents from the per-World set (see `accountActionIntentsFor`).
     useAccountList: () => {
       return {
-        state: () => {
-          return { status: "loading", rows: [], pendingCount: 0 };
+        state: wrapSubject(world.accountList),
+        refresh: () => {
+          world.refreshAccountList();
         },
-        refresh: noop,
       };
     },
-    useAccountAction: () => {
+    useAccountAction: (accountId: string) => {
       return {
-        state: () => {
-          return { phase: "idle" };
-        },
-        intents: {
-          approve: noop,
-          block: noop,
-          unblock: noop,
-          startRename: noop,
-          editName: noop,
-          submitRename: noop,
-          requestDelete: noop,
-          confirmDelete: noop,
-          cancel: noop,
-          dismiss: noop,
-        },
+        state: wrapSubject(world.accountActionFor(accountId)),
+        intents: world.accountActionIntentsFor(accountId),
       };
     },
     useRegistrationAvailable: () => {

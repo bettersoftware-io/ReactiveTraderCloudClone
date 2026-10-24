@@ -3,6 +3,7 @@ import {
   AuthGatedHeaderChrome,
   HeaderChrome,
 } from "@ui-contract/components";
+import { createSessionUser } from "@ui-contract/fixtures/sessionUser";
 import {
   cleanupMounted,
   createWorld,
@@ -232,6 +233,34 @@ describe("HeaderChrome", () => {
     await app.header.clickTab("credit");
     expect(app.header.isActive("credit")).toBe(true);
     expect(app.header.isActive("fx")).toBe(false);
+  });
+});
+
+/**
+ * The Admin tab is the signed-in user's access made visible: the core's
+ * `workspaceNav.visibleTabs` decides, and the tab bar renders from it.
+ */
+describe("HeaderChrome — the Admin tab", () => {
+  it("is absent for a user", () => {
+    const app = mount(AppShell, { auth: { user: createSessionUser("user") } });
+
+    expect(app.header.hasTab("admin")).toBe(false);
+    expect(app.header.hasTab("ops")).toBe(true);
+  });
+
+  it("is present, last, for an administrator", () => {
+    const app = mount(AppShell, { auth: { user: createSessionUser("admin") } });
+
+    expect(app.header.hasTab("admin")).toBe(true);
+    expect(app.header.tabLabel("admin")).toBe("Admin");
+  });
+
+  it("opens the Admin tab for an administrator's click", async () => {
+    const app = mount(AppShell, { auth: { user: createSessionUser("admin") } });
+
+    await app.header.clickTab("admin");
+
+    expect(app.header.isActive("admin")).toBe(true);
   });
 });
 

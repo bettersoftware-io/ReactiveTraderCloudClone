@@ -75,6 +75,7 @@ import {
   type WorkspaceDockPanels,
 } from "@rtc/core-logic";
 import {
+  type AccessLevel,
   type AmbientStyle,
   type Candle,
   type CandleTimeframe,
@@ -114,8 +115,6 @@ import { useMachine, type ViewModel } from "@rtc/react-bindings";
  * schedules onRedirect via a REAL setTimeout — preserving the exact timing the
  * spec asserts, instead of redirecting instantly. */
 const REDIRECT_DELAY_MS = 1500;
-
-function noop(): void {}
 
 /** Subscribe a React component to a BehaviorSubject; re-render on each emission. */
 function useSubject<T>(subject: BehaviorSubject<T>): T {
@@ -258,7 +257,14 @@ function getWorkspaceNav(
   let machine = workspaceNavs.get(world);
 
   if (!machine) {
-    machine = createWorkspaceNavMachine(of(null));
+    machine = createWorkspaceNavMachine(
+      world.auth.pipe(
+        map((authState): AccessLevel | null => {
+          return authState.user?.access ?? null;
+        }),
+        distinctUntilChanged(),
+      ),
+    );
     workspaceNavs.set(world, machine);
   }
 
@@ -1937,28 +1943,20 @@ export function reactViewModel(world: World): ViewModel {
         ...getAccountIntents(world),
       };
     },
-    // Inert until the World's admin support lands.
+    // The Users panel: list and per-row action state from the World, the
+    // row's intents from the per-World set (see `accountActionIntentsFor`).
     useAccountList: () => {
       return {
-        state: { status: "loading", rows: [], pendingCount: 0 },
-        refresh: noop,
+        state: useSubject(world.accountList),
+        refresh: () => {
+          world.refreshAccountList();
+        },
       };
     },
-    useAccountAction: () => {
+    useAccountAction: (accountId: string) => {
       return {
-        state: { phase: "idle" },
-        intents: {
-          approve: noop,
-          block: noop,
-          unblock: noop,
-          startRename: noop,
-          editName: noop,
-          submitRename: noop,
-          requestDelete: noop,
-          confirmDelete: noop,
-          cancel: noop,
-          dismiss: noop,
-        },
+        state: useSubject(world.accountActionFor(accountId)),
+        intents: world.accountActionIntentsFor(accountId),
       };
     },
     useRegistrationAvailable: () => {
