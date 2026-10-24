@@ -5,6 +5,7 @@ import type {
   PanelSpec,
 } from "@rtc/core-api";
 
+import { UsersPanel } from "#/ui/admin/UsersPanel";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
 import { NewRfqPanel } from "#/ui/credit/newRfq/NewRfqPanel";
 import { RfqsPanel } from "#/ui/credit/rfqs/RfqsPanel";
@@ -63,6 +64,9 @@ export const appPanelRegistry: PanelRegistry = {
   },
   "ops-dashboard": () => {
     return <OpsDashboard />;
+  },
+  "admin-users": () => {
+    return <UsersPanel />;
   },
   "eq-chart": () => {
     return <ChartPanel />;

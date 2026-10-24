@@ -92,6 +92,8 @@ import {
   TileRfq,
   TimeframePills,
   TradeTicket,
+  UsersHead,
+  UsersPanel,
   WatchlistPanel,
 } from "@ui-contract/components";
 import type {
@@ -112,7 +114,11 @@ import type {
   PanelId,
   TileExecutionState,
 } from "@rtc/core-api";
-import type { ColumnFilter, SortState } from "@rtc/core-logic";
+import {
+  type ColumnFilter,
+  EVERY_USER_TABS,
+  type SortState,
+} from "@rtc/core-logic";
 import type {
   Candle,
   CandleTimeframe,
@@ -135,6 +141,8 @@ import type {
 } from "@rtc/domain";
 
 import { App } from "#/ui/App";
+import { UsersHead as UsersHeadComponent } from "#/ui/admin/UsersHead";
+import { UsersPanel as UsersPanelComponent } from "#/ui/admin/UsersPanel";
 import { CreditBlotter as CreditBlotterComponent } from "#/ui/credit/blotter/CreditBlotter";
 import { CreditBlotterHead as CreditBlotterHeadComponent } from "#/ui/credit/blotter/CreditBlotterHead";
 import { NewRfqHead as NewRfqHeadComponent } from "#/ui/credit/newRfq/NewRfqHead";
@@ -706,6 +714,9 @@ export const registry = new Map<AnyToken, ElementFor>([
       return (
         <HeaderChromeComponent
           activeTab={(p.activeTab as WorkspaceTab) ?? "fx"}
+          visibleTabs={
+            (p.visibleTabs as readonly WorkspaceTab[]) ?? EVERY_USER_TABS
+          }
           onTabChange={
             (p.onTabChange as (t: WorkspaceTab) => void) ?? ((): void => {})
           }
@@ -720,6 +731,9 @@ export const registry = new Map<AnyToken, ElementFor>([
         <AuthGateComponent>
           <HeaderChromeComponent
             activeTab={(p.activeTab as WorkspaceTab) ?? "fx"}
+            visibleTabs={
+              (p.visibleTabs as readonly WorkspaceTab[]) ?? EVERY_USER_TABS
+            }
             onTabChange={
               (p.onTabChange as (t: WorkspaceTab) => void) ?? ((): void => {})
             }
@@ -1137,6 +1151,18 @@ export const registry = new Map<AnyToken, ElementFor>([
     SessionsPanel,
     (): ReactElement => {
       return <SessionsPanelComponent />;
+    },
+  ],
+  [
+    UsersPanel,
+    (): ReactElement => {
+      return <UsersPanelComponent />;
+    },
+  ],
+  [
+    UsersHead,
+    (): ReactElement => {
+      return <UsersHeadComponent />;
     },
   ],
   [

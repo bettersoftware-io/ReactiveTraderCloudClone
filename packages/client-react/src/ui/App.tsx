@@ -48,7 +48,11 @@ export function App(): ReactElement {
   return (
     <div className={styles.app}>
       <AmbientBackground />
-      <HeaderChrome activeTab={activeTab} onTabChange={switchTab} />
+      <HeaderChrome
+        activeTab={activeTab}
+        visibleTabs={navState.visibleTabs}
+        onTabChange={switchTab}
+      />
       <div
         data-jarvis-driven={pulsing ? "true" : "false"}
         className={

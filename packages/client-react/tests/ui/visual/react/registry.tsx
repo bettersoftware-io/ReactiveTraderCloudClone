@@ -2,7 +2,7 @@ import { fixtures } from "@ui-visual-shared/fixtures";
 import type { CSSProperties, ReactElement } from "react";
 
 import type { LayoutState } from "@rtc/core-api";
-import { createDefaultLayoutPort } from "@rtc/core-logic";
+import { createDefaultLayoutPort, EVERY_USER_TABS } from "@rtc/core-logic";
 
 import { App } from "#/ui/App";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
@@ -671,7 +671,13 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return <LoginScreen />;
   },
   HeaderChrome: () => {
-    return <HeaderChrome activeTab="fx" onTabChange={() => {}} />;
+    return (
+      <HeaderChrome
+        activeTab="fx"
+        visibleTabs={EVERY_USER_TABS}
+        onTabChange={() => {}}
+      />
+    );
   },
   StatusBar: () => {
     // Render at a FIXED width (like the real app, where StatusBar stretches to
