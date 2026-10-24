@@ -1,0 +1,20 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/client-react/src/ui/equities/chart/*.module.css",
+        "$TURBO_ROOT$/packages/client-solid/src/ui/equities/chart/*.module.css"
+      ]
+    },
+    "test:coverage": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/client-react/src/ui/equities/chart/*.module.css",
+        "$TURBO_ROOT$/packages/client-solid/src/ui/equities/chart/*.module.css"
+      ]
+    }
+  }
+}

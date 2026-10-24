@@ -53,6 +53,18 @@ jobs:
   checks:
     name: typecheck · test · build · gates
     runs-on: ubuntu-latest
+    # id-token: write lets the remote-cache step below trade this run's GitHub
+    # OIDC token for a short-lived, cache-only Turborepo token. Nothing else in
+    # this repo trusts GitHub OIDC (deploys use stored tokens), so the
+    # permission opens nothing besides that cache. See docs/adr/ADR-008.
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      # Pushes to main write the remote cache; every other run (PRs, dispatches)
+      # only reads it, so a branch's code can never plant a result that main
+      # or another PR would replay (ADR-008).
+      TURBO_CACHE: ${{ github.event_name == 'push' && 'local:rw,remote:rw' || 'local:rw,remote:r' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -86,6 +98,19 @@ jobs:
       # is rejected here.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # Vercel Remote Cache over OIDC: a task whose hash a main run already
+      # computed is replayed instead of rebuilt or re-tested (median PR: ~87%
+      # of the unit-test step's CPU). Skipped until the TURBO_TEAM repo variable
+      # exists, and never fatal — on any failure turbo just runs uncached. The
+      # action revokes the token when the job ends. ADR-008 has the options
+      # weighed and how to switch backend.
+      - name: Cache the turbo tasks remotely (Vercel Remote Cache, OIDC)
+        if: vars.TURBO_TEAM != ''
+        continue-on-error: true
+        uses: vercel/setup-turborepo-remote-cache-action@49d7b1b46ba4c9251e1977986bfe18336feabc8f # v1.1.0
+        with:
+          team: ${{ vars.TURBO_TEAM }}
 
       # --error-on-warnings: plain `biome ci` exits 0 on warnings, so they
       # accumulated unseen (22 by 2026-09-19) under a zero-findings policy.
@@ -175,6 +200,9 @@ jobs:
 
       - name: Pages tooling unit tests
         run: pnpm --filter @rtc/tests test:pages
+
+      - name: Changelog release-sync unit tests
+        run: pnpm --filter @rtc/tests test:changelog
 
       - name: E2E harness tooling + deployed-file guards (unit)
         run: pnpm --filter @rtc/tests test:report
@@ -346,7 +374,7 @@ jobs:
 
       - name: Upload e2e artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-report
           path: |
@@ -422,7 +450,7 @@ jobs:
 
       - name: Upload e2e artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-report-${{ matrix.core }}
           path: |

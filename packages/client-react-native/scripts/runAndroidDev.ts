@@ -1,6 +1,6 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { env, exit } from "node:process";
+import { argv, env, exit } from "node:process";
 
 import {
   bootEmulator,
@@ -8,6 +8,8 @@ import {
   uninstallOtherBuildKind,
 } from "./androidDevice.ts";
 import { readLocalServerPort } from "./androidEmulator.ts";
+import { takeDeviceArgument } from "./devDevice.ts";
+import { refreshStaleNativeProject } from "./nativeProject.ts";
 
 /**
  * The Android counterpart of `expo run:ios`: compiles the dev build, installs
@@ -15,19 +17,31 @@ import { readLocalServerPort } from "./androidEmulator.ts";
  * run, each with its own `EXPO_PUBLIC_SERVER_URL`:
  *
  *   pnpm dev:android                              # from the repo root
- *   RTC_ANDROID_AVD=Pixel_8 pnpm dev:android
+ *   pnpm dev:android --device Pixel_8             # any other AVD
  *
- * Around `expo run:android` it does four things Expo leaves to the machine:
- * finds the SDK, picks a Java that can build, makes sure an emulator has
- * booted, and — when the app is pointed at a server on this machine — forwards
- * that port into the emulator, where `localhost` is otherwise the emulator
- * itself. A preview build left by `pnpm preview:android:run` is removed first.
+ * The emulator is the AVD the visual goldens are shot on unless `--device`
+ * (or the older `RTC_ANDROID_AVD`) names another; see `bootEmulator`. Other
+ * arguments pass through to `expo run:android`.
+ *
+ * Around `expo run:android` it does five things Expo leaves to the machine:
+ * finds the SDK, picks a Java that can build, regenerates `android/` when its
+ * native inputs changed (`expo run:android` only prebuilds a missing one),
+ * makes sure an emulator has booted, and — when the app is pointed at a
+ * server on this machine — forwards that port into the emulator, where
+ * `localhost` is otherwise the emulator itself. A preview build left by
+ * `pnpm preview:android:run` is removed first.
  */
 async function main(): Promise<void> {
   const tools = resolveAndroidTools();
   const javaHome = resolveJavaHome();
 
-  await bootEmulator(tools);
+  await refreshStaleNativeProject("android");
+
+  const { device, rest } = takeDeviceArgument(argv.slice(2));
+  const emulator = await bootEmulator(
+    tools,
+    device ?? (env.RTC_ANDROID_AVD || undefined),
+  );
   uninstallOtherBuildKind(tools, "debug");
 
   const serverPort = readLocalServerPort(env.EXPO_PUBLIC_SERVER_URL);
@@ -41,10 +55,16 @@ async function main(): Promise<void> {
     );
   }
 
-  const run = spawnSync("pnpm", ["exec", "expo", "run:android"], {
-    stdio: "inherit",
-    env: { ...env, ANDROID_HOME: tools.sdk, JAVA_HOME: javaHome },
-  });
+  // `--device` with the AVD name: with several emulators running, Expo would
+  // otherwise pick one itself.
+  const run = spawnSync(
+    "pnpm",
+    ["exec", "expo", "run:android", "--device", emulator.avd, ...rest],
+    {
+      stdio: "inherit",
+      env: { ...env, ANDROID_HOME: tools.sdk, JAVA_HOME: javaHome },
+    },
+  );
 
   exit(run.status ?? 1);
 }

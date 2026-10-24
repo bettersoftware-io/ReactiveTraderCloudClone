@@ -1,33 +1,86 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-import { expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 
 import {
   hideAndroidDevMenu,
-  resolveAndroidSerial,
+  resolvePinnedEmulator,
   restoreAndroidDevMenu,
   reverseMetroPort,
 } from "./androidDevice";
 
-test("the one attached device's serial is resolved", async () => {
-  createStubAdb({ devices: ["emulator-5554\tdevice"] });
-  await expect(resolveAndroidSerial()).resolves.toBe("emulator-5554");
+beforeEach(() => {
+  vi.mocked(spawn).mockClear();
+  vi.mocked(spawn).mockReturnValue({ unref: vi.fn() } as never);
+  vi.stubEnv("ANDROID_AVD_HOME", createAvdHome());
 });
 
-// An `offline` or `unauthorized` row is listed by adb but cannot be driven.
-test("a device that is not ready does not count", async () => {
-  createStubAdb({ devices: ["emulator-5554\toffline"] });
-  await expect(resolveAndroidSerial()).rejects.toThrow(
-    "No running Android emulator or device found",
-  );
-});
-
-test("two attached devices are refused rather than guessed between", async () => {
+// The machine this was written for had a Pixel 8 on API 36.1 running; the
+// old resolver took whichever single device was attached.
+test("a running emulator on the pinned AVD is chosen over one that is not", async () => {
   createStubAdb({
     devices: ["emulator-5554\tdevice", "emulator-5556\tdevice"],
+    runningAvds: { "emulator-5554": "Pixel_8", "emulator-5556": "Pixel_10a" },
   });
-  await expect(resolveAndroidSerial()).rejects.toThrow(
-    "2 Android devices are attached (emulator-5554, emulator-5556)",
+  await expect(resolvePinnedEmulator(undefined)).resolves.toBe("emulator-5556");
+  expect(spawn).not.toHaveBeenCalled();
+});
+
+// An `offline` or `unauthorized` row is listed by adb but cannot be driven,
+// and a phone has no AVD to check against the pin.
+test("only ready emulators count as running", async () => {
+  createStubAdb({
+    devices: ["emulator-5554\toffline", "R5CX\tdevice"],
+    runningAvds: { "emulator-5554": "Pixel_10a" },
+    avds: ["Pixel_10a"],
+  });
+  await expect(resolvePinnedEmulator(undefined)).resolves.toBe("emulator-5554");
+  expect(spawn).toHaveBeenCalledOnce();
+});
+
+test("the pinned AVD is started headless and cold when none is running", async () => {
+  const stub = createStubAdb({
+    devices: ["emulator-5554\tdevice"],
+    runningAvds: { "emulator-5554": "Pixel_8" },
+    avds: ["Medium_Phone", "Pixel_10a", "Pixel_8"],
+  });
+
+  await expect(resolvePinnedEmulator(undefined)).resolves.toBe("emulator-5556");
+  expect(vi.mocked(spawn).mock.calls[0]?.[1]).toEqual([
+    "-avd",
+    "Pixel_10a",
+    "-port",
+    "5556",
+    "-no-window",
+    "-no-snapshot",
+  ]);
+  expect(stub.calls).toContainEqual([
+    "-s",
+    "emulator-5556",
+    "shell",
+    "getprop",
+    "sys.boot_completed",
+  ]);
+});
+
+test("a machine without the pinned AVD is told how to create it", async () => {
+  createStubAdb({ avds: ["Medium_Phone", "Pixel_8"] });
+  await expect(resolvePinnedEmulator(undefined)).rejects.toThrow(
+    "avdmanager create avd -n Pixel_10a",
+  );
+  expect(spawn).not.toHaveBeenCalled();
+});
+
+test("a requested emulator that is not the pin is refused", async () => {
+  createStubAdb({
+    devices: ["emulator-5554\tdevice"],
+    runningAvds: { "emulator-5554": "Pixel_8" },
+  });
+  await expect(resolvePinnedEmulator("emulator-5554")).rejects.toThrow(
+    "RTC_VISUAL_UDID emulator-5554 runs the AVD Pixel_8",
   );
 });
 
@@ -97,7 +150,7 @@ test("hiding the dev menu does not throw when adb refuses", async () => {
 });
 
 vi.mock("node:child_process", () => {
-  return { execFile: vi.fn() };
+  return { execFile: vi.fn(), spawn: vi.fn() };
 });
 
 /** Stands in for `adb`: records each call's argv and whatever was piped to its
@@ -127,6 +180,13 @@ function createStubAdb(options: StubAdbOptions): StubAdb {
         null,
         ["List of devices attached", ...(options.devices ?? []), ""].join("\n"),
       );
+    } else if (args[0] === "-list-avds") {
+      callback(null, [...(options.avds ?? []), ""].join("\n"));
+    } else if (args.slice(2).join(" ") === "emu avd name") {
+      const avd = options.runningAvds?.[args[1] ?? ""];
+      callback(null, avd === undefined ? "" : `${avd}\r\nOK\r\n`);
+    } else if (args.at(-1) === "sys.boot_completed") {
+      callback(null, "1\n");
     } else {
       callback(null, readsPreferences ? (options.preferences ?? "") : "");
     }
@@ -143,10 +203,37 @@ function createStubAdb(options: StubAdbOptions): StubAdb {
   return { calls, inputs };
 }
 
+/** An AVD home holding this machine's three AVDs, of which only `Pixel_10a`
+ * is the pin. Each `<name>.ini` points at its directory, as avdmanager writes
+ * it. */
+function createAvdHome(): string {
+  const home = mkdtempSync(join(tmpdir(), "rtc-avd-home-"));
+
+  for (const [name, profile, android] of [
+    ["Pixel_10a", "pixel_10a", "37.0"],
+    ["Pixel_8", "pixel_8", "36.1"],
+    ["Medium_Phone", "medium_phone", "37.0"],
+  ] as const) {
+    const directory = join(home, `${name}.avd`);
+    mkdirSync(directory);
+    writeFileSync(join(home, `${name}.ini`), `path=${directory}\n`);
+    writeFileSync(
+      join(directory, "config.ini"),
+      `hw.device.name=${profile}\nimage.sysdir.1=system-images/android-${android}/google_apis_playstore/arm64-v8a/\n`,
+    );
+  }
+
+  return home;
+}
+
 type ExecFileCallback = (error: Error | null, stdout: string) => void;
 
 interface StubAdbOptions {
   readonly devices?: readonly string[];
+  /** Which AVD each running emulator answers `emu avd name` with. */
+  readonly runningAvds?: Readonly<Record<string, string>>;
+  /** What `emulator -list-avds` lists. */
+  readonly avds?: readonly string[];
   readonly preferences?: string;
   readonly fail?: boolean;
 }

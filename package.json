@@ -62,6 +62,8 @@
     "dev:android:ws:local": "EXPO_PUBLIC_SERVER_URL=ws://localhost:4000 pnpm --filter @rtc/client-react-native android",
     "dev:android:ws:remote": "EXPO_PUBLIC_SERVER_URL=wss://rtc-clone-server.fly.dev pnpm --filter @rtc/client-react-native android",
     "dev:android:fs": "EXPO_PUBLIC_SERVER_URL=ws://localhost:4000 AUTH_USERS=astark:mcdc2026,nromanoff:mcdc2026,tchalla:mcdc2026,demo:mcdc2026 AUTH_SECRET=dev-local-secret-public-by-design-never-deploy RTC_DEV_ACCOUNTS=1 RTC_JARVIS_FAKE=1 turbo run @rtc/server#dev @rtc/client-react-native#dev:android",
+    "native:regenerate:ios": "pnpm --filter @rtc/client-react-native native:regenerate:ios",
+    "native:regenerate:android": "pnpm --filter @rtc/client-react-native native:regenerate:android",
     "preview:android:build": "pnpm --filter @rtc/client-react-native preview:android:build",
     "preview:android:run": "pnpm --filter @rtc/client-react-native preview:android:run",
     "demo:ios:publish": "pnpm build && pnpm --filter @rtc/client-react-native demo:ios:publish",
@@ -104,8 +106,8 @@
     "@biomejs/biome": "2.5.15",
     "@manypkg/cli": "^0.25.1",
     "@types/node": "^26.2.0",
-    "@typescript-eslint/rule-tester": "^8.70.1",
-    "@typescript-eslint/utils": "^8.70.1",
+    "@typescript-eslint/rule-tester": "8.71.1",
+    "@typescript-eslint/utils": "8.71.1",
     "@typescript/native": "npm:typescript@^7.0.2",
     "dependency-cruiser": "^18.0.0",
     "eslint": "^10.5.0",
@@ -120,7 +122,7 @@
     "syncpack": "^15.3.2",
     "turbo": "^2.4",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "typescript-eslint": "^8.61.1",
+    "typescript-eslint": "8.71.1",
     "vitest": "^5.0.3"
   }
 }

@@ -13,9 +13,22 @@ interface RootManifest {
   };
 }
 
-/** The field of a package's package.json that gate 54 reads. */
+/** The fields of a package's package.json that gates 54 and 55 read. */
 interface PackageManifest {
-  scripts?: { test?: string };
+  name?: string;
+  scripts?: Record<string, string>;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+}
+
+/** One task of a package's turbo.json, as far as gate 55 reads it. */
+interface PackageTurboTask {
+  inputs?: string[];
+}
+
+/** The part of a package's turbo.json that gate 55 reads. */
+interface PackageTurboConfig {
+  tasks?: Record<string, PackageTurboTask>;
 }
 
 interface Gate {
@@ -841,7 +854,162 @@ const GATES: Gate[] = [
     paths: [],
     customCheck: checkVitestPools,
   },
+  {
+    // CI replays a task from the turbo remote cache when its hash is
+    // unchanged, and the hash covers only the package's own files, its
+    // workspace dependencies and declared inputs. A test that reads another
+    // package's files (or a repo-root folder) without declaring them would be
+    // replayed as passed after those files changed. Two did (motion-core read
+    // the clients' chart CSS, server read supabase/migrations) until their
+    // packages' turbo.json declared the paths (ADR-008). Sees literal paths
+    // only — imports, `import()`, `require`, `new URL` — not paths assembled
+    // at runtime from separate segments.
+    name: "55. A package reads files outside itself only from a workspace dependency or a declared turbo input (remote-cache correctness)",
+    pattern: "",
+    paths: [],
+    customCheck: checkOutsideReadsAreHashed,
+  },
 ];
+
+/** Directories gate 55 does not scan: generated output and native projects. */
+const UNSCANNED_DIRS = new Set([
+  "node_modules",
+  "dist",
+  "reports",
+  "coverage",
+  ".turbo",
+  "ios",
+  "android",
+]);
+
+const SOURCE_FILE = /\.(ts|tsx|mts|cts|js|mjs)$/;
+
+/** A relative specifier in an import, `import()`, `require` or `new URL`. */
+const RELATIVE_SPECIFIER =
+  /(?:from\s+|import\s*\(\s*|require\s*\(\s*|new URL\(\s*|import\s+)["'](\.\.?\/[^"']+)["']/g;
+
+function listSourceFiles(dir: string): string[] {
+  const files: string[] = [];
+
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      if (!UNSCANNED_DIRS.has(entry.name)) {
+        files.push(...listSourceFiles(`${dir}/${entry.name}`));
+      }
+    } else if (SOURCE_FILE.test(entry.name)) {
+      files.push(`${dir}/${entry.name}`);
+    }
+  }
+
+  return files;
+}
+
+/** The tasks that run a package's tests: each is hashed on its own, so an
+ * outside read must be declared in every one the package has a script for. */
+const TEST_TASKS = ["test", "test:coverage"];
+
+/** The repo-root-relative directories a package's turbo.json declares as
+ * extra inputs (`$TURBO_ROOT$/…`) of one task, up to each glob's first
+ * wildcard. */
+function readDeclaredInputDirs(packageDir: string, task: string): string[] {
+  const configPath = `${packageDir}/turbo.json`;
+
+  if (!existsSync(configPath)) {
+    return [];
+  }
+
+  const config = JSON.parse(
+    readFileSync(configPath, "utf8"),
+  ) as PackageTurboConfig;
+
+  return (config.tasks?.[task]?.inputs ?? []).flatMap((input) => {
+    if (!input.startsWith("$TURBO_ROOT$/")) {
+      return [];
+    }
+
+    const glob = input.slice("$TURBO_ROOT$/".length);
+    const staticPart = glob.split(/[*?{[]/)[0] ?? "";
+
+    return [staticPart.replace(/\/[^/]*$/, "")];
+  });
+}
+
+/** Whether a repo-root-relative path is the directory itself or inside it. */
+function isWithinDir(path: string, dir: string): boolean {
+  return path === dir || path.startsWith(`${dir}/`);
+}
+
+function checkOutsideReadsAreHashed(): string[] {
+  const repoRoot = resolve("..");
+  const failures: string[] = [];
+  const packageDirByName = new Map<string, string>();
+
+  for (const entry of readdirSync("../packages", { withFileTypes: true })) {
+    const manifestPath = `../packages/${entry.name}/package.json`;
+
+    if (entry.isDirectory() && existsSync(manifestPath)) {
+      const manifest = JSON.parse(
+        readFileSync(manifestPath, "utf8"),
+      ) as PackageManifest;
+
+      if (manifest.name !== undefined) {
+        packageDirByName.set(manifest.name, `packages/${entry.name}`);
+      }
+    }
+  }
+
+  for (const [name, packageDir] of packageDirByName) {
+    const manifest = JSON.parse(
+      readFileSync(`../${packageDir}/package.json`, "utf8"),
+    ) as PackageManifest;
+
+    const dependencyDirs = Object.keys({
+      ...manifest.dependencies,
+      ...manifest.devDependencies,
+    }).flatMap((dependency) => {
+      const dir = packageDirByName.get(dependency);
+
+      return dir === undefined ? [] : [dir];
+    });
+
+    const declaredDirsByTask = TEST_TASKS.filter((task) => {
+      return manifest.scripts?.[task] !== undefined;
+    }).map((task) => {
+      return {
+        task,
+        dirs: readDeclaredInputDirs(`../${packageDir}`, task),
+      };
+    });
+
+    for (const file of listSourceFiles(`../${packageDir}`)) {
+      const source = readFileSync(file, "utf8");
+
+      for (const match of source.matchAll(RELATIVE_SPECIFIER)) {
+        const target = resolve(file, "..", match[1] ?? "")
+          .slice(repoRoot.length + 1)
+          .replace(/\/$/, "");
+
+        function holdsTarget(dir: string): boolean {
+          return isWithinDir(target, dir);
+        }
+
+        if (holdsTarget(packageDir) || dependencyDirs.some(holdsTarget)) {
+          continue;
+        }
+
+        for (const { task, dirs } of declaredDirsByTask) {
+          if (!dirs.some(holdsTarget)) {
+            failures.push(
+              `${file.slice(3)}: reads ${target}, which ${name}#${task}'s hash does not cover — declare it as a "$TURBO_ROOT$/…" input of "${task}" in ${packageDir}/turbo.json (docs/adr/ADR-008-ci-turbo-remote-cache.md)`,
+            );
+          }
+        }
+      }
+    }
+  }
+
+  return failures;
+}
 
 /**
  * Gate 54's exceptions: a package whose tests must run outside VM contexts,

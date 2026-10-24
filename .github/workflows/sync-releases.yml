@@ -1,0 +1,55 @@
+name: Sync releases
+
+# GitHub Releases mirror CHANGELOG.md: one release per finished ISO week, titled
+# like its heading, the notes generated from that week's section by
+# scripts/changelog/sync-releases.mts. CHANGELOG.md is the only source — a
+# release edited by hand is overwritten on the next change to its section.
+#
+# Runs when CHANGELOG.md (or the script) changes on main, which is when
+# `/rtc:changelog` lands a week; and on Monday just after weekly-tag.yml, so a
+# week whose entry was written before its tag existed gets its release once
+# the tag appears. Idempotent: an unchanged section writes nothing.
+on:
+  push:
+    branches: [main]
+    paths:
+      - CHANGELOG.md
+      - scripts/changelog/**
+  schedule:
+    - cron: "30 0 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-releases
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: sync releases from CHANGELOG.md
+    runs-on: ubuntu-latest
+    permissions:
+      # Creates and edits releases through the API.
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # The script needs two paths and no dependencies (plain `node`).
+          sparse-checkout: |
+            CHANGELOG.md
+            scripts/changelog
+          sparse-checkout-cone-mode: false
+          # Releases are written through the API, not `git push`: keep the
+          # token out of .git/config (zizmor `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+
+      - name: Create or update one release per tagged week
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/changelog/sync-releases.mts --repo "$GITHUB_REPOSITORY" --apply

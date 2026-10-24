@@ -9,7 +9,8 @@ import {
 
 /**
  * Installs and opens the latest EAS cloud build in an Android emulator,
- * starting the emulator first if none is running:
+ * starting it first if it is not running — the same emulator `dev:android`
+ * would choose (`bootEmulator`):
  *
  *   pnpm preview:android:run                       # from the repo root
  *   RTC_ANDROID_AVD=Pixel_8 pnpm preview:android:run
@@ -21,7 +22,7 @@ import {
 async function main(): Promise<void> {
   const tools = resolveAndroidTools();
 
-  await bootEmulator(tools);
+  await bootEmulator(tools, env.RTC_ANDROID_AVD || undefined);
   uninstallOtherBuildKind(tools, "release");
 
   console.log("Installing the latest EAS build…");

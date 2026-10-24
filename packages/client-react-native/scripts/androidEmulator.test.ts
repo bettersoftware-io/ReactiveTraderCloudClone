@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
 
 import {
-  chooseVirtualDevice,
   listRunningEmulators,
   listVirtualDevices,
   readInstalledBuildKind,
@@ -34,28 +33,6 @@ test("reads virtual device names, skipping the emulator's log lines", () => {
       "INFO    | Storing crashdata in: /tmp/x\nPixel_10a\nPixel_8_API_35\n",
     ),
   ).toEqual(["Pixel_10a", "Pixel_8_API_35"]);
-});
-
-test("with no preference, the first virtual device is chosen", () => {
-  expect(chooseVirtualDevice(["Pixel_10a", "Pixel_8"], undefined)).toBe(
-    "Pixel_10a",
-  );
-  expect(chooseVirtualDevice(["Pixel_10a", "Pixel_8"], "")).toBe("Pixel_10a");
-});
-
-test("a named virtual device is chosen when it exists", () => {
-  expect(chooseVirtualDevice(["Pixel_10a", "Pixel_8"], "Pixel_8")).toBe(
-    "Pixel_8",
-  );
-});
-
-// Starting some other device than the one named would be a surprise.
-test("a named device that does not exist chooses nothing", () => {
-  expect(chooseVirtualDevice(["Pixel_10a"], "Pixel_9")).toBeNull();
-});
-
-test("no virtual devices chooses nothing", () => {
-  expect(chooseVirtualDevice([], undefined)).toBeNull();
 });
 
 test("a build whose flags include DEBUGGABLE is the dev build", () => {
