@@ -89,6 +89,19 @@ export class UsersPanelPage extends MountedComponent<Record<string, never>> {
     );
   }
 
+  /** True when the row holds a button whose accessible name is exactly
+   * `name` (what a screen reader announces, not the visible label). */
+  hasButtonNamed(id: string, name: string): boolean {
+    return within(this.row(id)).queryByRole("button", { name }) !== null;
+  }
+
+  /** The email cell's hover title (the full address), or null. */
+  emailTitle(id: string): string | null {
+    return within(this.root)
+      .getByTestId(`user-email-${id}`)
+      .getAttribute("title");
+  }
+
   /** True when the button is disabled. */
   isButtonDisabled(id: string, button: UserRowButton): boolean {
     return within(this.root)

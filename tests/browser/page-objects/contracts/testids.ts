@@ -135,6 +135,9 @@ export const TESTIDS = {
     cancel: (id: string) => {
       return `user-cancel-${id}`;
     },
+    email: (id: string) => {
+      return `user-email-${id}`;
+    },
     nameInput: (id: string) => {
       return `user-name-input-${id}`;
     },

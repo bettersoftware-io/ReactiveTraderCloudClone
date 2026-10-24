@@ -103,6 +103,8 @@ exports[`@rtc/core-logic public runtime API > exports exactly the pinned names 1
   "describePasswordChecklist",
   "describePasswordRule",
   "describePendingCount",
+  "describeRowActionLabel",
+  "describeRowActionText",
   "dismissPanelInState",
   "dockPanelInState",
   "dockedLeafIds",

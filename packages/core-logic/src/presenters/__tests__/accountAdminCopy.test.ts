@@ -6,6 +6,8 @@ import {
   ACCOUNT_ADMIN_COPY,
   describeAccountAdminRefusal,
   describePendingCount,
+  describeRowActionLabel,
+  describeRowActionText,
   formatJoinedDate,
 } from "#/presenters/accountAdminCopy";
 
@@ -39,6 +41,41 @@ describe("ACCOUNT_ACTION_PROGRESS_LABELS", () => {
       rename: "Renaming…",
       delete: "Deleting…",
     });
+  });
+});
+
+describe("describeRowActionText", () => {
+  it("reads every row button's label", () => {
+    expect(describeRowActionText("approve")).toBe("Approve");
+    expect(describeRowActionText("confirm")).toBe("Confirm");
+    expect(describeRowActionText("dismiss")).toBe("Dismiss");
+  });
+
+  it("reads an account action in progress when busy", () => {
+    expect(describeRowActionText("block", true)).toBe("Blocking…");
+    expect(describeRowActionText("delete", true)).toBe("Deleting…");
+  });
+
+  it("keeps a control's own label when busy, since only an account action runs", () => {
+    expect(describeRowActionText("save", true)).toBe("Save");
+    expect(describeRowActionText("cancel", true)).toBe("Cancel");
+  });
+});
+
+describe("describeRowActionLabel", () => {
+  it("names the account the button acts on after its label", () => {
+    expect(describeRowActionLabel("approve", "Ann Lee")).toBe(
+      "Approve Ann Lee",
+    );
+    expect(describeRowActionLabel("confirm", "Ann Lee")).toBe(
+      "Confirm Ann Lee",
+    );
+  });
+
+  it("names the account after the in-progress label when busy", () => {
+    expect(describeRowActionLabel("unblock", "Ann Lee", true)).toBe(
+      "Unblocking… Ann Lee",
+    );
   });
 });
 

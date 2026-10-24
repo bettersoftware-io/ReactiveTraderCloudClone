@@ -50,6 +50,37 @@ export const ACCOUNT_ACTION_PROGRESS_LABELS: Readonly<
   delete: "Deleting…",
 };
 
+/** A row button: one of the account actions, or a control of the inline
+ * delete confirmation, the rename field or a failure line. */
+export type AccountRowAction =
+  | AccountActionKind
+  | "confirm"
+  | "cancel"
+  | "save"
+  | "dismiss";
+
+/** A row button's visible label; `busy` reads an account action in
+ * progress ("Approving…"). */
+export function describeRowActionText(
+  action: AccountRowAction,
+  busy = false,
+): string {
+  return busy && isAccountActionKind(action)
+    ? ACCOUNT_ACTION_PROGRESS_LABELS[action]
+    : ACCOUNT_ADMIN_COPY[action];
+}
+
+/** A row button's accessible name: its visible label and the account it
+ * acts on ("Approve Ann Lee"). Every row shows the same labels, so without
+ * the name a screen reader cannot tell one row's Approve from another's. */
+export function describeRowActionLabel(
+  action: AccountRowAction,
+  displayName: string,
+  busy = false,
+): string {
+  return `${describeRowActionText(action, busy)} ${displayName}`;
+}
+
 /** The pending line beside the panel title. */
 export function describePendingCount(count: number): string {
   return `${count} pending`;
@@ -88,4 +119,10 @@ export function describeAccountAdminRefusal(
         ? "The account list could not be loaded. Try again shortly"
         : "The live desk is unavailable right now. Try again shortly";
   }
+}
+
+function isAccountActionKind(
+  action: AccountRowAction,
+): action is AccountActionKind {
+  return Object.hasOwn(ACCOUNT_ACTION_PROGRESS_LABELS, action);
 }

@@ -6,15 +6,13 @@ import {
   useRef,
 } from "react";
 
-import type {
-  AccountActionIntents,
-  AccountActionKind,
-  AccountActionState,
-} from "@rtc/core-api";
+import type { AccountActionIntents, AccountActionState } from "@rtc/core-api";
 import {
-  ACCOUNT_ACTION_PROGRESS_LABELS,
   ACCOUNT_ADMIN_COPY,
   ACCOUNT_STATUS_LABELS,
+  type AccountRowAction,
+  describeRowActionLabel,
+  describeRowActionText,
   formatJoinedDate,
 } from "@rtc/core-logic";
 import type { AccountStatus, AccountSummary } from "@rtc/domain";
@@ -54,7 +52,13 @@ export function UserRow({ account }: UserRowProps): ReactElement {
           <span className={styles.name}>{account.displayName}</span>
         )}
       </div>
-      <span className={styles.email}>{account.email}</span>
+      <span
+        data-testid={`user-email-${account.id}`}
+        title={account.email}
+        className={styles.email}
+      >
+        {account.email}
+      </span>
       <span className={styles.joined}>
         {formatJoinedDate(account.joinedAt)}
       </span>
@@ -74,9 +78,8 @@ export function UserRow({ account }: UserRowProps): ReactElement {
         <div role="alert" className={styles.failure}>
           <span data-testid={`user-error-${account.id}`}>{state.message}</span>
           <RowButton
-            stem="dismiss"
-            accountId={account.id}
-            label={ACCOUNT_ADMIN_COPY.dismiss}
+            action="dismiss"
+            account={account}
             onPress={intents.dismiss}
           />
         </div>
@@ -101,18 +104,12 @@ function UserRowActions({
           {ACCOUNT_ADMIN_COPY.confirmDelete}
         </span>
         <RowButton
-          stem="confirm-delete"
-          accountId={account.id}
-          label={ACCOUNT_ADMIN_COPY.confirm}
+          action="confirm"
+          account={account}
           tone="negative"
           onPress={intents.confirmDelete}
         />
-        <RowButton
-          stem="cancel"
-          accountId={account.id}
-          label={ACCOUNT_ADMIN_COPY.cancel}
-          onPress={intents.cancel}
-        />
+        <RowButton action="cancel" account={account} onPress={intents.cancel} />
       </>
     );
   }
@@ -121,19 +118,13 @@ function UserRowActions({
     return (
       <>
         <RowButton
-          stem="save"
-          accountId={account.id}
-          label={ACCOUNT_ADMIN_COPY.save}
+          action="save"
+          account={account}
           tone="primary"
           disabled={state.draftError !== null}
           onPress={intents.submitRename}
         />
-        <RowButton
-          stem="cancel"
-          accountId={account.id}
-          label={ACCOUNT_ADMIN_COPY.cancel}
-          onPress={intents.cancel}
-        />
+        <RowButton action="cancel" account={account} onPress={intents.cancel} />
       </>
     );
   }
@@ -150,9 +141,8 @@ function UserRowActions({
     <>
       {statusAction === null ? null : (
         <RowButton
-          stem={statusAction}
-          accountId={account.id}
-          label={labelFor(statusAction, busyAction)}
+          action={statusAction}
+          account={account}
           tone={ACTION_TONE[statusAction]}
           disabled={disabled}
           busy={busyAction === statusAction}
@@ -160,17 +150,15 @@ function UserRowActions({
         />
       )}
       <RowButton
-        stem="rename"
-        accountId={account.id}
-        label={labelFor("rename", busyAction)}
+        action="rename"
+        account={account}
         disabled={disabled}
         busy={busyAction === "rename"}
         onPress={startRenaming}
       />
       <RowButton
-        stem="delete"
-        accountId={account.id}
-        label={labelFor("delete", busyAction)}
+        action="delete"
+        account={account}
         tone="negative"
         disabled={disabled}
         busy={busyAction === "delete"}
@@ -233,16 +221,20 @@ function RenameField({
   );
 }
 
-/** One row button; its testid is `user-{stem}-{accountId}`. */
+/** One row button; its testid is `user-{stem}-{accountId}` (the delete
+ * confirmation's stem is `confirm-delete`). Its accessible name adds the
+ * account's display name to the visible label, so a screen reader can tell
+ * which row's button it is on. */
 function RowButton({
-  stem,
-  accountId,
-  label,
+  action,
+  account,
   tone = "neutral",
   disabled = false,
   busy = false,
   onPress,
 }: RowButtonProps): ReactElement {
+  const stem = action === "confirm" ? "confirm-delete" : action;
+
   function press(): void {
     onPress();
   }
@@ -250,26 +242,18 @@ function RowButton({
   return (
     <button
       type="button"
-      data-testid={`user-${stem}-${accountId}`}
+      data-testid={`user-${stem}-${account.id}`}
       data-tone={tone}
       data-busy={busy ? "true" : "false"}
       aria-busy={busy}
+      aria-label={describeRowActionLabel(action, account.displayName, busy)}
       className={styles.action}
       disabled={disabled}
       onClick={press}
     >
-      {label}
+      {describeRowActionText(action, busy)}
     </button>
   );
-}
-
-function labelFor(
-  action: AccountActionKind,
-  busyAction: AccountActionKind | null,
-): string {
-  return action === busyAction
-    ? ACCOUNT_ACTION_PROGRESS_LABELS[action]
-    : ACCOUNT_ADMIN_COPY[action];
 }
 
 type StatusAction = "approve" | "block" | "unblock";
@@ -317,9 +301,8 @@ interface RenameFieldProps {
 }
 
 interface RowButtonProps {
-  stem: string;
-  accountId: string;
-  label: string;
+  action: AccountRowAction;
+  account: AccountSummary;
   tone?: Tone;
   disabled?: boolean;
   busy?: boolean;

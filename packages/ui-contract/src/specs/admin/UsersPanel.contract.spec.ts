@@ -25,6 +25,7 @@ import {
   checkDisplayNameInput,
   describeAccountAdminRefusal,
   describePendingCount,
+  describeRowActionLabel,
 } from "@rtc/core-logic";
 import type { AccountStatus, AccountSummary } from "@rtc/domain";
 
@@ -128,6 +129,53 @@ describe("UsersPanel — the actions each status offers", () => {
       { accountId: "a2", intent: "block" },
       { accountId: "a4", intent: "unblock" },
     ]);
+  });
+
+  it("names the row's account in each button's accessible name, keeping the visible label", () => {
+    const panel = mount(UsersPanel, {
+      accountList: {
+        status: "ready",
+        rows: [createAccount("a1", "pending"), createAccount("a2", "pending")],
+      },
+    });
+    const a2Approve = describeRowActionLabel("approve", "Name a2");
+
+    expect(panel.hasButtonNamed("a2", a2Approve)).toBe(true);
+    expect(a2Approve).toContain("Name a2");
+    expect(panel.hasButtonNamed("a1", a2Approve)).toBe(false);
+    expect(
+      panel.hasButtonNamed("a1", describeRowActionLabel("approve", "Name a1")),
+    ).toBe(true);
+    expect(panel.buttonLabel("a2", "approve")).toBe(ACCOUNT_ADMIN_COPY.approve);
+  });
+
+  it("names the account in the delete confirmation's buttons too", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: {
+        status: "ready",
+        rows: [createAccount("a1", "active"), createAccount("a2", "active")],
+      },
+    });
+
+    await panel.click("a2", "delete");
+
+    expect(
+      panel.hasButtonNamed("a2", describeRowActionLabel("confirm", "Name a2")),
+    ).toBe(true);
+    expect(
+      panel.hasButtonNamed("a2", describeRowActionLabel("cancel", "Name a2")),
+    ).toBe(true);
+  });
+
+  it("gives the email cell the full address as its hover title", () => {
+    const panel = mount(UsersPanel, {
+      accountList: {
+        status: "ready",
+        rows: [createAccount("a1", "active"), createAccount("a2", "active")],
+      },
+    });
+
+    expect(panel.emailTitle("a2")).toBe("a2@example.test");
   });
 
   it("shows the administrator's own row 'You' and no buttons", () => {
