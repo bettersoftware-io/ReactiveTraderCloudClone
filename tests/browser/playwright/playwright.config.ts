@@ -26,7 +26,12 @@ export default defineConfig({
   testMatch: "**/*.spec.ts",
   testIgnore: notYetPortedSpecs,
   fullyParallel: false,
-  workers: 1,
+  // Two, measured on the 4-vCPU CI runner with react and solid concurrent as
+  // in the e2e job (2026-10-25, paired, 3 runners): 1 → 2 workers cut the
+  // pair's wall time 14–22% with every run 103/103; 3 was no faster, the CPU
+  // already 97–99% busy at 2. Spec files are spread across the workers; the
+  // tests inside one file still run in order.
+  workers: 2,
   retries: 0,
   // Terminal reporter unchanged; HTML is additive. The html reporter owns (and
   // wipes) ONLY report/; raw failure output (traces, screenshots) goes to the

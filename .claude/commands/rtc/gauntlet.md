@@ -1,12 +1,12 @@
 ---
-description: Run the local mirror of CI's `checks` job — fast tier by default, `full` for all of it
+description: Run the local mirror of CI's `checks` and `coverage` jobs — fast tier by default, `full` for all of it
 argument-hint: [full]
 allowed-tools: Bash(pnpm:*), Bash(git:*), Read
 ---
 
 Run the local gate gauntlet. Argument: `$ARGUMENTS` (empty → fast tier, `full` → everything).
 
-## CI's current `checks` step list — compare against the tiers below
+## CI's current `checks` + `coverage` step list — compare against the tiers below
 
 !`awk '/^  checks:/,/^  e2e:/' .github/workflows/ci.yml | grep -E "^\s+- name:" | sed 's/.*- name: //' | grep -viE "corepack|store path|cache the|install dependencies|checkout|setup-node"`
 
@@ -77,7 +77,10 @@ Only one step may be skipped locally: **Expo bundle smoke**. The fast tier
 skips the `full` rows by design. Anything else unmapped is drift, not a
 judgement call.
 
-The list is scoped to the **`checks` job only**. An earlier version grepped the
+The list is scoped to the **`checks` and `coverage` jobs only**: the range runs
+from `checks:` to `e2e:`, and `coverage` (the ≥95% gates, split out of `checks`
+on 2026-10-25 so the two run side by side) sits between them, so keep it there.
+Its `Build` step is the same row as `checks`' own. An earlier version grepped the
 whole workflow and so flagged the three `e2e`-job steps (`Install Playwright
 Chromium…`, `e2e suite…`, `Upload e2e artifacts…`) as unknown gates on *every*
 run. A drift check that always fires is one you learn to ignore — which is
