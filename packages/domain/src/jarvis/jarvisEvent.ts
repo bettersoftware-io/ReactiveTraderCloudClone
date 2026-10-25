@@ -56,11 +56,26 @@ export type JarvisGateLevel = "none" | "soft" | "hard";
 /** Present on JARVIS_AVAILABILITY only while a budget gate is active.
  * `gated` lists the brains removed BY the gate (already intersected with
  * what env capability offered), so the picker can render them
- * disabled-with-reason rather than plainly absent. `resetsAtMs` is the
- * meter's windowEndMs (0 when a forced gate is active on a fresh meter —
- * consumers render "—"). */
+ * disabled-with-reason rather than plainly absent. `resetsAtMs` is the next
+ * 00:00 UTC, when the day's budget starts over. Since B3a the server sends
+ * only `"hard"` (the caller's daily budget is spent); `"soft"` stays in the
+ * type until the clients stop reading it (B3b). */
 export interface JarvisAvailabilityGate {
   readonly level: Exclude<JarvisGateLevel, "none">;
   readonly resetsAtMs: number;
   readonly gated: readonly JarvisBrain[];
+}
+
+/** The caller's Jarvis budget for today, on JARVIS_AVAILABILITY for a signed-in
+ * connection. `limitUsd` is null for an administrator or the roster persona,
+ * who have no personal limit (their spend still counts toward the house cap).
+ * `exhausted` says why house turns are off: the caller's own limit, the
+ * house-wide cap, a spend store that cannot be reached, or a forced gate.
+ * `keyKind` widens to `"own"` with bring-your-own keys (B3c). */
+export interface JarvisBudgetView {
+  readonly keyKind: "house";
+  readonly spentUsd: number;
+  readonly limitUsd: number | null;
+  readonly exhausted: "user" | "house" | "unavailable" | "forced" | null;
+  readonly resetsAtMs: number;
 }

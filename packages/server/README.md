@@ -14,7 +14,7 @@ The WebSocket server: a thin Node.js host that exposes the domain simulators to 
 | Path | What lives here |
 |---|---|
 | `src/effects/` | Declarative `WsEffect`s, one array per domain, assembled by `buildEffects(loops)` in `effects/index.ts` (the `allEffects` barrel plus the Jarvis effects), which `src/index.ts` (the composition root) hands to `combineEffects`. Inventory below. |
-| `src/services/` | `serviceContainer.ts` -- `createServices()`, which builds the domain simulators/ports once at module load and packages them, plus the server-only `ThroughputService`, `UsageMeter` and `JarvisGateService` (the `RTC_JARVIS_*` budget gate, `jarvisGate.ts`), as the `ServiceContainer` (aliased `Ctx` in `effects/context.ts`). |
+| `src/services/` | `serviceContainer.ts` -- `createServices()`, which builds the domain simulators/ports once at module load and packages them, plus the server-only `ThroughputService`, `UsageMeter` (today's Jarvis usage, for display) and `JarvisBudgetService` (each person's daily Jarvis spend on the house key, `jarvisBudget/`), as the `ServiceContainer` (aliased `Ctx` in `effects/context.ts`). |
 | `src/agent/` | The Jarvis agent loops: `ScriptedAgentLoop` (the transport-neutral scripted brain from `@rtc/shared`) and `AnthropicAgentLoop` (the only place `@anthropic-ai/sdk` is imported), chosen per connection by `createJarvisLoops` in `agentLoop.ts`; also the `render_panel` and app-driving tools and the persona. |
 | `src/mcp/` | The `/mcp` Streamable-HTTP endpoint: `buildJarvisMcpServer` exposes the `@rtc/agent-tools` registry to external MCP clients, `mcpHttpHandler` serves it behind the same token auth (the only place `@modelcontextprotocol/sdk` is imported). |
 | `src/observability/` | `connectionLog.ts` -- the structured stdout line per WebSocket lifecycle event (see below). |
@@ -34,7 +34,7 @@ The WebSocket server: a thin Node.js host that exposes the domain simulators to 
 | `ops.effects.ts` | `getThroughput$`, `setThroughput$` (2) | Ops: the throughput setpoint RPC pair. |
 | `context.ts` | -- | Re-exports `ServiceContainer` as `Ctx`, the shared context type every effect above is generic over. |
 | `jarvis.effects.ts` | -- | The `JARVIS_*` effects: an availability responder always, and the per-connection chat session (scripted or Anthropic, by the caller's `JarvisBrain` preference) when a loop set is present. |
-| `opsJarvisUsage.effects.ts` | -- | Ops: the Jarvis usage/budget snapshot, read from `ctx.usageMeter`. |
+| `opsJarvisUsage.effects.ts` | -- | Ops: today's Jarvis usage from `ctx.usageMeter` beside the house-wide spend and cap from `ctx.jarvisBudget`. |
 | `index.ts` | -- | `allEffects` (FX + Credit + Ops + Equities, plus `opsJarvisUsageEffects`) and `buildEffects(loops)`, which appends the Jarvis effects; `src/index.ts` combines the result. |
 
 (`*.effects.test.ts` siblings and `index.test.ts` are test files, omitted from the inventory above.)

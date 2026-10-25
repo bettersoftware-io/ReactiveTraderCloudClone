@@ -298,10 +298,12 @@ interface AvailabilityCapable {
 }
 
 /**
- * Boots a second real server forced into the soft budget gate and asserts
- * that `jarvis.availability` carries the narrowed brains list + gate
- * metadata over the real wire — the fullstack witness for the client-adapters
- * gate-parsing work (see JarvisMachine's gate handling). This connection
+ * Boots a second real server with every budget forced spent
+ * (`RTC_JARVIS_FORCE_GATE=exhausted`) and asserts that `jarvis.availability`
+ * carries the narrowed brains list + gate metadata over the real wire — the
+ * fullstack witness for the client-adapters gate-parsing work (see
+ * JarvisMachine's gate handling). The roster login is an operator, offered
+ * every brain, so the gate takes all three real models away. This connection
  * only subscribes (`availability$()` sends `jarvis.subscribe` internally,
  * nothing more); it sends no `jarvis.chat` turn, so the dummy
  * `ANTHROPIC_API_KEY` below can never trigger a real Anthropic call.
@@ -314,7 +316,7 @@ async function runGateSmoke(): Promise<void> {
     // its dual-loop (ANTHROPIC_API_KEY truthy) branch and offers the full
     // brain roster for the gate to narrow.
     ANTHROPIC_API_KEY: "e2e-dummy",
-    RTC_JARVIS_FORCE_GATE: "soft",
+    RTC_JARVIS_FORCE_GATE: "exhausted",
   });
 
   try {
@@ -348,30 +350,33 @@ async function runGateSmoke(): Promise<void> {
       );
 
       assert(
-        JSON.stringify(availability.brains) ===
-          JSON.stringify(["scripted", "claude-haiku-4-5"]),
+        JSON.stringify(availability.brains) === JSON.stringify(["scripted"]),
         `gated brains list (got ${JSON.stringify(availability.brains)})`,
       );
       assert(
-        availability.defaultBrain === "claude-haiku-4-5",
+        availability.defaultBrain === "scripted",
         `gated defaultBrain (got ${availability.defaultBrain})`,
       );
       assert(availability.gate !== null, "availability carries a gate");
       assert(
-        availability.gate?.level === "soft",
+        availability.gate?.level === "hard",
         `gate level (got ${availability.gate?.level})`,
       );
       assert(
-        availability.gate?.resetsAtMs === 0,
-        `gate resetsAtMs on a fresh meter (got ${availability.gate?.resetsAtMs})`,
+        (availability.gate?.resetsAtMs ?? 0) > Date.now(),
+        `gate resetsAtMs is the next UTC midnight (got ${availability.gate?.resetsAtMs})`,
       );
       assert(
         JSON.stringify(availability.gate?.gated) ===
-          JSON.stringify(["claude-sonnet-5", "claude-opus-5"]),
+          JSON.stringify([
+            "claude-haiku-4-5",
+            "claude-sonnet-5",
+            "claude-opus-5",
+          ]),
         `gate.gated list (got ${JSON.stringify(availability.gate?.gated)})`,
       );
       console.log(
-        "  ✓ jarvis gate: forced soft gate narrows brains + carries gate metadata over the real wire",
+        "  ✓ jarvis gate: a forced-exhausted budget narrows brains + carries gate metadata over the real wire",
       );
     } finally {
       ws.dispose();

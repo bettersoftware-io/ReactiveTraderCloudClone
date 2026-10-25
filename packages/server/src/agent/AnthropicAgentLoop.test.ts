@@ -2,7 +2,7 @@ import type {
   BetaMessageParam,
   BetaRawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type Mock, vi } from "vitest";
 
 import type { ConfirmGate, JarvisToolDefinition } from "@rtc/agent-tools";
 import {
@@ -13,6 +13,7 @@ import {
   type PanelSpecV1,
 } from "@rtc/domain";
 
+import type { TurnMeter } from "../services/jarvisBudget/JarvisBudgetService.js";
 import { AnthropicAgentLoop } from "./AnthropicAgentLoop.js";
 import type {
   AnthropicFinalMessage,
@@ -886,7 +887,7 @@ describe("AnthropicAgentLoop", () => {
     expect(calls[0]?.params.output_config).toBeUndefined();
   });
 
-  it("(Task 5 usage) per-iteration usage is recorded into the meter, keyed by the resolved model — a two-iteration turn (pause_turn resume) records twice with distinct usage", async () => {
+  it("(B3a meter) per-iteration usage is recorded into the turn's meter, keyed by the resolved model — a two-iteration turn (pause_turn resume) records twice with distinct usage", async () => {
     const first = createFakeStream([textDeltaEvent(0, "part 1")], {
       stop_reason: "pause_turn",
       content: [{ type: "text", text: "part 1" }],
@@ -919,29 +920,29 @@ describe("AnthropicAgentLoop", () => {
       };
     }
 
-    const recordTokens = vi.fn();
+    const meter = createMeterSpy();
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
       buildTools: createToolsFixture(),
       runnerFactory: createRunner,
-      usageMeter: { recordTokens },
     });
     const session = loop.createSession();
 
     await runTurnCollecting(session, "hi", [], undefined, {
       brain: "claude-sonnet-5",
+      meter,
     });
 
-    expect(recordTokens).toHaveBeenCalledTimes(2);
-    expect(recordTokens).toHaveBeenNthCalledWith(1, "claude-sonnet-5", {
+    expect(meter.record).toHaveBeenCalledTimes(2);
+    expect(meter.record).toHaveBeenNthCalledWith(1, "claude-sonnet-5", {
       inputTokens: 100,
       outputTokens: 20,
       cacheReadTokens: 5,
       cacheCreationTokens: 1,
     });
-    expect(recordTokens).toHaveBeenNthCalledWith(2, "claude-sonnet-5", {
+    expect(meter.record).toHaveBeenNthCalledWith(2, "claude-sonnet-5", {
       inputTokens: 50,
       outputTokens: 10,
       cacheReadTokens: 0,
@@ -949,27 +950,26 @@ describe("AnthropicAgentLoop", () => {
     });
   });
 
-  it("(Task 5 usage) a final message with no `usage` at all records zeros via the `?? 0` defaults, keyed by the default model", async () => {
+  it("(B3a meter) a final message with no `usage` at all records zeros via the `?? 0` defaults, keyed by the default model", async () => {
     const stream = createFakeStream([textDeltaEvent(0, "ok")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "ok" }],
       // usage omitted entirely — mirrors a fixture that doesn't care to set it.
     });
     const { factory } = scriptedRunner([stream]);
-    const recordTokens = vi.fn();
+    const meter = createMeterSpy();
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
       buildTools: createToolsFixture(),
       runnerFactory: factory,
-      usageMeter: { recordTokens },
     });
     const session = loop.createSession();
 
-    await runTurnCollecting(session, "hi");
+    await runTurnCollecting(session, "hi", [], undefined, { meter });
 
-    expect(recordTokens).toHaveBeenCalledExactlyOnceWith(DEFAULT_JARVIS_BRAIN, {
+    expect(meter.record).toHaveBeenCalledExactlyOnceWith(DEFAULT_JARVIS_BRAIN, {
       inputTokens: 0,
       outputTokens: 0,
       cacheReadTokens: 0,
@@ -977,7 +977,7 @@ describe("AnthropicAgentLoop", () => {
     });
   });
 
-  it("(Task 5 usage) no meter injected → the turn still completes normally, with no error and no crash", async () => {
+  it("(B3a meter) no meter on the turn → the turn still completes normally, with no error and no crash", async () => {
     const stream = createFakeStream([textDeltaEvent(0, "ok")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "ok" }],
@@ -995,7 +995,6 @@ describe("AnthropicAgentLoop", () => {
       knownSymbols: [],
       buildTools: createToolsFixture(),
       runnerFactory: factory,
-      // usageMeter deliberately omitted.
     });
     const session = loop.createSession();
 
@@ -1004,7 +1003,7 @@ describe("AnthropicAgentLoop", () => {
     expect(events).toEqual([{ type: "delta", text: "ok" }, { type: "done" }]);
   });
 
-  it("(Task 5 usage) a meter whose recordTokens throws does not corrupt the turn: it still completes with the full reply, logs server-side, and history still grows for the NEXT turn", async () => {
+  it("(B3a meter) a meter whose record throws does not corrupt the turn: it still completes with the full reply, logs server-side, and history still grows for the NEXT turn", async () => {
     const first = createFakeStream([textDeltaEvent(0, "Good morning, sir.")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "Good morning, sir." }],
@@ -1039,9 +1038,16 @@ describe("AnthropicAgentLoop", () => {
       };
     }
 
-    const recordTokens = vi.fn(() => {
+    const record = vi.fn(() => {
       throw new Error("usage meter exploded — must never corrupt the turn");
     });
+
+    const meter: TurnMeter = {
+      record,
+      exhausted: () => {
+        return false;
+      },
+    };
 
     const consoleErrorSpy = vi
       .spyOn(console, "error")
@@ -1052,11 +1058,16 @@ describe("AnthropicAgentLoop", () => {
       knownSymbols: [],
       buildTools: createToolsFixture(),
       runnerFactory: createRunner,
-      usageMeter: { recordTokens },
     });
     const session = loop.createSession();
 
-    const events1 = await runTurnCollecting(session, "good morning");
+    const events1 = await runTurnCollecting(
+      session,
+      "good morning",
+      [],
+      undefined,
+      { meter },
+    );
 
     // The turn completes exactly as if the meter had never thrown: the full
     // reply, terminated with "done" — NOT the sanitized "desk link
@@ -1066,9 +1077,9 @@ describe("AnthropicAgentLoop", () => {
       { type: "delta", text: "Good morning, sir." },
       { type: "done" },
     ]);
-    expect(recordTokens).toHaveBeenCalledTimes(1);
+    expect(record).toHaveBeenCalledTimes(1);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "AnthropicAgentSession: usageMeter.recordTokens threw —",
+      "AnthropicAgentSession: meter.record threw —",
       expect.stringContaining("Error"),
     );
 
@@ -1077,7 +1088,7 @@ describe("AnthropicAgentLoop", () => {
     // "errored" outcome, and `runTurn`'s `.then` only appends to history on
     // "completed"). Turn 2's request replays turn 1's user + assistant
     // messages, exactly like the unthrottled case in test (a).
-    await runTurnCollecting(session, "thanks");
+    await runTurnCollecting(session, "thanks", [], undefined, { meter });
 
     expect(calls).toHaveLength(2);
     expect(calls[1]?.params.messages).toEqual([
@@ -1087,6 +1098,178 @@ describe("AnthropicAgentLoop", () => {
     ]);
 
     consoleErrorSpy.mockRestore();
+  });
+
+  it("(B3a mid-turn stop) a budget spent by a request stops the turn before the next one: the reply ends on the switch line, then done, and no second request is made", async () => {
+    const toolCallStream = createFakeStream(
+      [
+        textDeltaEvent(0, "Checking, sir."),
+        toolUseStartEvent(1, "t1", "get_price", { symbol: "EURUSD" }),
+        toolStopEvent(1),
+      ],
+      {
+        stop_reason: "tool_use",
+        content: [
+          { type: "text", text: "Checking, sir." },
+          {
+            type: "tool_use",
+            id: "t1",
+            name: "get_price",
+            input: { symbol: "EURUSD" },
+          },
+        ],
+        usage: {
+          input_tokens: 3_000,
+          output_tokens: 200,
+          cache_read_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+        },
+      },
+    );
+
+    const finalStream = createFakeStream([textDeltaEvent(0, "1.10000.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "1.10000." }],
+    });
+    let requests = 0;
+
+    function createRunner(): AnthropicRunner {
+      return {
+        async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+          requests += 1;
+          yield toolCallStream;
+          requests += 1;
+          yield finalStream;
+        },
+        pushMessages: (): void => {},
+      };
+    }
+
+    let spent = false;
+    const record = vi.fn((): void => {
+      spent = true;
+    });
+
+    const meter: TurnMeter = {
+      record,
+      exhausted: () => {
+        return spent;
+      },
+    };
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createRunner,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "price?", [], undefined, {
+      brain: "claude-haiku-4-5",
+      meter,
+    });
+
+    expect(events).toEqual([
+      { type: "delta", text: "Checking, sir." },
+      { type: "toolEvent", tool: "quote", status: "running" },
+      { type: "toolEvent", tool: "quote", status: "done" },
+      { type: "delta", text: BUDGET_STOP_NOTICE },
+      { type: "done" },
+    ]);
+    expect(requests).toBe(1);
+    expect(record).toHaveBeenCalledExactlyOnceWith("claude-haiku-4-5", {
+      inputTokens: 3_000,
+      outputTokens: 200,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+  });
+
+  it("(B3a mid-turn stop) a meter that throws when asked counts as spent: the turn stops before its next request", async () => {
+    const toolCallStream = createFakeStream(
+      [toolUseStartEvent(0, "t1", "get_price", { symbol: "EURUSD" })],
+      {
+        stop_reason: "tool_use",
+        content: [
+          {
+            type: "tool_use",
+            id: "t1",
+            name: "get_price",
+            input: { symbol: "EURUSD" },
+          },
+        ],
+      },
+    );
+
+    const finalStream = createFakeStream([textDeltaEvent(0, "1.10000.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "1.10000." }],
+    });
+    const { factory } = scriptedRunner([toolCallStream, finalStream]);
+    const meter: TurnMeter = {
+      record: vi.fn(),
+      exhausted: () => {
+        throw new Error("budget copy exploded");
+      },
+    };
+
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "price?", [], undefined, {
+      meter,
+    });
+
+    expect(events.slice(-2)).toEqual([
+      { type: "delta", text: BUDGET_STOP_NOTICE },
+      { type: "done" },
+    ]);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "AnthropicAgentSession: meter.exhausted threw —",
+      "Error",
+    );
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("(B3a mid-turn stop) a turn whose last request spent the budget ends as usual: no switch line when no further request would follow", async () => {
+    const stream = createFakeStream([textDeltaEvent(0, "Done, sir.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "Done, sir." }],
+    });
+    const { factory } = scriptedRunner([stream]);
+    const meter: TurnMeter = {
+      record: vi.fn(),
+      exhausted: () => {
+        return true;
+      },
+    };
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "hi", [], undefined, {
+      meter,
+    });
+
+    expect(events).toEqual([
+      { type: "delta", text: "Done, sir." },
+      { type: "done" },
+    ]);
   });
 
   it("(Task 3) render_panel is composed into the live tool list even when buildTools contributes none", async () => {
@@ -1659,6 +1842,20 @@ function createDriveBatchInputFixture(): DriveAppInputFixture {
   return { commands: [{ kind: "switchTab", tab: "equities" }] };
 }
 
+interface MeterSpy extends TurnMeter {
+  readonly record: Mock<TurnMeter["record"]>;
+}
+
+/** A turn meter that records every request and is never spent. */
+function createMeterSpy(): MeterSpy {
+  return {
+    record: vi.fn<TurnMeter["record"]>(),
+    exhausted: () => {
+      return false;
+    },
+  };
+}
+
 function createToolsFixture(
   buildExtra: (
     confirmTrade: ConfirmGate,
@@ -1678,3 +1875,6 @@ const SESSION_CAP_MESSAGE =
   "We've had quite the session, sir — do reconnect for a fresh one.";
 
 const CANCELLED_MESSAGE = "Cancelled, sir.";
+
+const BUDGET_STOP_NOTICE =
+  "\n\nToday's AI budget is used — switching to the scripted brain.";

@@ -25,7 +25,7 @@ import {
   type PanelSpecV1,
 } from "@rtc/domain";
 
-import type { UsageMeter } from "../services/UsageMeter.js";
+import type { TurnMeter } from "../services/jarvisBudget/JarvisBudgetService.js";
 import type { AgentSession, JarvisTurnOptions } from "./agentLoop.js";
 import { buildDriveAppTool } from "./driveAppTool.js";
 import { JARVIS_SYSTEM_PROMPT } from "./jarvisPersona.js";
@@ -79,6 +79,11 @@ const TRUNCATION_NOTICE =
  * post-loop check in `runOneTurn`. */
 const RUNWAY_EXHAUSTED_NOTICE =
   " I ran out of runway mid-task, sir — the answer above may be incomplete.";
+
+/** Ends a turn the daily budget stopped between two model requests (spec
+ * §3.3 step 4): the reply so far stays, and the next turn runs scripted. */
+export const BUDGET_STOP_NOTICE =
+  "\n\nToday's AI budget is used — switching to the scripted brain.";
 
 const SYSTEM_BLOCKS: readonly BetaTextBlockParam[] = [
   {
@@ -251,6 +256,28 @@ function toolNameOrder(
   return 0;
 }
 
+/** Whether the tool runner follows this reply with another request: it runs
+ * the tools a `tool_use` asked for and sends their results, and it resumes a
+ * `pause_turn` once the paused content is pushed back. */
+function wouldRequestAgain(stopReason: string | null): boolean {
+  return stopReason === "tool_use" || stopReason === "pause_turn";
+}
+
+/** Asks the meter whether the budget is spent; a meter that throws counts as
+ * spent, so a broken budget never lets a house turn run on unchecked. */
+function isBudgetSpent(meter: TurnMeter): boolean {
+  try {
+    return meter.exhausted();
+  } catch (error) {
+    console.error(
+      "AnthropicAgentSession: meter.exhausted threw —",
+      describeSdkErrorForLogging(error),
+    );
+
+    return true;
+  }
+}
+
 function mapHistoryEntry(entry: JarvisHistoryEntry): BetaMessageParam {
   return {
     role: entry.role === "jarvis" ? "assistant" : "user",
@@ -355,11 +382,6 @@ export class AnthropicAgentSession implements AgentSession {
   constructor(
     private readonly runnerFactory: AnthropicRunnerFactory,
     buildTools: (confirmTrade: ConfirmGate) => readonly JarvisToolDefinition[],
-    // Injected the same way `runnerFactory`/`buildTools` are — omitted in
-    // tests that don't care about usage accounting, so the meter tap below
-    // is a no-op unless a real `UsageMeter` (or a test spy satisfying this
-    // narrow `Pick`) is actually wired in.
-    private readonly usageMeter?: Pick<UsageMeter, "recordTokens">,
     // `render_panel`'s roster check — see `RenderPanelDeps.knownSymbols`'s
     // doc comment. Defaulted to `[]` (parsePanelSpec treats an empty roster
     // as "skip the membership check") rather than made required, so every
@@ -593,6 +615,7 @@ export class AnthropicAgentSession implements AgentSession {
     // the usage tap) shares one resolved model rather than each re-deriving
     // it and risking drift.
     const model = options?.brain ?? DEFAULT_JARVIS_BRAIN;
+    const meter = options?.meter;
     const params: AnthropicToolRunnerRequest = {
       model,
       max_tokens: JARVIS_MAX_TOKENS_PER_TURN,
@@ -684,16 +707,18 @@ export class AnthropicAgentSession implements AgentSession {
         // Own try/catch, deliberately separate from the outer one: this
         // turn's tokens were already billed by Anthropic and its reply
         // already streamed to the client by the time this runs, so a
-        // throwing meter (a bug in `UsageMeter`, an injected test double
-        // gone wrong) must never be allowed to fall into the outer
-        // catch — that would turn an already-served turn into a sanitized
-        // "desk link faltered" error AND drop it from `this.history` (the
-        // outer `.then` in `runTurn` never appends on a non-"completed"
-        // outcome), corrupting the NEXT turn's context for a failure that
-        // has nothing to do with the model or the conversation.
-        if (this.usageMeter) {
+        // throwing meter (a bug in the budget or the usage display, an
+        // injected test double gone wrong) must never be allowed to fall
+        // into the outer catch — that would turn an already-served turn into
+        // a sanitized "desk link faltered" error AND drop it from
+        // `this.history` (the outer `.then` in `runTurn` never appends on a
+        // non-"completed" outcome), corrupting the NEXT turn's context for a
+        // failure that has nothing to do with the model or the conversation.
+        // `model !== "scripted"` only narrows the type: `DEFAULT_JARVIS_BRAIN`
+        // is typed as any brain, but a scripted turn never reaches here.
+        if (meter && model !== "scripted") {
           try {
-            this.usageMeter.recordTokens(model, {
+            meter.record(model, {
               inputTokens: message.usage?.input_tokens ?? 0,
               outputTokens: message.usage?.output_tokens ?? 0,
               cacheReadTokens: message.usage?.cache_read_input_tokens ?? 0,
@@ -702,7 +727,7 @@ export class AnthropicAgentSession implements AgentSession {
             });
           } catch (usageError) {
             console.error(
-              "AnthropicAgentSession: usageMeter.recordTokens threw —",
+              "AnthropicAgentSession: meter.record threw —",
               describeSdkErrorForLogging(usageError),
             );
           }
@@ -717,6 +742,24 @@ export class AnthropicAgentSession implements AgentSession {
         if (message.stop_reason === "max_tokens") {
           finalText += TRUNCATION_NOTICE;
           push({ type: "delta", text: TRUNCATION_NOTICE });
+          push({ type: "done" });
+
+          return { kind: "completed", finalText };
+        }
+
+        // The budget check before every further request (spec §3.3 step 4):
+        // the runner makes the next request when this loop asks it for the
+        // next iteration, so this is the last moment to stop it. Only a
+        // reply that would continue is cut — one that already ended keeps
+        // its own ending, and the next turn runs scripted anyway. Leaving
+        // the `for await` early returns the runner, which then sends nothing.
+        if (
+          meter &&
+          wouldRequestAgain(message.stop_reason) &&
+          isBudgetSpent(meter)
+        ) {
+          finalText += BUDGET_STOP_NOTICE;
+          push({ type: "delta", text: BUDGET_STOP_NOTICE });
           push({ type: "done" });
 
           return { kind: "completed", finalText };

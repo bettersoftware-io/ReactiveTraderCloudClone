@@ -119,8 +119,8 @@ function buildJarvisToolsFor(
 /** The seam `createJarvisLoops` warns and falls through without: builds the
  * real `AnthropicAgentLoop`, wiring each session's own `buildJarvisTools`
  * call (see `AnthropicAgentLoopOptions.buildTools`'s doc comment for why that
- * must happen per session, not once here) and `services.usageMeter` so every
- * real Claude turn's token usage reaches the ops usage dock.
+ * must happen per session, not once here). Token usage reaches the budget
+ * and the ops usage dock through each turn's meter (`jarvis.effects.ts`).
  * `createJarvisLoops` only invokes this when `env.ANTHROPIC_API_KEY` is
  * already known truthy, hence the `?? ""` fallback below is unreachable in
  * practice, not a silent-empty-key path. Satisfies `AnthropicLoopBuilder`
@@ -134,7 +134,6 @@ function buildAnthropicLoop(
     buildTools: (confirmTrade: ConfirmGate) => {
       return buildJarvisToolsFor(services, confirmTrade);
     },
-    usageMeter: services.usageMeter,
     // render_panel's roster check (LIVE brains only) — the same static
     // roster the desk tools' own reads ultimately source from
     // (`ReferenceDataSimulator.getCurrencyPairs()` is just this constant

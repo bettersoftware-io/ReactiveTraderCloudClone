@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import {
   estimateUsageCostUsd,
   JARVIS_PRICE_TABLE,
-  JARVIS_USAGE_WINDOW_MS,
   UsageMeter,
 } from "./UsageMeter.js";
 
@@ -24,8 +23,8 @@ describe("UsageMeter", () => {
     });
   });
 
-  it("recordTurn increments turn counts in both windows", async () => {
-    const clock = 10_000;
+  it("recordTurn increments turn counts in both windows, the current one being the UTC day", async () => {
+    const clock = NOON;
     const meter = new UsageMeter(() => {
       return clock;
     });
@@ -47,8 +46,8 @@ describe("UsageMeter", () => {
       },
     ]);
     expect(snapshot.sinceBoot).toEqual(snapshot.currentWindow);
-    expect(snapshot.windowStartMs).toBe(10_000);
-    expect(snapshot.windowEndMs).toBe(10_000 + JARVIS_USAGE_WINDOW_MS);
+    expect(snapshot.windowStartMs).toBe(DAY_START);
+    expect(snapshot.windowEndMs).toBe(NEXT_MIDNIGHT);
   });
 
   it("recordTokens accumulates tokens and computes cost — haiku 1,000,000 input tokens = $1.00", async () => {
@@ -182,33 +181,33 @@ describe("UsageMeter", () => {
     expect(snapshot.sinceBoot).toHaveLength(1);
   });
 
-  it("rolls the current window when now() reaches windowEndMs, while sinceBoot keeps accumulating", async () => {
-    let clock = 0;
+  it("rolls the current window at 00:00 UTC, while sinceBoot keeps accumulating", async () => {
+    let clock = NOON;
     const meter = new UsageMeter(() => {
       return clock;
     });
 
     meter.recordTurn("claude-haiku-4-5");
     let snapshot = await firstValueFrom(meter.snapshot$);
-    expect(snapshot.windowStartMs).toBe(0);
-    expect(snapshot.windowEndMs).toBe(JARVIS_USAGE_WINDOW_MS);
+    expect(snapshot.windowStartMs).toBe(DAY_START);
+    expect(snapshot.windowEndMs).toBe(NEXT_MIDNIGHT);
     expect(snapshot.currentWindow[0]?.turns).toBe(1);
     expect(snapshot.sinceBoot[0]?.turns).toBe(1);
 
-    // Still inside the window: no roll.
-    clock = JARVIS_USAGE_WINDOW_MS - 1;
+    // Still inside the day: no roll.
+    clock = NEXT_MIDNIGHT - 1;
     meter.recordTurn("claude-haiku-4-5");
     snapshot = await firstValueFrom(meter.snapshot$);
-    expect(snapshot.windowStartMs).toBe(0);
+    expect(snapshot.windowStartMs).toBe(DAY_START);
     expect(snapshot.currentWindow[0]?.turns).toBe(2);
     expect(snapshot.sinceBoot[0]?.turns).toBe(2);
 
-    // Exactly at windowEndMs: rolls over and re-anchors.
-    clock = JARVIS_USAGE_WINDOW_MS;
+    // Exactly at midnight: rolls over to the new day.
+    clock = NEXT_MIDNIGHT;
     meter.recordTurn("claude-haiku-4-5");
     snapshot = await firstValueFrom(meter.snapshot$);
-    expect(snapshot.windowStartMs).toBe(JARVIS_USAGE_WINDOW_MS);
-    expect(snapshot.windowEndMs).toBe(2 * JARVIS_USAGE_WINDOW_MS);
+    expect(snapshot.windowStartMs).toBe(NEXT_MIDNIGHT);
+    expect(snapshot.windowEndMs).toBe(NEXT_MIDNIGHT + DAY_MS);
     expect(snapshot.currentWindow[0]?.turns).toBe(1); // reset
     expect(snapshot.sinceBoot[0]?.turns).toBe(3); // kept accumulating
   });
@@ -253,8 +252,9 @@ describe("UsageMeter", () => {
 
     const snapshot = await firstValueFrom(meter.snapshot$);
 
-    expect(snapshot.windowStartMs).toBeGreaterThanOrEqual(before);
-    expect(snapshot.windowStartMs).toBeLessThanOrEqual(Date.now());
+    expect(snapshot.windowStartMs).toBeLessThanOrEqual(before);
+    expect(snapshot.windowEndMs).toBeGreaterThan(Date.now());
+    expect(snapshot.windowEndMs - snapshot.windowStartMs).toBe(DAY_MS);
   });
 
   it("exposes the documented price table", () => {
@@ -263,10 +263,6 @@ describe("UsageMeter", () => {
       "claude-sonnet-5": { inputUsdPerMtok: 3, outputUsdPerMtok: 15 },
       "claude-opus-5": { inputUsdPerMtok: 5, outputUsdPerMtok: 25 },
     });
-  });
-
-  it("JARVIS_USAGE_WINDOW_MS is 5 hours", () => {
-    expect(JARVIS_USAGE_WINDOW_MS).toBe(5 * 60 * 60 * 1000);
   });
 });
 
@@ -293,3 +289,11 @@ describe("estimateUsageCostUsd", () => {
     ).toBe(0);
   });
 });
+
+const DAY_START = Date.UTC(2026, 9, 25);
+
+const NOON = Date.UTC(2026, 9, 25, 12);
+
+const NEXT_MIDNIGHT = Date.UTC(2026, 9, 26);
+
+const DAY_MS = 86_400_000;
