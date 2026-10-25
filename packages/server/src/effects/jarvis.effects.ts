@@ -316,7 +316,7 @@ function isSamePayload(
 
 /** The meter a house turn's session records into: the caller's budget first
  * (the enforcement, so a failing display can never skip it), then the Ops
- * usage display. */
+ * usage display. Reservations are the budget's alone. */
 function createTurnMeter(
   ctx: Ctx,
   caller: Caller,
@@ -325,12 +325,21 @@ function createTurnMeter(
   const budgetMeter = ctx.jarvisBudget.meterFor(caller, tier);
 
   return {
+    beginRequest: (
+      brain: Exclude<JarvisBrain, "scripted">,
+      ceiling: JarvisTokenUsage,
+    ): void => {
+      budgetMeter.beginRequest(brain, ceiling);
+    },
     record: (
       brain: Exclude<JarvisBrain, "scripted">,
       usage: JarvisTokenUsage,
     ): void => {
       budgetMeter.record(brain, usage);
       ctx.usageMeter.recordTokens(brain, usage);
+    },
+    endRequest: (): void => {
+      budgetMeter.endRequest();
     },
     exhausted: (): boolean => {
       return budgetMeter.exhausted();

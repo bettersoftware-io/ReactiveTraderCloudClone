@@ -1042,12 +1042,7 @@ describe("AnthropicAgentLoop", () => {
       throw new Error("usage meter exploded — must never corrupt the turn");
     });
 
-    const meter: TurnMeter = {
-      record,
-      exhausted: () => {
-        return false;
-      },
-    };
+    const meter: TurnMeter = { ...createMeterSpy(), record };
 
     const consoleErrorSpy = vi
       .spyOn(console, "error")
@@ -1150,7 +1145,8 @@ describe("AnthropicAgentLoop", () => {
       spent = true;
     });
 
-    const meter: TurnMeter = {
+    const meter: MeterSpy = {
+      ...createMeterSpy(),
       record,
       exhausted: () => {
         return spent;
@@ -1184,9 +1180,15 @@ describe("AnthropicAgentLoop", () => {
       cacheReadTokens: 0,
       cacheCreationTokens: 0,
     });
+    // Only the request that was made was reserved; nothing is left open.
+    expect(meter.beginRequest).toHaveBeenCalledExactlyOnceWith(
+      "claude-haiku-4-5",
+      REQUEST_CEILING,
+    );
+    expect(meter.endRequest).not.toHaveBeenCalled();
   });
 
-  it("(B3a mid-turn stop) a meter that throws when asked counts as spent: the turn stops before its next request", async () => {
+  it("(B3a budget check) a meter that throws when asked counts as spent: the turn makes no request", async () => {
     const toolCallStream = createFakeStream(
       [toolUseStartEvent(0, "t1", "get_price", { symbol: "EURUSD" })],
       {
@@ -1206,9 +1208,9 @@ describe("AnthropicAgentLoop", () => {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "1.10000." }],
     });
-    const { factory } = scriptedRunner([toolCallStream, finalStream]);
+    const { factory, calls } = scriptedRunner([toolCallStream, finalStream]);
     const meter: TurnMeter = {
-      record: vi.fn(),
+      ...createMeterSpy(),
       exhausted: () => {
         throw new Error("budget copy exploded");
       },
@@ -1230,10 +1232,11 @@ describe("AnthropicAgentLoop", () => {
       meter,
     });
 
-    expect(events.slice(-2)).toEqual([
-      { type: "delta", text: BUDGET_STOP_NOTICE },
+    expect(events).toEqual([
+      { type: "delta", text: BUDGET_SPENT_NOTICE },
       { type: "done" },
     ]);
+    expect(calls).toHaveLength(0);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       "AnthropicAgentSession: meter.exhausted threw —",
       "Error",
@@ -1247,10 +1250,14 @@ describe("AnthropicAgentLoop", () => {
       content: [{ type: "text", text: "Done, sir." }],
     });
     const { factory } = scriptedRunner([stream]);
+    let spent = false;
     const meter: TurnMeter = {
-      record: vi.fn(),
+      ...createMeterSpy(),
+      record: (): void => {
+        spent = true;
+      },
       exhausted: () => {
-        return true;
+        return spent;
       },
     };
 
@@ -1270,6 +1277,294 @@ describe("AnthropicAgentLoop", () => {
       { type: "delta", text: "Done, sir." },
       { type: "done" },
     ]);
+  });
+
+  it("(B3a budget check) a budget already spent when the turn starts makes no request: the reply is the switch line alone", async () => {
+    const stream = createFakeStream([textDeltaEvent(0, "hi")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "hi" }],
+    });
+    const { factory, calls } = scriptedRunner([stream]);
+    const meter: MeterSpy = {
+      ...createMeterSpy(),
+      exhausted: () => {
+        return true;
+      },
+    };
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "hi", [], undefined, {
+      meter,
+    });
+
+    expect(events).toEqual([
+      { type: "delta", text: BUDGET_SPENT_NOTICE },
+      { type: "done" },
+    ]);
+    expect(calls).toHaveLength(0);
+    expect(meter.beginRequest).not.toHaveBeenCalled();
+    expect(meter.record).not.toHaveBeenCalled();
+  });
+
+  it("(B3a mid-turn stop) a pause_turn whose request spent the budget is not resumed: switch line, done, one request, nothing pushed back", async () => {
+    const pausedStream = createFakeStream(
+      [textDeltaEvent(0, "Working, sir.")],
+      {
+        stop_reason: "pause_turn",
+        content: [{ type: "text", text: "Working, sir." }],
+      },
+    );
+
+    const finalStream = createFakeStream([textDeltaEvent(0, " Done.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: " Done." }],
+    });
+    let requests = 0;
+    const pushMessages = vi.fn();
+
+    function createRunner(): AnthropicRunner {
+      return {
+        async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+          requests += 1;
+          yield pausedStream;
+          requests += 1;
+          yield finalStream;
+        },
+        pushMessages,
+      };
+    }
+
+    let spent = false;
+    const meter: TurnMeter = {
+      ...createMeterSpy(),
+      record: (): void => {
+        spent = true;
+      },
+      exhausted: () => {
+        return spent;
+      },
+    };
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createRunner,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "go", [], undefined, {
+      meter,
+    });
+
+    expect(events).toEqual([
+      { type: "delta", text: "Working, sir." },
+      { type: "delta", text: BUDGET_STOP_NOTICE },
+      { type: "done" },
+    ]);
+    expect(requests).toBe(1);
+    expect(pushMessages).not.toHaveBeenCalled();
+  });
+
+  it("(B3a metering) a request cancelled mid-stream is still booked, with the usage it had reported", async () => {
+    function createRunner(
+      _params: FactoryParams,
+      options: FactoryOptions,
+    ): AnthropicRunner {
+      const signal = options.signal;
+      const stream: AnthropicMessageStream = {
+        async *[Symbol.asyncIterator](): AsyncGenerator<BetaRawMessageStreamEvent> {
+          yield createMessageStartEvent({
+            input_tokens: 1_200,
+            output_tokens: 1,
+            cache_read_input_tokens: 300,
+            cache_creation_input_tokens: null,
+          });
+          yield textDeltaEvent(0, "Let me");
+          yield createMessageDeltaEvent(40);
+          await new Promise<never>((_resolve, reject) => {
+            if (signal?.aborted) {
+              reject(new Error("aborted"));
+            }
+
+            signal?.addEventListener("abort", () => {
+              reject(new Error("aborted"));
+            });
+          });
+        },
+        finalMessage: () => {
+          return new Promise(() => {});
+        },
+      };
+
+      return {
+        async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+          yield stream;
+        },
+        pushMessages: (): void => {},
+      };
+    }
+
+    const meter = createMeterSpy();
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createRunner,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(
+      session,
+      "price?",
+      [],
+      (event: JarvisEvent): void => {
+        if (event.type === "delta") {
+          session.cancelTurn();
+        }
+      },
+      { brain: "claude-sonnet-5", meter },
+    );
+
+    expect(events.at(-1)).toEqual({
+      type: "error",
+      message: CANCELLED_MESSAGE,
+    });
+    expect(meter.record).toHaveBeenCalledExactlyOnceWith("claude-sonnet-5", {
+      inputTokens: 1_200,
+      outputTokens: 40,
+      cacheReadTokens: 300,
+      cacheCreationTokens: 0,
+    });
+    expect(meter.endRequest).not.toHaveBeenCalled();
+  });
+
+  it("(B3a metering) a request that errors mid-stream is still booked, with the usage it had reported", async () => {
+    const stream: AnthropicMessageStream = {
+      async *[Symbol.asyncIterator](): AsyncGenerator<BetaRawMessageStreamEvent> {
+        yield createMessageStartEvent({
+          input_tokens: 2_000,
+          output_tokens: 1,
+          cache_read_input_tokens: null,
+          cache_creation_input_tokens: 500,
+        });
+        yield textDeltaEvent(0, "Let me");
+        throw new Error("connection reset");
+      },
+      finalMessage: () => {
+        return new Promise(() => {});
+      },
+    };
+    const { factory } = scriptedRunner([stream]);
+    const meter = createMeterSpy();
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "price?", [], undefined, {
+      brain: "claude-haiku-4-5",
+      meter,
+    });
+
+    expect(events.at(-1)).toEqual({
+      type: "error",
+      message: DESK_LINK_FALTERED_MESSAGE,
+    });
+    expect(meter.record).toHaveBeenCalledExactlyOnceWith("claude-haiku-4-5", {
+      inputTokens: 2_000,
+      outputTokens: 1,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 500,
+    });
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("(B3a metering) a request that fails before it reports any usage books nothing and releases its reservation", async () => {
+    function createRunner(): AnthropicRunner {
+      return {
+        [Symbol.asyncIterator]: (): AsyncIterator<AnthropicMessageStream> => {
+          return {
+            next: (): Promise<IteratorResult<AnthropicMessageStream>> => {
+              return Promise.reject(new Error("connection refused"));
+            },
+          };
+        },
+        pushMessages: (): void => {},
+      };
+    }
+
+    const meter = createMeterSpy();
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createRunner,
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(session, "hi", [], undefined, { meter });
+
+    expect(meter.beginRequest).toHaveBeenCalledTimes(1);
+    expect(meter.record).not.toHaveBeenCalled();
+    expect(meter.endRequest).toHaveBeenCalledTimes(1);
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("(B3a metering) every request is reserved before it is made, and a reservation for a request the runner never sends is released", async () => {
+    // The runner stops after a tool_use, as `max_iterations` does: the turn
+    // reserved a next request that never went out.
+    const toolCallStream = createFakeStream(
+      [toolUseStartEvent(0, "t1", "get_price", { symbol: "EURUSD" })],
+      {
+        stop_reason: "tool_use",
+        content: [
+          {
+            type: "tool_use",
+            id: "t1",
+            name: "get_price",
+            input: { symbol: "EURUSD" },
+          },
+        ],
+      },
+    );
+    const { factory } = scriptedRunner([toolCallStream]);
+    const meter = createMeterSpy();
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(session, "price?", [], undefined, { meter });
+
+    expect(meter.beginRequest).toHaveBeenCalledTimes(2);
+    expect(meter.record).toHaveBeenCalledTimes(1);
+    expect(meter.endRequest).toHaveBeenCalledTimes(1);
+    const [firstReservation] = meter.beginRequest.mock.invocationCallOrder;
+    const [booking] = meter.record.mock.invocationCallOrder;
+    expect(firstReservation).toBeLessThan(booking ?? 0);
   });
 
   it("(Task 3) render_panel is composed into the live tool list even when buildTools contributes none", async () => {
@@ -1843,17 +2138,54 @@ function createDriveBatchInputFixture(): DriveAppInputFixture {
 }
 
 interface MeterSpy extends TurnMeter {
+  readonly beginRequest: Mock<TurnMeter["beginRequest"]>;
   readonly record: Mock<TurnMeter["record"]>;
+  readonly endRequest: Mock<TurnMeter["endRequest"]>;
 }
 
 /** A turn meter that records every request and is never spent. */
 function createMeterSpy(): MeterSpy {
   return {
+    beginRequest: vi.fn<TurnMeter["beginRequest"]>(),
     record: vi.fn<TurnMeter["record"]>(),
+    endRequest: vi.fn<TurnMeter["endRequest"]>(),
     exhausted: () => {
       return false;
     },
   };
+}
+
+interface MessageStartUsageFixture {
+  readonly input_tokens: number;
+  readonly output_tokens: number;
+  readonly cache_read_input_tokens: number | null;
+  readonly cache_creation_input_tokens: number | null;
+}
+
+/** A `message_start` carrying only the usage the meter reads. */
+function createMessageStartEvent(
+  usage: MessageStartUsageFixture,
+): BetaRawMessageStreamEvent {
+  return {
+    type: "message_start",
+    message: { usage },
+  } as unknown as BetaRawMessageStreamEvent;
+}
+
+/** A `message_delta` whose cumulative output count is `outputTokens`. */
+function createMessageDeltaEvent(
+  outputTokens: number,
+): BetaRawMessageStreamEvent {
+  return {
+    type: "message_delta",
+    delta: { stop_reason: null, stop_sequence: null },
+    usage: {
+      output_tokens: outputTokens,
+      input_tokens: null,
+      cache_read_input_tokens: null,
+      cache_creation_input_tokens: null,
+    },
+  } as unknown as BetaRawMessageStreamEvent;
 }
 
 function createToolsFixture(
@@ -1876,5 +2208,16 @@ const SESSION_CAP_MESSAGE =
 
 const CANCELLED_MESSAGE = "Cancelled, sir.";
 
-const BUDGET_STOP_NOTICE =
-  "\n\nToday's AI budget is used — switching to the scripted brain.";
+const BUDGET_SPENT_NOTICE =
+  "Today's AI budget is used — switching to the scripted brain.";
+
+const BUDGET_STOP_NOTICE = `\n\n${BUDGET_SPENT_NOTICE}`;
+
+/** The worst case a request is reserved at: 15k input tokens and the
+ * per-request output cap. */
+const REQUEST_CEILING = {
+  inputTokens: 15_000,
+  outputTokens: 4_096,
+  cacheReadTokens: 0,
+  cacheCreationTokens: 0,
+};

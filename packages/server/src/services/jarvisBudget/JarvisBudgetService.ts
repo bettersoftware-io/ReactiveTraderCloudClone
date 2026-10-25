@@ -31,15 +31,31 @@ export interface BudgetState {
 }
 
 /**
- * One turn's view of the budget. `record` books a model request's cost;
- * `exhausted` is checked before every request, so it is synchronous over the
- * service's in-process copy and sees a record the instant it is made.
+ * One turn's view of the budget, used request by request:
+ *
+ * 1. `exhausted()` before the request — synchronous over the service's
+ *    in-process copy, so it sees a record or a reservation the instant it is
+ *    made. It counts every OTHER in-flight request's reservation, so turns
+ *    running at once (several tabs of one person, many people at the house
+ *    cap) see each other; this meter's own reservation is not counted, so
+ *    one request always fits.
+ * 2. `beginRequest(brain, ceiling)` reserves the request's worst-case cost
+ *    (the `ceiling` usage, priced on `brain`) until the request is booked.
+ * 3. `record(brain, usage)` books what the request cost and releases its
+ *    reservation — also for a request cut short, with what it had used.
+ *    `endRequest()` releases a reservation whose request never happened or
+ *    reported no usage. Both are safe to call with nothing reserved.
  */
 export interface TurnMeter {
+  beginRequest(
+    brain: Exclude<JarvisBrain, "scripted">,
+    ceiling: JarvisTokenUsage,
+  ): void;
   record(
     brain: Exclude<JarvisBrain, "scripted">,
     usage: JarvisTokenUsage,
   ): void;
+  endRequest(): void;
   exhausted(): boolean;
 }
 
@@ -107,6 +123,13 @@ export class JarvisBudgetService {
 
   private housePendingUsd = 0;
 
+  /** In-flight requests' worst-case cost, per owner and house-wide. Not part
+   * of the day's copy: a request in flight across midnight still holds its
+   * reservation until it is booked or released. */
+  private readonly ownerReservedUsd = new Map<SpendOwner, number>();
+
+  private houseReservedUsd = 0;
+
   private storeAvailable = true;
 
   /** Numbers each store call as it starts. Answers arrive in any order, so
@@ -151,18 +174,56 @@ export class JarvisBudgetService {
    * owner's spend as zero. */
   meterFor(caller: Caller, tier: JarvisTier): TurnMeter {
     const owner = spendOwnerOf(caller);
+    // This meter's open reservation; 0 when none.
+    let reservedUsd = 0;
+
+    const releaseReservation = (): void => {
+      if (reservedUsd > 0) {
+        this.adjustReservation(owner, -reservedUsd);
+        reservedUsd = 0;
+      }
+    };
 
     return {
+      beginRequest: (
+        brain: Exclude<JarvisBrain, "scripted">,
+        ceiling: JarvisTokenUsage,
+      ): void => {
+        releaseReservation();
+
+        const usd = estimateUsageCostUsd(brain, ceiling);
+
+        // The same guard as a record: a reservation that is not a finite,
+        // positive amount would loosen the check, so it is not taken.
+        if (Number.isFinite(usd) && usd > 0) {
+          reservedUsd = usd;
+          this.adjustReservation(owner, usd);
+        }
+      },
       record: (
         brain: Exclude<JarvisBrain, "scripted">,
         usage: JarvisTokenUsage,
       ): void => {
+        releaseReservation();
         this.recordSpend(owner, brain, usage);
       },
+      endRequest: releaseReservation,
       exhausted: (): boolean => {
         this.rollCopyToToday();
 
-        return this.stateOf(owner, tier).exhausted !== null;
+        const copy = this.copyFor(owner);
+        const limitUsd = tier === "member" ? this.config.userDailyUsd : null;
+        const othersOfOwnerUsd =
+          (this.ownerReservedUsd.get(owner) ?? 0) - reservedUsd;
+        const othersOfHouseUsd = this.houseReservedUsd - reservedUsd;
+
+        return (
+          this.exhaustionOf(
+            roundUsd(copy.confirmedUsd + copy.pendingUsd + othersOfOwnerUsd),
+            limitUsd,
+            roundUsd(this.houseSpentUsd() + othersOfHouseUsd),
+          ) !== null
+        );
       },
     };
   }
@@ -222,6 +283,19 @@ export class JarvisBudgetService {
     }
 
     return null;
+  }
+
+  private adjustReservation(owner: SpendOwner, usd: number): void {
+    const ownerUsd = roundUsd((this.ownerReservedUsd.get(owner) ?? 0) + usd);
+
+    // The last release drops the entry, so the map holds in-flight owners only.
+    if (ownerUsd > 0) {
+      this.ownerReservedUsd.set(owner, ownerUsd);
+    } else {
+      this.ownerReservedUsd.delete(owner);
+    }
+
+    this.houseReservedUsd = Math.max(0, roundUsd(this.houseReservedUsd + usd));
   }
 
   private houseSpentUsd(): number {

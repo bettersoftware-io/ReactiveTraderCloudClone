@@ -20,12 +20,14 @@ import {
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
   type DriveBatchV1,
+  type JarvisBrain,
   type JarvisEvent,
   type JarvisHistoryEntry,
   type PanelSpecV1,
 } from "@rtc/domain";
 
 import type { TurnMeter } from "../services/jarvisBudget/JarvisBudgetService.js";
+import type { JarvisTokenUsage } from "../services/UsageMeter.js";
 import type { AgentSession, JarvisTurnOptions } from "./agentLoop.js";
 import { buildDriveAppTool } from "./driveAppTool.js";
 import { JARVIS_SYSTEM_PROMPT } from "./jarvisPersona.js";
@@ -34,6 +36,7 @@ import {
   JARVIS_HISTORY_MAX_MESSAGES,
   JARVIS_MAX_TOKENS_PER_TURN,
   JARVIS_MAX_TURNS_PER_SESSION,
+  JARVIS_RESERVE_INPUT_TOKENS,
   JARVIS_TOOL_FRIENDLY_NAMES,
 } from "./jarvisRunnerConfig.js";
 import { buildRenderPanelTool } from "./renderPanelTool.js";
@@ -80,10 +83,23 @@ const TRUNCATION_NOTICE =
 const RUNWAY_EXHAUSTED_NOTICE =
   " I ran out of runway mid-task, sir — the answer above may be incomplete.";
 
-/** Ends a turn the daily budget stopped between two model requests (spec
- * §3.3 step 4): the reply so far stays, and the next turn runs scripted. */
-export const BUDGET_STOP_NOTICE =
-  "\n\nToday's AI budget is used — switching to the scripted brain.";
+/** The reply of a turn the daily budget stopped before its first model
+ * request (spec §3.3 step 4): there is nothing above it to set it apart from. */
+export const BUDGET_SPENT_NOTICE =
+  "Today's AI budget is used — switching to the scripted brain.";
+
+/** Ends a turn the daily budget stopped between two model requests: the
+ * reply so far stays, and the next turn runs scripted. */
+export const BUDGET_STOP_NOTICE = `\n\n${BUDGET_SPENT_NOTICE}`;
+
+/** What one request is reserved at against the budget while it is in flight
+ * — see `JARVIS_RESERVE_INPUT_TOKENS`. */
+const REQUEST_CEILING: JarvisTokenUsage = {
+  inputTokens: JARVIS_RESERVE_INPUT_TOKENS,
+  outputTokens: JARVIS_MAX_TOKENS_PER_TURN,
+  cacheReadTokens: 0,
+  cacheCreationTokens: 0,
+};
 
 const SYSTEM_BLOCKS: readonly BetaTextBlockParam[] = [
   {
@@ -275,6 +291,152 @@ function isBudgetSpent(meter: TurnMeter): boolean {
     );
 
     return true;
+  }
+}
+
+/** Running token counts of a request still streaming. */
+interface AccruedUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+}
+
+/**
+ * One turn's requests, as its budget sees them (spec §3.3 steps 4–5). Every
+ * request is reserved before it is made and booked after, and a request that
+ * never finishes is still booked with what it used: the model bills from the
+ * moment it starts, so a cancel, a dropped socket or an error mid-stream must
+ * not make a request free. Without a meter every call is a no-op and every
+ * request may go ahead.
+ */
+interface RequestLedger {
+  /** Before a request: false when the budget is spent, with nothing
+   * reserved; otherwise reserves the request's worst case. */
+  beginRequest(): boolean;
+  /** Folds one stream event's usage into the request's running count. */
+  noteUsage(event: BetaRawMessageStreamEvent): void;
+  /** Books a finished request's usage; it is then no longer open. */
+  bookFinalUsage(usage: AnthropicFinalMessage["usage"]): void;
+  /** Once the turn is over, however it ended: books what an unfinished
+   * request had used, or releases its reservation if it used nothing. */
+  settle(): void;
+}
+
+function createRequestLedger(
+  meter: TurnMeter | undefined,
+  model: JarvisBrain,
+): RequestLedger {
+  // `model !== "scripted"` only narrows the type: `DEFAULT_JARVIS_BRAIN` is
+  // typed as any brain, but a scripted turn never reaches this session.
+  if (meter === undefined || model === "scripted") {
+    return {
+      beginRequest: (): boolean => {
+        return true;
+      },
+      noteUsage: (): void => {},
+      bookFinalUsage: (): void => {},
+      settle: (): void => {},
+    };
+  }
+
+  const liveMeter: TurnMeter = meter;
+  const liveModel: Exclude<JarvisBrain, "scripted"> = model;
+  // A request has been reserved and not yet booked or released.
+  let open = false;
+  // What the open request has reported so far; null before its
+  // `message_start`, which is the first event to carry usage.
+  let accrued: AccruedUsage | null = null;
+
+  function book(usage: JarvisTokenUsage): void {
+    open = false;
+    accrued = null;
+    recordSafely(liveMeter, liveModel, usage);
+  }
+
+  return {
+    beginRequest: (): boolean => {
+      if (isBudgetSpent(liveMeter)) {
+        return false;
+      }
+
+      liveMeter.beginRequest(liveModel, REQUEST_CEILING);
+      open = true;
+      accrued = null;
+
+      return true;
+    },
+    noteUsage: (event: BetaRawMessageStreamEvent): void => {
+      if (event.type === "message_start") {
+        const usage = event.message.usage;
+
+        accrued = {
+          inputTokens: usage.input_tokens,
+          outputTokens: usage.output_tokens,
+          cacheReadTokens: usage.cache_read_input_tokens ?? 0,
+          cacheCreationTokens: usage.cache_creation_input_tokens ?? 0,
+        };
+      } else if (event.type === "message_delta" && accrued !== null) {
+        // The counts on a `message_delta` are cumulative for the request.
+        const usage = event.usage;
+
+        accrued.outputTokens = usage.output_tokens;
+        accrued.inputTokens = usage.input_tokens ?? accrued.inputTokens;
+        accrued.cacheReadTokens =
+          usage.cache_read_input_tokens ?? accrued.cacheReadTokens;
+        accrued.cacheCreationTokens =
+          usage.cache_creation_input_tokens ?? accrued.cacheCreationTokens;
+      }
+    },
+    bookFinalUsage: (usage: AnthropicFinalMessage["usage"]): void => {
+      // `?? 0` covers both a fixture that omits `usage` and any one of its
+      // four sub-counts the real SDK response might not carry.
+      book({
+        inputTokens: usage?.input_tokens ?? 0,
+        outputTokens: usage?.output_tokens ?? 0,
+        cacheReadTokens: usage?.cache_read_input_tokens ?? 0,
+        cacheCreationTokens: usage?.cache_creation_input_tokens ?? 0,
+      });
+    },
+    settle: (): void => {
+      if (!open) {
+        return;
+      }
+
+      if (accrued === null) {
+        open = false;
+        liveMeter.endRequest();
+
+        return;
+      }
+
+      book(accrued);
+    },
+  };
+}
+
+/**
+ * Books a request's usage. Own try/catch: by the time this runs the request
+ * was already billed by Anthropic and, on the normal path, its reply already
+ * streamed, so a throwing meter (a bug in the budget or the usage display, an
+ * injected test double gone wrong) must never reach the turn's own catch —
+ * that would turn an already-served turn into a sanitized "desk link
+ * faltered" error AND drop it from the session's history (`runTurn` appends
+ * only on a "completed" outcome), corrupting the NEXT turn's context for a
+ * failure that has nothing to do with the model or the conversation.
+ */
+function recordSafely(
+  meter: TurnMeter,
+  model: Exclude<JarvisBrain, "scripted">,
+  usage: JarvisTokenUsage,
+): void {
+  try {
+    meter.record(model, usage);
+  } catch (usageError) {
+    console.error(
+      "AnthropicAgentSession: meter.record threw —",
+      describeSdkErrorForLogging(usageError),
+    );
   }
 }
 
@@ -615,7 +777,7 @@ export class AnthropicAgentSession implements AgentSession {
     // the usage tap) shares one resolved model rather than each re-deriving
     // it and risking drift.
     const model = options?.brain ?? DEFAULT_JARVIS_BRAIN;
-    const meter = options?.meter;
+    const requests = createRequestLedger(options?.meter, model);
     const params: AnthropicToolRunnerRequest = {
       model,
       max_tokens: JARVIS_MAX_TOKENS_PER_TURN,
@@ -656,6 +818,16 @@ export class AnthropicAgentSession implements AgentSession {
     let lastStopReason: string | null = null;
 
     try {
+      // The budget check before the first request: a turn routed while the
+      // budget lasted can find it spent by now (another tab, another person
+      // at the house cap), and then makes no request at all.
+      if (!requests.beginRequest()) {
+        push({ type: "delta", text: BUDGET_SPENT_NOTICE });
+        push({ type: "done" });
+
+        return { kind: "completed", finalText: BUDGET_SPENT_NOTICE };
+      }
+
       const runner = this.runnerFactory(params, { signal });
 
       for await (const messageStream of runner) {
@@ -664,6 +836,8 @@ export class AnthropicAgentSession implements AgentSession {
         const openToolIndexes = new Map<number, string>();
 
         for await (const event of messageStream) {
+          requests.noteUsage(event);
+
           if (
             event.type === "content_block_start" &&
             event.content_block.type === "tool_use"
@@ -697,41 +871,11 @@ export class AnthropicAgentSession implements AgentSession {
         const message = await messageStream.finalMessage();
         lastStopReason = message.stop_reason;
 
-        // Recorded once per RUNNER iteration (not once per turn) — a
+        // Booked once per RUNNER iteration (not once per turn) — a
         // multi-iteration turn (tool round-trips, a pause_turn resume) bills
         // the API once per iteration, so the meter's counts need to match
-        // that, not collapse to the turn's final iteration alone. `?? 0`
-        // defaults cover both a fixture that omits `usage` and any one of
-        // its four sub-counts the real SDK response might not carry.
-        //
-        // Own try/catch, deliberately separate from the outer one: this
-        // turn's tokens were already billed by Anthropic and its reply
-        // already streamed to the client by the time this runs, so a
-        // throwing meter (a bug in the budget or the usage display, an
-        // injected test double gone wrong) must never be allowed to fall
-        // into the outer catch — that would turn an already-served turn into
-        // a sanitized "desk link faltered" error AND drop it from
-        // `this.history` (the outer `.then` in `runTurn` never appends on a
-        // non-"completed" outcome), corrupting the NEXT turn's context for a
-        // failure that has nothing to do with the model or the conversation.
-        // `model !== "scripted"` only narrows the type: `DEFAULT_JARVIS_BRAIN`
-        // is typed as any brain, but a scripted turn never reaches here.
-        if (meter && model !== "scripted") {
-          try {
-            meter.record(model, {
-              inputTokens: message.usage?.input_tokens ?? 0,
-              outputTokens: message.usage?.output_tokens ?? 0,
-              cacheReadTokens: message.usage?.cache_read_input_tokens ?? 0,
-              cacheCreationTokens:
-                message.usage?.cache_creation_input_tokens ?? 0,
-            });
-          } catch (usageError) {
-            console.error(
-              "AnthropicAgentSession: meter.record threw —",
-              describeSdkErrorForLogging(usageError),
-            );
-          }
-        }
+        // that, not collapse to the turn's final iteration alone.
+        requests.bookFinalUsage(message.usage);
 
         if (message.stop_reason === "refusal") {
           push({ type: "error", message: REFUSAL_MESSAGE });
@@ -749,14 +893,16 @@ export class AnthropicAgentSession implements AgentSession {
 
         // The budget check before every further request (spec §3.3 step 4):
         // the runner makes the next request when this loop asks it for the
-        // next iteration, so this is the last moment to stop it. Only a
-        // reply that would continue is cut — one that already ended keeps
-        // its own ending, and the next turn runs scripted anyway. Leaving
-        // the `for await` early returns the runner, which then sends nothing.
+        // next iteration, so this is the last moment to stop it, and the
+        // moment to reserve that request. Only a reply that would continue
+        // is cut — one that already ended keeps its own ending, and the next
+        // turn runs scripted anyway. Leaving the `for await` early returns
+        // the runner, which then sends nothing. (A reservation made here for
+        // a request `max_iterations` then never sends is released by
+        // `settle`.)
         if (
-          meter &&
           wouldRequestAgain(message.stop_reason) &&
-          isBudgetSpent(meter)
+          !requests.beginRequest()
         ) {
           finalText += BUDGET_STOP_NOTICE;
           push({ type: "delta", text: BUDGET_STOP_NOTICE });
@@ -808,6 +954,8 @@ export class AnthropicAgentSession implements AgentSession {
       push({ type: "error", message: DESK_LINK_FALTERED_MESSAGE });
 
       return { kind: "errored" };
+    } finally {
+      requests.settle();
     }
   }
 

@@ -171,6 +171,91 @@ describe("JarvisBudgetService", () => {
     });
   });
 
+  describe("meterFor — in-flight reservations", () => {
+    it("a request in flight on one meter exhausts another meter of the same member it would push past the limit, but not its own", async () => {
+      const store = createInMemorySpendStore();
+      await store.record("account:a", TODAY, "house", 0.15);
+      const service = createService(store);
+      await service.stateFor(MEMBER, "member");
+      const first = service.meterFor(MEMBER, "member");
+      const second = service.meterFor(MEMBER, "member");
+
+      expect(second.exhausted()).toBe(false);
+
+      // Sonnet's worst case: $0.045 input + $0.06144 output.
+      first.beginRequest("claude-sonnet-5", SONNET_CEILING);
+
+      expect(second.exhausted()).toBe(true);
+      expect(first.exhausted()).toBe(false);
+      // A reservation is not spend: the budget the person sees is unchanged.
+      expect((await service.stateFor(MEMBER, "member")).spentUsd).toBe(0.15);
+    });
+
+    it("booking the request releases its reservation, leaving only what it cost", async () => {
+      const store = createInMemorySpendStore();
+      await store.record("account:a", TODAY, "house", 0.15);
+      const service = createService(store);
+      await service.stateFor(MEMBER, "member");
+      const first = service.meterFor(MEMBER, "member");
+      const second = service.meterFor(MEMBER, "member");
+
+      first.beginRequest("claude-sonnet-5", SONNET_CEILING);
+      first.record("claude-haiku-4-5", ONE_CENT_ON_HAIKU);
+
+      expect(second.exhausted()).toBe(false);
+    });
+
+    it("endRequest releases a reservation whose request never happened", async () => {
+      const store = createInMemorySpendStore();
+      await store.record("account:a", TODAY, "house", 0.15);
+      const service = createService(store);
+      await service.stateFor(MEMBER, "member");
+      const first = service.meterFor(MEMBER, "member");
+      const second = service.meterFor(MEMBER, "member");
+
+      first.beginRequest("claude-sonnet-5", SONNET_CEILING);
+      first.endRequest();
+
+      expect(second.exhausted()).toBe(false);
+    });
+
+    it("the house cap counts other owners' in-flight requests", async () => {
+      const store = createInMemorySpendStore();
+      await store.record("roster:someone-else", TODAY, "house", 0.95);
+      const service = createService(store, { houseDailyUsd: 1 });
+      await service.stateFor(MEMBER, "member");
+      await service.stateFor(OPERATOR, "operator");
+      const operatorMeter = service.meterFor(OPERATOR, "operator");
+      const memberMeter = service.meterFor(MEMBER, "member");
+
+      expect(memberMeter.exhausted()).toBe(false);
+
+      operatorMeter.beginRequest("claude-sonnet-5", SONNET_CEILING);
+
+      expect(memberMeter.exhausted()).toBe(true);
+      expect(operatorMeter.exhausted()).toBe(false);
+
+      operatorMeter.endRequest();
+
+      expect(memberMeter.exhausted()).toBe(false);
+    });
+
+    it("a meter holds one reservation at a time: beginning again replaces it", async () => {
+      const service = createService(createInMemorySpendStore(), {
+        houseDailyUsd: 0.2,
+      });
+      await service.stateFor(OPERATOR, "operator");
+      const first = service.meterFor(OPERATOR, "operator");
+      const second = service.meterFor(OPERATOR, "operator");
+
+      first.beginRequest("claude-sonnet-5", SONNET_CEILING);
+      first.beginRequest("claude-sonnet-5", SONNET_CEILING);
+
+      // One $0.106 reservation fits under $0.20; two stacked would not.
+      expect(second.exhausted()).toBe(false);
+    });
+  });
+
   describe("meterFor", () => {
     it("flips exhausted the moment a record crosses the limit, before the write lands", async () => {
       const store = createInMemorySpendStore();
@@ -558,6 +643,22 @@ const OPERATOR: Caller = { username: "ops", accountId: null, issuedAt: null };
 const TEN_CENTS_ON_HAIKU: JarvisTokenUsage = {
   inputTokens: 0,
   outputTokens: 20_000,
+  cacheReadTokens: 0,
+  cacheCreationTokens: 0,
+};
+
+/** The worst case one request is reserved at (15k input tokens, the
+ * per-request output cap); on Sonnet $0.10644. */
+const SONNET_CEILING: JarvisTokenUsage = {
+  inputTokens: 15_000,
+  outputTokens: 4_096,
+  cacheReadTokens: 0,
+  cacheCreationTokens: 0,
+};
+
+const ONE_CENT_ON_HAIKU: JarvisTokenUsage = {
+  inputTokens: 10_000,
+  outputTokens: 0,
   cacheReadTokens: 0,
   cacheCreationTokens: 0,
 };

@@ -1527,6 +1527,105 @@ describe("per-caller offers and the daily budget", () => {
     expect(anthropicSpy.createSession).not.toHaveBeenCalled();
   });
 
+  it("a turn's meter reserves its requests in the caller's budget, where the caller's other turns see them, and releases them", async () => {
+    const store = createInMemorySpendStore();
+    await store.record("account:acc-ann", TODAY, "house", 0.15);
+    const services = createBudgetServices({}, store);
+    await services.jarvisBudget.stateFor(MEMBER, "member");
+    const otherTab = services.jarvisBudget.meterFor(MEMBER, "member");
+    const seenByOtherTab: boolean[] = [];
+    const scriptedSpy = createSpyLoop();
+    const anthropicSpy = createSpyLoop(
+      (options?: JarvisTurnOptions): Observable<JarvisEvent> => {
+        options?.meter?.beginRequest("claude-sonnet-5", SONNET_CEILING);
+        seenByOtherTab.push(otherTab.exhausted());
+        options?.meter?.endRequest();
+        seenByOtherTab.push(otherTab.exhausted());
+        return of<JarvisEvent>({ type: "done" });
+      },
+    );
+
+    const loops: JarvisLoops = {
+      scripted: scriptedSpy.loop,
+      anthropic: anthropicSpy.loop,
+      brains: JARVIS_BRAINS,
+      defaultBrain: DEFAULT_JARVIS_BRAIN,
+    };
+    const socket = createSocket([]);
+    createWsListener(
+      combineEffects(...jarvisEffects(loops)),
+      scopeServicesToConnection(services, MEMBER),
+    )(socket);
+
+    socket.messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "hi",
+        turnId: STUB_TURN_ID,
+        brain: "claude-sonnet-5",
+      } satisfies JarvisChatPayload,
+    });
+    await settleBudgetReads();
+
+    expect(seenByOtherTab).toEqual([true, false]);
+  });
+
+  it("a spend store that cannot be read fails closed: the subscribed socket is gated as unavailable, and a chat asking for Haiku runs scripted", async () => {
+    const unreachableStore: SpendStore = {
+      kind: "supabase",
+      read: (): Promise<"unavailable"> => {
+        return Promise.resolve("unavailable");
+      },
+      record: (): Promise<"unavailable"> => {
+        return Promise.resolve("unavailable");
+      },
+    };
+    const services = createBudgetServices({}, unreachableStore);
+    const { anthropicSpy, scriptedSpy, messages$, sent } = wireSpySocket(
+      services,
+      MEMBER,
+    );
+
+    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "hi",
+        turnId: STUB_TURN_ID,
+        brain: "claude-haiku-4-5",
+      } satisfies JarvisChatPayload,
+    });
+    await settleBudgetReads();
+
+    const availability = sent.filter((m) => {
+      return m.type === SERVER_MSG.JARVIS_AVAILABILITY;
+    });
+    expect(availability).toEqual([
+      {
+        type: SERVER_MSG.JARVIS_AVAILABILITY,
+        payload: {
+          available: true,
+          brains: ["scripted"],
+          defaultBrain: "scripted",
+          gate: {
+            level: "hard",
+            resetsAtMs: NEXT_MIDNIGHT,
+            gated: ["claude-haiku-4-5", "claude-sonnet-5"],
+          },
+          budget: {
+            keyKind: "house",
+            spentUsd: 0,
+            limitUsd: 0.2,
+            exhausted: "unavailable",
+            resetsAtMs: NEXT_MIDNIGHT,
+          },
+        },
+      },
+    ]);
+    expect(scriptedSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", []);
+    expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+  });
+
   it("two tabs of one caller: a turn that spends the budget on one pushes the gated frame to both, and feeds the Ops usage meter", async () => {
     const services = createBudgetServices();
     // Each tab's turn spends $0.20 on Haiku through the meter the effect
@@ -2078,6 +2177,14 @@ function gateLevelOf(frame: Outbound | undefined): string | undefined {
 async function settleBudgetReads(): Promise<void> {
   await vi.advanceTimersByTimeAsync(0);
 }
+
+/** The worst case one Sonnet request is reserved at: $0.10644. */
+const SONNET_CEILING: JarvisTokenUsage = {
+  inputTokens: 15_000,
+  outputTokens: 4_096,
+  cacheReadTokens: 0,
+  cacheCreationTokens: 0,
+};
 
 /** Input-only usage: Haiku bills $1/Mtok input, so N tokens cost N/1e6 USD. */
 function createUsageFixture(inputTokens: number): JarvisTokenUsage {
