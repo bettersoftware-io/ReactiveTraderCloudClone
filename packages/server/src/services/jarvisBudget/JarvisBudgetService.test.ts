@@ -383,6 +383,151 @@ describe("JarvisBudgetService", () => {
       expect(meter.exhausted()).toBe(false);
     });
 
+    it("still counts a write the store could not take once a read replaces the copy, and writes it again", async () => {
+      const inner = createInMemorySpendStore();
+      const switchable = createSwitchableStore(inner);
+      const record = vi.spyOn(switchable.store, "record");
+      const service = createService(switchable.store);
+
+      await service.stateFor(MEMBER, "member");
+      switchable.setDown(true);
+      service
+        .meterFor(MEMBER, "member")
+        .record("claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      await settle();
+      switchable.setDown(false);
+
+      // The store's figure leaves the failed write out; the copy adds it.
+      const recovered = await service.stateFor(MEMBER, "member");
+
+      expect(recovered.spentUsd).toBe(0.1);
+      expect(recovered.exhausted).toBeNull();
+      expect(service.houseToday().spentUsd).toBe(0.1);
+
+      await settle();
+
+      expect(record).toHaveBeenCalledTimes(2);
+      expect(record).toHaveBeenLastCalledWith("account:a", TODAY, "house", 0.1);
+      await expect(inner.read("account:a", TODAY, "house")).resolves.toEqual({
+        ownerUsd: 0.1,
+        houseUsd: 0.1,
+      });
+    });
+
+    it("writes a failed amount again once, and counts it once after it lands", async () => {
+      const switchable = createSwitchableStore();
+      const record = vi.spyOn(switchable.store, "record");
+      const service = createService(switchable.store);
+
+      await service.stateFor(MEMBER, "member");
+      switchable.setDown(true);
+      service
+        .meterFor(MEMBER, "member")
+        .record("claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      await settle();
+      switchable.setDown(false);
+      await service.stateFor(MEMBER, "member");
+      await settle();
+
+      // A second outage and recovery: nothing is left to write again.
+      switchable.setDown(true);
+      await service.stateFor(OPERATOR, "operator");
+      switchable.setDown(false);
+      await service.stateFor(MEMBER, "member");
+      await settle();
+
+      expect(record).toHaveBeenCalledTimes(2);
+      expect((await service.stateFor(MEMBER, "member")).spentUsd).toBe(0.1);
+      expect(service.houseToday().spentUsd).toBe(0.1);
+    });
+
+    it("keeps a failed amount counted when its retry fails too, and writes it on the next recovery", async () => {
+      // Reads answer throughout; only writes fail while switched down.
+      const inner = createInMemorySpendStore();
+      const writes = createSwitchableStore(inner);
+      const store: SpendStore = { ...writes.store, read: inner.read };
+      const service = createService(store);
+
+      await service.stateFor(MEMBER, "member");
+      writes.setDown(true);
+      service
+        .meterFor(MEMBER, "member")
+        .record("claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      await settle();
+      // The read that lifts the outage queues the retry, which fails.
+      await service.stateFor(MEMBER, "member");
+      await settle();
+
+      // Read without a store call: the failed retry closed the store again,
+      // and the amount is still spent.
+      expect(service.meterFor(MEMBER, "member").exhausted()).toBe(true);
+      expect(service.houseToday().spentUsd).toBe(0.1);
+
+      writes.setDown(false);
+      await service.stateFor(MEMBER, "member");
+      await settle();
+
+      await expect(inner.read("account:a", TODAY, "house")).resolves.toEqual({
+        ownerUsd: 0.1,
+        houseUsd: 0.1,
+      });
+      await expect(service.stateFor(MEMBER, "member")).resolves.toMatchObject({
+        spentUsd: 0.1,
+        exhausted: null,
+      });
+    });
+
+    it("writes a failed amount once when the store recovers twice before the retry runs", async () => {
+      const inner = createInMemorySpendStore();
+      const manual = createManualStore(inner);
+      const record = vi.spyOn(manual.store, "record");
+      const service = createService(manual.store);
+      const other: Caller = { ...MEMBER, accountId: "b" };
+
+      await loadBoth(service, manual, other);
+      manual.setDown(true);
+      service
+        .meterFor(MEMBER, "member")
+        .record("claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      await manual.release("account:a");
+      manual.setDown(false);
+
+      // A's read holds A's queue while B's calls flap the store: up (a retry
+      // queued behind the read), down, up again (a second one queued).
+      const heldRead = service.stateFor(MEMBER, "member");
+      const firstLift = service.stateFor(other, "member");
+
+      await manual.release("account:b");
+      await firstLift;
+      manual.setDown(true);
+      service
+        .meterFor(other, "member")
+        .record("claude-haiku-4-5", ONE_CENT_ON_HAIKU);
+      await manual.release("account:b");
+      manual.setDown(false);
+
+      const secondLift = service.stateFor(other, "member");
+
+      await manual.release("account:b");
+      await secondLift;
+      await manual.release("account:a");
+      await heldRead;
+      // The first retry writes the amount; the second finds nothing left.
+      await manual.release("account:a");
+
+      expect(
+        record.mock.calls.filter(([owner]) => {
+          return owner === "account:a";
+        }),
+      ).toHaveLength(2);
+      // The house total also holds B's cent, written again on B's recovery.
+      await expect(inner.read("account:a", TODAY, "house")).resolves.toEqual({
+        ownerUsd: 0.1,
+        houseUsd: 0.11,
+      });
+      expect((await service.stateFor(MEMBER, "member")).spentUsd).toBe(0.1);
+    });
+
     it("stays closed when a write sent before an outage answers after it", async () => {
       const manual = createManualStore();
       const service = createService(manual.store);
@@ -703,9 +848,11 @@ interface SwitchableStore {
   setDown(down: boolean): void;
 }
 
-/** An in-memory store that answers `"unavailable"` while switched down. */
-function createSwitchableStore(): SwitchableStore {
-  const inner = createInMemorySpendStore();
+/** A store (in-memory unless given) that answers `"unavailable"` while
+ * switched down. */
+function createSwitchableStore(
+  inner: SpendStore = createInMemorySpendStore(),
+): SwitchableStore {
   let down = false;
 
   return {

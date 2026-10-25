@@ -83,6 +83,10 @@ interface OwnerCopy {
   /** Booked here, not yet answered by the store. Counting it at once is what
    * lets a second request in the same turn see the first one's cost. */
   pendingUsd: number;
+  /** Spent, but its write failed, so the store's total leaves it out. Kept
+   * apart from `confirmedUsd`, which every store answer replaces, and sent
+   * again once the store answers again. */
+  unrecordedUsd: number;
   /** A read or write answer for this owner has landed today. */
   loaded: boolean;
 }
@@ -99,7 +103,9 @@ interface OwnerCopy {
  * a `stateFor` sees every write booked before it.
  *
  * Fails closed: once any read or write answers `"unavailable"`, every caller
- * is exhausted with that reason until a later read succeeds.
+ * is exhausted with that reason until a later read succeeds. A write that
+ * failed is not lost: its amount stays counted on top of the store's figure
+ * and is written again once the store answers again.
  */
 export class JarvisBudgetService {
   readonly changes$: Observable<void>;
@@ -122,6 +128,10 @@ export class JarvisBudgetService {
   private houseConfirmedUsd = 0;
 
   private housePendingUsd = 0;
+
+  /** Every owner's `unrecordedUsd`: the store's house total leaves it out
+   * too. */
+  private houseUnrecordedUsd = 0;
 
   /** In-flight requests' worst-case cost, per owner and house-wide. Not part
    * of the day's copy: a request in flight across midnight still holds its
@@ -219,7 +229,7 @@ export class JarvisBudgetService {
 
         return (
           this.exhaustionOf(
-            roundUsd(copy.confirmedUsd + copy.pendingUsd + othersOfOwnerUsd),
+            roundUsd(ownerSpentUsd(copy) + othersOfOwnerUsd),
             limitUsd,
             roundUsd(this.houseSpentUsd() + othersOfHouseUsd),
           ) !== null
@@ -245,7 +255,7 @@ export class JarvisBudgetService {
 
   private stateOf(owner: SpendOwner, tier: JarvisTier): BudgetState {
     const copy = this.copyFor(owner);
-    const spentUsd = roundUsd(copy.confirmedUsd + copy.pendingUsd);
+    const spentUsd = roundUsd(ownerSpentUsd(copy));
     const limitUsd = tier === "member" ? this.config.userDailyUsd : null;
     const houseSpentUsd = this.houseSpentUsd();
 
@@ -299,7 +309,9 @@ export class JarvisBudgetService {
   }
 
   private houseSpentUsd(): number {
-    return roundUsd(this.houseConfirmedUsd + this.housePendingUsd);
+    return roundUsd(
+      this.houseConfirmedUsd + this.housePendingUsd + this.houseUnrecordedUsd,
+    );
   }
 
   private recordSpend(
@@ -349,15 +361,57 @@ export class JarvisBudgetService {
       this.housePendingUsd -= usd;
 
       if (answer === "unavailable") {
-        // Spent all the same: keep counting it until a read replaces it.
-        copy.confirmedUsd += usd;
-        this.houseConfirmedUsd += usd;
+        // Spent all the same: keep counting it, apart from the store's
+        // figure, until a write of it lands.
+        copy.unrecordedUsd += usd;
+        this.houseUnrecordedUsd += usd;
       } else {
         // Only a house-key answer may set the house copy: for own-key spend
         // `record_jarvis_spend` answers house_usd 0. This service records
         // house-key spend only.
         this.applyTotals(copy, answer);
       }
+    }
+
+    this.noteStoreAnswer(answer, seq);
+  }
+
+  /** Sends again what failed writes left out of the store, owner by owner,
+   * each in its owner's queue like any write. Called when the store answers
+   * again after failing; a retry that fails waits for the next recovery. */
+  private retryUnrecordedSpend(): void {
+    for (const [owner, copy] of this.owners) {
+      if (copy.unrecordedUsd > 0) {
+        void this.enqueueStoreCall(owner, () => {
+          return this.rewriteUnrecordedSpend(owner);
+        });
+      }
+    }
+  }
+
+  private async rewriteUnrecordedSpend(owner: SpendOwner): Promise<void> {
+    const day = this.rollCopyToToday();
+    const copy = this.copyFor(owner);
+    // Read when the write starts, not when it was queued: the owner's calls
+    // run one at a time, so an earlier retry (a store that flapped) has
+    // landed by now, and what it moved into the store is not sent twice.
+    const usd = copy.unrecordedUsd;
+
+    if (usd <= 0) {
+      return;
+    }
+
+    const { answer, seq } = await this.callStore(() => {
+      return this.store.record(owner, day, "house", usd);
+    });
+
+    // A success that answers after midnight is not applied: midnight dropped
+    // the copy the amount was kept in, and the new day's never counted it.
+    if (answer !== "unavailable" && day === this.rollCopyToToday()) {
+      // The store's totals now include it: it moves from here into them.
+      copy.unrecordedUsd = roundUsd(copy.unrecordedUsd - usd);
+      this.houseUnrecordedUsd = roundUsd(this.houseUnrecordedUsd - usd);
+      this.applyTotals(copy, answer);
     }
 
     this.noteStoreAnswer(answer, seq);
@@ -419,6 +473,11 @@ export class JarvisBudgetService {
 
     if (available !== this.storeAvailable) {
       this.storeAvailable = available;
+
+      if (available) {
+        this.retryUnrecordedSpend();
+      }
+
       this.changes.next();
     }
   }
@@ -449,7 +508,12 @@ export class JarvisBudgetService {
     let copy = this.owners.get(owner);
 
     if (copy === undefined) {
-      copy = { confirmedUsd: 0, pendingUsd: 0, loaded: false };
+      copy = {
+        confirmedUsd: 0,
+        pendingUsd: 0,
+        unrecordedUsd: 0,
+        loaded: false,
+      };
       this.owners.set(owner, copy);
     }
 
@@ -467,6 +531,7 @@ export class JarvisBudgetService {
       this.owners.clear();
       this.houseConfirmedUsd = 0;
       this.housePendingUsd = 0;
+      this.houseUnrecordedUsd = 0;
     }
 
     return today;
@@ -490,6 +555,12 @@ export class JarvisBudgetService {
     // A pending midnight must not keep the process alive on shutdown.
     this.midnightTimer.unref();
   }
+}
+
+/** The owner's spend today as this copy knows it: the store's figure, what
+ * is on its way there, and what a failed write left out of it. */
+function ownerSpentUsd(copy: OwnerCopy): number {
+  return copy.confirmedUsd + copy.pendingUsd + copy.unrecordedUsd;
 }
 
 function spendOwnerOf(caller: Caller): SpendOwner {
