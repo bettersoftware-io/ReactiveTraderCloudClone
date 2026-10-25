@@ -264,8 +264,13 @@ to come from the browser jobs themselves (~220–250 s of suite time at 2
 workers on a fast runner):
 
 - **Shard each browser suite across two runners** (`playwright test
-  --shard=1/2`). Each shard would get a whole runner, but pays the
-  ~70–110 s job setup again. Unmeasured.
+  --shard=1/2`, or one job per client). Each shard would get a whole
+  runner, but pays the ~70–110 s job setup again. Unmeasured. **On its own it
+  barely moves the run:** with the browser jobs at an estimated ~230–260 s,
+  `coverage` (352–383 s) becomes the longest job, so the run would go from
+  ~375–450 s to only ~380 s. It pays off only together with splitting
+  `coverage` (the two UI-contract gates, ~165 s, are the natural cut), which
+  would leave `checks` (~270 s) as the long pole.
 - **Read the three browser jobs like for like before ranking them.** On the
   production build the Effect core's suites ran ~1.06x the RxJS ones
   ([`tests/README.md`, "Reading e2e job timings"](../tests/README.md#dev-server-payload-lean-deps)),
