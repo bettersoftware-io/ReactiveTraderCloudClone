@@ -497,7 +497,13 @@ CI additionally runs an **Expo export smoke** (Metro bundling of the real app) t
 
 ### 9.10 The CI gauntlet
 
-The blocking gauntlet is three **parallel** jobs in `.github/workflows/ci.yml` (`checks`, `e2e`, `e2e-alt-cores`), triggered on PRs and pushes to `main`. The ~15-min visual-diff job (react + solid, the sole `playwright` tier each — see `visual.yml`; ~29 min when the two clients ran serially in one job, ~52 min before the 2026-07-20 tier retirement in §9.7) is **not** among them: it runs post-merge only, in its own `.github/workflows/visual.yml` (triggered on push to `main` — i.e. right after a PR merges — plus manual `workflow_dispatch`), as a **matrix of two per-client jobs on separate runners** — one browser stack per runner, the isolation the ±1px stable-frame lesson needs — feeding a fan-in report/gate job. Branch pushes are never blocked while the UI is still churning. A red post-merge visual run is the signal to inspect the diff and either fix the regression or regenerate the goldens (via `update-visual-goldens.yml`). To restore it as a PR gate once the UI stabilises, move the job back into `ci.yml` **and** re-add `visual diffs` to `main`'s required status checks — both halves, or you get a gate that runs-but-doesn't-block or blocks-but-doesn't-run.
+The blocking gauntlet is four **parallel** jobs in `.github/workflows/ci.yml` (`checks`, `coverage`, `e2e`, `e2e-alt-cores`; all four are `main`'s required status checks), triggered on PRs and pushes to `main`. The ~15-min visual-diff job (react + solid, the sole `playwright` tier each — see `visual.yml`; ~29 min when the two clients ran serially in one job, ~52 min before the 2026-07-20 tier retirement in §9.7) is **not** among them: it runs post-merge only, in its own `.github/workflows/visual.yml` (triggered on push to `main` — i.e. right after a PR merges — plus manual `workflow_dispatch`), as a **matrix of two per-client jobs on separate runners** — one browser stack per runner, the isolation the ±1px stable-frame lesson needs — feeding a fan-in report/gate job. Branch pushes are never blocked while the UI is still churning. A red post-merge visual run is the signal to inspect the diff and either fix the regression or regenerate the goldens (via `update-visual-goldens.yml`). To restore it as a PR gate once the UI stabilises, move the job back into `ci.yml` **and** re-add `visual diffs` to `main`'s required status checks — both halves, or you get a gate that runs-but-doesn't-block or blocks-but-doesn't-run.
+
+`coverage` holds the ≥95% coverage gates (both UI contracts, devtools core +
+app, the two alternative cores, `@rtc/web-boot`, the React Native merged
+lines). They were the last third of `checks` until 2026-10-25 (#1057), when
+`checks` was the workflow's slowest job at ~700 s and those gates ~250 s of
+it; split out, the two run side by side, and the e2e jobs bound the run.
 
 The e2e job runs `RTC_E2E_SKIP_GHERKIN_BROWSER=1 pnpm test:e2e` — 5 of the 7
 `run-all.ts` suites (native Playwright react + solid, the presenter peer, both
@@ -513,24 +519,29 @@ The third job, `e2e-alt-cores`, is a matrix over `core: [async, effect]` that ru
 flowchart TD
     trigger["PR / push to main"]
     trigger --> checks
+    trigger --> cov
     trigger --> e2e
     trigger --> alt
     subgraph checks["ci.yml · Job 1 — checks"]
         direction TB
         c1["Biome ci · ESLint AST + custom rules (RuleTester)"]
         c1 --> c3["Stylelint · actionlint · manypkg/syncpack"]
-        c3 --> c4["typecheck · unit + UI contract tests · coverage ≥ 95%"]
+        c3 --> c4["typecheck · unit tests"]
         c4 --> c6["build · Expo export smoke (RN Metro)"]
         c6 --> c7["knip · dependency-cruiser · ESLint type-aware"]
         c7 --> c8["grep gates + pnpm audit"]
     end
-    subgraph e2e["ci.yml · Job 2 — e2e (5 of 7 suites)"]
+    subgraph cov["ci.yml · Job 2 — coverage"]
+        k1["build · the ≥95% coverage gates"]
+    end
+    subgraph e2e["ci.yml · Job 3 — e2e (5 of 7 suites)"]
         e1["native Playwright browser peers (react + solid)<br/>+ presenter peer + fullstack smokes"]
     end
-    subgraph alt["ci.yml · Job 3 — e2e-alt-cores (matrix: async, effect)"]
+    subgraph alt["ci.yml · Job 4 — e2e-alt-cores (matrix: async, effect)"]
         a1["same 5 suites with RTC_CORE_IMPL=async / effect"]
     end
     checks ~~~ postmerge
+    cov ~~~ postmerge
     e2e ~~~ postmerge
     alt ~~~ postmerge
     postmerge["push to main (post-merge)"]
