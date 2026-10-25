@@ -2,6 +2,7 @@ import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
+  estimateUsageCostUsd,
   JARVIS_PRICE_TABLE,
   JARVIS_USAGE_WINDOW_MS,
   UsageMeter,
@@ -266,5 +267,29 @@ describe("UsageMeter", () => {
 
   it("JARVIS_USAGE_WINDOW_MS is 5 hours", () => {
     expect(JARVIS_USAGE_WINDOW_MS).toBe(5 * 60 * 60 * 1000);
+  });
+});
+
+describe("estimateUsageCostUsd", () => {
+  it("prices one request's usage on sonnet, cache reads at 10% and writes at 125% of input", () => {
+    expect(
+      estimateUsageCostUsd("claude-sonnet-5", {
+        inputTokens: 1_000_000,
+        outputTokens: 1_000_000,
+        cacheReadTokens: 1_000_000,
+        cacheCreationTokens: 1_000_000,
+      }),
+    ).toBeCloseTo(3 + 15 + 0.3 + 3.75, 10);
+  });
+
+  it("prices the scripted brain at zero", () => {
+    expect(
+      estimateUsageCostUsd("scripted", {
+        inputTokens: 1_000_000,
+        outputTokens: 1_000_000,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+      }),
+    ).toBe(0);
   });
 });

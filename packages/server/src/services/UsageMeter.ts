@@ -59,7 +59,16 @@ function createAccumulator(): BrainAccumulator {
   };
 }
 
-function estimateCostUsd(brain: JarvisBrain, acc: BrainAccumulator): number {
+/**
+ * The estimated USD cost of some token usage on a brain — one request's for
+ * the daily budget, a window's running totals for the Ops rows. Both price
+ * through this one function so the budget is enforced against exactly the
+ * figure the Ops card shows.
+ */
+export function estimateUsageCostUsd(
+  brain: JarvisBrain,
+  usage: JarvisTokenUsage,
+): number {
   if (brain === "scripted") {
     return 0;
   }
@@ -67,10 +76,10 @@ function estimateCostUsd(brain: JarvisBrain, acc: BrainAccumulator): number {
   const price = JARVIS_PRICE_TABLE[brain];
 
   return (
-    (acc.inputTokens * price.inputUsdPerMtok +
-      acc.outputTokens * price.outputUsdPerMtok +
-      acc.cacheReadTokens * price.inputUsdPerMtok * 0.1 +
-      acc.cacheCreationTokens * price.inputUsdPerMtok * 1.25) /
+    (usage.inputTokens * price.inputUsdPerMtok +
+      usage.outputTokens * price.outputUsdPerMtok +
+      usage.cacheReadTokens * price.inputUsdPerMtok * 0.1 +
+      usage.cacheCreationTokens * price.inputUsdPerMtok * 1.25) /
     1e6
   );
 }
@@ -83,7 +92,7 @@ function toRow(brain: JarvisBrain, acc: BrainAccumulator): JarvisBrainUsageRow {
     outputTokens: acc.outputTokens,
     cacheReadTokens: acc.cacheReadTokens,
     cacheCreationTokens: acc.cacheCreationTokens,
-    estimatedCostUsd: estimateCostUsd(brain, acc),
+    estimatedCostUsd: estimateUsageCostUsd(brain, acc),
   };
 }
 
