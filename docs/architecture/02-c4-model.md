@@ -417,7 +417,7 @@ flowchart TB
         fxEq["<b>Equities effects</b><br/>watchlist$ · eqQuotes$ · depth$ · orders$ · positions$ ·<br/>getCandles$ · getCandleHistory$ · placeOrder$ (+ ORDER_LIFECYCLE) · cancelOrder$"]:::server
         fxJarvis["<b>Jarvis effects</b><br/>JARVIS_* · availability + up to two lazy sessions per connection<br/>(scripted and Anthropic; each turn routed by JarvisBrain preference)"]:::server
         agent["<b>Agent loops</b> · src/agent<br/>ScriptedAgentLoop · AnthropicAgentLoop<br/>(@anthropic-ai/sdk confined here)"]:::server
-        svcContainer["<b>createServices</b><br/>ServiceContainer: FX + credit + equities simulators<br/>+ ThroughputService · UsageMeter · JarvisGateService"]:::server
+        svcContainer["<b>createServices</b><br/>ServiceContainer: FX + credit + equities simulators<br/>+ ThroughputService · UsageMeter · JarvisBudgetService"]:::server
         http --> toSocket
         fxFx ~~~ fxCredit ~~~ fxOps ~~~ fxEq
         fxEq ~~~ fxJarvis

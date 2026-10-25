@@ -115,18 +115,6 @@ describe("supabase migrations", () => {
   const sql = readAllMigrations();
 });
 
-function readAllMigrations(): string {
-  return readdirSync(MIGRATIONS_DIR)
-    .filter((name) => {
-      return name.endsWith(".sql");
-    })
-    .sort()
-    .map((name) => {
-      return readFileSync(join(MIGRATIONS_DIR, name), "utf8");
-    })
-    .join("\n");
-}
-
 /**
  * `jarvis_spend_daily` holds each person's daily AI spend. Like `profiles` it
  * is private to the server: RLS on, no policy, and the recording function is
@@ -170,3 +158,15 @@ describe("jarvis spend migration", () => {
     "utf8",
   ).replace(/^--.*$/gm, "");
 });
+
+function readAllMigrations(): string {
+  return readdirSync(MIGRATIONS_DIR)
+    .filter((name) => {
+      return name.endsWith(".sql");
+    })
+    .sort()
+    .map((name) => {
+      return readFileSync(join(MIGRATIONS_DIR, name), "utf8");
+    })
+    .join("\n");
+}

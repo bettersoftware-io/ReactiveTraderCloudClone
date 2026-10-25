@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   createAccountDirectory,
+  createSpendStore,
   isRegistrationOpen,
   readSignupLevers,
   resolveAccountsMode,
@@ -215,6 +216,26 @@ describe("createAccountDirectory", () => {
       ).kind,
     ).toBe("supabase");
   });
+});
+
+describe("createSpendStore", () => {
+  it("is the Supabase store in supabase mode — a deployed server never keeps the house budget in memory", () => {
+    expect(
+      createSpendStore(
+        { kind: "supabase", url: "https://p.supabase.co", secretKey: "k" },
+        options,
+      ).kind,
+    ).toBe("supabase");
+  });
+
+  it.each([{ kind: "in-memory" }, { kind: "disabled" }] as const)(
+    "is the in-memory store in $kind mode",
+    (mode) => {
+      expect(createSpendStore(mode, options).kind).toBe("in-memory");
+    },
+  );
+
+  const options = { timeoutMs: 5_000 };
 });
 
 describe("isRegistrationOpen", () => {

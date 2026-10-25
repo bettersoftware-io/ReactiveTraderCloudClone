@@ -137,58 +137,60 @@ is live and what it has cost. That gives every user a **manual** run-dry
 escape hatch already: flipping to Scripted in Preferences is a client-side
 preference write, live on the next message, no server restart and no env
 change — a different mechanism from `RTC_JARVIS_FAKE` above, which is a
-server-wide rehearsal override, not a per-user choice. Automatic aggregate
-gating — swapping the offer down as the server-wide window fills, on top of
-this manual per-user escape hatch — is the "Budget gate" section below (item
-(2) of the workstream; see the entry in [STATUS.md](STATUS.md)).
+server-wide rehearsal override, not a per-user choice. Automatic
+gating — swapping the offer down as a person's or the house's daily budget is
+spent, on top of this manual per-user escape hatch — is the "Daily budget"
+section below.
 
-## Budget gate — automatic degrade, no restart required
+## Daily budget — per person, durable, no restart required
 
-Beyond the manual per-user "flip to Scripted" escape hatch above, the server
-now watches its own `UsageMeter` and narrows the brain offer on its own —
-the automatic-gating follow-on to the "still missing" note just above.
-Full design and architecture receipt:
-[design doc](superpowers/specs/2026-08-08-jarvis-usage-auto-gating-design.md)
-and [architecture §18.15](architecture/18-jarvis-ai-agent-surface.md#1815-the-brain-picker--usage-display-round--the-receipt).
+The server keeps a **per-person daily budget** for the house key and a
+**house-wide daily cap**, and narrows the brain offer on its own when either is
+spent. Design and rollout:
+[the B3 spec](superpowers/specs/2026-10-25-b3-ai-metering-byo-keys-design.md)
+(§3 is this part, B3a) and
+[architecture §18.15](architecture/18-jarvis-ai-agent-surface.md#1815-the-brain-picker--usage-display-round--the-receipt).
 
 | Env | Default | Effect |
 |---|---|---|
-| `RTC_JARVIS_BUDGET_USD` | `1` (USD) | Ceiling on estimated spend per 5h usage window (the same window `UsageMeter` already tracks). Set to `off` to disable gating entirely. Malformed values (not a positive number, and not `off`) fall back to the default and log one boot-time warning — they do not crash the server. |
-| `RTC_JARVIS_BUDGET_SOFT_RATIO` | `0.8` | Fraction of the budget where the soft stage kicks in. Must satisfy `0 < ratio < 1`; a malformed value falls back to the default with the same one-line boot warning. |
-| `RTC_JARVIS_FORCE_GATE` | unset | Force a level (`soft` or `hard`) regardless of actual spend — the zero-token way to demo or test the degraded UI without burning budget. Empty string is treated as absent (falls through to the computed level, not an error). Any other value logs a warning and is ignored. A forced level wins over everything, including `RTC_JARVIS_BUDGET_USD=off`. |
+| `RTC_JARVIS_USER_DAILY_USD` | `0.20` (USD) | What one member may spend on the house key per UTC day. `0` turns the house key off for members. Administrators and the roster persona have no personal limit; their spend counts toward the house cap. A malformed value warns at boot, naming the setting, and uses the default. |
+| `RTC_JARVIS_HOUSE_DAILY_USD` | `3` (USD) | What everyone together may spend on the house key per UTC day. `0` turns the house key off for everyone. Same malformed-value rule. |
+| `RTC_JARVIS_FORCE_GATE` | unset | `exhausted` forces every caller to the exhausted state regardless of spend — the zero-token way to demo or test the degraded UI. Empty string is treated as absent. `soft` and `hard` are retired: they warn and are ignored. Any other value warns and is ignored. |
 
-**Two-stage degrade:**
+`RTC_JARVIS_BUDGET_USD` and `RTC_JARVIS_BUDGET_SOFT_RATIO` are **removed**;
+setting them has no effect.
 
-1. **Soft** (spend ≥ budget × soft ratio) — the expensive brains drop:
-   `claude-sonnet-5` and `claude-opus-5`. `claude-haiku-4-5` and `scripted`
-   stay offered.
-2. **Hard** (spend ≥ budget) — every real brain drops; only `scripted`
-   remains offered.
+**What exhaustion does.** A caller whose limit (or the house cap) is spent has
+every house brain dropped: only `scripted` stays offered, the footer chip reads
+`budget exhausted`, and every turn is scripted. The same
+`JARVIS_AVAILABILITY` frame carries the state, with the reset time (the next
+00:00 UTC). `RTC_JARVIS_FORCE_GATE=exhausted` rides that same frame, so it is a
+faithful preview of the real state, not a separate code path. If the spend
+store cannot be read or written, house turns are scripted too (fail closed)
+until a later read succeeds.
 
-Both stages push the same `JARVIS_AVAILABILITY` frame the picker renders
-(gated brains show visible-but-disabled with a reset time), and the
-gate lifts itself automatically once the 5h window rolls — no restart, no
-manual re-enable. `RTC_JARVIS_FORCE_GATE` is layered on top of that same
-frame, so it is a faithful preview of the real degraded state, not a
-separate code path.
+**Durable.** Spend is kept in the `jarvis_spend_daily` table and added up by
+the `record_jarvis_spend` function, both private to the server (secret key
+only). A restart, a redeploy or a crash does not reset anyone's day. With the
+dev account directory (`RTC_DEV_ACCOUNTS=1`) or accounts disabled, the same
+service keeps its totals in the process instead, and a restart zeroes them.
+The Ops usage card (`UsageMeter`) is a separate, display-only, in-memory
+tally.
 
-**In-memory, server-lifetime.** Like `UsageMeter` itself, the gate's spend
-tracking lives only in server process memory — a restart (a redeploy, a
-crash, `dev:ws` stopping) zeroes the window and the gate returns to `"none"`
-regardless of what was spent before. There is no persistence across
-restarts today.
+**Trying it locally.** Run the server with `RTC_DEV_ACCOUNTS=1`,
+`RTC_JARVIS_FAKE` unset, a placeholder `ANTHROPIC_API_KEY` and
+`RTC_JARVIS_FORCE_GATE=exhausted`: the chip reads `budget exhausted` and every
+turn is scripted without a token spent.
 
-**Turbo passthrough:** all three vars ride through turbo's
-`globalPassThroughEnv` (`turbo.json`), the same list `RTC_JARVIS_FAKE`
-already sits in — without that entry turbo's strict env mode would strip
-them silently in the turbo-routed `dev:*:fs` scripts (`dev:react:fs`,
-`dev:solid:fs`, `dev:ios:fs`, each a `turbo run dev`; and `dev:android:fs`,
-which runs the server's `dev` task beside the app's `dev:android`), the same trap
-`CLAUDE.md` documents for `VITE_SERVER_URL`. `dev:ws` itself never goes
-through turbo — it's a plain `pnpm --filter @rtc/server dev` (tsx watch) —
-so this passthrough entry doesn't affect it either way:
-`RTC_JARVIS_FORCE_GATE=soft pnpm dev:ws` reaches the process untouched
-with no `turbo.json` involvement at all.
+**Turbo passthrough:** the settings ride through turbo's
+`globalPassThroughEnv` (`turbo.json`), the same list `RTC_JARVIS_FAKE` sits in
+— without that entry turbo's strict env mode would strip them silently in the
+turbo-routed `dev:*:fs` scripts (`dev:react:fs`, `dev:solid:fs`, `dev:ios:fs`,
+each a `turbo run dev`; and `dev:android:fs`, which runs the server's `dev`
+task beside the app's `dev:android`), the same trap `CLAUDE.md` documents for
+`VITE_SERVER_URL`. `dev:ws` itself never goes through turbo — it's a plain
+`pnpm --filter @rtc/server dev` (tsx watch) — so
+`RTC_JARVIS_FORCE_GATE=exhausted pnpm dev:ws` reaches the process untouched.
 
 ## Rate limits, and how Jarvis behaves when any limit trips
 
@@ -210,7 +212,7 @@ nothing crashes, leaks, or retry-storms):
 | Trip | Behavior |
 |---|---|
 | **429 rate-limited** | The SDK auto-retries a bounded number of times honoring `retry-after`; if exhausted, `AnthropicAgentSession` sanitizes the error (name/status only — never the raw message) and the turn fails with the in-character copy ("The desk link faltered, sir…"). The session survives; the next turn works once the bucket refills. A `retry-after` past the client's 30s first-event deadline makes the client show offline copy and fire its turn-correlated cancel — harmless (429'd requests aren't billed; the stale-cancel gate can't kill a later turn). |
-| **Spend cap hit / credits depleted** | Non-retryable billing error → the same sanitized per-turn failure. This is now the *outer* backstop only — with the budget gate (below) left at its sane default, spend narrows to Scripted well before the real Anthropic-side cap is reached; it still applies as-is if the internal budget is set higher than the real balance, or disabled with `RTC_JARVIS_BUDGET_USD=off`. In that residual case the orb stays visible and the footer chip keeps naming the depleted brain (availability tests "loop configured", not "key can bill"), so users see polite failures rather than a gate frame — flipping to Scripted in Preferences (see above) is the manual workaround. |
+| **Spend cap hit / credits depleted** | Non-retryable billing error → the same sanitized per-turn failure. This is now the *outer* backstop only — with the daily budget (above) left at its defaults, spend narrows to Scripted well before the real Anthropic-side cap is reached; it still applies as-is if the house cap is set higher than the real balance. In that residual case the orb stays visible and the footer chip keeps naming the depleted brain (availability tests "loop configured", not "key can bill"), so users see polite failures rather than an exhausted frame — flipping to Scripted in Preferences (see above) is the manual workaround. |
 | **529 overloaded** | Bounded SDK retries, then the same sanitized error path. |
 
 Every API response carries `anthropic-ratelimit-*` headers (limit, remaining,

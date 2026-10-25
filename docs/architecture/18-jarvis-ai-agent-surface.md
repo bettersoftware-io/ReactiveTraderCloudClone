@@ -1229,7 +1229,12 @@ Jarvis entry.
 ## 18.15 The brain picker + usage display round — the receipt
 
 Round 1 (2026-08-02) of the "Jarvis LLM usage governance + model preferences"
-workstream — the `docs/STATUS.md` ⚪ entry P3 opened. It builds items (1)
+workstream — the `docs/STATUS.md` ⚪ entry P3 opened. (Since B3a the
+automatic gating is a per-person **daily** budget on a durable store, with
+no five-hour window and no soft gate: see the
+[B3 spec](../superpowers/specs/2026-10-25-b3-ai-metering-byo-keys-design.md)
+§3 and [running-real-jarvis.md](../running-real-jarvis.md#daily-budget--per-person-durable-no-restart-required).
+What follows describes this round as built.) It builds items (1)
 server-side usage metering, (3) footer/Ops surfacing, and (4) model+effort
 preference, plus a brain picker with Scripted as a first-class choice — the
 run-out-of-credits demo escape hatch. **Display-only, by design:** usage is
@@ -1345,7 +1350,8 @@ the same round that made the model selectable.
 `packages/server/src/services/UsageMeter.ts`, one instance in
 `serviceContainer` — **in-memory only**; a server restart zeroes it, and the
 Ops card's own copy says so ("resets on server restart") rather than
-implying persistence exists. Rolling **5h windows**
+implying persistence exists. (The budget is not this meter: it is the
+durable daily `JarvisBudgetService`, see the note at the top of §18.15.) Rolling **5h windows**
 (`JARVIS_USAGE_WINDOW_MS = 18_000_000` ms) anchor lazily — re-set at the
 first `recordTurn`/`recordTokens` call *after* expiry, not on a timer;
 rolling clears only `currentWindow`, `sinceBoot` never clears. The price

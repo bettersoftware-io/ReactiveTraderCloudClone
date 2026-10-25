@@ -16,6 +16,7 @@ import { createAccountAdminService } from "./accounts/accountAdminService.js";
 import { createAccountStatusCache } from "./accounts/accountStatusCache.js";
 import {
   createAccountDirectory,
+  createSpendStore,
   isRegistrationOpen,
   readSignupLevers,
   resolveAccountsMode,
@@ -87,6 +88,7 @@ import {
 import { createMcpRequestHandler } from "./mcp/mcpHttpHandler.js";
 import { createConnectionLog } from "./observability/connectionLog.js";
 import { scopeServicesToConnection } from "./services/connectionScope.js";
+import { createTierLookup } from "./services/jarvisBudget/jarvisTier.js";
 import {
   createServices,
   type ServiceContainer,
@@ -146,17 +148,6 @@ function buildAnthropicLoop(
   });
 }
 
-const services = createServices();
-const jarvisLoops = createJarvisLoops(
-  process.env,
-  services,
-  buildAnthropicLoop,
-);
-
-// One merged effect for the process; a listener is built PER CONNECTION
-// below so each socket gets its own connection-scoped services (S10).
-const effect = combineEffects(...buildEffects(jarvisLoops));
-
 const auth = new AuthService({
   secret: process.env.AUTH_SECRET ?? "",
   ttlMs: AUTH_TTL_MS,
@@ -204,6 +195,37 @@ const accountDirectory = createAccountDirectory(accountsMode, {
   now: readClock,
   timeoutMs: ACCOUNT_DIRECTORY_TIMEOUT_MS,
 });
+
+// The daily Jarvis budget rides on the same store choice as the directory:
+// Supabase mode keeps it in the database, the dev modes in the process. The
+// tier lookup reads the role from the same directory.
+const spendStore = createSpendStore(accountsMode, {
+  timeoutMs: ACCOUNT_DIRECTORY_TIMEOUT_MS,
+});
+
+const services = createServices(process.env, {
+  spendStore,
+  jarvisTier: createTierLookup(accountDirectory),
+});
+
+const jarvisLoops = createJarvisLoops(
+  process.env,
+  services,
+  buildAnthropicLoop,
+);
+
+// One merged effect for the process; a listener is built PER CONNECTION
+// below so each socket gets its own connection-scoped services (S10).
+const effect = combineEffects(...buildEffects(jarvisLoops));
+
+// Stops the budget's midnight timer, so a shutdown does not wait on it.
+function shutDown(): void {
+  services.jarvisBudget.dispose();
+  process.exit(0);
+}
+
+process.once("SIGTERM", shutDown);
+process.once("SIGINT", shutDown);
 
 const accountStatus = createAccountStatusCache({
   directory: accountDirectory,
