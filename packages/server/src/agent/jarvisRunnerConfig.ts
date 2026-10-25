@@ -30,6 +30,15 @@ export const JARVIS_MAX_TOKENS_PER_TURN = 4_096;
 export const JARVIS_RESERVE_INPUT_TOKENS = 15_000;
 
 /**
+ * The tokens every request carries ahead of its messages: the persona and the
+ * eight tool schemas, measured at ~2.1k (see `SYSTEM_BLOCKS` in
+ * `AnthropicAgentSession`). A request cancelled before the provider reported
+ * its usage is booked at its messages' estimate plus this prefix — the
+ * messages alone would leave out the part every request pays.
+ */
+export const JARVIS_PROMPT_PREFIX_TOKENS = 2_100;
+
+/**
  * Brains whose Anthropic request may carry `output_config.effort` — a
  * capability SET rather than a per-model-name conditional in
  * `AnthropicAgentSession`, so a future brain that also supports adaptive

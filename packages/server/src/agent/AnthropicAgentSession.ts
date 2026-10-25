@@ -37,6 +37,7 @@ import {
   JARVIS_HISTORY_MAX_MESSAGES,
   JARVIS_MAX_TOKENS_PER_TURN,
   JARVIS_MAX_TURNS_PER_SESSION,
+  JARVIS_PROMPT_PREFIX_TOKENS,
   JARVIS_RESERVE_INPUT_TOKENS,
   JARVIS_TOOL_FRIENDLY_NAMES,
 } from "./jarvisRunnerConfig.js";
@@ -194,6 +195,10 @@ export interface AnthropicMessageStream
  */
 export interface AnthropicRunner extends AsyncIterable<AnthropicMessageStream> {
   pushMessages(message: BetaMessageParam): void;
+  /** The conversation the runner's next or current request sends — the
+   * turn's messages plus every reply and tool result since. The real runner
+   * has it; a fake may leave it out, and the turn's own messages stand in. */
+  readonly params?: { readonly messages: readonly BetaMessageParam[] };
 }
 
 /**
@@ -315,20 +320,31 @@ interface RequestLedger {
   /** Before a request: false when the budget is spent, with nothing
    * reserved; otherwise reserves the request's worst case. */
   beginRequest(): boolean;
+  /** When the runner hands over the reserved request's stream: from here it
+   * may be billed. A stream handed over after the turn was cancelled was
+   * never sent — the SDK does not send a request on an aborted signal. */
+  markRequestSent(): void;
   /** Folds one stream event into the request's running count. */
   noteUsage(event: BetaRawMessageStreamEvent): void;
   /** Books a finished request's usage; it is then no longer open. */
   bookFinalUsage(usage: AnthropicFinalMessage["usage"]): void;
   /** Once the turn is over, however it ended: books what an unfinished
-   * request had used — its output estimated from what streamed — or
-   * releases its reservation if it reported nothing. */
+   * request used, or releases its reservation — see `settle` below. */
   settle(): void;
 }
 
-function createRequestLedger(
-  meter: TurnMeter | undefined,
-  model: JarvisBrain,
-): RequestLedger {
+interface RequestLedgerDeps {
+  readonly meter: TurnMeter | undefined;
+  readonly model: JarvisBrain;
+  /** The turn's signal: aborted means the person cancelled the turn. */
+  readonly signal: AbortSignal;
+  /** The messages the open request sent. */
+  readonly readRequestMessages: () => readonly BetaMessageParam[];
+}
+
+function createRequestLedger(deps: RequestLedgerDeps): RequestLedger {
+  const { meter, model, signal, readRequestMessages } = deps;
+
   // `model !== "scripted"` only narrows the type: `DEFAULT_JARVIS_BRAIN` is
   // typed as any brain, but a scripted turn never reaches this session.
   if (meter === undefined || model === "scripted") {
@@ -336,6 +352,7 @@ function createRequestLedger(
       beginRequest: (): boolean => {
         return true;
       },
+      markRequestSent: (): void => {},
       noteUsage: (): void => {},
       bookFinalUsage: (): void => {},
       settle: (): void => {},
@@ -344,11 +361,17 @@ function createRequestLedger(
 
   const liveMeter: TurnMeter = meter;
   const liveModel: Exclude<JarvisBrain, "scripted"> = model;
+  // A brain that thinks before it replies: see `estimateAbortedOutputTokens`.
+  const thinks = JARVIS_EFFORT_CAPABLE_BRAINS.has(model);
   // A request has been reserved and not yet booked or released.
   let open = false;
+  // The open request went out (see `markRequestSent`).
+  let sent = false;
   // What the open request has reported so far; null before its
   // `message_start`, which is the first event to carry usage.
   let accrued: AccruedUsage | null = null;
+  // The open request's `message_delta` arrived: its output count is final.
+  let outputReported = false;
   // Characters of generated content the open request has streamed so far.
   let streamedChars = 0;
 
@@ -356,6 +379,36 @@ function createRequestLedger(
     open = false;
     accrued = null;
     recordSafely(liveMeter, liveModel, usage);
+  }
+
+  function release(): void {
+    open = false;
+    liveMeter.endRequest();
+  }
+
+  /** The output of a request that never reported its own, at ~4 characters
+   * a token of what streamed. */
+  function estimateStreamedOutputTokens(reportedTokens: number): number {
+    return Math.max(
+      reportedTokens,
+      Math.ceil(streamedChars / CHARS_PER_TOKEN_ESTIMATE),
+    );
+  }
+
+  /**
+   * The output of a cancelled request. A thinking brain runs adaptive
+   * thinking with its display omitted, so its thinking streams no
+   * characters while every thinking token is billed: until the provider
+   * reports the count, the per-request cap is the only bound that cannot
+   * run under. Other brains stream what they generate, so the estimate
+   * tracks it.
+   */
+  function estimateAbortedOutputTokens(reportedTokens: number): number {
+    if (thinks && !outputReported) {
+      return JARVIS_MAX_TOKENS_PER_TURN;
+    }
+
+    return estimateStreamedOutputTokens(reportedTokens);
   }
 
   return {
@@ -366,10 +419,17 @@ function createRequestLedger(
 
       liveMeter.beginRequest(liveModel, REQUEST_CEILING);
       open = true;
+      sent = false;
       accrued = null;
+      outputReported = false;
       streamedChars = 0;
 
       return true;
+    },
+    markRequestSent: (): void => {
+      if (open && !signal.aborted) {
+        sent = true;
+      }
     },
     noteUsage: (event: BetaRawMessageStreamEvent): void => {
       if (event.type === "message_start") {
@@ -387,6 +447,7 @@ function createRequestLedger(
         // The counts on a `message_delta` are cumulative for the request.
         const usage = event.usage;
 
+        outputReported = true;
         accrued.outputTokens = usage.output_tokens;
         accrued.inputTokens = usage.input_tokens ?? accrued.inputTokens;
         accrued.cacheReadTokens =
@@ -405,37 +466,78 @@ function createRequestLedger(
         cacheCreationTokens: usage?.cache_creation_input_tokens ?? 0,
       });
     },
+    /**
+     * The provider reports a request's input on `message_start` and its
+     * output once, on the `message_delta` just before `message_stop`; a
+     * request cut short never gets there, though every token it read and
+     * generated is billed. So:
+     *
+     * - a request never sent is released;
+     * - a CANCELLED request is always booked — input as reported, or
+     *   estimated from its messages when cancelled before `message_start`
+     *   (otherwise a client could loop chat and cancel on the house key with
+     *   nothing recorded), and output per `estimateAbortedOutputTokens`;
+     * - a request that FAILED before reporting usage is released: the
+     *   provider sends `message_start` before it generates, so an error that
+     *   early is a request it refused or never got (overloaded, rate-limited,
+     *   unreachable), and a client cannot set one off at will the way it can
+     *   a cancel. One that failed later is booked as reported, its output
+     *   estimated from what streamed.
+     */
     settle: (): void => {
       if (!open) {
         return;
       }
 
-      if (accrued === null) {
-        open = false;
-        liveMeter.endRequest();
+      if (!sent) {
+        release();
 
         return;
       }
 
-      // The provider reports a request's output once, on the
-      // `message_delta` just before `message_stop`; a request cut short
-      // mid-reply never gets there, though every token it generated is
-      // billed. So its output is the larger of what was reported and an
-      // estimate of what streamed, at ~4 characters a token.
+      if (signal.aborted) {
+        book({
+          ...(accrued ?? estimateUnreportedInput(readRequestMessages())),
+          outputTokens: estimateAbortedOutputTokens(accrued?.outputTokens ?? 0),
+        });
+
+        return;
+      }
+
+      if (accrued === null) {
+        release();
+
+        return;
+      }
+
       book({
         ...accrued,
-        outputTokens: Math.max(
-          accrued.outputTokens,
-          Math.ceil(streamedChars / CHARS_PER_TOKEN_ESTIMATE),
-        ),
+        outputTokens: estimateStreamedOutputTokens(accrued.outputTokens),
       });
     },
   };
 }
 
 /** The rough characters-per-token of English text and JSON, for estimating
- * the output of a request that never reported its own. */
+ * the usage of a request that never reported its own. */
 const CHARS_PER_TOKEN_ESTIMATE = 4;
+
+/** The input of a request the provider never reported: its messages as sent
+ * (JSON, so tool calls and results count) at ~4 characters a token, plus the
+ * persona and tools prefix. All of it counts as fresh input — a cache read
+ * would have been cheaper, so the estimate errs high. */
+function estimateUnreportedInput(
+  messages: readonly BetaMessageParam[],
+): AccruedUsage {
+  return {
+    inputTokens:
+      Math.ceil(JSON.stringify(messages).length / CHARS_PER_TOKEN_ESTIMATE) +
+      JARVIS_PROMPT_PREFIX_TOKENS,
+    outputTokens: 0,
+    cacheReadTokens: 0,
+    cacheCreationTokens: 0,
+  };
+}
 
 /** The generated characters one content delta carries: reply text, thinking
  * and tool-call input all count as output. */
@@ -814,7 +916,18 @@ export class AnthropicAgentSession implements AgentSession {
     // the usage tap) shares one resolved model rather than each re-deriving
     // it and risking drift.
     const model = options?.brain ?? DEFAULT_JARVIS_BRAIN;
-    const requests = createRequestLedger(options?.meter, model);
+    // Set once the runner exists; the ledger reads its current conversation
+    // to estimate a request cancelled before it reported its usage.
+    let runner: AnthropicRunner | undefined;
+    const requests = createRequestLedger({
+      meter: options?.meter,
+      model,
+      signal,
+      readRequestMessages: (): readonly BetaMessageParam[] => {
+        return runner?.params?.messages ?? messages;
+      },
+    });
+
     const params: AnthropicToolRunnerRequest = {
       model,
       max_tokens: JARVIS_MAX_TOKENS_PER_TURN,
@@ -865,9 +978,11 @@ export class AnthropicAgentSession implements AgentSession {
         return { kind: "completed", finalText: BUDGET_SPENT_NOTICE };
       }
 
-      const runner = this.runnerFactory(params, { signal });
+      runner = this.runnerFactory(params, { signal });
 
       for await (const messageStream of runner) {
+        requests.markRequestSent();
+
         // Indices are scoped to ONE messageStream (one API response) — a
         // fresh map every iteration.
         const openToolIndexes = new Map<number, string>();
