@@ -60,6 +60,33 @@ against 5 s on a laptop.
   cores are full either way. What changed is headroom: the worst test went from
   0.53–0.81 of its timeout to 0.30, and no test took over 2 s, where 5–20 had.
 
+**Local runs got the same cap on 2026-10-25.** Uncapped, a laptop ran 10
+turbo tasks × 11 vitest workers on 12 cores. Measured on a 12-core Mac,
+`turbo run test --force --only` (no builds) with every configuration run
+twice, order rotated, per-test durations read from each package's vitest
+report:
+
+| tasks × workers | wall time | slowest test |
+|---|---|---|
+| 10 × 11 (the old default) | 30, 25 s; later 23, 23 s | 1516–1581 ms; later 1284–1297 ms |
+| 4 × 2 | 19, 20 s | 1055–1062 ms |
+| 4 × 3 | 21, 20 s | 1060–1067 ms |
+| 6 × 2 | 17, 18 s | 1062–1070 ms |
+| the new script | 22, 21 s | 1058–1059 ms |
+
+Every capped run was at least as fast as the default, and had more headroom
+under the 5 s timeout. The later pairs ran on a busier machine (load average
+17–26 at the start), which narrows the gap. 4 × 2 is within a couple of
+seconds of the best, and it is what CI measured, so one cap serves both. The
+root script is `VITEST_MAX_WORKERS=2 turbo run test --concurrency=4`: an
+environment variable rather than `-- --maxWorkers=2` keeps `pnpm test --force`
+and `pnpm test --filter …` working, since anything after a `--` in the script
+would reach vitest instead of turbo. `VITEST_MAX_WORKERS` is in turbo's
+`globalPassThroughEnv` (strict env mode would strip it otherwise; at 1 worker
+`client-react`'s suite took 10 s against 3 s unset, proof that it arrives).
+Jest does not read it, so the RN package's jest half is still uncapped locally.
+CI's step passes `-- --maxWorkers=2` for that half.
+
 The lesson that set up everything after it: **on this runner a step's wall
 time is its CPU time divided by four.** Only less work makes a step faster,
 or more runners make the run faster.
@@ -243,8 +270,6 @@ workers on a fast runner):
   production build the Effect core's suites ran ~1.06x the RxJS ones
   ([`tests/README.md`, "Reading e2e job timings"](../tests/README.md#dev-server-payload-lean-deps)),
   so a 451 s against 381 s gap on one run is mostly the runner class.
-- **Local `pnpm test` is still uncapped** (10 tasks × 11 workers on a
-  12-core laptop). Tracked in [STATUS](STATUS.md).
 
 ## Related
 
