@@ -28,10 +28,15 @@ export class JarvisUsageCardPage extends MountedComponent<
     return within(this.root).queryByText(/NO USAGE DATA/i) !== null;
   }
 
-  /** True when the "resets on server restart" caveat line is present
-   * (only rendered alongside populated/empty-but-not-null usage). */
+  /** True when the "per-model rows reset on server restart" caveat line is
+   * present (only rendered alongside populated/empty-but-not-null usage).
+   * It names the rows: the house-budget line above it is durable. */
   hasCaveat(): boolean {
-    return within(this.root).queryByText(/resets on server restart/i) !== null;
+    return (
+      within(this.root).queryByText(
+        /^per-model rows reset on server restart$/i,
+      ) !== null
+    );
   }
 
   /** The budget-line's text (the spend/house-budget line), or

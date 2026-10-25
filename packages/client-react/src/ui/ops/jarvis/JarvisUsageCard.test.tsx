@@ -68,7 +68,7 @@ describe("JarvisUsageCard", () => {
     expect(cardText).toContain("$4.50");
     expect(cardText).toContain("TODAY (UTC)");
     expect(cardText).toContain("Resets 00:00 UTC");
-    expect(cardText).toContain("resets on server restart");
+    expect(cardText).toContain("per-model rows reset on server restart");
   });
 
   it("prints the fixed UTC reset even when windowEndMs is the 0 sentinel", () => {

@@ -62,7 +62,7 @@ export function JarvisUsageCard(): JSX.Element {
             return usage()?.sinceBoot ?? [];
           }}
         />
-        <div class={styles.caveat}>resets on server restart</div>
+        <div class={styles.caveat}>per-model rows reset on server restart</div>
       </Show>
     </div>
   );

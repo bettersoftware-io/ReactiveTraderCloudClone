@@ -59,7 +59,9 @@ export function JarvisUsageCard(): ReactElement {
           <UsageSection title="TODAY (UTC)" rows={usage.currentWindow} />
           <div className={styles.resetLine}>Resets 00:00 UTC</div>
           <UsageSection title="SINCE BOOT" rows={usage.sinceBoot} />
-          <div className={styles.caveat}>resets on server restart</div>
+          <div className={styles.caveat}>
+            per-model rows reset on server restart
+          </div>
         </>
       )}
     </div>

@@ -3,7 +3,8 @@
  * usage display). Verifies the empty ("NO USAGE DATA") placeholder and the
  * populated per-brain rows (turns / in-out tokens / cost) across both
  * windows (today's UTC day / sinceBoot), the daily house-budget line and its
- * EXHAUSTED mark, the fixed UTC reset line and the "resets on server restart" caveat.
+ * EXHAUSTED mark, the fixed UTC reset line and the "per-model rows reset on
+ * server restart" caveat.
  */
 
 import { JarvisUsageCard } from "@ui-contract/components";
