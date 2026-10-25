@@ -100,7 +100,8 @@ deleted:
 2. `dependency-cruiser` parses `.ts` through that API, or we add `@swc/core`
    as its transpiler and drop `baseUrl` from `tsconfig.depcruise.json` in
    favour of `paths: { "*": ["./*"] }`.
-3. Expo declares TypeScript 7 support (SDK 58+; SDK 57 expects `~6.0.3`).
+3. Expo declares TypeScript 7 support (SDK 58 still expects `~6.0.3`, checked
+   2026-10-25 with `expo install --check`).
 
 When that lands: set `"typescript": "^7"` in the three manifests, delete the
 `@typescript/native` lines and the Renovate `typescript` group, and delete this
