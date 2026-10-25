@@ -338,33 +338,33 @@ export function DockingScene({
  * `scanlineOffsets(height)` entry — a single path so the per-frame draw is
  * one `drawPath` call, not hundreds of `drawRect`s. */
 function buildScanlinePath(width: number, height: number): SkPath {
-  const path = Skia.Path.Make();
+  const path = Skia.PathBuilder.Make();
 
   for (const y of scanlineOffsets(height)) {
     path.addRect({ x: 0, y, width, height: 1 });
   }
 
-  return path;
+  return path.build();
 }
 
 /** The 22-line converging corridor (`corridorLines`), each segment a
  * `moveTo`+`lineTo` pair — drawn under the live shake translation, never
  * itself rebuilt per frame. */
 function buildCorridorPath(width: number, height: number): SkPath {
-  const path = Skia.Path.Make();
+  const path = Skia.PathBuilder.Make();
 
   for (const line of corridorLines(width, height)) {
     path.moveTo(line.x0, line.y0);
     path.lineTo(line.x1, line.y1);
   }
 
-  return path;
+  return path.build();
 }
 
 /** The screen-space HUD grid, pitched by `hudGridStep(width)` — absolute
  * coordinates, no shake. */
 function buildHudGridPath(width: number, height: number): SkPath {
-  const path = Skia.Path.Make();
+  const path = Skia.PathBuilder.Make();
   const step = hudGridStep(width);
 
   for (let x = 0; x <= width; x += step) {
@@ -377,7 +377,7 @@ function buildHudGridPath(width: number, height: number): SkPath {
     path.lineTo(width, y);
   }
 
-  return path;
+  return path.build();
 }
 
 // --- draw helpers — every one worklet-marked: called from the recorder ----
@@ -667,7 +667,7 @@ function drawReticle(
   for (const vane of spec.vanes) {
     canvas.save();
     canvas.rotate(toDegrees(vane.angle), 0, 0);
-    const vanePath = Skia.Path.Make();
+    const vanePath = Skia.PathBuilder.Make();
     vanePath.moveTo(
       -radius * spec.vaneOuterHalfWidthFactor,
       radius * spec.vaneOuterYFactor,
@@ -685,8 +685,9 @@ function drawReticle(
       radius * spec.vaneInnerYFactor,
     );
     vanePath.close();
-    canvas.drawPath(vanePath, vaneFillPaint);
-    canvas.drawPath(vanePath, vaneStrokePaint);
+    const vaneShape = vanePath.build();
+    canvas.drawPath(vaneShape, vaneFillPaint);
+    canvas.drawPath(vaneShape, vaneStrokePaint);
     canvas.restore();
   }
 

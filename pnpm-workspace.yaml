@@ -6,10 +6,16 @@ packages:
 # code at install time. Both are trusted build/test tooling that need native
 # binaries — esbuild (the bundler under vite/vitest/tsx) and
 # @shopify/react-native-skia (its postinstall fetches Skia's prebuilt native
-# libs, required for the native iOS/Android build later).
+# libs, required for the native iOS/Android build later). Set to `false`, so
+# they never run: @parcel/watcher and unrs-resolver (jest 30's haste map and
+# resolver, via the Expo SDK 58 upgrade) — each installs a prebuilt binary
+# through its optional per-platform dependencies, and its install script is
+# only a fallback compile or download for a platform without one.
 allowBuilds:
+  '@parcel/watcher': false
   '@shopify/react-native-skia': true
   esbuild: true
+  unrs-resolver: false
 
 # Supply-chain cooldown: refuse to install any package version published fewer
 # than this many minutes ago (1440 = 24h). This is pnpm 11's default, pinned
@@ -324,10 +330,12 @@ overrides:
   # its choice. 6.16.0 published 2026-08-29 — outside the minimumReleaseAge
   # cooldown.
   "qs@<6.16.0": ^6.16.0
-  # Pin @expo/metro-runtime to the SDK-57 line. It arrives as a PEER dep via
-  # `expo`'s loose `*` range, and the minimumReleaseAge cooldown above steered
+  # Pin @expo/metro-runtime to the current SDK's line (58 since 2026-10-25;
+  # move it with every SDK upgrade). It arrives as a PEER dep via `expo`'s
+  # loose `*` range: on SDK 57 the minimumReleaseAge cooldown above steered
   # pnpm to the aged 4.0.1 (SDK-52 era) instead of the 57.0.3 that expo-router
-  # actually requires and expo's bundledNativeModules pins for SDK 57.
+  # actually required and expo's bundledNativeModules pinned, and an override
+  # left on an old SDK's line holds the peer back the same way.
   # 4.0.1 is fatal on RN 0.86: its messageSocket.native.ts calls
   # `require("react-native/.../getDevServer")()` expecting the OLD CJS contract
   # (module.exports = fn), but RN 0.86 ships getDevServer as an ESM
@@ -336,16 +344,16 @@ overrides:
   # Object)`. 57.0.3 removed that broken consumer entirely and uses a proper
   # ESM import, matching RN 0.86 by construction. Without this override the
   # peer re-resolves to 4.0.1 on every install.
-  "@expo/metro-runtime": ~57.0.3
-  # react-native-reanimated@4.5.0 + react-native-worklets: two overrides keep
+  "@expo/metro-runtime": ~58.0.15
+  # react-native-reanimated + react-native-worklets: two overrides keep
   # the RN native Metro bundle compiling. Neither failure is visible to the
   # jest/vitest suite — worklets is disabled under jest and Metro is never run;
   # the CI `expo export` step (ci.yml) is the only exerciser.
   #
   # (1) VERSION: pin worklets to ONE exact version, the one the direct dependency
-  # in packages/client-react-native/package.json declares (0.10.1, the 0.10.x
-  # line reanimated@4.5.1 peers on and was built against — both are the versions
-  # Expo Go bundles for SDK 57, see expoGoVersions.test.ts). The worklets babel
+  # in packages/client-react-native/package.json declares (0.13.0, the 0.13.x
+  # line reanimated@4.7.1 peers on and was built against — both are the versions
+  # Expo Go bundles for SDK 58, see expoGoVersions.test.ts). The worklets babel
   # plugin and the worklets runtime must be the SAME version or the transform
   # emits code the runtime mis-reads (`Cannot read properties of undefined
   # (reading 'length')` while transforming reanimated's own Easing.ts) — see the
@@ -356,7 +364,7 @@ overrides:
   # package.json entry: Renovate never edits this file (see renovate.json5), so
   # a worklets bump lands here by hand or `pnpm check:versions` (syncpack) reds
   # on the split — exactly how #698 first failed.
-  react-native-worklets: 0.10.1
+  react-native-worklets: 0.13.0
   # (2) BABEL: worklets' nested babel transform (its @babel/preset-typescript@^7)
   # hard-asserts the caller's @babel/core is ^7, but worklets declares @babel/core
   # peer `*` so pnpm otherwise hands it the workspace-hoisted @babel/core@8.0.1
@@ -376,9 +384,12 @@ overrides:
   # Printer._parameters, thrown from makeWorkletFactory on reanimated's
   # Easing.ts / isSharedValue.ts. This is the SAME error signature as the version
   # mismatch in (1) but a DIFFERENT cause (generator/traverse, not the worklets
-  # runtime). The pin now lives in packageExtensions below, NOT as a
-  # `react-native-worklets>@babel/generator` override — see that block for why
-  # the override form is a silent no-op here.
+  # runtime). Since worklets 0.13 (Expo SDK 58) the package declares both as
+  # its own `^7` dependencies, so they resolve inside its subtree and can no
+  # longer reach the hoisted 8.x; up to 0.10 it declared neither, and a
+  # packageExtensions entry had to add the edge (a
+  # `react-native-worklets>@babel/generator` override was a silent no-op then,
+  # having no edge to bind to).
 
 # Force @babel/core@7 for the RN Metro babel toolchain. The main Metro transform
 # runs through @expo/metro-config's babel-transformer, whose `require("@babel/core")`
@@ -438,27 +449,6 @@ packageExtensions:
   "@expo/metro-config":
     dependencies:
       "@babel/core": "7.29.7"
-  # Pin @babel/generator + @babel/traverse to 7.29.7 INSIDE the worklets subtree.
-  # react-native-worklets' babel plugin (plugin/index.js:869/1006/1499/1500)
-  # `require("@babel/generator")`/`require("@babel/traverse")` DIRECTLY, but the
-  # package declares NEITHER as a dependency (only `@babel/core: *`). So a pnpm
-  # `react-native-worklets>@babel/generator` OVERRIDE has no dependency edge to
-  # bind to and is a SILENT NO-OP — the plugin instead falls back to Node's
-  # upward resolution and picks up whatever @babel/generator happens to be
-  # hoisted into reach, which is @8.0.0 (pulled to the top by the web's React
-  # Compiler @babel/core@8). A Babel-8 generator printing the Babel-7 AST the
-  # plugin built → `reading 'length'` (see the overrides note above). This was
-  # never actually fixed by the override; it only "worked" while a lucky hoist
-  # put generator@7.29.7 in reach, and regressed whenever the hoist flipped.
-  # packageExtensions ADDS the real dependency edge, so pnpm installs
-  # generator@7.29.7 + traverse@7.29.7 into worklets' OWN subtree and the
-  # plugin's require() resolves them locally — hoist-independent. Scoped to
-  # worklets only; the web keeps @babel/*@8. Same rationale (and same manypkg /
-  # syncpack invisibility) as the @expo/metro-config extension above.
-  react-native-worklets:
-    dependencies:
-      "@babel/generator": "7.29.7"
-      "@babel/traverse": "7.29.7"
 
 # vitest-browser-solid@1.0.1 (latest; upstream dormant since 2025-10-31) peers
 # on vitest `^4.0.0` only. Its whole runtime is ~60 lines over two vitest/browser

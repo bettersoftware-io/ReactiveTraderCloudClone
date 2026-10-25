@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 import { type StyleProp, StyleSheet, type ViewStyle } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import type { LoginWaitVariant } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
@@ -76,7 +77,8 @@ function fakeViewModel(
 // `rerender` replaces the whole tree (it does not reapply `renderWithTheme`'s
 // initial wrapper), so every rerender needs the same
 // `ThemeContext.Provider` + `ViewModelProvider` nesting spelled out
-// explicitly.
+// explicitly. The `GestureHandlerRootView` is the app's own (`app/_layout.tsx`):
+// gesture-handler 3 refuses to mount a `GestureDetector` outside one.
 function lockedTree(
   locked: boolean,
   unlock: (password: string) => void,
@@ -96,7 +98,9 @@ function lockedTree(
           waitVariant,
         )}
       >
-        <LockScreen />
+        <GestureHandlerRootView>
+          <LockScreen />
+        </GestureHandlerRootView>
       </ViewModelProvider>
     </ThemeContext.Provider>
   );
@@ -153,7 +157,9 @@ export function lockScreenPage(): LockScreenPage {
         <ViewModelProvider
           viewModel={fakeViewModel(locked, unlock, user, error)}
         >
-          <LockScreen />
+          <GestureHandlerRootView>
+            <LockScreen />
+          </GestureHandlerRootView>
         </ViewModelProvider>,
       );
     },

@@ -1,7 +1,7 @@
 // Learn more: https://docs.expo.dev/guides/monorepo/
 import path from "node:path";
 
-import { getDefaultConfig, type MetroConfig } from "expo/metro-config.js";
+import { getDefaultConfig, type MetroConfig } from "expo/metro-config";
 
 const projectRoot: string = import.meta.dirname;
 const workspaceRoot: string = path.resolve(projectRoot, "../..");

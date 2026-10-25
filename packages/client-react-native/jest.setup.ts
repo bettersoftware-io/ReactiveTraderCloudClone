@@ -3,6 +3,13 @@ import "@testing-library/react-native";
 // Gesture-handler ships an official jest setup (stubs the native gesture module).
 import "react-native-gesture-handler/jestSetup";
 
+// Worklets ships an official mock too. Gesture-handler 3 reaches for the
+// worklets runtime as soon as it loads (`getUIRuntimeHolder`, to install its
+// UI-thread bindings), and the real module refuses outside a device.
+jest.mock("react-native-worklets", () => {
+  return require("react-native-worklets/src/mock");
+});
+
 // Reanimated ships an official mock (stable across v3/v4). It replaces the
 // worklet runtime with synchronous JS so animated components render in jsdom.
 // The official mock deliberately omits `useReducedMotion` ("ADD ME IF
@@ -251,28 +258,39 @@ jest.mock("@shopify/react-native-skia", () => {
         },
       },
       // Phase 6b-1, Task 2 (CoreScene gyro rings): polyline paths built inside
-      // the recorder worklet. Phase 5c Task 3 (PnlChart) adds
-      // `MakeFromSVGString`, which returns `SkPath | null` on the real API —
-      // the mock returns an object, so a caller's null-guard is exercised by
-      // its own unit tests rather than here.
+      // the recorder worklet. Since Skia 2.14 (Expo SDK 58) an `SkPath` is
+      // immutable: shapes are drawn with a `PathBuilder` and `build()` hands
+      // back the path. The mock path carries no drawing methods, so a call
+      // site still mutating a built path throws here as it would on device.
+      // Phase 5c Task 3 (PnlChart) adds `MakeFromSVGString`, which returns
+      // `SkPath | null` on the real API — the mock returns an object, so a
+      // caller's null-guard is exercised by its own unit tests rather than here.
       Path: {
         Make: () => {
-          return {
-            moveTo: () => {},
-            lineTo: () => {},
-            close: () => {},
-            addRect: () => {},
-            addCircle: () => {},
-          };
+          return { __mockPath: true };
         },
         MakeFromSVGString: () => {
-          return {
-            moveTo: () => {},
-            lineTo: () => {},
-            close: () => {},
-            addRect: () => {},
-            addCircle: () => {},
+          return { __mockPath: true };
+        },
+      },
+      PathBuilder: {
+        Make: () => {
+          const builder: Record<string, () => unknown> = {
+            moveTo: returnBuilder,
+            lineTo: returnBuilder,
+            close: returnBuilder,
+            addRect: returnBuilder,
+            addCircle: returnBuilder,
+            build: () => {
+              return { __mockPath: true };
+            },
           };
+
+          function returnBuilder(): unknown {
+            return builder;
+          }
+
+          return builder;
         },
       },
       // P1 fix: scenes now build fonts from a real bundled typeface, in

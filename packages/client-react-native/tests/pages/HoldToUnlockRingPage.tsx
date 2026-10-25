@@ -1,6 +1,11 @@
 // packages/client-react-native/tests/pages/HoldToUnlockRingPage.tsx
+
 import { cleanup, fireEvent, screen } from "@testing-library/react-native";
-import { Gesture } from "react-native-gesture-handler";
+import type { JSX } from "react";
+import {
+  GestureHandlerRootView,
+  useLongPressGesture,
+} from "react-native-gesture-handler";
 import type { SharedValue } from "react-native-reanimated";
 
 import { HoldToUnlockRing } from "#/ui/shell/lock/HoldToUnlockRing";
@@ -37,14 +42,26 @@ export function holdToUnlockRingPage(): HoldToUnlockRingPage {
       onPress: () => void,
       label = "HOLD TO UNLOCK",
     ): Promise<void> {
-      await renderWithTheme(
-        <HoldToUnlockRing
-          gesture={Gesture.LongPress()}
-          progress={stubProgress(progress)}
-          onPress={onPress}
-          label={label}
-        />,
-      );
+      // gesture-handler 3 builds a gesture only through a hook, so the ring
+      // under test gets one from inside a component render — and, as in the
+      // app (`app/_layout.tsx`), under a `GestureHandlerRootView`, without
+      // which it refuses to mount a `GestureDetector`.
+      function RingWithGesture(): JSX.Element {
+        const gesture = useLongPressGesture({});
+
+        return (
+          <GestureHandlerRootView>
+            <HoldToUnlockRing
+              gesture={gesture}
+              progress={stubProgress(progress)}
+              onPress={onPress}
+              label={label}
+            />
+          </GestureHandlerRootView>
+        );
+      }
+
+      await renderWithTheme(<RingWithGesture />);
     },
     async unmountAll(): Promise<void> {
       await cleanup();

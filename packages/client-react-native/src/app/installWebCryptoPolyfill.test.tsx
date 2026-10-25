@@ -120,9 +120,14 @@ function cryptoCarrier(): CryptoCarrier {
   return globalThis as CryptoCarrier;
 }
 
+/** Writable, as an absent global is on Hermes. Spelled out because jest 30
+ * defines `crypto` as an accessor, and redefining an accessor as a data
+ * property defaults `writable` to false — the polyfill's assignment would
+ * then never land. */
 function removeCryptoGlobal(): void {
   Object.defineProperty(globalThis, "crypto", {
     configurable: true,
+    writable: true,
     value: undefined,
   });
 }

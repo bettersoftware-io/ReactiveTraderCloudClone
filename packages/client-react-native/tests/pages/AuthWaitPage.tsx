@@ -33,9 +33,11 @@ export function authWaitPage(): AuthWaitPage {
   }
 
   function flatStyle(testId: string): ViewStyle | undefined {
-    return StyleSheet.flatten(
-      screen.getByTestId(testId, HIDDEN_TOO).props
-        .style as StyleProp<ViewStyle>,
+    return (
+      StyleSheet.flatten(
+        screen.getByTestId(testId, HIDDEN_TOO).props
+          .style as StyleProp<ViewStyle>,
+      ) ?? undefined
     );
   }
 

@@ -10,8 +10,9 @@
 //    `style` — that nothing had checked. The node goes in here instead, and
 //    the style comes out; no cast at any call site.
 //
-// 2. It is the shape react-native 0.87 REQUIRES, written while this package is
-//    still on 0.86. 0.87 flips `package.json`'s `exports` so the `types`
+// 2. It is the shape react-native 0.87+ REQUIRES, written while this package
+//    was still on 0.86 (it is on 0.88 since the Expo SDK 58 upgrade,
+//    2026-10-25). 0.87 flips `package.json`'s `exports` so the `types`
 //    condition resolves to `./types_generated/index.d.ts` (Flow-derived) and
 //    demotes the hand-written `./types/index.d.ts` to a
 //    `react-native-legacy-deep-imports` condition. Both trees ship in one
@@ -25,13 +26,9 @@
 //
 //    which breaks the old idiom twice over: the result is NULLABLE, and it is
 //    a DERIVED type rather than the `T` that went in. Routing every page
-//    object through one function means that upgrade touches this file only.
-//
-// WHY 0.86 STILL: the 0.87 bump is blocked on Expo, not on types —
-// `@expo/metro-config@57.0.12` (the last SDK 57 release) does
-// `require(path.join(reactNativeHostPath, "rn-get-polyfills"))`, and 0.87
-// deleted that file along with its `@react-native/js-polyfills` dependency,
-// so Metro cannot bundle at all. Expo SDK 58 is the fix. See docs/STATUS.md.
+//    object through one function meant the upgrade touched this file only
+//    (plus two pages that read a style that may be absent, and so keep
+//    their own nullable `StyleSheet.flatten`).
 //
 // A node with no style at all THROWS rather than returning a nullish value a
 // caller would then read a property off. Every caller in this tree asserts

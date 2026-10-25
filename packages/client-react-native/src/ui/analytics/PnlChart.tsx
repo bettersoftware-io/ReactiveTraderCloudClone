@@ -126,10 +126,10 @@ const BASELINE_INSET = 8;
 
 /** The dashed zero baseline, as a one-segment path. */
 function zeroBaseline(y: number): ReturnType<typeof Skia.Path.Make> {
-  const path = Skia.Path.Make();
+  const path = Skia.PathBuilder.Make();
   path.moveTo(BASELINE_INSET, y);
   path.lineTo(CHART_WIDTH - BASELINE_INSET, y);
-  return path;
+  return path.build();
 }
 
 interface PnlChartProps {

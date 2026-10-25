@@ -1,6 +1,9 @@
 // packages/client-react-native/src/ui/shell/lock/useHoldToUnlock.ts
 import { useContext, useEffect, useMemo, useRef } from "react";
-import { Gesture, type LongPressGesture } from "react-native-gesture-handler";
+import {
+  type LongPressGesture,
+  useLongPressGesture,
+} from "react-native-gesture-handler";
 import {
   Easing,
   runOnJS,
@@ -13,7 +16,7 @@ import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import { LockHoldProgressContext } from "#/ui/shell/lock/LockHoldProgressContext";
 
 /** Hold duration (ms) to complete the ring — wired to both the visual fill
- * and `LongPressGesture.minDuration`, so the sweep and the gesture's real
+ * and the long-press gesture's `minDuration`, so the sweep and the gesture's real
  * activation threshold always agree. */
 export const HOLD_MS = 900;
 
@@ -30,31 +33,31 @@ export const DECAY_MS = 260;
  * `onComplete` is read through a ref reassigned unconditionally on every
  * render (the `ExecutionCeremony` once-guard idiom, generalised here to "the
  * ref always mirrors the latest closure" rather than "detect a transition") —
- * the `gesture` object itself is memoised once (stable identity, so
- * `GestureDetector` isn't reconfigured on every keystroke of the password
- * field), but its handlers always call the *current* `onComplete` — the
- * caller's current typed password, in `LockScreen`'s case.
+ * the gesture keeps one native handler for the hook's lifetime (gesture-handler
+ * 3's `useLongPressGesture` creates its handler tag once), and its callbacks
+ * always call the *current* `onComplete` — the caller's current typed
+ * password, in `LockScreen`'s case.
  *
  * Motion gating: this is an authentication control, not decoration, so it
  * must stay operable under reduced-motion/Freeze. When
  * `useShellMotionEnabled()` is off, the fill/decay become discrete jumps
  * instead of a `withTiming` sweep — the hold-to-complete timing itself
  * (native `minDuration`) is unaffected, only the cosmetic ring sweep is
- * skipped. The discrete fill jump lands on `.onStart` (hold ACTIVATION —
+ * skipped. The discrete fill jump lands on `onActivate` (hold ACTIVATION —
  * fires after the native `minDuration`, when a real unlock is imminent), not
- * `.onBegin` (touch-down); the animated (motion-enabled) sweep still starts
- * on `.onBegin` as before, since it's meant to visually track the whole
- * hold. The decay-to-0 jump stays on `.onFinalize` either way.
+ * `onBegin` (touch-down); the animated (motion-enabled) sweep still starts
+ * on `onBegin` as before, since it's meant to visually track the whole
+ * hold. The decay-to-0 jump stays on `onFinalize` either way.
  *
  * `motionEnabled` is threaded into the worklet through `motionEnabledShared`
  * — a `SharedValue<boolean>` kept in sync with the `useShellMotionEnabled()`
- * prop by the `useEffect` below — rather than a plain `useRef`. `LockScreen`
- * returns `null` while unlocked and never unmounts, so `gesture` (and its
- * worklet closures) is built once at boot; a `useRef` object read inside a
- * worklet callback is captured BY COPY at worklet-build time on the UI
- * thread — only a `SharedValue` stays live across the JS/UI-thread boundary.
- * A ref would freeze `motionEnabled` at boot forever, so a later Freeze/OS
- * reduced-motion toggle would never reach an already-built gesture.
+ * prop by the `useEffect` below — rather than a plain `useRef`. A `useRef`
+ * object read inside a worklet callback is captured BY COPY when the worklet
+ * is shipped to the UI thread — only a `SharedValue` stays live across the
+ * JS/UI-thread boundary. A ref would freeze `motionEnabled` at whatever it
+ * was when the gesture's callbacks last reached the UI thread, so a later
+ * Freeze/OS reduced-motion toggle could miss a gesture already in place
+ * (`LockScreen` returns `null` while unlocked and never unmounts).
  *
  * The actual `progress.value` writes live in `fillProgress`/
  * `completeProgressDiscrete`/`decayProgress` below — plain, non-hook
@@ -89,12 +92,11 @@ export function useHoldToUnlock({
     motionEnabledShared.value = motionEnabled;
   }, [motionEnabled, motionEnabledShared]);
 
-  // These two `useMemo`s are NOT caching — they carry semantics the React
-  // Compiler cannot supply, and this repo's memo ban does not apply to them.
-  // (See `scripts/react-compiler-healthcheck.mts`, where this file is a
-  // documented exclusion, not a tracked/expected-optimized entry.) The chain,
-  // measured against `babel-plugin-react-compiler@1.0.0` while attempting the
-  // exact refactor this comment replaces:
+  // This `useMemo` is NOT caching — it carries semantics the React Compiler
+  // cannot supply, and this repo's memo ban does not apply to it. (See
+  // `scripts/react-compiler-healthcheck.mts`, where this file is a documented
+  // exclusion, not a tracked/expected-optimized entry.) The chain, measured
+  // against `babel-plugin-react-compiler@1.0.0`:
   //
   // 1. Moving `onCompleteRef.current = onComplete` out of render and into a
   //    `useEffect` clears the obvious "ref write during render" bail, but a
@@ -102,52 +104,47 @@ export function useHoldToUnlock({
   //    `onCompleteRef` (a `useRef`), and the compiler has no special case for
   //    `runOnJS` (it models `withTiming`/`withSpring`/`useSharedValue`/etc.
   //    from `react-native-reanimated`, but not `runOnJS` — confirmed by
-  //    grepping the installed compiler bundle). It can't prove `.onStart(cb)`
-  //    defers `cb`'s execution, so it conservatively bails the whole hook.
+  //    grepping the installed compiler bundle). It can't prove the gesture
+  //    callback defers `fireComplete`'s execution, so it conservatively bails
+  //    the whole hook.
   // 2. Dropping the ref entirely (reading `onComplete` directly in the
   //    worklet closure instead) DOES make this hook compile clean — measured,
-  //    `OPTIMIZED`. But then the compiler's inferred memoization key for
-  //    `gesture` becomes `onComplete` itself.
+  //    `OPTIMIZED`. But then the compiler's inferred memoization key for the
+  //    callback becomes `onComplete` itself.
   // 3. `onComplete` is `submit`, declared inside `LockScreen`.
   // 4. `LockScreen` bails on the ViewModel seam (`useViewModel()`), so
-  //    `submit` gets a new identity every render — meaning the gesture would
-  //    be rebuilt every render regardless of what this hook does internally.
+  //    `submit` gets a new identity every render.
   //
   // So the ref indirection here isn't optional plumbing the compiler could
-  // absorb: it's the only thing decoupling `gesture`'s identity (stable, so
-  // `GestureDetector`/the native `LongPressGesture` handler is never
-  // reattached) from a caller whose callback identity churns for reasons this
-  // hook cannot fix. Reanimated's own docs recommend exactly this
-  // `useMemo`-around-a-`Gesture` pattern, because rebuilding the gesture
-  // object reattaches it on every render — normally something the React
-  // Compiler would handle for you, which is precisely the case this hook
-  // falls outside of. Keep both memos.
+  // absorb: it's the only thing that keeps `fireComplete` stable while the
+  // caller's callback churns for reasons this hook cannot fix.
   const fireComplete = useMemo(() => {
     return () => {
       onCompleteRef.current();
     };
   }, []);
 
-  const gesture = useMemo(() => {
-    return Gesture.LongPress()
-      .minDuration(HOLD_MS)
-      .onBegin(() => {
-        fillProgress(progress, motionEnabledShared.value);
-      })
-      .onStart(() => {
-        completeProgressDiscrete(progress, motionEnabledShared.value);
-        runOnJS(fireComplete)();
-      })
-      .onFinalize(() => {
-        // Covers both an early release (never activated) and the reset after
-        // a completed hold (activated, then the finger lifts) — either way
-        // the ring returns to empty, ready for the next attempt.
-        decayProgress(progress, motionEnabledShared.value);
-      });
-    // `progress`, `motionEnabledShared` (both SharedValues) and
-    // `fireComplete` are all stable across renders — this memo builds the
-    // gesture object exactly once.
-  }, [progress, motionEnabledShared, fireComplete]);
+  // The worklets Babel plugin turns each callback in a `use*Gesture` config
+  // into a worklet, so these run on the UI thread, as gesture-handler 2's
+  // `Gesture.LongPress()` builder callbacks did. The hook keeps one native
+  // handler across renders and pushes a changed config to it, so the gesture
+  // needs no memo of its own.
+  const gesture = useLongPressGesture({
+    minDuration: HOLD_MS,
+    onBegin: () => {
+      fillProgress(progress, motionEnabledShared.value);
+    },
+    onActivate: () => {
+      completeProgressDiscrete(progress, motionEnabledShared.value);
+      runOnJS(fireComplete)();
+    },
+    onFinalize: () => {
+      // Covers both an early release (never activated) and the reset after
+      // a completed hold (activated, then the finger lifts) — either way
+      // the ring returns to empty, ready for the next attempt.
+      decayProgress(progress, motionEnabledShared.value);
+    },
+  });
 
   return { gesture, progress };
 }
@@ -176,7 +173,7 @@ function fillProgress(
 }
 
 /** Under reduced motion, jumps the ring straight to full on hold-activation
- * (`.onStart`, after the native `minDuration`) — matching when a real unlock
+ * (`onActivate`, after the native `minDuration`) — matching when a real unlock
  * is imminent, rather than at touch-down. No-op when motion is enabled (the
  * animated sweep started in `fillProgress` already carries the ring there). */
 function completeProgressDiscrete(

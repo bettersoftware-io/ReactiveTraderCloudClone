@@ -68,8 +68,8 @@
     {
       // React Native core moves as ONE unit. `react-native` and the official
       // `@react-native/*` satellites share a single version line, and the
-      // ecosystem peers on that exact minor — jest-expo@57 requires
-      // `@react-native/jest-preset: ^0.86.2` against react-native 0.86.
+      // ecosystem peers on that exact minor — jest-expo@58 requires
+      // `@react-native/jest-preset: ^0.88.0` against react-native 0.88.
       //
       // Renovate models no such coupling, so ungrouped it proposes members
       // independently and produces PRs that CANNOT pass. #577 bumped
@@ -80,7 +80,9 @@
       // than recurringly red.
       //
       // Standing policy from #67 and #546: let the Expo SDK drive
-      // react-native, never bump it independently. Revisit when SDK 58 ships.
+      // react-native, never bump it independently. Still the policy on SDK 58
+      // (2026-10-25): #732 (react-native ^0.88 alone) could not pass until
+      // the SDK upgrade moved every expo-* package with it.
       groupName: "react-native core",
       matchPackageNames: ["react-native", "@react-native/**"],
     },

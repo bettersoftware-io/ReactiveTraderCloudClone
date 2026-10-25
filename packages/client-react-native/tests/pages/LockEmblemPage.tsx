@@ -54,7 +54,7 @@ export function lockEmblemPage(): LockEmblemPage {
 
       const transform = StyleSheet.flatten(
         wrapper?.props.style as StyleProp<ViewStyle>,
-      ).transform;
+      )?.transform;
 
       const rotate = Array.isArray(transform)
         ? (transform as readonly Record<string, unknown>[]).find((step) => {

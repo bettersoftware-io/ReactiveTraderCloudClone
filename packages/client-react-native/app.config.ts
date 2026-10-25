@@ -1,7 +1,5 @@
 import type { ExpoConfig } from "expo/config";
 
-import { withSceneLifecycle } from "./plugins/withSceneLifecycle.ts";
-
 const config: ExpoConfig = {
   name: "RTC Mobile",
   slug: "rtc-mobile",
@@ -66,7 +64,4 @@ const config: ExpoConfig = {
   plugins: ["expo-router"],
 };
 
-// An iOS app built with Xcode 27 must adopt the UIKit scene life cycle or it
-// is killed at launch; SDK 57's template does not. Applied here rather than
-// listed in `plugins`, whose type admits only plugins named by a string.
-export default withSceneLifecycle(config);
+export default config;

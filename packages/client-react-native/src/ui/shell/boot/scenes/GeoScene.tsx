@@ -324,7 +324,7 @@ function drawTableRings(
 
     const rotation =
       ring.rotationRate === undefined ? 0 : ring.rotationRate * elapsed;
-    const path = Skia.Path.Make();
+    const path = Skia.PathBuilder.Make();
 
     for (let step = 0; step <= GEO_RING_SEGMENTS; step++) {
       const angle = (step / GEO_RING_SEGMENTS) * 6.283 + rotation;
@@ -342,7 +342,7 @@ function drawTableRings(
       }
     }
 
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path.build(), paint);
   }
 }
 
@@ -369,7 +369,7 @@ function drawGraticule(
   paint.setColor(Skia.Color(hexToRgba(accent, 0.13 * phase * flicker)));
 
   for (const chord of chords) {
-    const path = Skia.Path.Make();
+    const path = Skia.PathBuilder.Make();
 
     for (let i = 0; i < chord.points.length; i++) {
       const point = projectBootPoint(
@@ -386,7 +386,7 @@ function drawGraticule(
       }
     }
 
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path.build(), paint);
   }
 }
 
@@ -434,7 +434,7 @@ function drawCoastlines(
     const count = geoTracedPointCount(points.length, remaining);
 
     if (count >= 2) {
-      const path = Skia.Path.Make();
+      const path = Skia.PathBuilder.Make();
 
       for (let i = 0; i < count; i++) {
         const vertex = points[i % points.length];
@@ -452,8 +452,9 @@ function drawCoastlines(
         }
       }
 
-      canvas.drawPath(path, glowPaint);
-      canvas.drawPath(path, corePaint);
+      const arc = path.build();
+      canvas.drawPath(arc, glowPaint);
+      canvas.drawPath(arc, corePaint);
 
       // Still tracing: mark the drawing head.
       if (count < points.length + 1) {
@@ -537,7 +538,7 @@ function drawRadarSweep(
   paint.setAntiAlias(true);
   paint.setColor(Skia.Color(hexToRgba(accentAlt, 0.5 * flicker)));
 
-  let path = Skia.Path.Make();
+  let path = Skia.PathBuilder.Make();
   let drawing = false;
 
   for (let z = -1.15; z <= 1.301; z += 0.04) {
@@ -555,14 +556,14 @@ function drawRadarSweep(
     }
 
     if (drawing) {
-      canvas.drawPath(path, paint);
-      path = Skia.Path.Make();
+      canvas.drawPath(path.build(), paint);
+      path = Skia.PathBuilder.Make();
       drawing = false;
     }
   }
 
   if (drawing) {
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path.build(), paint);
   }
 }
 
@@ -602,7 +603,7 @@ function drawTrades(
     trailPaint.setStrokeWidth(1);
     trailPaint.setAntiAlias(true);
     trailPaint.setColor(Skia.Color(hexToRgba(color, 0.2 * flicker)));
-    const trail = Skia.Path.Make();
+    const trail = Skia.PathBuilder.Make();
 
     for (let step = 0; step <= ARC_SAMPLES; step++) {
       const point = projectArc(camera, from, to, lift, step / ARC_SAMPLES);
@@ -614,14 +615,14 @@ function drawTrades(
       }
     }
 
-    canvas.drawPath(trail, trailPaint);
+    canvas.drawPath(trail.build(), trailPaint);
 
     const headTrailPaint = Skia.Paint();
     headTrailPaint.setStyle(PaintStyle.Stroke);
     headTrailPaint.setStrokeWidth(1.8);
     headTrailPaint.setAntiAlias(true);
     headTrailPaint.setColor(Skia.Color(hexToRgba(color, 0.75 * flicker)));
-    const headTrail = Skia.Path.Make();
+    const headTrail = Skia.PathBuilder.Make();
     const tailStart = Math.max(0, trade.flightFrac - ARC_TAIL_LENGTH);
 
     for (let step = 0; step <= ARC_TAIL_SAMPLES; step++) {
@@ -636,7 +637,7 @@ function drawTrades(
       }
     }
 
-    canvas.drawPath(headTrail, headTrailPaint);
+    canvas.drawPath(headTrail.build(), headTrailPaint);
 
     const head = projectArc(camera, from, to, lift, trade.flightFrac);
     const headPaint = Skia.Paint();
@@ -682,11 +683,11 @@ function drawCityLabel(
   leaderPaint.setStrokeWidth(1);
   leaderPaint.setAntiAlias(true);
   leaderPaint.setColor(Skia.Color(hexToRgba(accent, 0.4 * alpha)));
-  const leader = Skia.Path.Make();
+  const leader = Skia.PathBuilder.Make();
   leader.moveTo(top.x, top.y);
   leader.lineTo(top.x + LABEL_ELBOW_DX, top.y + LABEL_ELBOW_DY);
   leader.lineTo(top.x + LABEL_RUN_DX, top.y + LABEL_ELBOW_DY);
-  canvas.drawPath(leader, leaderPaint);
+  canvas.drawPath(leader.build(), leaderPaint);
 
   if (font === null) {
     return;
