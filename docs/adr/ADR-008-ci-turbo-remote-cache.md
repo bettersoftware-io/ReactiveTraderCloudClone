@@ -25,7 +25,9 @@ The decision closes a run of CI-speed work on 2026-10-17:
 runner is saturated either way, so a step's wall time is its CPU time divided
 by four. #1021 cut the work per run. A cache cuts the work **between** runs.
 CI keeps no turbo cache, so every run rebuilds all 27 packages and re-runs all
-27 test suites, however little a PR touched.
+27 test suites, however little a PR touched. (What came after this decision —
+the coverage job, Playwright workers and the e2e split, 2026-10-25 — is in
+[`ci-performance.md`](../ci-performance.md).)
 
 ### What a cache would skip (measured)
 

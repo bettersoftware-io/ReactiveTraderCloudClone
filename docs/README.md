@@ -132,6 +132,10 @@ flowchart TD
 - [`vitest-5-upstream-bug-report.md`](vitest-5-upstream-bug-report.md) — how to report that
   mock regression to the vitest maintainers: why a person must file it, the reproduction
   script, the issue text to paste, and what to do once it is fixed.
+- [`ci-performance.md`](ci-performance.md) — how `ci.yml`'s longest job went from
+  743 s to ~375 s (2026-10-16..25) with no gate dropped: the job layout and its
+  required checks, each change with its measurement, the Ubuntu 26 probe, how to
+  measure a CI change here, and the next levers.
 - [`mobile-ci-testing-options.md`](mobile-ci-testing-options.md) — decision
   support for running iOS/Android tests in CI: why iOS needs a Mac, every option
   with dated costs, what teams actually gate on, and a staged recommendation.
