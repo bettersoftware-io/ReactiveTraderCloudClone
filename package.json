@@ -13,7 +13,7 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck && pnpm typecheck:tooling",
     "typecheck:tooling": "tsc -p tsconfig.tooling.json",
-    "test": "turbo run test",
+    "test": "VITEST_MAX_WORKERS=2 turbo run test --concurrency=4",
     "test:coverage": "turbo run test:coverage",
     "test:ui:contract": "turbo run test:ui:contract",
     "test:ui:coverage": "turbo run test:ui:coverage",
