@@ -167,7 +167,11 @@ every house brain dropped: only `scripted` stays offered, the footer chip reads
 00:00 UTC). `RTC_JARVIS_FORCE_GATE=exhausted` rides that same frame, so it is a
 faithful preview of the real state, not a separate code path. If the spend
 store cannot be read or written, house turns are scripted too (fail closed)
-until a later read succeeds.
+until a later read succeeds; spend booked while it was down is kept and
+written once it answers again. A cancelled request still counts: what the
+provider had reported, or an estimate when it had reported nothing yet (on
+Sonnet/Opus the output is taken at the 4,096-token cap, since their thinking
+streams nothing to count).
 
 **Durable.** Spend is kept in the `jarvis_spend_daily` table and added up by
 the `record_jarvis_spend` function, both private to the server (secret key

@@ -40,6 +40,15 @@ describe("parseJarvisBudgetConfig", () => {
     expect(console.warn).not.toHaveBeenCalled();
   });
 
+  it("reads a limit with spaces around it, silently", () => {
+    const config = parseJarvisBudgetConfig({
+      RTC_JARVIS_USER_DAILY_USD: " 0.5 ",
+    });
+
+    expect(config.userDailyUsd).toBe(0.5);
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
   it("accepts zero as a valid limit", () => {
     const config = parseJarvisBudgetConfig({
       RTC_JARVIS_USER_DAILY_USD: "0",
@@ -55,9 +64,13 @@ describe("parseJarvisBudgetConfig", () => {
     ["RTC_JARVIS_USER_DAILY_USD", "-1", DEFAULT_JARVIS_USER_DAILY_USD],
     ["RTC_JARVIS_USER_DAILY_USD", "abc", DEFAULT_JARVIS_USER_DAILY_USD],
     ["RTC_JARVIS_USER_DAILY_USD", "", DEFAULT_JARVIS_USER_DAILY_USD],
+    ["RTC_JARVIS_USER_DAILY_USD", " ", DEFAULT_JARVIS_USER_DAILY_USD],
+    ["RTC_JARVIS_USER_DAILY_USD", "Infinity", DEFAULT_JARVIS_USER_DAILY_USD],
     ["RTC_JARVIS_HOUSE_DAILY_USD", "-1", DEFAULT_JARVIS_HOUSE_DAILY_USD],
     ["RTC_JARVIS_HOUSE_DAILY_USD", "abc", DEFAULT_JARVIS_HOUSE_DAILY_USD],
     ["RTC_JARVIS_HOUSE_DAILY_USD", "", DEFAULT_JARVIS_HOUSE_DAILY_USD],
+    ["RTC_JARVIS_HOUSE_DAILY_USD", " ", DEFAULT_JARVIS_HOUSE_DAILY_USD],
+    ["RTC_JARVIS_HOUSE_DAILY_USD", "Infinity", DEFAULT_JARVIS_HOUSE_DAILY_USD],
   ])(
     "warns naming %s and uses the default for malformed %j",
     (name: string, value: string, fallback: number) => {

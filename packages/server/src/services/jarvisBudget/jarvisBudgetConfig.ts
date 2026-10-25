@@ -20,7 +20,9 @@ function parseDailyUsdSetting(
     return fallback;
   }
 
-  const parsed = raw === "" ? Number.NaN : Number(raw);
+  // `Number` reads a blank string as 0, which would silently turn the key
+  // off; padding around a number is harmless and kept.
+  const parsed = raw.trim() === "" ? Number.NaN : Number(raw);
 
   if (Number.isFinite(parsed) && parsed >= 0) {
     return parsed;

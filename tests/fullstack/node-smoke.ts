@@ -381,8 +381,73 @@ async function runGateSmoke(): Promise<void> {
     } finally {
       ws.dispose();
     }
+
+    // The adapter drops `budget` until the clients read it (B3b), so the
+    // frame is read off a raw socket.
+    const budget = await readAvailabilityBudget(GATED_PORT, login.token);
+
+    assert(
+      budget !== undefined && budget.limitUsd === null,
+      `roster login's budget has no personal limit (got ${JSON.stringify(budget)})`,
+    );
+    assert(
+      budget?.exhausted === "forced",
+      `budget exhausted reason (got ${budget?.exhausted})`,
+    );
+    console.log(
+      "  ✓ jarvis budget: the roster login is operator tier (no personal limit) on JARVIS_AVAILABILITY",
+    );
   } finally {
     await stopProcess(gatedServer);
+  }
+}
+
+/** The fields of `JARVIS_AVAILABILITY`'s `budget` this smoke reads. */
+interface BudgetFrameFields {
+  readonly limitUsd: number | null;
+  readonly exhausted: string | null;
+}
+
+interface AvailabilityFrame {
+  readonly type?: string;
+  readonly payload?: { readonly budget?: BudgetFrameFields };
+}
+
+/** Subscribes on a raw socket and returns the first `JARVIS_AVAILABILITY`
+ * frame's `budget`, as the server sent it. */
+async function readAvailabilityBudget(
+  port: number,
+  token: string,
+): Promise<BudgetFrameFields | undefined> {
+  const { WebSocket } = await import("ws");
+  const raw = new WebSocket(`ws://${HOST}:${port}/?access=${token}`);
+
+  try {
+    return await new Promise<BudgetFrameFields | undefined>(
+      (resolve, reject) => {
+        const guard = setTimeout(() => {
+          reject(new Error("no jarvis.availability frame in time"));
+        }, FIRST_VALUE_TIMEOUT_MS);
+
+        raw.on("open", () => {
+          raw.send(JSON.stringify({ type: "jarvis.subscribe" }));
+        });
+        raw.on("message", (data: unknown) => {
+          const frame = JSON.parse(String(data)) as AvailabilityFrame;
+
+          if (frame.type === "jarvis.availability") {
+            clearTimeout(guard);
+            resolve(frame.payload?.budget);
+          }
+        });
+        raw.on("error", (error: Error) => {
+          clearTimeout(guard);
+          reject(error);
+        });
+      },
+    );
+  } finally {
+    raw.close();
   }
 }
 

@@ -1,13 +1,15 @@
--- B3a: per-person daily Jarvis AI spend (docs/superpowers/plans, B3a per-user durable AI metering).
+-- B3a: per-person daily Jarvis AI spend
+-- (docs/superpowers/specs/2026-10-25-b3-ai-metering-byo-keys-design.md §3).
 --
 -- PRIVATE TO THE SERVER. Row-level security is on and NO policy is defined,
 -- so the anon and authenticated roles can do nothing here. Only the server's
 -- secret key (service_role, which bypasses RLS) reads or writes. No browser
 -- ever talks to this project.
 --
--- One row per (owner, day, key_kind). owner is a profile id, or the literal
--- 'house' for the all-users total of house-key spend. spend_usd stays numeric
--- so sums never lose precision.
+-- One row per (owner, day, key_kind). owner is 'account:<uuid>' for a
+-- signed-in account (its profile id), 'roster:<username>' for a demo roster
+-- persona, or the literal 'house' for the all-users total of house-key spend.
+-- day is the UTC day. spend_usd stays numeric so sums never lose precision.
 --
 -- packages/server/src/accounts/migrations.test.ts pins these properties.
 

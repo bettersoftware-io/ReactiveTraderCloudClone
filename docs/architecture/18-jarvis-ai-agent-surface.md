@@ -1348,13 +1348,16 @@ the same round that made the model selectable.
 ### `UsageMeter`
 
 `packages/server/src/services/UsageMeter.ts`, one instance in
-`serviceContainer` — **in-memory only**; a server restart zeroes it, and the
-Ops card's own copy says so ("resets on server restart") rather than
-implying persistence exists. (The budget is not this meter: it is the
-durable daily `JarvisBudgetService`, see the note at the top of §18.15.) Rolling **5h windows**
-(`JARVIS_USAGE_WINDOW_MS = 18_000_000` ms) anchor lazily — re-set at the
-first `recordTurn`/`recordTokens` call *after* expiry, not on a timer;
-rolling clears only `currentWindow`, `sinceBoot` never clears. The price
+`serviceContainer` — **in-memory only** and **display-only**; a server
+restart zeroes it, and the Ops card's own copy says so ("per-model rows
+reset on server restart") rather than implying persistence exists. (The
+budget is not this meter: it is the durable daily `JarvisBudgetService`,
+whose house line on the same card survives a restart — see the note at the
+top of §18.15.) Since B3a its window is the **UTC day**, the day the budgets
+reset on (round 1 built rolling 5h windows, `JARVIS_USAGE_WINDOW_MS`, since
+removed). It rolls lazily — at the first `recordTurn`/`recordTokens` call on
+a later day, not on a timer; rolling clears only `currentWindow`,
+`sinceBoot` never clears. The price
 table ($/Mtok per brain — Haiku $1/$5, Sonnet $3/$15, Opus $5/$25 in/out;
 cache-read at 10% of input, cache-creation at 1.25× input) types `"scripted"`
 out entirely (`Exclude<JarvisBrain, "scripted">`) and short-circuits it to
@@ -1481,7 +1484,9 @@ task's own change.
 Item (2) — Claude-Code-style usage windows, where exhausting the budget
 swaps the live loop to scripted until the window rolls — was explicitly out
 of this round's display-only scope. Everything it needs already exists.
-`UsageMeter`'s rolling windows are the accounting. The `brains` vocabulary is
+`UsageMeter`'s rolling windows are the accounting (B3a built the gating on
+the durable `JarvisBudgetService` instead, leaving the meter display-only).
+The `brains` vocabulary is
 the *same* mechanism `JARVIS_AVAILABILITY` already uses for "which brains
 can this connection pick from" — `RTC_JARVIS_FAKE` already demonstrates the
 collapse (`brains` narrows to `["scripted"]`, `defaultBrain` to
