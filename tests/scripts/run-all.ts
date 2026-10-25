@@ -91,11 +91,40 @@ const droppedGherkinBrowser = skipGherkinBrowser
     })
   : [];
 
-const activeSuites: Suite[] = skipGherkinBrowser
-  ? suites.filter((s) => {
-      return !isGherkinBrowser(s);
-    })
-  : suites;
+// RTC_E2E_GROUP splits the run across CI jobs: `browser` keeps only the
+// browser suites (test:browser:*), `fullstack` only the rest (the full-stack
+// smokes and the in-process presenter peer, which needs no browser and rides
+// along). Unset runs both. The browser suites are the long pole, and in one
+// job the smokes ran first, uncontended, adding ~100 s before them.
+const E2E_GROUPS = ["browser", "fullstack"] as const;
+
+type E2eGroup = (typeof E2E_GROUPS)[number];
+
+function isE2eGroup(value: string): value is E2eGroup {
+  return (E2E_GROUPS as readonly string[]).includes(value);
+}
+
+const groupEnv: string | undefined = process.env.RTC_E2E_GROUP || undefined;
+
+if (groupEnv !== undefined && !isE2eGroup(groupEnv)) {
+  throw new Error(
+    `RTC_E2E_GROUP="${groupEnv}" is not one of ${E2E_GROUPS.join(", ")}`,
+  );
+}
+
+const group: E2eGroup | undefined = groupEnv;
+
+function isInGroup(s: Suite): boolean {
+  if (group === undefined) {
+    return true;
+  }
+
+  return s.script.startsWith("test:browser:") === (group === "browser");
+}
+
+const activeSuites: Suite[] = suites.filter((s) => {
+  return isInGroup(s) && !(skipGherkinBrowser && isGherkinBrowser(s));
+});
 
 // Concurrency cap. Unset/invalid → run every suite at once (the default; ideal on
 // a multi-core dev box). On a small CI runner the 7-wide fan-out starves the
@@ -191,6 +220,12 @@ const overallStart = Date.now();
 if (skipGherkinBrowser) {
   console.log(
     `(RTC_E2E_SKIP_GHERKIN_BROWSER — parked ${droppedGherkinBrowser.length} Gherkin browser suite(s): ${droppedGherkinBrowser.join(", ")})`,
+  );
+}
+
+if (group !== undefined) {
+  console.log(
+    `(RTC_E2E_GROUP=${group} — running ${activeSuites.length} of ${suites.length} suites)`,
   );
 }
 

@@ -346,15 +346,16 @@ jobs:
       - name: React Native coverage gate (merged lines ≥95%)
         run: pnpm --filter @rtc/client-react-native test:coverage:gate
 
+  # The e2e run is split across jobs by RTC_E2E_GROUP (tests/scripts/run-all.ts):
+  # this job and e2e-alt-cores run the browser suites, the long pole; the
+  # full-stack smokes and the presenter peer run in e2e-fullstack. In one job
+  # the smokes ran first, uncontended, and added ~100 s before the browser
+  # suites started (2026-10-25).
   e2e:
-    name: e2e (browser · presenter · fullstack)
+    name: e2e (browser)
     runs-on: ubuntu-latest
-    env:
-      # The 4-vCPU runner can't sustain the full parallel fan-out (it starves
-      # the timing-sensitive WS smoke into timeouts). Cap the pool to 2 suites
-      # at a time — slower wall-clock, but reliable. run-all.ts defaults to
-      # fully parallel when this is unset (multi-core dev boxes).
-      RTC_E2E_MAX_PARALLEL: "2"
+    # No RTC_E2E_MAX_PARALLEL here: the two browser suites are the whole pool,
+    # and the timing-sensitive smokes the cap protects run in e2e-fullstack.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -414,10 +415,10 @@ jobs:
       # RTC_E2E_SKIP_GHERKIN_BROWSER=1 parks the two Gherkin browser peers
       # (playwright-cucumber, react + solid): native Playwright is the gating
       # browser SOT (tests/STRATEGY.md §7.1), so the PR gate runs 5 of the 7
-      # suites. The weekly e2e-gherkin-weekly.yml workflow runs the two parked
-      # suites so the .feature/step tree can't silently rot.
-      - name: e2e suite (Playwright + presenter + fullstack)
-        run: RTC_E2E_SKIP_GHERKIN_BROWSER=1 pnpm test:e2e
+      # suites, two of them here. The weekly e2e-gherkin-weekly.yml workflow
+      # runs the two parked suites so the .feature/step tree can't silently rot.
+      - name: e2e browser suites (Playwright, react + solid)
+        run: RTC_E2E_SKIP_GHERKIN_BROWSER=1 RTC_E2E_GROUP=browser pnpm test:e2e
 
       - name: Upload e2e artifacts on failure
         if: failure()
@@ -429,24 +430,20 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  # Same e2e suite, run again against the two non-default application cores
-  # (VITE_CORE_IMPL: async | effect — see packages/web-boot/src/coreSelection.ts).
-  # A sibling job, not a rename of `e2e` above: the `main` ruleset's required
-  # checks reference that job's name, and renaming it would silently drop the
-  # required check.
+  # Same browser suites, run again against the two non-default application
+  # cores (VITE_CORE_IMPL: async | effect — see
+  # packages/web-boot/src/coreSelection.ts). The `main` ruleset's required
+  # checks list every e2e job by name: renaming or adding one here means
+  # updating the ruleset too, or the check silently stops being required.
   e2e-alt-cores:
-    name: e2e (${{ matrix.core }} core · browser · presenter · fullstack)
+    name: e2e (${{ matrix.core }} core · browser)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         core: [async, effect]
     env:
-      # The 4-vCPU runner can't sustain the full parallel fan-out (it starves
-      # the timing-sensitive WS smoke into timeouts). Cap the pool to 2 suites
-      # at a time — slower wall-clock, but reliable. run-all.ts defaults to
-      # fully parallel when this is unset (multi-core dev boxes).
-      RTC_E2E_MAX_PARALLEL: "2"
+      # No RTC_E2E_MAX_PARALLEL: see the e2e job.
       RTC_CORE_IMPL: ${{ matrix.core }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -490,16 +487,86 @@ jobs:
       # RTC_E2E_SKIP_GHERKIN_BROWSER=1 parks the two Gherkin browser peers
       # (playwright-cucumber, react + solid): native Playwright is the gating
       # browser SOT (tests/STRATEGY.md §7.1), so the PR gate runs 5 of the 7
-      # suites. The weekly e2e-gherkin-weekly.yml workflow runs the two parked
-      # suites so the .feature/step tree can't silently rot.
-      - name: e2e suite (Playwright + presenter + fullstack)
-        run: RTC_E2E_SKIP_GHERKIN_BROWSER=1 pnpm test:e2e
+      # suites, two of them here. The weekly e2e-gherkin-weekly.yml workflow
+      # runs the two parked suites so the .feature/step tree can't silently rot.
+      - name: e2e browser suites (Playwright, react + solid)
+        run: RTC_E2E_SKIP_GHERKIN_BROWSER=1 RTC_E2E_GROUP=browser pnpm test:e2e
 
       - name: Upload e2e artifacts on failure
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-report-${{ matrix.core }}
+          path: |
+            tests/reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # The rest of the e2e run (see the note above the e2e job), once per
+  # application core.
+  e2e-fullstack:
+    name: e2e (${{ matrix.core }} core · presenter · fullstack)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        core: [rxjs, async, effect]
+    env:
+      # The 4-vCPU runner can't sustain the full parallel fan-out (it starves
+      # the timing-sensitive WS smoke into timeouts). Cap the pool to 2 suites
+      # at a time — slower wall-clock, but reliable. run-all.ts defaults to
+      # fully parallel when this is unset (multi-core dev boxes).
+      RTC_E2E_MAX_PARALLEL: "2"
+      RTC_CORE_IMPL: ${{ matrix.core }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Nothing in this job pushes: keep the token out of .git/config (zizmor
+          # `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+
+      - name: Enable Corepack (provisions the pnpm pinned by the packageManager field)
+        # Lockfile-pinned (sha512), not an ad-hoc `npm install -g`: see the header of
+        # scripts/enable-corepack.sh. Must run AFTER checkout — the script is in-repo.
+        run: scripts/enable-corepack.sh
+
+      - name: Resolve pnpm store path
+        run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
+
+      - name: Cache the pnpm content-addressable store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The browser full-stack smokes drive Chromium through Playwright;
+      # install it from the @rtc/tests package (the one that launches it).
+      - name: Install Playwright Chromium + OS deps
+        run: pnpm --filter @rtc/tests exec playwright install --with-deps chromium
+
+      # Invoke through turbo (root script = `turbo run test:e2e`, NOT
+      # `pnpm --filter`) so the task's dependsOn ["build"] builds every workspace
+      # lib first — the suites import @rtc/{domain,shared,client,server} via their
+      # dist/. turbo then runs `pnpm gates` + the parallel orchestrator.
+      #
+      # The full-stack smokes (node, browser and hybrid; react + solid) and the
+      # in-process presenter peer.
+      - name: e2e full-stack smokes + presenter peer
+        run: RTC_E2E_GROUP=fullstack pnpm test:e2e
+
+      - name: Upload e2e artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-fullstack-report-${{ matrix.core }}
           path: |
             tests/reports/
           if-no-files-found: ignore
