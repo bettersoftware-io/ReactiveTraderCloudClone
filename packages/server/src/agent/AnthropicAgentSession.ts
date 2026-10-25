@@ -6,6 +6,7 @@ import type {
 } from "@anthropic-ai/sdk/lib/tools/BetaToolRunner";
 import type {
   BetaMessageParam,
+  BetaRawContentBlockDelta,
   BetaRawMessageStreamEvent,
   BetaTextBlockParam,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
@@ -314,12 +315,13 @@ interface RequestLedger {
   /** Before a request: false when the budget is spent, with nothing
    * reserved; otherwise reserves the request's worst case. */
   beginRequest(): boolean;
-  /** Folds one stream event's usage into the request's running count. */
+  /** Folds one stream event into the request's running count. */
   noteUsage(event: BetaRawMessageStreamEvent): void;
   /** Books a finished request's usage; it is then no longer open. */
   bookFinalUsage(usage: AnthropicFinalMessage["usage"]): void;
   /** Once the turn is over, however it ended: books what an unfinished
-   * request had used, or releases its reservation if it used nothing. */
+   * request had used — its output estimated from what streamed — or
+   * releases its reservation if it reported nothing. */
   settle(): void;
 }
 
@@ -347,6 +349,8 @@ function createRequestLedger(
   // What the open request has reported so far; null before its
   // `message_start`, which is the first event to carry usage.
   let accrued: AccruedUsage | null = null;
+  // Characters of generated content the open request has streamed so far.
+  let streamedChars = 0;
 
   function book(usage: JarvisTokenUsage): void {
     open = false;
@@ -363,6 +367,7 @@ function createRequestLedger(
       liveMeter.beginRequest(liveModel, REQUEST_CEILING);
       open = true;
       accrued = null;
+      streamedChars = 0;
 
       return true;
     },
@@ -376,6 +381,8 @@ function createRequestLedger(
           cacheReadTokens: usage.cache_read_input_tokens ?? 0,
           cacheCreationTokens: usage.cache_creation_input_tokens ?? 0,
         };
+      } else if (event.type === "content_block_delta") {
+        streamedChars += streamedLengthOf(event.delta);
       } else if (event.type === "message_delta" && accrued !== null) {
         // The counts on a `message_delta` are cumulative for the request.
         const usage = event.usage;
@@ -410,9 +417,39 @@ function createRequestLedger(
         return;
       }
 
-      book(accrued);
+      // The provider reports a request's output once, on the
+      // `message_delta` just before `message_stop`; a request cut short
+      // mid-reply never gets there, though every token it generated is
+      // billed. So its output is the larger of what was reported and an
+      // estimate of what streamed, at ~4 characters a token.
+      book({
+        ...accrued,
+        outputTokens: Math.max(
+          accrued.outputTokens,
+          Math.ceil(streamedChars / CHARS_PER_TOKEN_ESTIMATE),
+        ),
+      });
     },
   };
+}
+
+/** The rough characters-per-token of English text and JSON, for estimating
+ * the output of a request that never reported its own. */
+const CHARS_PER_TOKEN_ESTIMATE = 4;
+
+/** The generated characters one content delta carries: reply text, thinking
+ * and tool-call input all count as output. */
+function streamedLengthOf(delta: BetaRawContentBlockDelta): number {
+  switch (delta.type) {
+    case "text_delta":
+      return delta.text.length;
+    case "thinking_delta":
+      return delta.thinking.length;
+    case "input_json_delta":
+      return delta.partial_json.length;
+    default:
+      return 0;
+  }
 }
 
 /**

@@ -1373,51 +1373,27 @@ describe("AnthropicAgentLoop", () => {
     expect(pushMessages).not.toHaveBeenCalled();
   });
 
-  it("(B3a metering) a request cancelled mid-stream is still booked, with the usage it had reported", async () => {
-    function createRunner(
-      _params: FactoryParams,
-      options: FactoryOptions,
-    ): AnthropicRunner {
-      const signal = options.signal;
-      const stream: AnthropicMessageStream = {
-        async *[Symbol.asyncIterator](): AsyncGenerator<BetaRawMessageStreamEvent> {
-          yield createMessageStartEvent({
-            input_tokens: 1_200,
-            output_tokens: 1,
-            cache_read_input_tokens: 300,
-            cache_creation_input_tokens: null,
-          });
-          yield textDeltaEvent(0, "Let me");
-          yield createMessageDeltaEvent(40);
-          await new Promise<never>((_resolve, reject) => {
-            if (signal?.aborted) {
-              reject(new Error("aborted"));
-            }
-
-            signal?.addEventListener("abort", () => {
-              reject(new Error("aborted"));
-            });
-          });
-        },
-        finalMessage: () => {
-          return new Promise(() => {});
-        },
-      };
-
-      return {
-        async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
-          yield stream;
-        },
-        pushMessages: (): void => {},
-      };
-    }
-
+  it("(B3a metering) a request cancelled mid-reply is still booked: its input as reported, its output estimated from every text, thinking and tool-input character that streamed", async () => {
+    // As the real protocol streams it: usage on `message_start` (output 1),
+    // then content, and no `message_delta` before the cancel — that only
+    // comes just before `message_stop`.
     const meter = createMeterSpy();
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
       buildTools: createToolsFixture(),
-      runnerFactory: createRunner,
+      runnerFactory: createAbortableRunnerFactory([
+        createMessageStartEvent({
+          input_tokens: 1_200,
+          output_tokens: 1,
+          cache_read_input_tokens: 300,
+          cache_creation_input_tokens: null,
+        }),
+        createThinkingDeltaEvent(0, "t".repeat(40)),
+        textDeltaEvent(1, "a".repeat(300)),
+        createInputJsonDeltaEvent(2, "j".repeat(40)),
+        textDeltaEvent(1, LAST_STREAMED_TEXT),
+      ]),
     });
     const session = loop.createSession();
 
@@ -1425,11 +1401,7 @@ describe("AnthropicAgentLoop", () => {
       session,
       "price?",
       [],
-      (event: JarvisEvent): void => {
-        if (event.type === "delta") {
-          session.cancelTurn();
-        }
-      },
+      cancelOnLastStreamedText(session),
       { brain: "claude-sonnet-5", meter },
     );
 
@@ -1437,16 +1409,106 @@ describe("AnthropicAgentLoop", () => {
       type: "error",
       message: CANCELLED_MESSAGE,
     });
+    // 40 + 300 + 40 + 20 = 400 characters, at 4 a token.
     expect(meter.record).toHaveBeenCalledExactlyOnceWith("claude-sonnet-5", {
       inputTokens: 1_200,
-      outputTokens: 40,
+      outputTokens: 100,
       cacheReadTokens: 300,
       cacheCreationTokens: 0,
     });
     expect(meter.endRequest).not.toHaveBeenCalled();
   });
 
-  it("(B3a metering) a request that errors mid-stream is still booked, with the usage it had reported", async () => {
+  it("(B3a metering) a cancelled request whose reported output exceeds the estimate is booked at what was reported", async () => {
+    const meter = createMeterSpy();
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createAbortableRunnerFactory([
+        createMessageStartEvent({
+          input_tokens: 800,
+          output_tokens: 1,
+          cache_read_input_tokens: null,
+          cache_creation_input_tokens: null,
+        }),
+        createMessageDeltaEvent(250),
+        textDeltaEvent(0, LAST_STREAMED_TEXT),
+      ]),
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(
+      session,
+      "price?",
+      [],
+      cancelOnLastStreamedText(session),
+      { brain: "claude-sonnet-5", meter },
+    );
+
+    expect(meter.record).toHaveBeenCalledExactlyOnceWith("claude-sonnet-5", {
+      inputTokens: 800,
+      outputTokens: 250,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+  });
+
+  it("(B3a metering) the estimate counts only the cancelled request's own content, not an earlier request's", async () => {
+    const firstRequest = createFakeStream(
+      [
+        textDeltaEvent(0, "a".repeat(400)),
+        toolUseStartEvent(1, "t1", "get_price", { symbol: "EURUSD" }),
+        toolStopEvent(1),
+      ],
+      {
+        stop_reason: "tool_use",
+        content: [],
+        usage: {
+          input_tokens: 900,
+          output_tokens: 120,
+          cache_read_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+        },
+      },
+    );
+    const meter = createMeterSpy();
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createAbortableRunnerFactory(
+        [
+          createMessageStartEvent({
+            input_tokens: 1_000,
+            output_tokens: 1,
+            cache_read_input_tokens: null,
+            cache_creation_input_tokens: null,
+          }),
+          textDeltaEvent(0, LAST_STREAMED_TEXT),
+        ],
+        [firstRequest],
+      ),
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(
+      session,
+      "price?",
+      [],
+      cancelOnLastStreamedText(session),
+      { brain: "claude-haiku-4-5", meter },
+    );
+
+    expect(meter.record).toHaveBeenNthCalledWith(2, "claude-haiku-4-5", {
+      inputTokens: 1_000,
+      outputTokens: 5,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+  });
+
+  it("(B3a metering) a request that errors before any content is booked with message_start's input and output", async () => {
     const stream: AnthropicMessageStream = {
       async *[Symbol.asyncIterator](): AsyncGenerator<BetaRawMessageStreamEvent> {
         yield createMessageStartEvent({
@@ -1455,7 +1517,6 @@ describe("AnthropicAgentLoop", () => {
           cache_read_input_tokens: null,
           cache_creation_input_tokens: 500,
         });
-        yield textDeltaEvent(0, "Let me");
         throw new Error("connection reset");
       },
       finalMessage: () => {
@@ -1490,6 +1551,51 @@ describe("AnthropicAgentLoop", () => {
       outputTokens: 1,
       cacheReadTokens: 0,
       cacheCreationTokens: 500,
+    });
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("(B3a metering) a request that errors mid-reply is booked with its output estimated from what streamed", async () => {
+    const stream: AnthropicMessageStream = {
+      async *[Symbol.asyncIterator](): AsyncGenerator<BetaRawMessageStreamEvent> {
+        yield createMessageStartEvent({
+          input_tokens: 2_000,
+          output_tokens: 1,
+          cache_read_input_tokens: null,
+          cache_creation_input_tokens: null,
+        });
+        yield textDeltaEvent(0, "x".repeat(81));
+        throw new Error("connection reset");
+      },
+      finalMessage: () => {
+        return new Promise(() => {});
+      },
+    };
+    const { factory } = scriptedRunner([stream]);
+    const meter = createMeterSpy();
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(session, "price?", [], undefined, {
+      brain: "claude-haiku-4-5",
+      meter,
+    });
+
+    // 81 characters round UP to 21 tokens: an estimate never under-books.
+    expect(meter.record).toHaveBeenCalledExactlyOnceWith("claude-haiku-4-5", {
+      inputTokens: 2_000,
+      outputTokens: 21,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
     });
     consoleErrorSpy.mockRestore();
   });
@@ -2172,6 +2278,83 @@ function createMessageStartEvent(
   } as unknown as BetaRawMessageStreamEvent;
 }
 
+function createThinkingDeltaEvent(
+  index: number,
+  thinking: string,
+): BetaRawMessageStreamEvent {
+  return {
+    type: "content_block_delta",
+    index,
+    delta: { type: "thinking_delta", thinking, estimated_tokens: null },
+  };
+}
+
+function createInputJsonDeltaEvent(
+  index: number,
+  partialJson: string,
+): BetaRawMessageStreamEvent {
+  return {
+    type: "content_block_delta",
+    index,
+    delta: { type: "input_json_delta", partial_json: partialJson },
+  };
+}
+
+/** A runner whose last request streams `events`, then hangs until the turn's
+ * signal aborts and rejects — how a real request reacts to a cancel. Any
+ * `finished` streams are requests that completed before it. */
+function createAbortableRunnerFactory(
+  events: readonly BetaRawMessageStreamEvent[],
+  finished: readonly AnthropicMessageStream[] = [],
+): AnthropicRunnerFactory {
+  return (_params: FactoryParams, options: FactoryOptions): AnthropicRunner => {
+    const signal = options.signal;
+    const stream: AnthropicMessageStream = {
+      async *[Symbol.asyncIterator](): AsyncGenerator<BetaRawMessageStreamEvent> {
+        for (const event of events) {
+          yield event;
+        }
+
+        await new Promise<never>((_resolve, reject) => {
+          if (signal?.aborted) {
+            reject(new Error("aborted"));
+          }
+
+          signal?.addEventListener("abort", () => {
+            reject(new Error("aborted"));
+          });
+        });
+      },
+      finalMessage: () => {
+        return new Promise(() => {});
+      },
+    };
+
+    return {
+      async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+        for (const done of finished) {
+          yield done;
+        }
+
+        yield stream;
+      },
+      pushMessages: (): void => {},
+    };
+  };
+}
+
+/** Cancels the turn the moment the stream's last text reaches the client,
+ * as a person pressing stop mid-reply would. */
+function cancelOnLastStreamedText(
+  session: AgentSession,
+): (event: JarvisEvent) => void {
+  return (event: JarvisEvent): void => {
+    if (event.type === "delta" && event.text === LAST_STREAMED_TEXT) {
+      session.cancelTurn();
+    }
+  };
+}
+
 /** A `message_delta` whose cumulative output count is `outputTokens`. */
 function createMessageDeltaEvent(
   outputTokens: number,
@@ -2207,6 +2390,9 @@ const SESSION_CAP_MESSAGE =
   "We've had quite the session, sir — do reconnect for a fresh one.";
 
 const CANCELLED_MESSAGE = "Cancelled, sir.";
+
+/** 20 characters; the abort tests cancel when it streams. */
+const LAST_STREAMED_TEXT = "b".repeat(20);
 
 const BUDGET_SPENT_NOTICE =
   "Today's AI budget is used — switching to the scripted brain.";
