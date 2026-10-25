@@ -259,17 +259,68 @@ When that warning appears, nothing needs changing except deleting the step.
 
 ## Next levers
 
-The jobs now finish within ~3 minutes of each other, so the next saving has
-to come from the browser jobs themselves (~220–250 s of suite time at 2
-workers on a fast runner):
+The jobs now finish within ~3 minutes of each other. The browser jobs are the
+longest, but `coverage` and `checks` are close behind, so no single change
+shortens the run by much:
 
-- **Shard each browser suite across two runners** (`playwright test
-  --shard=1/2`). Each shard would get a whole runner, but pays the
-  ~70–110 s job setup again. Unmeasured.
+- **Shard the browser suites across more runners, together with splitting
+  `coverage`.** Weighed and deferred on 2026-10-25; see the decision below.
 - **Read the three browser jobs like for like before ranking them.** On the
   production build the Effect core's suites ran ~1.06x the RxJS ones
   ([`tests/README.md`, "Reading e2e job timings"](../tests/README.md#dev-server-payload-lean-deps)),
   so a 451 s against 381 s gap on one run is mostly the runner class.
+
+### Decided, 2026-10-25: not sharding the browser suites yet
+
+**Context.** Each of the three browser jobs (one per application core) spends
+~100–130 s on setup (checkout, pnpm store, install, Chromium, build), then
+~220–250 s running the react and solid Playwright suites side by side at 2
+workers each on a fast runner: 328–451 s in all. The runner is saturated at
+2 workers (97–99% busy; a third was no faster, #1052), so only more runners
+can make the suites finish sooner.
+
+**Options weighed:**
+
+| option | what changes | jobs per run | run time (estimate) |
+|---|---|---|---|
+| A. leave it | nothing | 8 | ~375–450 s (measured) |
+| B. shard the suites | each browser job becomes two, `playwright test --shard=1/2` and `--shard=2/2` | 11 | ~380 s: `coverage` (352–383 s) becomes the slowest job |
+| C. one job per client | each browser job becomes two, react in one, solid in the other | 11 | as B |
+| D. B or C, plus split `coverage` | also move the two UI-contract gates (~165 s) into their own job | 12 | ~260–300 s: `checks` (~270 s) becomes the slowest |
+
+Every estimate for B–D is unmeasured: it assumes a suite's time halves when it
+has a runner to itself, and adds the setup paid again by each new job.
+
+**Decision: A, for now.** B and C alone save 0–70 s, because a run lasts as
+long as its slowest job and `coverage` is nearly as long as the browser jobs
+already. Only D buys a real drop, about 1.5 minutes at best. Its costs:
+
+- **4 more jobs per run**, each paying ~100–130 s of setup again, so total
+  runner time grows by several minutes per run. Minutes are free for this
+  public repository, but each run takes 12 runners.
+- **4 more required checks.** The `main branch` ruleset matches checks by job
+  name, so each new or renamed job means swapping names in the ruleset at
+  merge time, as #1057 and #1059 did (see
+  [Traps met on the way](#traps-met-on-the-way)).
+- **Split failure reports.** A sharded run's Playwright report lives in two
+  jobs' artifacts.
+
+At ~6 minutes per run, 1.5 minutes did not justify that, especially on top of
+an estimate nobody has measured.
+
+**If it is done:** prefer C over B. One job per client gives clear job names
+and a whole report per job, and needs no shard balancing. B would split by
+spec file (the config is not `fullyParallel`), and `layout.spec.ts` alone
+holds 19 of the 103 tests, so the halves would be uneven. Do it
+together with the `coverage` split, never alone. Measure first with a paired
+experiment on throwaway branches, as #1052 did
+([Measuring a CI change](#measuring-a-ci-change)).
+
+**Revisit when:**
+- the browser suites grow enough that the browser jobs pass ~8 minutes;
+- waiting on CI starts to slow the work down;
+- `coverage` or `checks` gets much faster for another reason, so the browser
+  jobs alone become the slowest by a wide margin and sharding alone would pay.
 
 ## Related
 
