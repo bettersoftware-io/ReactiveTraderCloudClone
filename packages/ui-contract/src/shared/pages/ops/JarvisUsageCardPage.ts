@@ -10,7 +10,7 @@ export interface JarvisUsageRow {
   costText: string;
 }
 
-const WINDOW_TITLES = ["CURRENT WINDOW", "SINCE BOOT"] as const;
+const WINDOW_TITLES = ["TODAY (UTC)", "SINCE BOOT"] as const;
 type WindowTitle = (typeof WINDOW_TITLES)[number];
 
 /**
@@ -34,7 +34,7 @@ export class JarvisUsageCardPage extends MountedComponent<
     return within(this.root).queryByText(/resets on server restart/i) !== null;
   }
 
-  /** The budget-line's text (the spend/budget line, or "BUDGET OFF"), or
+  /** The budget-line's text (the spend/house-budget line), or
    * `null` when the line isn't rendered at all — a pre-round payload with
    * no budget-gate fields (`budgetUsd === undefined`). Includes the gate
    * badge's own text when one is rendered alongside (no separator between
@@ -44,18 +44,18 @@ export class JarvisUsageCardPage extends MountedComponent<
     return el ? (el.textContent?.trim() ?? "") : null;
   }
 
-  /** The gate badge's text ("SOFT GATE" / "HARD GATE"), or `null` when no
+  /** The gate badge's text ("· EXHAUSTED"), or `null` when no
    * badge is rendered (no active gate, or the budget line itself absent). */
   gateBadgeText(): string | null {
     const el = within(this.root).queryByTestId("ops-jarvis-gate-badge");
     return el ? (el.textContent?.trim() ?? "") : null;
   }
 
-  /** The "Window resets HH:MM:SS" (or "Window resets —") line's text. */
+  /** The "Resets 00:00 UTC" line's text. */
   resetLineText(): string {
     return (
       within(this.root)
-        .getByText(/Window resets/i)
+        .getByText(/^Resets\b/)
         .textContent?.trim() ?? ""
     );
   }

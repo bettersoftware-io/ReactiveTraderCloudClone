@@ -2,8 +2,8 @@
  * JarvisUsageCard contract spec (Task 10 of Phase 3, brain picker /
  * usage display). Verifies the empty ("NO USAGE DATA") placeholder and the
  * populated per-brain rows (turns / in-out tokens / cost) across both
- * windows (currentWindow / sinceBoot), plus the window-reset line's zero
- * sentinel and the "resets on server restart" caveat.
+ * windows (today's UTC day / sinceBoot), the daily house-budget line and its
+ * EXHAUSTED mark, the fixed UTC reset line and the "resets on server restart" caveat.
  */
 
 import { JarvisUsageCard } from "@ui-contract/components";
@@ -28,7 +28,7 @@ describe("JarvisUsageCard", () => {
     });
     expect(page.isEmpty()).toBe(false);
 
-    const current = page.rowsFor("CURRENT WINDOW");
+    const current = page.rowsFor("TODAY (UTC)");
     expect(current).toHaveLength(2);
     expect(current[0]).toMatchObject({
       brainLabel: "Haiku 4.5",
@@ -60,72 +60,65 @@ describe("JarvisUsageCard", () => {
         jarvisUsage: { ...SNAPSHOT, currentWindow: [] },
       },
     });
-    expect(page.isWindowEmpty("CURRENT WINDOW")).toBe(true);
+    expect(page.isWindowEmpty("TODAY (UTC)")).toBe(true);
     expect(page.isWindowEmpty("SINCE BOOT")).toBe(false);
   });
 
-  it("shows a real reset clock for a non-zero windowEndMs, and — for the zero sentinel", () => {
-    const withEnd = mount(JarvisUsageCard, {
+  it("states the fixed UTC midnight reset, whatever the snapshot's window bounds", () => {
+    const page = mount(JarvisUsageCard, {
       ops: { jarvisUsage: SNAPSHOT },
     });
-    // Real epoch: don't assert the exact HH:MM:SS (locale/TZ-dependent);
-    // just that a real reset line — not the "—" sentinel — is rendered.
-    expect(withEnd.resetLineText()).toContain("Window resets");
-    expect(withEnd.resetLineText()).not.toBe("Window resets —");
+    expect(page.resetLineText()).toBe("Resets 00:00 UTC");
 
     const noEnd = mount(JarvisUsageCard, {
       ops: { jarvisUsage: { ...SNAPSHOT, windowEndMs: 0 } },
     });
-    expect(noEnd.resetLineText()).toBe("Window resets —");
+    expect(noEnd.resetLineText()).toBe("Resets 00:00 UTC");
   });
 
-  it("renders spent-of-budget with the soft-gate mark when the payload carries budget fields", () => {
+  it("renders the house budget line with no badge while the day is under the cap", () => {
     const page = mount(JarvisUsageCard, {
       ops: {
         jarvisUsage: {
           ...SNAPSHOT,
           budgetUsd: 10,
-          softBudgetUsd: 8,
+          softBudgetUsd: null,
           spentWindowUsd: 8.5,
-          gateLevel: "soft",
+          gateLevel: "none",
         },
       },
     });
-    expect(page.budgetLineText()).toContain(
-      "$8.50 of $10.00 this window — soft gate at $8.00",
+    expect(page.budgetLineText()).toBe(
+      "$8.50 of $10.00 house budget today (UTC)",
     );
-    expect(page.gateBadgeText()).toBe("SOFT GATE");
+    expect(page.gateBadgeText()).toBeNull();
   });
 
-  it("renders HARD GATE and defaults spentWindowUsd/softBudgetUsd to 0 when only budgetUsd is present", () => {
-    // Guards the ?? 0 defaults and the "hard" gate-badge label independently
-    // of the "soft" case above — a mutant hardcoding the badge text to
-    // "SOFT GATE" or flipping either `?? 0` default (e.g. to `?? 999`)
-    // must fail this.
+  it("appends · EXHAUSTED when the house budget is spent (gateLevel hard)", () => {
     const page = mount(JarvisUsageCard, {
       ops: {
         jarvisUsage: {
           ...SNAPSHOT,
           budgetUsd: 20,
+          softBudgetUsd: null,
+          spentWindowUsd: 20.25,
           gateLevel: "hard",
-          // spentWindowUsd / softBudgetUsd deliberately absent.
         },
       },
     });
     expect(page.budgetLineText()).toContain(
-      "$0.00 of $20.00 this window — soft gate at $0.00",
+      "$20.25 of $20.00 house budget today (UTC)",
     );
-    expect(page.gateBadgeText()).toBe("HARD GATE");
+    expect(page.gateBadgeText()).toBe("· EXHAUSTED");
   });
 
-  it("renders BUDGET OFF when budgetUsd is null", () => {
+  it("defaults spentWindowUsd to 0 when only budgetUsd is present", () => {
     const page = mount(JarvisUsageCard, {
-      ops: {
-        jarvisUsage: { ...SNAPSHOT, budgetUsd: null },
-      },
+      ops: { jarvisUsage: { ...SNAPSHOT, budgetUsd: 20 } },
     });
-    expect(page.budgetLineText()).toBe("BUDGET OFF");
-    expect(page.gateBadgeText()).toBeNull();
+    expect(page.budgetLineText()).toBe(
+      "$0.00 of $20.00 house budget today (UTC)",
+    );
   });
 
   it("renders no budget line at all for a pre-round payload without the fields", () => {

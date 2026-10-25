@@ -35,7 +35,7 @@ import {
   type Instrument,
   JARVIS_BRAINS,
   JARVIS_GREETING,
-  type JarvisUsageSnapshot,
+  type JarvisUsage,
   type LogEvent,
   listDemoAccounts,
   type MetricSample,
@@ -2429,13 +2429,16 @@ fixtures["jarvis-status-chip-scripted"] = makeAppData({
 
 // ops/jarvis-usage-card: two brains populated across BOTH windows, with
 // cost strings the golden pins visually. windowEndMs is pinned to the
-// snapshot's own "no turn recorded yet" sentinel (0 → renders "—") rather
-// than a real epoch — a real epoch would render the local machine's
-// timezone-of-capture into the golden, which the react-local/x86 dual-set
-// (captured on different machines) must never depend on.
-const jarvisUsageSnapshot: JarvisUsageSnapshot = {
+// snapshot's own "no turn recorded yet" sentinel (0) rather than a real epoch.
+// The card prints a fixed "Resets 00:00 UTC", so no machine timezone reaches
+// the golden. The budget fields show the daily house-budget line (under cap).
+const jarvisUsageSnapshot: JarvisUsage = {
   windowStartMs: 0,
   windowEndMs: 0,
+  budgetUsd: 25,
+  softBudgetUsd: null,
+  spentWindowUsd: 5.5,
+  gateLevel: "none",
   currentWindow: [
     {
       brain: "claude-haiku-4-5",
