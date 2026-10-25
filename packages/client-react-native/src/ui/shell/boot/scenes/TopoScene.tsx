@@ -300,7 +300,7 @@ function drawTableFrame(
   framePaint.setAntiAlias(true);
   framePaint.setPathEffect(Skia.PathEffect.MakeDash([6, 8], 0));
   framePaint.setColor(Skia.Color(hexToRgba(accent, 0.28 * flicker)));
-  const path = Skia.Path.Make();
+  const path = Skia.PathBuilder.Make();
   const projected: ProjectedBootPoint[] = [];
 
   for (let i = 0; i < corners.length; i++) {
@@ -320,7 +320,7 @@ function drawTableFrame(
   }
 
   path.close();
-  canvas.drawPath(path, framePaint);
+  canvas.drawPath(path.build(), framePaint);
 
   const bracketPaint = Skia.Paint();
   bracketPaint.setStyle(PaintStyle.Stroke);
@@ -329,11 +329,11 @@ function drawTableFrame(
   bracketPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.7 * flicker)));
 
   for (const point of projected) {
-    const bracket = Skia.Path.Make();
+    const bracket = Skia.PathBuilder.Make();
     bracket.moveTo(point.x - 7, point.y);
     bracket.lineTo(point.x, point.y);
     bracket.lineTo(point.x, point.y - 7);
-    canvas.drawPath(bracket, bracketPaint);
+    canvas.drawPath(bracket.build(), bracketPaint);
   }
 }
 
@@ -354,7 +354,7 @@ function drawMesh(
   paint.setColor(Skia.Color(hexToRgba(accent, 0.1 * rise * flicker)));
 
   for (const line of meshLines) {
-    const path = Skia.Path.Make();
+    const path = Skia.PathBuilder.Make();
 
     for (let i = 0; i < line.length; i++) {
       const point = projectBootPoint(
@@ -371,7 +371,7 @@ function drawMesh(
       }
     }
 
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path.build(), paint);
   }
 }
 
@@ -420,7 +420,7 @@ function drawContours(
     );
 
     const contourY = TOPO_GROUND_Y - contour.level * rise;
-    const path = Skia.Path.Make();
+    const path = Skia.PathBuilder.Make();
 
     for (let s = 0; s < contour.segments.length; s += 4) {
       const a = projectBootPoint(
@@ -440,7 +440,7 @@ function drawContours(
       path.lineTo(b.x, b.y);
     }
 
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path.build(), paint);
   }
 }
 
@@ -480,7 +480,7 @@ function drawRoute(
   paint.setStrokeWidth(1.2);
   paint.setAntiAlias(true);
   paint.setColor(Skia.Color(hexToRgba(accentAlt, 0.4 * phase * flicker)));
-  const path = Skia.Path.Make();
+  const path = Skia.PathBuilder.Make();
 
   for (let i = 0; i < TOPO_PEAKS.length; i++) {
     const point = summitPoint(camera, TOPO_PEAKS[i], rise);
@@ -492,7 +492,7 @@ function drawRoute(
     }
   }
 
-  canvas.drawPath(path, paint);
+  canvas.drawPath(path.build(), paint);
 }
 
 /**
@@ -626,7 +626,7 @@ function drawBeacons(
     haloPaint.setAntiAlias(true);
     haloPaint.setPathEffect(Skia.PathEffect.MakeDash([3, 5], 0));
     haloPaint.setColor(Skia.Color(hexToRgba(accent, 0.45 * phase * flicker)));
-    const halo = Skia.Path.Make();
+    const halo = Skia.PathBuilder.Make();
 
     for (let step = 0; step <= HALO_SEGMENTS; step++) {
       const angle = (step / HALO_SEGMENTS) * 6.283 + elapsed * 0.5;
@@ -644,7 +644,7 @@ function drawBeacons(
       }
     }
 
-    canvas.drawPath(halo, haloPaint);
+    canvas.drawPath(halo.build(), haloPaint);
 
     // The beacon mast and its diamond head.
     const top = projectBootPoint(
@@ -663,13 +663,13 @@ function drawBeacons(
     const head = Skia.Paint();
     head.setAntiAlias(true);
     head.setColor(Skia.Color(hexToRgba(accentAlt, 0.9 * phase * flicker)));
-    const diamond = Skia.Path.Make();
+    const diamond = Skia.PathBuilder.Make();
     diamond.moveTo(top.x, top.y - 4);
     diamond.lineTo(top.x + 4, top.y);
     diamond.lineTo(top.x, top.y + 4);
     diamond.lineTo(top.x - 4, top.y);
     diamond.close();
-    canvas.drawPath(diamond, head);
+    canvas.drawPath(diamond.build(), head);
 
     const dot = Skia.Paint();
     dot.setAntiAlias(true);

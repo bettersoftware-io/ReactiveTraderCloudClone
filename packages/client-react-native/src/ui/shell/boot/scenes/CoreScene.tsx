@@ -578,7 +578,7 @@ function drawGyroRings(
         continue;
       }
 
-      const path = Skia.Path.Make();
+      const path = Skia.PathBuilder.Make();
 
       for (let i = 0; i < angles.length; i++) {
         const [vx, vy, vz] = gyroPointVector(angles[i], spec, spin);
@@ -599,7 +599,7 @@ function drawGyroRings(
         }
       }
 
-      canvas.drawPath(path, paint);
+      canvas.drawPath(path.build(), paint);
     }
   }
 }
@@ -711,7 +711,7 @@ function drawFlowArcs(
     );
     const color = arc.buy ? buyColor : sellColor;
 
-    const trail = Skia.Path.Make();
+    const trail = Skia.PathBuilder.Make();
 
     for (let i = 0; i <= ARC_TRAIL_SAMPLES; i++) {
       const [vx, vy, vz] = arcBulgeVector(
@@ -739,10 +739,10 @@ function drawFlowArcs(
 
     paint.setStrokeWidth(1);
     paint.setColor(Skia.Color(hexToRgba(color, 0.16 * flicker)));
-    canvas.drawPath(trail, paint);
+    canvas.drawPath(trail.build(), paint);
 
     const tailStart = Math.max(0, arc.progress - ARC_TAIL_LENGTH);
-    const tail = Skia.Path.Make();
+    const tail = Skia.PathBuilder.Make();
 
     for (let i = 0; i <= ARC_TAIL_SAMPLES; i++) {
       const [vx, vy, vz] = arcBulgeVector(
@@ -770,7 +770,7 @@ function drawFlowArcs(
 
     paint.setStrokeWidth(1.7);
     paint.setColor(Skia.Color(hexToRgba(color, 0.8 * flicker)));
-    canvas.drawPath(tail, paint);
+    canvas.drawPath(tail.build(), paint);
 
     const [hx, hy, hz] = arcBulgeVector(arc.progress, fromVec, toVec);
     const head = projectGlobeVector(
@@ -852,7 +852,7 @@ function drawSpotlight(
     Math.max(point.x + 14, SPOTLIGHT_LABEL_MIN_X),
     width - SPOTLIGHT_LABEL_RIGHT_INSET,
   );
-  const leader = Skia.Path.Make();
+  const leader = Skia.PathBuilder.Make();
   leader.moveTo(point.x, point.y);
   leader.lineTo(point.x + SPOTLIGHT_ELBOW_DX, point.y + SPOTLIGHT_ELBOW_DY);
   leader.lineTo(labelX + SPOTLIGHT_LABEL_WIDTH, point.y + SPOTLIGHT_ELBOW_DY);
@@ -861,7 +861,7 @@ function drawSpotlight(
   linePaint.setStrokeWidth(1);
   linePaint.setAntiAlias(true);
   linePaint.setColor(Skia.Color(hexToRgba(accent, 0.45 * flicker)));
-  canvas.drawPath(leader, linePaint);
+  canvas.drawPath(leader.build(), linePaint);
 
   // The leader line above is geometry and always draws; only the label waits
   // on the typeface.

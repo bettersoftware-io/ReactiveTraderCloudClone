@@ -313,7 +313,7 @@ function drawRadarWedge(
   const paint = Skia.Paint();
   paint.setAntiAlias(true);
   paint.setColor(Skia.Color(hexToRgba(accent, 0.045 * flicker)));
-  const path = Skia.Path.Make();
+  const path = Skia.PathBuilder.Make();
 
   for (let step = 0; step <= 10; step++) {
     const point = projectPolar(start + (step / 10) * 0.55, 0.3, 0, camera);
@@ -331,7 +331,7 @@ function drawRadarWedge(
   }
 
   path.close();
-  canvas.drawPath(path, paint);
+  canvas.drawPath(path.build(), paint);
 }
 
 /** One point on the spinning, bobbing core sphere. */
@@ -379,7 +379,7 @@ function drawCoreSphere(
   paint.setColor(Skia.Color(hexToRgba(accent, 0.4 * phase * flicker)));
 
   for (let lat = -60; lat <= 60; lat += 30) {
-    const path = Skia.Path.Make();
+    const path = Skia.PathBuilder.Make();
 
     for (let lon = 0; lon <= 360; lon += 15) {
       const point = projectSpherePoint(
@@ -398,13 +398,13 @@ function drawCoreSphere(
       }
     }
 
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path.build(), paint);
   }
 
   paint.setColor(Skia.Color(hexToRgba(accent, 0.3 * phase * flicker)));
 
   for (let lon = 0; lon < 360; lon += 30) {
-    const path = Skia.Path.Make();
+    const path = Skia.PathBuilder.Make();
 
     for (let lat = -80; lat <= 80; lat += 10) {
       const point = projectSpherePoint(
@@ -423,7 +423,7 @@ function drawCoreSphere(
       }
     }
 
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path.build(), paint);
   }
 
   const core = projectBootPoint(0, 0, bob, camera);
@@ -460,7 +460,7 @@ function strokeRingArc(
     paint.setPathEffect(Skia.PathEffect.MakeDash([...dash], 0));
   }
 
-  const path = Skia.Path.Make();
+  const path = Skia.PathBuilder.Make();
 
   for (let step = 0; step <= segments; step++) {
     const angle = startAngle + ((endAngle - startAngle) * step) / segments;
@@ -473,7 +473,7 @@ function strokeRingArc(
     }
   }
 
-  canvas.drawPath(path, paint);
+  canvas.drawPath(path.build(), paint);
 }
 
 /** Draw a radial tick between two radii. */
@@ -646,7 +646,7 @@ function drawRingLayer(
       const angle = top + rotation + (segment / 8) * 6.283;
       const highlighted = segment % 3 === 0;
       const color = highlighted ? accentAlt : accent;
-      const path = Skia.Path.Make();
+      const path = Skia.PathBuilder.Make();
       const corners = [
         projectPolar(angle - 0.1, ring.radius - 0.026, zPlane, camera),
         projectPolar(angle + 0.1, ring.radius - 0.026, zPlane, camera),
@@ -660,16 +660,17 @@ function drawRingLayer(
       }
 
       path.close();
+      const shape = path.build();
       const fill = Skia.Paint();
       fill.setAntiAlias(true);
       fill.setColor(Skia.Color(hexToRgba(color, 0.14 * flicker)));
-      canvas.drawPath(path, fill);
+      canvas.drawPath(shape, fill);
       const stroke = Skia.Paint();
       stroke.setStyle(PaintStyle.Stroke);
       stroke.setStrokeWidth(1);
       stroke.setAntiAlias(true);
       stroke.setColor(Skia.Color(hexToRgba(color, 0.6 * flicker)));
-      canvas.drawPath(path, stroke);
+      canvas.drawPath(shape, stroke);
     }
 
     return;
@@ -847,7 +848,7 @@ function drawSpokes(
       projectPolar(angle + 0.018, outerRadius, zPlane, camera),
       projectPolar(angle - 0.018, outerRadius, zPlane, camera),
     ];
-    const path = Skia.Path.Make();
+    const path = Skia.PathBuilder.Make();
     path.moveTo(corners[0].x, corners[0].y);
 
     for (const corner of corners) {
@@ -855,8 +856,9 @@ function drawSpokes(
     }
 
     path.close();
-    canvas.drawPath(path, fill);
-    canvas.drawPath(path, stroke);
+    const shape = path.build();
+    canvas.drawPath(shape, fill);
+    canvas.drawPath(shape, stroke);
   }
 }
 
@@ -996,11 +998,11 @@ function drawDataCard(
       corner[0],
       corner[1],
     );
-    const path = Skia.Path.Make();
+    const path = Skia.PathBuilder.Make();
     path.moveTo(a.x, a.y - corner[3] * 5);
     path.lineTo(a.x, a.y);
     path.lineTo(a.x + corner[2] * 5, a.y);
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path.build(), paint);
   }
 }
 
@@ -1022,7 +1024,7 @@ function drawDial(
   rim.setStrokeWidth(1);
   rim.setAntiAlias(true);
   rim.setColor(Skia.Color(hexToRgba(accent, alpha)));
-  const path = Skia.Path.Make();
+  const path = Skia.PathBuilder.Make();
 
   for (let step = 0; step <= 24; step++) {
     const point = projectFragmentUv(
@@ -1041,7 +1043,7 @@ function drawDial(
     }
   }
 
-  canvas.drawPath(path, rim);
+  canvas.drawPath(path.build(), rim);
   strokeFragmentSeg(
     canvas,
     camera,
@@ -1076,7 +1078,7 @@ function drawDial(
   needle.setStrokeWidth(2);
   needle.setAntiAlias(true);
   needle.setColor(Skia.Color(hexToRgba(accentAlt, alpha)));
-  const needlePath = Skia.Path.Make();
+  const needlePath = Skia.PathBuilder.Make();
 
   for (let step = 0; step <= 8; step++) {
     const angle = elapsed * 1.2 + fragment.phase + (step / 8) * 1.4;
@@ -1096,7 +1098,7 @@ function drawDial(
     }
   }
 
-  canvas.drawPath(needlePath, needle);
+  canvas.drawPath(needlePath.build(), needle);
 }
 
 /** Fragment kind 2 — a hex cluster with one live pulsing node. */
@@ -1122,7 +1124,7 @@ function drawHexCluster(
 
   for (let hexIndex = 0; hexIndex < centres.length; hexIndex++) {
     const centre = centres[hexIndex];
-    const path = Skia.Path.Make();
+    const path = Skia.PathBuilder.Make();
 
     for (let step = 0; step <= 6; step++) {
       const angle = (step / 6) * 6.283 + 0.5236;
@@ -1142,6 +1144,7 @@ function drawHexCluster(
       }
     }
 
+    const hex = path.build();
     // The second hex is the "live" node — filled and pulsing.
     const live = hexIndex === 1;
 
@@ -1156,7 +1159,7 @@ function drawHexCluster(
           ),
         ),
       );
-      canvas.drawPath(path, fill);
+      canvas.drawPath(hex, fill);
     }
 
     const stroke = Skia.Paint();
@@ -1164,7 +1167,7 @@ function drawHexCluster(
     stroke.setStrokeWidth(1);
     stroke.setAntiAlias(true);
     stroke.setColor(Skia.Color(hexToRgba(live ? positive : accent, alpha)));
-    canvas.drawPath(path, stroke);
+    canvas.drawPath(hex, stroke);
   }
 }
 
@@ -1206,7 +1209,7 @@ function drawMeter(
   }
 
   const level = 0.5 + 0.4 * Math.sin(elapsed * 1.1 + fragment.phase);
-  const path = Skia.Path.Make();
+  const path = Skia.PathBuilder.Make();
   const a = projectFragmentUv(
     camera,
     fragment,
@@ -1250,7 +1253,7 @@ function drawMeter(
   const fill = Skia.Paint();
   fill.setAntiAlias(true);
   fill.setColor(Skia.Color(hexToRgba(accentAlt, alpha * 0.4)));
-  canvas.drawPath(path, fill);
+  canvas.drawPath(path.build(), fill);
 
   for (let i = 0; i < 4; i++) {
     strokeFragmentSeg(
@@ -1310,7 +1313,7 @@ function drawWaveform(
   paint.setStrokeWidth(1.3);
   paint.setAntiAlias(true);
   paint.setColor(Skia.Color(hexToRgba(accentAlt, alpha)));
-  const path = Skia.Path.Make();
+  const path = Skia.PathBuilder.Make();
 
   for (let step = 0; step <= 16; step++) {
     const u = -1 + step / 8;
@@ -1330,7 +1333,7 @@ function drawWaveform(
     }
   }
 
-  canvas.drawPath(path, paint);
+  canvas.drawPath(path.build(), paint);
 }
 
 /** One fragment's card art, dispatched on its kind. */
@@ -1447,11 +1450,11 @@ function drawFragments(
     leaderPaint.setStrokeWidth(1);
     leaderPaint.setAntiAlias(true);
     leaderPaint.setColor(Skia.Color(hexToRgba(accent, 0.1 * reveal * flicker)));
-    const leader = Skia.Path.Make();
+    const leader = Skia.PathBuilder.Make();
     leader.moveTo(anchor.x, anchor.y);
     leader.lineTo((anchor.x + origin.x) / 2, origin.y);
     leader.lineTo(origin.x, origin.y);
-    canvas.drawPath(leader, leaderPaint);
+    canvas.drawPath(leader.build(), leaderPaint);
 
     drawFragmentCard(
       canvas,

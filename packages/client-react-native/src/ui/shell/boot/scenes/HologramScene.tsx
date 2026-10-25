@@ -297,7 +297,7 @@ function drawHexField(
 
   for (const cell of cells) {
     paint.setColor(Skia.Color(hexToRgba(accent, hexCellAlpha(cell, elapsed))));
-    const path = Skia.Path.Make();
+    const path = Skia.PathBuilder.Make();
 
     for (let vertex = 0; vertex <= 6; vertex++) {
       const angle = (vertex / 6) * 6.283 + 0.52;
@@ -311,7 +311,7 @@ function drawHexField(
       }
     }
 
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path.build(), paint);
   }
 }
 
@@ -335,7 +335,7 @@ function drawLightCone(
   );
   const paint = Skia.Paint();
   paint.setShader(shader);
-  const path = Skia.Path.Make();
+  const path = Skia.PathBuilder.Make();
   const padHalf = projScale * HOLOGRAM_CONE.padHalfWidth;
   const topHalf = projScale * HOLOGRAM_CONE.topHalfWidth;
   path.moveTo(pad.x - padHalf, pad.y);
@@ -343,7 +343,7 @@ function drawLightCone(
   path.lineTo(camera.centerX + topHalf, topY);
   path.lineTo(pad.x + padHalf, pad.y);
   path.close();
-  canvas.drawPath(path, paint);
+  canvas.drawPath(path.build(), paint);
 }
 
 /** The emitter pad: three rings (the outermost dashed) plus 48 tick marks. */
@@ -369,7 +369,7 @@ function drawEmitterPad(
 
     const rotation =
       ring.rotationRate === undefined ? 0 : ring.rotationRate * elapsed;
-    const path = Skia.Path.Make();
+    const path = Skia.PathBuilder.Make();
 
     for (let vertex = 0; vertex <= RING_SEGMENTS; vertex++) {
       const angle = (vertex / RING_SEGMENTS) * 6.283 + rotation;
@@ -387,7 +387,7 @@ function drawEmitterPad(
       }
     }
 
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path.build(), paint);
   }
 
   const tickPaint = Skia.Paint();
@@ -461,7 +461,7 @@ function drawGroundGrid(
   paint.setColor(Skia.Color(hexToRgba(accent, 0.14 * phase * flicker)));
 
   for (let gx = 0; gx < HOLOGRAM_GRID_SIZE; gx++) {
-    const path = Skia.Path.Make();
+    const path = Skia.PathBuilder.Make();
 
     for (let gz = 0; gz < HOLOGRAM_GRID_SIZE; gz++) {
       const point = gridPoint(columns, camera, gx, gz, phase);
@@ -473,11 +473,11 @@ function drawGroundGrid(
       }
     }
 
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path.build(), paint);
   }
 
   for (let gz = 0; gz < HOLOGRAM_GRID_SIZE; gz++) {
-    const path = Skia.Path.Make();
+    const path = Skia.PathBuilder.Make();
 
     for (let gx = 0; gx < HOLOGRAM_GRID_SIZE; gx++) {
       const point = gridPoint(columns, camera, gx, gz, phase);
@@ -489,7 +489,7 @@ function drawGroundGrid(
       }
     }
 
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path.build(), paint);
   }
 }
 
@@ -591,13 +591,13 @@ function drawColumns(
     fillPaint.setColor(
       Skia.Color(hexToRgba(color, Math.min(0.9, alpha + 0.25) * flicker)),
     );
-    const diamond = Skia.Path.Make();
+    const diamond = Skia.PathBuilder.Make();
     diamond.moveTo(top.x, top.y - markerSize);
     diamond.lineTo(top.x + markerSize, top.y);
     diamond.lineTo(top.x, top.y + markerSize);
     diamond.lineTo(top.x - markerSize, top.y);
     diamond.close();
-    canvas.drawPath(diamond, fillPaint);
+    canvas.drawPath(diamond.build(), fillPaint);
   }
 }
 
@@ -616,7 +616,7 @@ function drawScanRing(
   paint.setStrokeWidth(1.4);
   paint.setAntiAlias(true);
   paint.setColor(Skia.Color(hexToRgba(accentAlt, 0.38 * flicker)));
-  const path = Skia.Path.Make();
+  const path = Skia.PathBuilder.Make();
 
   for (let vertex = 0; vertex <= RING_SEGMENTS; vertex++) {
     const angle = (vertex / RING_SEGMENTS) * 6.283;
@@ -634,7 +634,7 @@ function drawScanRing(
     }
   }
 
-  canvas.drawPath(path, paint);
+  canvas.drawPath(path.build(), paint);
 }
 
 /** The two counter-rotating gyroscopic rings, 6 of 8 segments each. */
@@ -683,7 +683,7 @@ function drawGyroRings(
         continue;
       }
 
-      const path = Skia.Path.Make();
+      const path = Skia.PathBuilder.Make();
 
       for (let vertex = 0; vertex <= GYRO_SEGMENT_STEPS; vertex++) {
         const angle =
@@ -708,7 +708,7 @@ function drawGyroRings(
         }
       }
 
-      canvas.drawPath(path, paint);
+      canvas.drawPath(path.build(), paint);
     }
   }
 }

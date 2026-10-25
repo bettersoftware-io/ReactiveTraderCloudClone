@@ -7,7 +7,7 @@ import {
   withAppDelegate,
   withInfoPlist,
   withXcodeProject,
-} from "expo/config-plugins.js";
+} from "expo/config-plugins";
 
 // Adopts the UIKit scene life cycle on iOS. An app built with the iOS 27 SDK
 // (Xcode 27) that still owns its window from the app delegate is killed at

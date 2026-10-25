@@ -248,7 +248,7 @@ function drawArcRings(
     paint.setPathEffect(Skia.PathEffect.MakeDash([...ring.dash], 0));
     const radius = projScale * ring.radiusFactor;
     const start = arcRingStart(ring, elapsed);
-    const path = Skia.Path.Make();
+    const path = Skia.PathBuilder.Make();
 
     for (let sample = 0; sample <= ARC_SAMPLES; sample++) {
       const angle = start + (sample / ARC_SAMPLES) * ring.sweep;
@@ -262,7 +262,7 @@ function drawArcRings(
       }
     }
 
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path.build(), paint);
   }
 }
 
@@ -298,13 +298,13 @@ function uvQuadPath(
   const b = panelUv(rect, u1, v0, z, camera);
   const c = panelUv(rect, u1, v1, z, camera);
   const d = panelUv(rect, u0, v1, z, camera);
-  const path = Skia.Path.Make();
+  const path = Skia.PathBuilder.Make();
   path.moveTo(a.x, a.y);
   path.lineTo(b.x, b.y);
   path.lineTo(c.x, c.y);
   path.lineTo(d.x, d.y);
   path.close();
-  return path;
+  return path.build();
 }
 
 /** The four panel corners, in UV.
@@ -568,7 +568,7 @@ function drawMainContent(
         contentAlpha * 0.18 * flicker,
       );
 
-      const path = Skia.Path.Make();
+      const path = Skia.PathBuilder.Make();
 
       for (let sample = 0; sample <= 10; sample++) {
         const u = u0 + 0.02 + (u1 - u0 - 0.04) * (sample / 10);
@@ -587,7 +587,7 @@ function drawMainContent(
         }
       }
 
-      canvas.drawPath(path, sparkPaint);
+      canvas.drawPath(path.build(), sparkPaint);
     }
   }
 }
@@ -812,11 +812,11 @@ function drawPulledOverlay(
   leaderPaint.setStrokeWidth(1);
   leaderPaint.setAntiAlias(true);
   leaderPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.7 * pull * flicker)));
-  const leader = Skia.Path.Make();
+  const leader = Skia.PathBuilder.Make();
   leader.moveTo(topRight.x, topRight.y);
   leader.lineTo(topRight.x + CALLOUT_ELBOW_DX, topRight.y + CALLOUT_ELBOW_DY);
   leader.lineTo(topRight.x + CALLOUT_RUN_DX, topRight.y + CALLOUT_ELBOW_DY);
-  canvas.drawPath(leader, leaderPaint);
+  canvas.drawPath(leader.build(), leaderPaint);
 
   // Geometry above draws regardless; only the text waits on the font, so a
   // null-font window loses labels but keeps the sweep and leader line.
