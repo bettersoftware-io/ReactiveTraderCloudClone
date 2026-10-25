@@ -192,11 +192,13 @@ jobs:
       # on the same runner, builds included): same wall time, worst test at
       # 0.30 of its timeout instead of 0.53–0.81, no test over 2 s instead of
       # 5–20. The cores are saturated either way, so the cap moves no
-      # throughput. Turbo forwards `--maxWorkers` to every `test` script;
-      # vitest and jest both read it (RN's chained `vitest && jest` caps only
-      # its jest half).
+      # throughput. Since 2026-10-25 the root `test` script carries the cap
+      # itself (`VITEST_MAX_WORKERS=2 turbo run test --concurrency=4`), so a
+      # local run gets it too. `--maxWorkers=2` is still passed here for jest,
+      # which does not read that variable: turbo forwards it to every `test`
+      # script, and RN's chained `vitest && jest` hands it to jest.
       - name: Tests (unit)
-        run: pnpm test --concurrency=4 -- --maxWorkers=2
+        run: pnpm test -- --maxWorkers=2
 
       - name: Pages tooling unit tests
         run: pnpm --filter @rtc/tests test:pages
