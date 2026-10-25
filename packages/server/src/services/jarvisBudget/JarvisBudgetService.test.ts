@@ -6,7 +6,7 @@ import type { JarvisTokenUsage } from "#/services/UsageMeter.js";
 import { createInMemorySpendStore } from "./InMemorySpendStore.js";
 import { JarvisBudgetService } from "./JarvisBudgetService.js";
 import type { JarvisBudgetConfig } from "./jarvisBudgetConfig.js";
-import type { SpendStore, SpendTotals } from "./SpendStore.js";
+import type { SpendOwner, SpendStore, SpendTotals } from "./SpendStore.js";
 
 describe("JarvisBudgetService", () => {
   beforeEach(() => {
@@ -133,6 +133,42 @@ describe("JarvisBudgetService", () => {
       expect(read).toHaveBeenNthCalledWith(1, "account:a", TODAY, "house");
       expect(read).toHaveBeenNthCalledWith(2, "roster:ops", TODAY, "house");
     });
+
+    it("names the personal limit, not the house cap, when both are spent", async () => {
+      const store = createInMemorySpendStore();
+
+      await store.record("roster:someone-else", TODAY, "house", 2.8);
+      await store.record("account:a", TODAY, "house", 0.2);
+
+      const state = await createService(store).stateFor(MEMBER, "member");
+
+      expect(state.houseSpentUsd).toBe(3);
+      expect(state.exhausted).toBe("user");
+    });
+
+    it("never fills the new day's copy from a read of yesterday that answers after midnight, before the timer runs", async () => {
+      vi.setSystemTime(NEXT_MIDNIGHT - 1_000);
+
+      const inner = createInMemorySpendStore();
+
+      await inner.record("account:a", TODAY, "house", 0.15);
+
+      const manual = createManualStore(inner);
+      const service = createService(manual.store);
+      const state = service.stateFor(MEMBER, "member");
+
+      await settle();
+      // The clock passes midnight; fake timers keep the midnight timer's
+      // delay, so its callback has not run.
+      vi.setSystemTime(NEXT_MIDNIGHT + 10);
+      await manual.release("account:a");
+
+      await expect(state).resolves.toMatchObject({
+        spentUsd: 0,
+        houseSpentUsd: 0,
+        resetsAtMs: NEXT_MIDNIGHT + DAY_MS,
+      });
+    });
   });
 
   describe("meterFor", () => {
@@ -248,15 +284,75 @@ describe("JarvisBudgetService", () => {
 
       meter.record("claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
 
-      expect((await service.stateFor(MEMBER, "member")).exhausted).toBe(
-        "unavailable",
-      );
+      const down = await service.stateFor(MEMBER, "member");
+
+      expect(down.exhausted).toBe("unavailable");
+      // Spent all the same: the copy keeps counting what the store missed.
+      expect(down.spentUsd).toBe(0.1);
+      expect(service.houseToday().spentUsd).toBe(0.1);
       expect(meter.exhausted()).toBe(true);
 
       switchable.setDown(false);
 
       expect((await service.stateFor(MEMBER, "member")).exhausted).toBeNull();
       expect(meter.exhausted()).toBe(false);
+    });
+
+    it("stays closed when a write sent before an outage answers after it", async () => {
+      const manual = createManualStore();
+      const service = createService(manual.store);
+      const other: Caller = { ...MEMBER, accountId: "b" };
+
+      await loadBoth(service, manual, other);
+
+      // B's write reaches the store while it is up…
+      service
+        .meterFor(other, "member")
+        .record("claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      await settle();
+      manual.setDown(true);
+      // …then A's write fails.
+      service
+        .meterFor(MEMBER, "member")
+        .record("claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      await manual.release("account:a");
+
+      expect(service.meterFor(MEMBER, "member").exhausted()).toBe(true);
+
+      // B's success answers late; it proves nothing about the store now.
+      await manual.release("account:b");
+
+      expect(service.meterFor(other, "member").exhausted()).toBe(true);
+
+      manual.setDown(false);
+
+      const lifted = service.stateFor(other, "member");
+
+      await manual.release("account:b");
+
+      expect((await lifted).exhausted).toBeNull();
+    });
+
+    it("keeps the highest house total when two owners' answers return out of order", async () => {
+      const manual = createManualStore();
+      const service = createService(manual.store);
+      const other: Caller = { ...MEMBER, accountId: "b" };
+
+      await loadBoth(service, manual, other);
+
+      // The store takes A's write, then B's: house 0.1, then 0.2.
+      service
+        .meterFor(MEMBER, "member")
+        .record("claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      service
+        .meterFor(other, "member")
+        .record("claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      await settle();
+      // B's answer (house 0.2) arrives before A's (house 0.1).
+      await manual.release("account:b");
+      await manual.release("account:a");
+
+      expect(service.houseToday().spentUsd).toBe(0.2);
     });
 
     it("never records a negative or non-finite cost", async () => {
@@ -417,6 +513,24 @@ describe("JarvisBudgetService", () => {
       expect(emissions.count).toBe(2);
     });
 
+    it("re-arms for the real midnight when the timer fires early", async () => {
+      const service = createService(createInMemorySpendStore());
+      const emissions = countEmissions(service);
+
+      // A clock step back: the timer keeps its delay, so it now fires one
+      // second before midnight.
+      vi.setSystemTime(NOON - 1_000);
+      await vi.advanceTimersByTimeAsync(NEXT_MIDNIGHT - NOON);
+
+      expect(Date.now()).toBe(NEXT_MIDNIGHT - 1_000);
+      expect(emissions.count).toBe(1);
+
+      await vi.advanceTimersByTimeAsync(1_000);
+
+      expect(emissions.count).toBe(2);
+      expect(service.houseToday().spentUsd).toBe(0);
+    });
+
     it("stops the midnight timer and completes on dispose", async () => {
       const service = createService(createInMemorySpendStore());
       const emissions = countEmissions(service);
@@ -542,3 +656,89 @@ function createDelayedStore(
 }
 
 type SpendAnswer = Promise<SpendTotals | "unavailable">;
+
+interface HeldAnswer {
+  readonly owner: SpendOwner;
+  readonly deliver: () => void;
+}
+
+interface ManualStore {
+  readonly store: SpendStore;
+  setDown(down: boolean): void;
+  /** Delivers the owner's oldest held answer and lets the service take it. */
+  release(owner: SpendOwner): Promise<void>;
+}
+
+/** A store that does each call at once, so its totals follow call order
+ * (`"unavailable"` while switched down), but holds every answer until the
+ * test releases it — the way to stage answers arriving out of order. */
+function createManualStore(
+  inner: SpendStore = createInMemorySpendStore(),
+): ManualStore {
+  const held: HeldAnswer[] = [];
+  let down = false;
+
+  function hold(owner: SpendOwner, answer: SpendAnswer): SpendAnswer {
+    return new Promise((resolve) => {
+      held.push({
+        owner,
+        deliver: () => {
+          resolve(answer);
+        },
+      });
+    });
+  }
+
+  return {
+    store: {
+      kind: "in-memory",
+      read: (...args: Parameters<SpendStore["read"]>): SpendAnswer => {
+        return hold(
+          args[0],
+          down ? Promise.resolve("unavailable") : inner.read(...args),
+        );
+      },
+      record: (...args: Parameters<SpendStore["record"]>): SpendAnswer => {
+        return hold(
+          args[0],
+          down ? Promise.resolve("unavailable") : inner.record(...args),
+        );
+      },
+    },
+    setDown: (value: boolean): void => {
+      down = value;
+    },
+    release: async (owner: SpendOwner): Promise<void> => {
+      await settle();
+
+      const index = held.findIndex((call) => {
+        return call.owner === owner;
+      });
+
+      if (index === -1) {
+        throw new Error(`no held store call for ${owner}`);
+      }
+
+      held.splice(index, 1)[0]?.deliver();
+      await settle();
+    },
+  };
+}
+
+/** Lets queued promise work run without moving the fake clock. */
+async function settle(): Promise<void> {
+  await vi.advanceTimersByTimeAsync(0);
+}
+
+async function loadBoth(
+  service: JarvisBudgetService,
+  manual: ManualStore,
+  other: Caller,
+): Promise<void> {
+  const loadedA = service.stateFor(MEMBER, "member");
+  const loadedB = service.stateFor(other, "member");
+
+  await manual.release("account:a");
+  await manual.release("account:b");
+  await Promise.all([loadedA, loadedB]);
+}

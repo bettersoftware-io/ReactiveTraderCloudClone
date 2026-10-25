@@ -54,6 +54,12 @@ export interface JarvisBudgetServiceDeps {
   readonly now?: () => number;
 }
 
+/** A store answer with the sequence number its call started under. */
+interface StoreReply {
+  readonly answer: SpendTotals | "unavailable";
+  readonly seq: number;
+}
+
 /** One owner's house-key spend for the copy's day. */
 interface OwnerCopy {
   /** The store's latest answer for the owner's day total. */
@@ -102,6 +108,13 @@ export class JarvisBudgetService {
   private housePendingUsd = 0;
 
   private storeAvailable = true;
+
+  /** Numbers each store call as it starts. Answers arrive in any order, so
+   * only a success that STARTED after the latest failure proves the store is
+   * back; a write sent before an outage may answer well after it began. */
+  private storeCallSeq = 0;
+
+  private latestFailedCallSeq = 0;
 
   private readonly ownerQueues = new Map<SpendOwner, Promise<void>>();
 
@@ -248,12 +261,13 @@ export class JarvisBudgetService {
     day: string,
     usd: number,
   ): Promise<void> {
-    const answer = await this.callStore(() => {
+    const { answer, seq } = await this.callStore(() => {
       return this.store.record(owner, day, "house", usd);
     });
 
     // Midnight dropped the copy this amount was booked in; today's copy
-    // never counted it.
+    // never counted it. (A stale `copyDay` here is harmless: every reader
+    // rolls the copy before reading it.)
     if (day === this.copyDay) {
       const copy = this.copyFor(owner);
 
@@ -272,19 +286,21 @@ export class JarvisBudgetService {
       }
     }
 
-    this.noteStoreAnswer(answer);
+    this.noteStoreAnswer(answer, seq);
   }
 
   private async loadOwnerCopy(owner: SpendOwner, day: string): Promise<void> {
-    const answer = await this.callStore(() => {
+    const { answer, seq } = await this.callStore(() => {
       return this.store.read(owner, day, "house");
     });
 
-    if (answer !== "unavailable" && day === this.copyDay) {
+    // Rolled again after the wait, so a read of yesterday that answers after
+    // midnight, before the timer's callback, never fills today's copy.
+    if (answer !== "unavailable" && day === this.rollCopyToToday()) {
       this.applyTotals(this.copyFor(owner), answer);
     }
 
-    this.noteStoreAnswer(answer);
+    this.noteStoreAnswer(answer, seq);
   }
 
   private applyTotals(copy: OwnerCopy, totals: SpendTotals): void {
@@ -297,22 +313,35 @@ export class JarvisBudgetService {
    * the caller fails closed either way. */
   private async callStore(
     call: () => Promise<SpendTotals | "unavailable">,
-  ): Promise<SpendTotals | "unavailable"> {
+  ): Promise<StoreReply> {
+    this.storeCallSeq += 1;
+
+    const seq = this.storeCallSeq;
+
     try {
-      return await call();
+      return { answer: await call(), seq };
     } catch (error) {
       console.error(
         `jarvis-budget: spend store call failed: ${error instanceof Error ? error.message : String(error)}`,
       );
 
-      return "unavailable";
+      return { answer: "unavailable", seq };
     }
   }
 
   /** Tracks whether the store is answering, announcing each flip so live
-   * connections re-push their availability. */
-  private noteStoreAnswer(answer: SpendTotals | "unavailable"): void {
-    const available = answer !== "unavailable";
+   * connections re-push their availability. Any failure closes; a success
+   * reopens only if its call started after the latest failure. */
+  private noteStoreAnswer(
+    answer: SpendTotals | "unavailable",
+    seq: number,
+  ): void {
+    if (answer === "unavailable") {
+      this.latestFailedCallSeq = Math.max(this.latestFailedCallSeq, seq);
+    }
+
+    const available =
+      answer !== "unavailable" && seq > this.latestFailedCallSeq;
 
     if (available !== this.storeAvailable) {
       this.storeAvailable = available;
@@ -377,10 +406,15 @@ export class JarvisBudgetService {
       () => {
         this.rollCopyToToday();
         this.changes.next();
-        this.armMidnightTimer(nextUtcMidnightMs(midnightMs));
+        // From the clock, not from `midnightMs`: a timer that fires early
+        // (a clock step) re-arms for the real midnight instead of skipping
+        // a day.
+        this.armMidnightTimer(nextUtcMidnightMs(this.now()));
       },
       Math.max(0, midnightMs - this.now()),
     );
+    // A pending midnight must not keep the process alive on shutdown.
+    this.midnightTimer.unref();
   }
 }
 
