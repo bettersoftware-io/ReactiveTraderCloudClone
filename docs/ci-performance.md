@@ -196,6 +196,11 @@ entry, since actionlint 1.7.12, the newest release, rejects that label as
 unknown. The three container jobs (`visual`, `update-visual-goldens`,
 `coverage-report`) take their libraries from the pinned Playwright image either way.
 
+The day the move reaches this repo is not announced, so a temporary step in
+the `e2e` job, *Runner image heads-up*, prints the runner's image on every
+run and raises a warning on the run's page the first time it is not 24.04.
+When that warning appears, nothing needs changing except deleting the step.
+
 ## Measuring a CI change
 
 - **Two runner classes.** GitHub's standard runners come in a fast and a slow
