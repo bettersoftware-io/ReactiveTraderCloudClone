@@ -208,7 +208,8 @@ to lift them to; the `zod@4` override covers the one 4.x copy. `npm audit`
 reports it as **8 high**, one per package that inherits it; all 8 are this one
 advisory. The CLI runs only in the dispatch-only deploy workflows, and those
 builders validate this repo's own config. The exception ends when the CLI moves
-them to zod >=4.6.6.
+them to zod >=4.6.6. Dependabot alert 40 for it was dismissed as tolerable risk on
+2026-10-25, after checking that vercel 65.2.0 still pins zod 3.22.4.
 
 The same 2026-10-24 pass added range-scoped overrides for `undici` 6 and 7
 (→ 6.29.1 / 7.30.1, GHSA-xjj6-f33q-929c and two moderates) and `fast-uri` 3
