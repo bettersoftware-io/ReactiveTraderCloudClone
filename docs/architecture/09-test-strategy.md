@@ -504,6 +504,8 @@ app, the two alternative cores, `@rtc/web-boot`, the React Native merged
 lines). They were the last third of `checks` until 2026-10-25 (#1057), when
 `checks` was the workflow's slowest job at ~700 s and those gates ~250 s of
 it; split out, the two run side by side, and the e2e jobs bound the run.
+Every step of that work, with its measurements, is in
+[`ci-performance.md`](../ci-performance.md).
 
 The PR gate runs 5 of the 7 `run-all.ts` suites (native Playwright react +
 solid, the presenter peer, both fullstack smokes), split across jobs by
