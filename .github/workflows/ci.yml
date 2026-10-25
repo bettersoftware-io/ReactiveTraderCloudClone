@@ -363,6 +363,23 @@ jobs:
           # `artipacked`; see docs/adr/ADR-007).
           persist-credentials: false
 
+      # TEMPORARY, delete once it warns. GitHub moves `ubuntu-latest` from
+      # 24.04 to 26.04 between 2026-10-19 and 2026-11-19 (runner-images#14748)
+      # on a day it does not announce. Every job here already passed on an
+      # explicit ubuntu-26.04 (#1053, docs/ci-performance.md), so the move
+      # needs no change; this step only marks the first run that gets the new
+      # image, with a warning on the run's page. It lives in this job because
+      # the job installs a browser onto the runner itself, the part most
+      # exposed to the image.
+      - name: Runner image heads-up (ubuntu-latest → 26.04)
+        run: |
+          # shellcheck source=/dev/null
+          . /etc/os-release
+          echo "Runner image: ${PRETTY_NAME}, image version ${ImageVersion:-unknown}"
+          if [ "${VERSION_ID}" != "24.04" ]; then
+            echo "::warning title=ubuntu-latest is now ${PRETTY_NAME}::The #1053 probe found nothing to change (docs/ci-performance.md). Delete the 'Runner image heads-up' step from ci.yml."
+          fi
+
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 26
