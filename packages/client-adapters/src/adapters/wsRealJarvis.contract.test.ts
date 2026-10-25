@@ -368,6 +368,45 @@ describe("WsJarvisAdapter (wire-mode JarvisPort)", () => {
     ]);
   });
 
+  it("(j) ask(text, narrator options) tags the JARVIS_CHAT frame so the server can keep unprompted commentary off a stranger budget", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+
+    adapter
+      .ask("hello", { brain: "scripted", effort: "low", origin: "narrator" })
+      .subscribe();
+
+    const turnId = sentTurnId(ws);
+    expect(ws.sentMessages()).toEqual([
+      {
+        type: CLIENT_MSG.JARVIS_CHAT,
+        payload: {
+          text: "hello",
+          turnId,
+          brain: "scripted",
+          effort: "low",
+          origin: "narrator",
+        },
+      },
+    ]);
+  });
+
+  it("(j) a user turn (no origin, or origin user) sends no origin key; the server reads absent as user", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+
+    adapter.ask("a", { brain: "scripted", effort: "low" }).subscribe();
+    adapter
+      .ask("b", { brain: "scripted", effort: "low", origin: "user" })
+      .subscribe();
+
+    for (const message of ws.sentMessages()) {
+      expect("origin" in (message.payload as Record<string, unknown>)).toBe(
+        false,
+      );
+    }
+  });
+
   it("(j) ask(text) with no options omits brain/effort entirely, not as undefined-valued keys", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisAdapter(ws);

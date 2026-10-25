@@ -1542,7 +1542,11 @@ describe("createJarvisMachine", () => {
       expect(port?.askCalls).toEqual([
         {
           text: "[narration] GBPUSD spread widened 4.0σ.",
-          options: { brain: "claude-sonnet-5", effort: "high" },
+          options: {
+            brain: "claude-sonnet-5",
+            effort: "high",
+            origin: "narrator",
+          },
         },
       ]);
     });

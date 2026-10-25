@@ -280,6 +280,9 @@ function buildChatPayload(
     turnId,
     ...(capped.length > 0 ? { history: capped } : {}),
     ...(options ? { brain: options.brain, effort: options.effort } : {}),
+    // Only a narrator turn says so; a user turn stays keyless (the server
+    // reads absent as "user", and an older server never sees the field).
+    ...(options?.origin === "narrator" ? { origin: "narrator" as const } : {}),
   };
 }
 

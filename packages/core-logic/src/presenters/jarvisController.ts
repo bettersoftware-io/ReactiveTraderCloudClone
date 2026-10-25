@@ -522,7 +522,7 @@ export function createJarvisController(): JarvisController {
 
       return {
         wireText,
-        options: { brain, effort },
+        options: { brain, effort, ...(origin ? { origin } : {}) },
         origin,
         start: (s: JarvisState): JarvisState => {
           return {

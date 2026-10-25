@@ -80,6 +80,11 @@ export interface LayoutPresetStore {
 export interface JarvisAskOptions {
   readonly brain: JarvisBrain;
   readonly effort: JarvisEffort;
+  /** Who started the turn. Only "narrator" (unprompted commentary) is
+   * ever set by a core; a user turn leaves it off, which the wire reads as
+   * "user". Lets the server keep commentary off a stranger's daily AI
+   * budget. */
+  readonly origin?: "user" | "narrator";
 }
 
 /**
