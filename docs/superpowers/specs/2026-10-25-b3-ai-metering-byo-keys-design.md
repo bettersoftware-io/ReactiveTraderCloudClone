@@ -70,7 +70,8 @@ scoped container since B2c. The meter keys a person by `account:<accountId>`
 for an account and `roster:<username>` for a roster persona. `Caller` carries
 no role, so the role is read from the account directory at use — the same way
 `accountAdminService` reads `access` today, never from the eight-hour token
-claim — once per connection and again on each availability push.
+claim — once per connection. A role change is a manual Supabase edit (B2c D6)
+and takes effect at the person's next connection.
 
 ### 3.2 What is stored
 
@@ -157,7 +158,7 @@ health endpoint.
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `RTC_JARVIS_USER_DAILY_USD` | `0.20` | D2. `0` turns the house key off for everyone. |
+| `RTC_JARVIS_USER_DAILY_USD` | `0.20` | D2. `0` turns the house key off for every member; administrators and the roster persona have no personal limit (D17). |
 | `RTC_JARVIS_HOUSE_DAILY_USD` | `3` | D3. `0` turns the house key off for everyone. |
 | `RTC_JARVIS_FORCE_GATE` | unset | Kept for eyeballing: `exhausted` forces every caller onto scripted as if the budget were spent. Its old values `soft`/`hard` are retired. |
 | `RTC_JARVIS_FAKE=1` | unset | Unchanged kill switch: scripted only, for house **and** own keys. |
