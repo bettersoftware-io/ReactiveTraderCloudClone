@@ -135,7 +135,10 @@ suite gets its own client server on `RTC_DEV_PORT` 3001–3004 (react 3001–300
 solid 3003–3004) (via `scripts/with-server.ts`) — the client's production
 build for the Playwright suites, its dev server for the Gherkin ones (next
 section). `RTC_E2E_MAX_PARALLEL=n` caps
-concurrency (CI uses 2). Wall-clock ≈ the slowest single suite when uncapped;
+concurrency (CI's `e2e-fullstack` job uses 2). `RTC_E2E_GROUP=browser` keeps
+only the `test:browser:*` suites and `RTC_E2E_GROUP=fullstack` only the rest
+(full-stack smokes + presenter peer); CI runs the two groups in separate jobs,
+and unset runs both. Wall-clock ≈ the slowest single suite when uncapped;
 a cap stretches that proportionally.
 
 `RTC_E2E_SKIP_GHERKIN_BROWSER=1` (or `true`) filters both

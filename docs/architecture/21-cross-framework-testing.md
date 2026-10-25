@@ -74,7 +74,9 @@ same bake-off retirement). That 7-suite figure is the **full local run**
 `ci.yml` sets `RTC_E2E_SKIP_GHERKIN_BROWSER=1`, which parks the two
 `playwright-cucumber` suites (react + solid) since the same bake-off declared
 native Playwright the gating browser SOT (`tests/STRATEGY.md` §7.1) — leaving
-2 native-Playwright browser suites + 1 presenter + 2 full-stack gating.
+2 native-Playwright browser suites + 1 presenter + 2 full-stack gating,
+split across the `e2e`/`e2e-alt-cores` and `e2e-fullstack` jobs by
+`RTC_E2E_GROUP` (`09-test-strategy.md` §9.10).
 
 **How this was verified**: `find packages/ui-contract/src -name "*.contract.spec.ts" | wc -l` → `104`;
 `pnpm --filter @rtc/client-react test:ui:contract` and the same for
