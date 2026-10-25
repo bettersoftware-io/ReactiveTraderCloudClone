@@ -313,9 +313,14 @@ const SPEND_PROBE_OWNER = "roster:__probe__";
 const SPEND_PROBE_USD = 0.01;
 const EPSILON = 1e-9;
 
+interface SpendDeletion {
+  readonly status: number;
+  readonly removed: number;
+}
+
 /** Deletes the spend rows the probe wrote: its own owner row and the house
  * row for the sentinel day. Returns the PostgREST status. */
-async function deleteSpendRows(): Promise<number> {
+async function deleteSpendRows(): Promise<SpendDeletion> {
   const owners = ["house", SPEND_PROBE_OWNER]
     .map((owner) => {
       return encodeURIComponent(`"${owner}"`);
@@ -326,12 +331,20 @@ async function deleteSpendRows(): Promise<number> {
     `${url.replace(/\/+$/, "")}/rest/v1/jarvis_spend_daily?day=eq.${SPEND_PROBE_DAY}&owner=in.(${owners})`,
     {
       method: "DELETE",
-      headers: { apikey: secretKey, Authorization: `Bearer ${secretKey}` },
+      headers: {
+        apikey: secretKey,
+        Authorization: `Bearer ${secretKey}`,
+        Prefer: "return=representation",
+      },
       signal: AbortSignal.timeout(10_000),
     },
   );
+  const rows: unknown = response.ok ? await response.json() : [];
 
-  return response.status;
+  return {
+    status: response.status,
+    removed: Array.isArray(rows) ? rows.length : 0,
+  };
 }
 
 /** Runs the budget's SQL function and table on the live project. */
@@ -372,11 +385,11 @@ async function probeSpendStore(): Promise<void> {
         : `owner ${read.ownerUsd}, house ${read.houseUsd}`,
     );
   } finally {
-    const status = await deleteSpendRows();
+    const { status, removed } = await deleteSpendRows();
     check(
       "spend cleanup",
-      status >= 200 && status < 300,
-      `day ${SPEND_PROBE_DAY}, delete answered ${status}`,
+      status >= 200 && status < 300 && removed > 0,
+      `day ${SPEND_PROBE_DAY}, delete answered ${status}, removed ${removed} rows`,
     );
   }
 }

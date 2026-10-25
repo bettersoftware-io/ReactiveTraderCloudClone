@@ -218,15 +218,6 @@ const jarvisLoops = createJarvisLoops(
 // below so each socket gets its own connection-scoped services (S10).
 const effect = combineEffects(...buildEffects(jarvisLoops));
 
-// Stops the budget's midnight timer, so a shutdown does not wait on it.
-function shutDown(): void {
-  services.jarvisBudget.dispose();
-  process.exit(0);
-}
-
-process.once("SIGTERM", shutDown);
-process.once("SIGINT", shutDown);
-
 const accountStatus = createAccountStatusCache({
   directory: accountDirectory,
   ttlMs: ACCOUNT_STATUS_CACHE_TTL_MS,

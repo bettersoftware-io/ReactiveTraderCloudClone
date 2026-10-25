@@ -86,12 +86,12 @@ const RUNWAY_EXHAUSTED_NOTICE =
 
 /** The reply of a turn the daily budget stopped before its first model
  * request (spec §3.3 step 4): there is nothing above it to set it apart from. */
-export const BUDGET_SPENT_NOTICE =
+const BUDGET_SPENT_NOTICE =
   "Today's AI budget is used — switching to the scripted brain.";
 
 /** Ends a turn the daily budget stopped between two model requests: the
  * reply so far stays, and the next turn runs scripted. */
-export const BUDGET_STOP_NOTICE = `\n\n${BUDGET_SPENT_NOTICE}`;
+const BUDGET_STOP_NOTICE = `\n\n${BUDGET_SPENT_NOTICE}`;
 
 /** What one request is reserved at against the budget while it is in flight
  * — see `JARVIS_RESERVE_INPUT_TOKENS`. */

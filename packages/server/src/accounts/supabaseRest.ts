@@ -22,7 +22,7 @@ export type Reply =
     }
   | { readonly kind: "unreachable" };
 
-export interface Call {
+interface Call {
   readonly method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   readonly path: string;
   readonly body?: unknown;
@@ -141,7 +141,7 @@ export function readString(value: unknown, field: string): string | null {
  * on Supabase's DEFAULT error shape: sending an `X-Supabase-Api-Version`
  * header would move the code elsewhere, and every refusal would then read
  * as `unknown` — that is, as unavailable. */
-export function readErrorCode(body: unknown): string {
+function readErrorCode(body: unknown): string {
   const code = readString(body, "error_code");
 
   if (code !== null) {

@@ -21,10 +21,7 @@ const tierByConnection = new WeakMap<Ctx, Promise<JarvisTier>>();
 
 /** The connection's tier. A lookup that throws or rejects reads as a
  * member: a failure must never widen what the house key pays for. */
-export function readConnectionTier(
-  ctx: Ctx,
-  caller: Caller,
-): Promise<JarvisTier> {
+function readConnectionTier(ctx: Ctx, caller: Caller): Promise<JarvisTier> {
   let tier = tierByConnection.get(ctx);
 
   if (tier === undefined) {
