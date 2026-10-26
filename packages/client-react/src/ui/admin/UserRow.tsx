@@ -2,6 +2,7 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
   type ReactElement,
+  type RefObject,
   useEffect,
   useRef,
 } from "react";
@@ -31,9 +32,47 @@ export function UserRow({ account }: UserRowProps): ReactElement {
   const { useAccountAction } = useViewModel();
   const { state, intents } = useAccountAction(account.id);
   const renaming = state.phase === "renaming";
+  const renameButton = useRef<HTMLButtonElement>(null);
+  const deleteButton = useRef<HTMLButtonElement>(null);
+  const row = useRef<HTMLLIElement>(null);
+  const phase = state.phase;
+  const previousPhase = useRef(phase);
+  const owedFocus = useRef<"rename" | "delete" | null>(null);
+
+  // Rename's and delete-confirmation's buttons unmount when the row leaves
+  // those phases, taking keyboard focus with them. Remember which button the
+  // row owes focus to, and give it back once that button is there and
+  // enabled again (a save is in flight first). Only a transition sets the
+  // debt, so mounting or a list refresh never moves focus, and it is paid
+  // only when focus fell to the page (or is still in this row): the
+  // administrator who moved on meanwhile is not pulled back.
+  useEffect(() => {
+    const previous = previousPhase.current;
+
+    previousPhase.current = phase;
+
+    if (previous === "renaming" && phase !== "renaming") {
+      owedFocus.current = "rename";
+    } else if (previous === "confirmingDelete") {
+      owedFocus.current = phase === "idle" ? "delete" : null;
+    }
+
+    if (phase !== "idle" || owedFocus.current === null) {
+      return;
+    }
+
+    const target = owedFocus.current === "rename" ? renameButton : deleteButton;
+
+    owedFocus.current = null;
+
+    if (focusIsFree(row.current)) {
+      target.current?.focus();
+    }
+  }, [phase]);
 
   return (
     <li
+      ref={row}
       data-testid={`user-row-${account.id}`}
       data-status={account.status}
       data-self={account.isSelf ? "true" : "false"}
@@ -71,7 +110,13 @@ export function UserRow({ account }: UserRowProps): ReactElement {
         {account.isSelf ? (
           <span className={styles.you}>{ACCOUNT_ADMIN_COPY.you}</span>
         ) : (
-          <UserRowActions account={account} state={state} intents={intents} />
+          <UserRowActions
+            account={account}
+            state={state}
+            intents={intents}
+            renameButton={renameButton}
+            deleteButton={deleteButton}
+          />
         )}
       </div>
       {state.phase === "failed" ? (
@@ -96,6 +141,8 @@ function UserRowActions({
   account,
   state,
   intents,
+  renameButton,
+  deleteButton,
 }: UserRowActionsProps): ReactElement {
   if (state.phase === "confirmingDelete") {
     return (
@@ -152,6 +199,7 @@ function UserRowActions({
       <RowButton
         action="rename"
         account={account}
+        buttonRef={renameButton}
         disabled={disabled}
         busy={busyAction === "rename"}
         onPress={startRenaming}
@@ -159,6 +207,7 @@ function UserRowActions({
       <RowButton
         action="delete"
         account={account}
+        buttonRef={deleteButton}
         tone="negative"
         disabled={disabled}
         busy={busyAction === "delete"}
@@ -231,6 +280,7 @@ function RowButton({
   tone = "neutral",
   disabled = false,
   busy = false,
+  buttonRef,
   onPress,
 }: RowButtonProps): ReactElement {
   const stem = action === "confirm" ? "confirm-delete" : action;
@@ -241,6 +291,7 @@ function RowButton({
 
   return (
     <button
+      ref={buttonRef}
       type="button"
       data-testid={`user-${stem}-${account.id}`}
       data-tone={tone}
@@ -253,6 +304,18 @@ function RowButton({
     >
       {describeRowActionText(action, busy)}
     </button>
+  );
+}
+
+/** True when focus is on the page itself (nothing holds it) or inside `row`:
+ * the only times giving it back to a row's button is not stealing it. */
+function focusIsFree(row: HTMLElement | null): boolean {
+  const active = document.activeElement;
+
+  return (
+    active === null ||
+    active === document.body ||
+    row?.contains(active) === true
   );
 }
 
@@ -291,6 +354,8 @@ interface UserRowActionsProps {
   account: AccountSummary;
   state: AccountActionState;
   intents: AccountActionIntents;
+  renameButton: RefObject<HTMLButtonElement | null>;
+  deleteButton: RefObject<HTMLButtonElement | null>;
 }
 
 interface RenameFieldProps {
@@ -306,5 +371,6 @@ interface RowButtonProps {
   tone?: Tone;
   disabled?: boolean;
   busy?: boolean;
+  buttonRef?: RefObject<HTMLButtonElement | null>;
   onPress: () => void;
 }

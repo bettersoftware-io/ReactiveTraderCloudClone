@@ -384,6 +384,128 @@ describe("UsersPanel — rename", () => {
   });
 });
 
+describe("UsersPanel — focus returns to the button that opened a state", () => {
+  it("returns focus to Rename after the rename's Cancel button", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: { status: "ready", rows: createActivePair() },
+    });
+
+    await panel.click("a2", "rename");
+    await panel.click("a2", "cancel");
+
+    expect(panel.hasNameInput("a2")).toBe(false);
+    expect(panel.isButtonFocused("a2", "rename")).toBe(true);
+  });
+
+  it("returns focus to Rename after Escape in the rename field", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: { status: "ready", rows: createActivePair() },
+    });
+
+    await panel.click("a2", "rename");
+    await panel.pressNameKey("a2", "Escape");
+
+    expect(panel.isButtonFocused("a2", "rename")).toBe(true);
+  });
+
+  it("returns focus to Rename only once the save has settled and the button is enabled", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: { status: "ready", rows: createActivePair() },
+    });
+
+    await panel.click("a2", "rename");
+    await panel.click("a2", "save");
+
+    expect(panel.rowPhase("a2")).toBe("inFlight");
+    expect(panel.isButtonFocused("a2", "rename")).toBe(false);
+
+    panel.setAccountAction("a2", { phase: "idle" });
+
+    expect(panel.isButtonFocused("a2", "rename")).toBe(true);
+  });
+
+  it("returns focus to Rename after Enter saves and the save settles", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: { status: "ready", rows: createActivePair() },
+    });
+
+    await panel.click("a2", "rename");
+    await panel.pressNameKey("a2", "Enter");
+    panel.setAccountAction("a2", { phase: "idle" });
+
+    expect(panel.isButtonFocused("a2", "rename")).toBe(true);
+  });
+
+  it("keeps focus off the buttons while a failed save waits to be dismissed", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: { status: "ready", rows: createActivePair() },
+    });
+
+    await panel.click("a2", "rename");
+    await panel.click("a2", "save");
+    panel.setAccountAction("a2", {
+      phase: "failed",
+      action: "rename",
+      message: "Could not rename",
+    });
+
+    expect(panel.isButtonFocused("a2", "rename")).toBe(false);
+
+    await panel.click("a2", "dismiss");
+
+    expect(panel.isButtonFocused("a2", "rename")).toBe(true);
+  });
+
+  it("returns focus to Delete after the delete confirmation's Cancel", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: { status: "ready", rows: createActivePair() },
+    });
+
+    await panel.click("a2", "delete");
+    await panel.click("a2", "cancel");
+
+    expect(panel.isButtonFocused("a2", "delete")).toBe(true);
+  });
+
+  it("does not move focus when a confirmed delete is in flight", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: { status: "ready", rows: createActivePair() },
+    });
+
+    await panel.click("a2", "delete");
+    await panel.click("a2", "confirm-delete");
+    panel.setAccountAction("a2", { phase: "idle" });
+
+    expect(panel.isButtonFocused("a2", "delete")).toBe(false);
+  });
+
+  it("does not take the focus on first render or when the list is re-emitted", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: { status: "ready", rows: createActivePair() },
+    });
+
+    expect(panel.isFocusOnPage()).toBe(true);
+
+    await panel.setAccountList({ rows: createActivePair() });
+
+    expect(panel.isFocusOnPage()).toBe(true);
+  });
+
+  it("does not pull focus back from where the administrator moved while the save ran", async () => {
+    const panel = mount(UsersPanel, {
+      accountList: { status: "ready", rows: createActivePair() },
+    });
+
+    await panel.click("a2", "rename");
+    await panel.click("a2", "save");
+    panel.focusButton("a1", "rename");
+    panel.setAccountAction("a2", { phase: "idle" });
+
+    expect(panel.isButtonFocused("a1", "rename")).toBe(true);
+    expect(panel.isButtonFocused("a2", "rename")).toBe(false);
+  });
+});
+
 describe("UsersPanel — a request in flight, and a failure", () => {
   it("disables only the in-flight row's buttons", () => {
     const panel = mount(UsersPanel, {
@@ -566,6 +688,10 @@ describe("UsersPanel — empty and forbidden", () => {
     expect(panel.rowIds()).toEqual(["a1"]);
   });
 });
+
+function createActivePair(): AccountSummary[] {
+  return [createAccount("a1", "active"), createAccount("a2", "active")];
+}
 
 function createPendingPair(): AccountSummary[] {
   return [createAccount("a1", "pending"), createAccount("a2", "pending")];

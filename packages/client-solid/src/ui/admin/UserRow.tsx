@@ -1,7 +1,9 @@
 import {
   type Accessor,
+  createEffect,
   createMemo,
   type JSX,
+  on,
   onMount,
   Show,
   untrack,
@@ -60,12 +62,64 @@ export function UserRow(props: UserRowProps): JSX.Element {
 }
 
 function UserRowBody(props: UserRowBodyProps): JSX.Element {
+  let row!: HTMLLIElement;
+  let renameButton: HTMLButtonElement | undefined;
+  let deleteButton: HTMLButtonElement | undefined;
+  let owedFocus: "rename" | "delete" | null = null;
+
   function state(): AccountActionState {
     return props.state;
   }
 
+  function phase(): AccountActionState["phase"] {
+    return props.state.phase;
+  }
+
+  function saveRenameButton(button: HTMLButtonElement): void {
+    renameButton = button;
+  }
+
+  function saveDeleteButton(button: HTMLButtonElement): void {
+    deleteButton = button;
+  }
+
+  // Rename's and delete-confirmation's buttons unmount when the row leaves
+  // those phases, taking keyboard focus with them. Remember which button the
+  // row owes focus to, and give it back once that button is there and
+  // enabled again (a save is in flight first). `defer` keeps the first run
+  // (mounting) from setting a debt, so neither it nor a list refresh moves
+  // focus, and the debt is paid only when focus fell to the page (or is
+  // still in this row): the administrator who moved on meanwhile is not
+  // pulled back.
+  createEffect(
+    on(
+      phase,
+      (current, previous) => {
+        if (previous === "renaming" && current !== "renaming") {
+          owedFocus = "rename";
+        } else if (previous === "confirmingDelete") {
+          owedFocus = current === "idle" ? "delete" : null;
+        }
+
+        if (current !== "idle" || owedFocus === null) {
+          return;
+        }
+
+        const target = owedFocus === "rename" ? renameButton : deleteButton;
+
+        owedFocus = null;
+
+        if (focusIsFree(row)) {
+          target?.focus();
+        }
+      },
+      { defer: true },
+    ),
+  );
+
   return (
     <li
+      ref={row}
       data-testid={`user-row-${props.account.id}`}
       data-status={props.account.status}
       data-self={props.account.isSelf ? "true" : "false"}
@@ -111,6 +165,8 @@ function UserRowBody(props: UserRowBodyProps): JSX.Element {
             account={props.account}
             state={state()}
             intents={props.intents}
+            renameButtonRef={saveRenameButton}
+            deleteButtonRef={saveDeleteButton}
           />
         </Show>
       </div>
@@ -221,6 +277,7 @@ function UserRowActions(props: UserRowActionsProps): JSX.Element {
         <RowButton
           action="rename"
           account={props.account}
+          buttonRef={props.renameButtonRef}
           disabled={disabled()}
           busy={busyAction() === "rename"}
           onPress={startRenaming}
@@ -228,6 +285,7 @@ function UserRowActions(props: UserRowActionsProps): JSX.Element {
         <RowButton
           action="delete"
           account={props.account}
+          buttonRef={props.deleteButtonRef}
           tone="negative"
           disabled={disabled()}
           busy={busyAction() === "delete"}
@@ -316,6 +374,7 @@ function RowButton(props: RowButtonProps): JSX.Element {
 
   return (
     <button
+      ref={props.buttonRef}
       type="button"
       data-testid={`user-${stem()}-${props.account.id}`}
       data-tone={props.tone ?? "neutral"}
@@ -333,6 +392,14 @@ function RowButton(props: RowButtonProps): JSX.Element {
       {describeRowActionText(props.action, busy())}
     </button>
   );
+}
+
+/** True when focus is on the page itself (nothing holds it) or inside `row`:
+ * the only times giving it back to a row's button is not stealing it. */
+function focusIsFree(row: HTMLElement): boolean {
+  const active = document.activeElement;
+
+  return active === null || active === document.body || row.contains(active);
 }
 
 function renamingDraft(state: AccountActionState): string {
@@ -393,6 +460,8 @@ interface UserRowActionsProps {
   account: AccountSummary;
   state: AccountActionState;
   intents: AccountActionIntents;
+  renameButtonRef: (button: HTMLButtonElement) => void;
+  deleteButtonRef: (button: HTMLButtonElement) => void;
 }
 
 interface RenameFieldProps {
@@ -408,5 +477,6 @@ interface RowButtonProps {
   tone?: Tone;
   disabled?: boolean;
   busy?: boolean;
+  buttonRef?: (button: HTMLButtonElement) => void;
   onPress: () => void;
 }
