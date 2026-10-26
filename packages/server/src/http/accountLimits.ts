@@ -8,6 +8,10 @@ import {
   CODE_ENTRY_RATE_LIMIT_WINDOW_MS,
   LOGIN_RATE_LIMIT_MAX,
   LOGIN_RATE_LIMIT_WINDOW_MS,
+  MCP_ACCOUNT_RATE_LIMIT_MAX,
+  MCP_ACCOUNT_RATE_LIMIT_WINDOW_MS,
+  MCP_RATE_LIMIT_MAX,
+  MCP_RATE_LIMIT_WINDOW_MS,
   REGISTER_RATE_LIMIT_MAX,
   REGISTER_RATE_LIMIT_WINDOW_MS,
   RESENDS_PER_HOUR_MAX,
@@ -65,6 +69,19 @@ export function createAccountLimits(): AccountRateLimits {
 
 /** The per-IP budget of `/login` (spec §3.5), two-tier like the account
  * endpoints. */
+/** `/mcp`'s per-IP budget (tiered like the account routes). */
+export function createMcpIpLimiter(): RateLimiter {
+  return createTieredIpLimiter(MCP_RATE_LIMIT_MAX, MCP_RATE_LIMIT_WINDOW_MS);
+}
+
+/** `/mcp`'s per-account budget, keyed by account id. */
+export function createMcpAccountLimiter(): RateLimiter {
+  return createRateLimiter(
+    MCP_ACCOUNT_RATE_LIMIT_MAX,
+    MCP_ACCOUNT_RATE_LIMIT_WINDOW_MS,
+  );
+}
+
 export function createLoginLimiter(): RateLimiter {
   return createTieredIpLimiter(
     LOGIN_RATE_LIMIT_MAX,
