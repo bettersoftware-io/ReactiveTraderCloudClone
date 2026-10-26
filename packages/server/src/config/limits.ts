@@ -24,6 +24,19 @@ export const LOGIN_MAX_BODY_BYTES = 4 * 1024;
  * reads the body itself. */
 export const MCP_MAX_BODY_BYTES = 64 * 1024;
 
+/** `/mcp` requests per client IP per window (and four times that per IPv6
+ * /48, as on the account routes), charged before the token is read. One MCP
+ * tool call is a few requests (initialize, list, call), so 120 a minute
+ * leaves an interactive client plenty while a loop or a flood is capped. */
+export const MCP_RATE_LIMIT_MAX = 120;
+export const MCP_RATE_LIMIT_WINDOW_MS = 60_000;
+
+/** `/mcp` requests per administrator account per window, charged before the
+ * account-store read each admitted request makes — the bound on what a
+ * stolen administrator token can cost the store. */
+export const MCP_ACCOUNT_RATE_LIMIT_MAX = 120;
+export const MCP_ACCOUNT_RATE_LIMIT_WINDOW_MS = 60_000;
+
 /** S8 — live sockets across the whole process; below Fly's `hard_limit`
  * (fly.toml) so the app refuses with 503 before the proxy starts queueing. */
 export const MAX_CONNECTIONS_TOTAL = 200;
