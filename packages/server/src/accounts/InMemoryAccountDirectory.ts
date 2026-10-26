@@ -328,9 +328,14 @@ export function createInMemoryAccountDirectory(
     },
 
     listAccounts(limit: number): Promise<AccountListing> {
-      // Newest first; the sort is stable, so equal times keep insertion order.
+      // Not-yet-approved first, then newest first within each group; the
+      // sort is stable, so equal times keep insertion order.
       const newest = [...byEmail.values()]
         .sort((a, b) => {
+          if (a.approved !== b.approved) {
+            return a.approved ? 1 : -1;
+          }
+
           return b.createdAt - a.createdAt;
         })
         .slice(0, Math.max(0, limit));

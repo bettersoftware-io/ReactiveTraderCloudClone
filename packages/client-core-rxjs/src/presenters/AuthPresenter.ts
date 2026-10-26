@@ -1,5 +1,5 @@
 import { type StateObservable, state } from "@rx-state/core";
-import { BehaviorSubject } from "rxjs";
+import { BehaviorSubject, Subscription } from "rxjs";
 
 import type {
   AuthPresenter as AuthPresenterApi,
@@ -38,6 +38,12 @@ export class AuthPresenter implements AuthPresenterApi {
   private readonly subject: BehaviorSubject<AuthViewState>;
 
   private currentUsername: string | null = null;
+
+  /** The login and unlock attempts still in flight — each one's `auth.login`
+   * subscription. Signing out (`logout`, `endSession`) releases them, so an
+   * outcome that lands after the user left neither writes the session store
+   * nor changes the state. */
+  private attempts = new Subscription();
 
   constructor(
     private readonly auth: AuthPort,
@@ -102,7 +108,7 @@ export class AuthPresenter implements AuthPresenterApi {
       waitVariant: this.pickWaitVariant(),
     });
 
-    this.auth.login(username, password).subscribe((outcome) => {
+    this.attempt(username, password, (outcome) => {
       this.commitLoginOutcome(username, outcome);
     });
   }
@@ -161,9 +167,28 @@ export class AuthPresenter implements AuthPresenterApi {
       waitVariant: this.pickWaitVariant(),
     });
 
-    this.auth.login(username, password).subscribe((outcome) => {
+    this.attempt(username, password, (outcome) => {
       this.commitUnlockOutcome(username, outcome);
     });
+  }
+
+  /** One `auth.login` call, held in `attempts` until it settles. A settled
+   * call leaves `attempts` by itself (an RxJS child subscription removes
+   * itself from its parent when it closes), and one a synchronous port has
+   * already settled is never added — so nothing accumulates. */
+  private attempt(
+    username: string,
+    password: string,
+    commit: (outcome: AuthOutcome) => void,
+  ): void {
+    this.attempts.add(this.auth.login(username, password).subscribe(commit));
+  }
+
+  /** Releases every attempt in flight: its port subscription ends, so its
+   * outcome is never committed. */
+  private cancelAttempts(): void {
+    this.attempts.unsubscribe();
+    this.attempts = new Subscription();
   }
 
   private commitUnlockOutcome(username: string, outcome: AuthOutcome): void {
@@ -191,23 +216,27 @@ export class AuthPresenter implements AuthPresenterApi {
     });
   }
 
-  /** Clears the session and returns to the unauthenticated state. */
+  /** Releases any login or unlock still in flight, clears the session and
+   * returns to the unauthenticated state. */
   logout(): void {
+    this.cancelAttempts();
     this.store.clear();
     this.currentUsername = null;
     this.subject.next(UNAUTHENTICATED_STATE);
   }
 
   /** The server ended this session (the transport's `sessionEnded()`):
-   * clears the store and signs out with the reason and its copy. Not on the
-   * `AuthPresenter` interface — composition routes the event here. A no-op
-   * when nobody is authenticated, so a late event never overwrites a
-   * sign-in failure's message. */
+   * releases any unlock in flight, clears the store and signs out with the
+   * reason and its copy. Not on the `AuthPresenter` interface — composition
+   * routes the event here. A no-op when nobody is authenticated, so a late
+   * event never overwrites a sign-in failure's message (and a login in
+   * flight, which is not the session that ended, goes on). */
   endSession(): void {
     if (this.subject.value.status !== "authenticated") {
       return;
     }
 
+    this.cancelAttempts();
     this.store.clear();
     this.currentUsername = null;
     this.subject.next({

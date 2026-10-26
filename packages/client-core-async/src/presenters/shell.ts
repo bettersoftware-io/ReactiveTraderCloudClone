@@ -76,7 +76,8 @@ export interface EndableAuthPresenter extends AuthPresenter {
  * — the RxJS `AuthPresenter`'s transitions over a Store. The session is
  * resumed at construction from the store (an entry that has not expired
  * signs in; anything else clears it). Each login or unlock is one
- * `auth.login` call, committed when it lands. */
+ * `auth.login` call, committed when it lands — unless a sign-out (`logout`,
+ * `endSession`) or `app.dispose()` released it first. */
 export function createAuthPresenter(
   deps: AuthDeps,
   lifetime: AbortSignal,
@@ -165,14 +166,50 @@ export function createAuthPresenter(
     });
   }
 
+  // The login and unlock attempts in flight share one controller. Signing
+  // out (`logout`, `endSession`) aborts it and starts a fresh one, so an
+  // outcome that lands after the user left is never committed: `once`
+  // releases the port call on abort and rejects with the `AbortError`
+  // `spawn` swallows. One lifetime listener aborts whichever is current, so
+  // `app.dispose()` settles an attempt in flight too, as passing `lifetime`
+  // to `once` did before (the port call itself is already cut by
+  // `cutPortsOnAbort`; this ends the attempt's promise with it).
+  let attempts = new AbortController();
+  lifetime.addEventListener(
+    "abort",
+    () => {
+      attempts.abort();
+    },
+    { once: true },
+  );
+
+  function cancelAttempts(): void {
+    attempts.abort();
+    attempts = new AbortController();
+
+    // A sign-out after `app.dispose()`: the fresh controller starts aborted,
+    // so no later attempt outlives the app.
+    if (lifetime.aborted) {
+      attempts.abort();
+    }
+  }
+
   function attempt(
     username: string,
     password: string,
     commit: (username: string, outcome: AuthOutcome) => void,
   ): void {
     const outcome$ = deps.auth.login(username, password);
+    const { signal } = attempts;
     void spawn(async () => {
-      commit(username, await once(outcome$, lifetime));
+      const outcome = await once(outcome$, signal);
+
+      // An outcome that landed just BEFORE a sign-out, in the same turn,
+      // resumes here only after it: the call had settled, so the abort could
+      // not release it — the sign-out still has the last word.
+      if (!signal.aborted) {
+        commit(username, outcome);
+      }
     }, reportAsync);
   }
 
@@ -213,18 +250,22 @@ export function createAuthPresenter(
       attempt(username, password, commitUnlock);
     },
     logout: () => {
+      cancelAttempts();
       deps.store.clear();
       currentUsername = null;
       store.set(SIGNED_OUT);
     },
-    // The server ended this session: clear the store and sign out with the
-    // reason and its copy. A no-op when nobody is authenticated, so a late
-    // event never overwrites a sign-in failure's message.
+    // The server ended this session: release any unlock in flight, clear the
+    // store and sign out with the reason and its copy. A no-op when nobody is
+    // authenticated, so a late event never overwrites a sign-in failure's
+    // message (and a login in flight, which is not the session that ended,
+    // goes on).
     endSession: () => {
       if (store.get().status !== "authenticated") {
         return;
       }
 
+      cancelAttempts();
       deps.store.clear();
       currentUsername = null;
       store.set({

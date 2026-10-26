@@ -171,7 +171,10 @@ export const ACCOUNTS_HEALTH_CACHE_MS = 60_000;
 
 /** B2c — the most accounts one admin listing returns. The panel reads a
  * single page; an unbounded `select` on a growing table would let one admin
- * call pull every profile through the server and the socket. */
+ * call pull every profile through the server and the socket. The listing
+ * puts accounts not yet approved first (newest first within each group), so
+ * past this many accounts the cut falls on the oldest approved ones and an
+ * account awaiting approval is never missed. */
 export const ADMIN_ACCOUNT_LIST_MAX = 500;
 
 /** B2c — accounts the in-process revocation ledger holds. It only fills when

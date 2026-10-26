@@ -225,10 +225,19 @@ export class WsAdapter implements IWsAdapter {
       }
 
       // The server ended this session (4401): final. Report it once on
-      // `sessionEnded()`, with no gatewayDisconnected and no reconnect — a
+      // `sessionEnded()`, with no reconnect and no `reconnectAttempt` — a
       // retry would only meet the same refusal. The adapter lets go of the
       // socket and goes quiet, so a connect() after a new sign-in opens a
       // fresh one.
+      //
+      // It also reports `gatewayDisconnected`, as a sign-out's release
+      // does: without it the status kept reading CONNECTED while nobody was
+      // signed in (and, replayed, after the next sign-in until its socket
+      // opened). Reported AFTER `sessionEnded` and a microtask later
+      // (`reportReleased`), so the sign-out it causes lands first and the
+      // event meets a signed-out app exactly as a logout's own does: the
+      // status waits at DISCONNECTED for the next sign-in's socket, and
+      // nothing that reads it reconnects or raises an incident.
       if (event.code === SESSION_ENDED_CLOSE_CODE) {
         this.ws = null;
         this.suspended = true;
@@ -236,6 +245,7 @@ export class WsAdapter implements IWsAdapter {
         this.sendQueue.length = 0;
         this.rejectPendingRpcs("WsAdapter session ended");
         this.sessionEnded$.next();
+        this.reportReleased();
         return;
       }
 
@@ -262,12 +272,8 @@ export class WsAdapter implements IWsAdapter {
 
   /** Closes the current socket on purpose and reports it. The socket's own
    * `close` event is ignored from here on (it may come late, or after a
-   * replacement), so the adapter says `gatewayDisconnected` itself — one
-   * microtask later, so the event whose handling closed the socket (an
-   * `idleTimeout` passing through `routeIdleLifecycle`) reaches the reducer
-   * first, as it did when the socket's `close` event reported it. Nothing
-   * is reported if the socket has been reopened by then. Every rpc in
-   * flight is rejected. */
+   * replacement), so the adapter says `gatewayDisconnected` itself
+   * (`reportReleased`). Every rpc in flight is rejected. */
   private releaseSocket(): void {
     const ws = this.ws;
 
@@ -280,6 +286,17 @@ export class WsAdapter implements IWsAdapter {
     // No answer can arrive on another socket, so an rpc in flight on this
     // one is over.
     this.rejectPendingRpcs("WsAdapter disconnected");
+    this.reportReleased();
+  }
+
+  /** Says `gatewayDisconnected` for a socket the adapter let go of (a
+   * deliberate release, or a 4401 session end) — one microtask later, so the
+   * event whose handling closed it reaches its consumers first: an
+   * `idleTimeout` passing through `routeIdleLifecycle` reaches the reducer
+   * first, as it did when the socket's `close` event reported it, and a
+   * `sessionEnded` signs the user out first. Nothing is reported if a socket
+   * has been opened again by then. */
+  private reportReleased(): void {
     queueMicrotask(() => {
       if (!this.disposed && this.ws === null) {
         this.connectionEvents$.next({ type: "gatewayDisconnected" });

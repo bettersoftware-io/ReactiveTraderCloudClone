@@ -925,16 +925,58 @@ describe("WsAdapter auth gating", () => {
 });
 
 describe("WsAdapter :: a session the server ended (close 4401)", () => {
-  it("emits once on sessionEnded(), nothing on connectionEvents, and opens no new socket", async () => {
+  it("emits once on sessionEnded() and exactly one gatewayDisconnected, then no reconnectAttempt and no new socket after the reconnect delay", async () => {
     const { adapter, events, ends } = createEndedSession();
     lastMock.onopen?.(new Event("open"));
     lastMock.onclose?.(new CloseEvent("close", { code: 4401 }));
 
+    await vi.advanceTimersByTimeAsync(0);
+    expect(events).toEqual([
+      { type: "gatewayConnected" },
+      { type: "gatewayDisconnected" },
+    ]);
+
     await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS * 3);
 
     expect(ends.count).toBe(1);
-    expect(events).toEqual([{ type: "gatewayConnected" }]);
+    expect(events).toEqual([
+      { type: "gatewayConnected" },
+      { type: "gatewayDisconnected" },
+    ]);
     expect(MockWebSocket.constructed).toBe(1);
+    adapter.dispose();
+  });
+
+  it("reports the disconnect after sessionEnded(), a microtask later, so the sign-out lands first", async () => {
+    const { adapter } = createEndedSession();
+    const order: string[] = [];
+    adapter.sessionEnded().subscribe(() => {
+      order.push("sessionEnded");
+    });
+    adapter.connectionEvents().subscribe((event) => {
+      order.push(event.type);
+    });
+    lastMock.onopen?.(new Event("open"));
+    order.length = 0;
+
+    lastMock.onclose?.(new CloseEvent("close", { code: 4401 }));
+    expect(order).toEqual(["sessionEnded"]);
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(order).toEqual(["sessionEnded", "gatewayDisconnected"]);
+    adapter.dispose();
+  });
+
+  it("reports no disconnect when a new sign-in's connect() opened a socket before the microtask ran", async () => {
+    const { adapter, events } = createEndedSession();
+    lastMock.onopen?.(new Event("open"));
+    lastMock.onclose?.(new CloseEvent("close", { code: 4401 }));
+    adapter.connect();
+
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(events).toEqual([{ type: "gatewayConnected" }]);
+    expect(MockWebSocket.constructed).toBe(2);
     adapter.dispose();
   });
 
