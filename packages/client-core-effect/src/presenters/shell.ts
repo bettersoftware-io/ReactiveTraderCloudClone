@@ -1,4 +1,4 @@
-import { Cause, Effect, Option, Stream } from "effect";
+import { Cause, Effect, type Fiber, Option, Stream } from "effect";
 
 import type {
   AnimationDirector,
@@ -34,6 +34,7 @@ import {
   type FoldUpdate,
   type FromPort,
   filterStream,
+  interruptFiber,
   type PortEvents,
   portEvents,
   reportOutOfBand,
@@ -92,7 +93,8 @@ export interface EndableAuthPresenter extends AuthPresenter {
  * — the RxJS `AuthPresenter`'s transitions over a `SyncRef`. The
  * session is resumed at construction from the store; each login or unlock is
  * one `auth.login` call, run as a fiber in a child of the app host's scope,
- * so `app.dispose()` drops an outcome still in flight. */
+ * so `app.dispose()` drops an outcome still in flight — and so does a
+ * sign-out (`logout`, `endSession`), which interrupts it. */
 export function createAuthPresenter(
   parent: EffectHost,
   deps: AuthDeps,
@@ -186,17 +188,44 @@ export function createAuthPresenter(
     });
   }
 
+  // The login and unlock attempts in flight, and the token they were
+  // started under. Signing out (`logout`, `endSession`) interrupts their
+  // fibers — which releases each port call — and replaces the token, so a
+  // commit checks the token rather than trusting when Effect delivers the
+  // interrupt (the `runSlot` rule, slice 3 R10). On effect 3.x the token is
+  // belt and braces: the interrupt is signalled before `interruptFiber`
+  // returns and taken at the fiber's next step, so even an outcome that
+  // landed just before the sign-out, in the same turn, never reaches the
+  // commit (the contract's "just before" cases pass with the token check
+  // removed — an equivalent mutant today). `app.dispose()` closes `host`'s
+  // scope, which interrupts whatever is still in flight.
+  const attempts = new Set<Fiber.RuntimeFiber<void>>();
+  let live: object = {};
+
+  function cancelAttempts(): void {
+    live = {};
+
+    for (const fiber of attempts) {
+      interruptFiber(fiber);
+    }
+
+    attempts.clear();
+  }
+
   function attempt(
     username: string,
     password: string,
     commit: (username: string, outcome: AuthOutcome) => void,
   ): void {
     const outcome$ = deps.auth.login(username, password);
-    host.runtime.runFork(
+    const token = live;
+    const fiber = host.runtime.runFork(
       rpc(outcome$).pipe(
         Effect.flatMap((outcome) => {
           return Effect.sync(() => {
-            commit(username, outcome);
+            if (token === live) {
+              commit(username, outcome);
+            }
           });
         }),
         Effect.catchAllCause((cause) => {
@@ -209,6 +238,12 @@ export function createAuthPresenter(
       ),
       { scope: host.scope },
     );
+    attempts.add(fiber);
+    // Called at once when the fiber has already ended (a port that answered
+    // synchronously), so a settled attempt never stays in the set.
+    fiber.addObserver(() => {
+      attempts.delete(fiber);
+    });
   }
 
   return {
@@ -251,20 +286,24 @@ export function createAuthPresenter(
       attempt(username, password, commitUnlock);
     },
     logout: () => {
+      cancelAttempts();
       deps.store.clear();
       currentUsername = null;
       update(() => {
         return SIGNED_OUT;
       });
     },
-    // The server ended this session: clear the store and sign out with the
-    // reason and its copy. A no-op when nobody is authenticated, so a late
-    // event never overwrites a sign-in failure's message.
+    // The server ended this session: release any unlock in flight, clear the
+    // store and sign out with the reason and its copy. A no-op when nobody is
+    // authenticated, so a late event never overwrites a sign-in failure's
+    // message (and a login in flight, which is not the session that ended,
+    // goes on).
     endSession: () => {
       if (ref.get().status !== "authenticated") {
         return;
       }
 
+      cancelAttempts();
       deps.store.clear();
       currentUsername = null;
       update(() => {
