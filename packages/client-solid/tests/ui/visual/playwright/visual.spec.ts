@@ -64,7 +64,10 @@ for (const [name, scenario] of Object.entries(scenarios)) {
     // then cost solid ~4 post-merge runs in 5 on the one skin where the two
     // clients' luck differed: 1766 px against a 100 px cap. The wait needs no
     // wall-clock constant of its own — the class's ABSENCE already means "past
-    // dockview's own 500 ms timer" — see @ui-visual-shared/dockResizeFlash.
+    // dockview's own 500 ms timer", once dockview has measured the strip at
+    // all: an unmeasured strip carries no class YET, and the 2026-10-24
+    // terminal-light golden of that same scenario caught its thumb through
+    // exactly that gap — see @ui-visual-shared/dockResizeFlash.
     //
     // It goes immediately before the settle pass on purpose: removing the class
     // starts dockview's `transition: background-color 1s`, so capturing right

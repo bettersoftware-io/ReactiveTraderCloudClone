@@ -14,8 +14,9 @@ import { dockTabStripsAreSettled } from "./dockResizeFlash";
  * failure mode this file exists to pin.
  *
  * The real browser semantics behind the class (that dockview adds
- * `dv-scrollable-resizing` per ResizeObserver tick and clears it 500 ms later)
- * are witnessed by the pixel tier itself: the `app/equities-instances-dockview`
+ * `dv-scrollable-resizing` per ResizeObserver tick and clears it 500 ms later,
+ * and positions the thumb only after adding it) are witnessed by the pixel
+ * tier itself: the `app/equities-instances-dockview`
  * goldens carry no scrollbar thumb in any skin, which is only reachable if this
  * predicate really gates the shutter.
  */
@@ -34,13 +35,16 @@ describe("dockTabStripsAreSettled", () => {
   });
 
   it("is settled when every mounted tab strip is past its resize flash", () => {
-    createStubPage({ docks: 1, strips: [[], []] });
+    createStubPage({ docks: 1, strips: [MEASURED, MEASURED] });
 
     expect(dockTabStripsAreSettled()).toBe(true);
   });
 
   it("is NOT settled while a tab strip carries dockview's resizing class", () => {
-    createStubPage({ docks: 1, strips: [[], ["dv-scrollable-resizing"]] });
+    createStubPage({
+      docks: 1,
+      strips: [MEASURED, { ...MEASURED, classes: ["dv-scrollable-resizing"] }],
+    });
 
     expect(dockTabStripsAreSettled()).toBe(false);
   });
@@ -53,8 +57,43 @@ describe("dockTabStripsAreSettled", () => {
     expect(dockTabStripsAreSettled()).toBe(false);
   });
 
+  it("is NOT settled while a strip waits for dockview's first measurement", () => {
+    // The per-strip vacuity guard: dockview adds the resizing class one frame
+    // AFTER its ResizeObserver fires, so a strip that has never been measured
+    // carries no class yet either. Its thumb has no inline position until the
+    // first measurement, which is what tells "flash not begun" from "flash
+    // over" (the 2026-10-24 terminal-light golden caught the thumb this way).
+    createStubPage({ docks: 1, strips: [MEASURED, UNMEASURED] });
+
+    expect(dockTabStripsAreSettled()).toBe(false);
+  });
+
+  it("counts a vertical strip as measured by its thumb's top", () => {
+    createStubPage({
+      docks: 1,
+      strips: [{ classes: [], thumb: { left: "", top: "0px" } }],
+    });
+
+    expect(dockTabStripsAreSettled()).toBe(true);
+  });
+
+  it("is NOT settled when a strip has no thumb element to read", () => {
+    // Fails closed: a dockview that dropped or renamed the thumb must time the
+    // wait out loudly, not let every capture through unchecked.
+    createStubPage({ docks: 1, strips: [{ classes: [], thumb: null }] });
+
+    expect(dockTabStripsAreSettled()).toBe(false);
+  });
+
   it("looks at every strip, not just the first", () => {
-    createStubPage({ docks: 1, strips: [[], [], ["dv-scrollable-resizing"]] });
+    createStubPage({
+      docks: 1,
+      strips: [
+        MEASURED,
+        MEASURED,
+        { ...MEASURED, classes: ["dv-scrollable-resizing"] },
+      ],
+    });
 
     expect(dockTabStripsAreSettled()).toBe(false);
   });
@@ -62,7 +101,10 @@ describe("dockTabStripsAreSettled", () => {
   it("ignores dockview's other scrollable states, which no capture can reach", () => {
     // `:hover` and `dv-scrollable-scrolling` also paint the thumb, but neither
     // is reachable in a static capture — waiting on them would never settle.
-    createStubPage({ docks: 1, strips: [["dv-scrollable-scrolling"]] });
+    createStubPage({
+      docks: 1,
+      strips: [{ ...MEASURED, classes: ["dv-scrollable-scrolling"] }],
+    });
 
     expect(dockTabStripsAreSettled()).toBe(true);
   });
@@ -71,23 +113,50 @@ describe("dockTabStripsAreSettled", () => {
 interface FakePage {
   /** How many `.dockview-theme-rtc` containers the client rendered. */
   readonly docks: number;
-  /** One entry per `.dv-scrollable`, holding that strip's class names. */
-  readonly strips: readonly (readonly string[])[];
+  /** One entry per `.dv-scrollable`. */
+  readonly strips: readonly FakeStripState[];
 }
 
-/** The one member of a `.dv-scrollable` the predicate reaches for. */
+interface FakeStripState {
+  /** The strip's own class names. */
+  readonly classes: readonly string[];
+  /** Its `.dv-scrollbar`'s inline position, or null when it has none. */
+  readonly thumb: { readonly left: string; readonly top: string } | null;
+}
+
+/** A strip dockview has measured: horizontal, nothing overflowing. */
+const MEASURED: FakeStripState = {
+  classes: [],
+  thumb: { left: "0px", top: "" },
+};
+
+/** A strip whose first ResizeObserver tick dockview has not handled yet. */
+const UNMEASURED: FakeStripState = {
+  classes: [],
+  thumb: { left: "", top: "" },
+};
+
+/** The members of a `.dv-scrollable` the predicate reaches for. */
 interface FakeStrip {
   readonly classList: DOMTokenList;
+  readonly querySelector: (selector: string) => unknown;
 }
 
 function createStubPage(page: FakePage): void {
-  const strips = page.strips.map((classes): FakeStrip => {
+  const strips = page.strips.map((state): FakeStrip => {
     return {
       classList: {
         contains: (name: string): boolean => {
-          return classes.includes(name);
+          return state.classes.includes(name);
         },
       } as DOMTokenList,
+      querySelector: (selector: string): unknown => {
+        if (selector !== ".dv-scrollbar") {
+          throw new Error(`unexpected strip selector "${selector}"`);
+        }
+
+        return state.thumb === null ? null : { style: state.thumb };
+      },
     };
   });
 
