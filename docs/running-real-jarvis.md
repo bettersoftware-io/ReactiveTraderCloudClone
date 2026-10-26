@@ -244,7 +244,7 @@ Jarvis's workload — seven flat-schema snapshot tools, trigger-clause
 descriptions, 2–4 sentence replies — is the easy end of tool use, and Haiku
 4.5 (~5× cheaper both sides than Opus, faster TTFE) is sufficient for it;
 per-turn cost is dominated by the persona+tools prefix and history re-sent
-as input, so the 5× saving applies almost directly. Sonnet 5 ($3/$15) sits
+as input, so the 5× saving applies almost directly. Sonnet 5 ($2/$10; the table said $3/$15 until 2026-10-26) sits
 as the offered middle option. One caveat the picker surfaces that this note
 didn't originally anticipate: Haiku 4.5's minimum cacheable prefix is 4,096
 tokens (vs. 512 on Sonnet/Opus), comfortably above today's ~1.3k-token

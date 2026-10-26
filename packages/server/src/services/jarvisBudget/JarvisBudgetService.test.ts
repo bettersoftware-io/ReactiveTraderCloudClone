@@ -793,7 +793,7 @@ const TEN_CENTS_ON_HAIKU: JarvisTokenUsage = {
 };
 
 /** The worst case one request is reserved at (15k input tokens, the
- * per-request output cap); on Sonnet $0.10644. */
+ * per-request output cap); on Sonnet $0.07096. */
 const SONNET_CEILING: JarvisTokenUsage = {
   inputTokens: 15_000,
   outputTokens: 4_096,

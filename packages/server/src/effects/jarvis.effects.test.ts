@@ -2178,7 +2178,7 @@ async function settleBudgetReads(): Promise<void> {
   await vi.advanceTimersByTimeAsync(0);
 }
 
-/** The worst case one Sonnet request is reserved at: $0.10644. */
+/** The worst case one Sonnet request is reserved at: $0.07096. */
 const SONNET_CEILING: JarvisTokenUsage = {
   inputTokens: 15_000,
   outputTokens: 4_096,

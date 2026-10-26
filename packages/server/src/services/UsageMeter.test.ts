@@ -78,7 +78,7 @@ describe("UsageMeter", () => {
   });
 
   it("computes cost across input, output, cache-read, and cache-creation tokens for sonnet", async () => {
-    // sonnet: input $3/Mtok, output $15/Mtok. Cache reads bill at 10% of
+    // sonnet: input $2/Mtok, output $10/Mtok. Cache reads bill at 10% of
     // input ($0.30/Mtok), cache writes at 125% of input ($3.75/Mtok).
     const meter = new UsageMeter(() => {
       return 0;
@@ -93,8 +93,8 @@ describe("UsageMeter", () => {
 
     const snapshot = await firstValueFrom(meter.snapshot$);
 
-    // (1e6*3 + 1e6*15 + 1e6*3*0.1 + 1e6*3*1.25) / 1e6 = 3 + 15 + 0.3 + 3.75 = 22.05
-    expect(snapshot.currentWindow[0]?.estimatedCostUsd).toBeCloseTo(22.05, 10);
+    // (1e6*2 + 1e6*10 + 1e6*2*0.1 + 1e6*2*1.25) / 1e6 = 2 + 10 + 0.2 + 2.5 = 14.7
+    expect(snapshot.currentWindow[0]?.estimatedCostUsd).toBeCloseTo(14.7, 10);
   });
 
   it("scripted brain always reports zero cost regardless of token volume", async () => {
@@ -260,7 +260,7 @@ describe("UsageMeter", () => {
   it("exposes the documented price table", () => {
     expect(JARVIS_PRICE_TABLE).toEqual({
       "claude-haiku-4-5": { inputUsdPerMtok: 1, outputUsdPerMtok: 5 },
-      "claude-sonnet-5": { inputUsdPerMtok: 3, outputUsdPerMtok: 15 },
+      "claude-sonnet-5": { inputUsdPerMtok: 2, outputUsdPerMtok: 10 },
       "claude-opus-5": { inputUsdPerMtok: 5, outputUsdPerMtok: 25 },
     });
   });
@@ -275,7 +275,7 @@ describe("estimateUsageCostUsd", () => {
         cacheReadTokens: 1_000_000,
         cacheCreationTokens: 1_000_000,
       }),
-    ).toBeCloseTo(3 + 15 + 0.3 + 3.75, 10);
+    ).toBeCloseTo(2 + 10 + 0.2 + 2.5, 10);
   });
 
   it("prices the scripted brain at zero", () => {
