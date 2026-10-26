@@ -42,6 +42,31 @@
  * early, and the predicate keeps waiting. A page with no container at all is
  * the in-house engine, which has no dockview chrome to settle.
  *
+ * EARLY HAS A SECOND READING, PER STRIP. A strip that exists but that dockview
+ * has not measured yet ALSO carries no resizing class, because the class
+ * arrives one hop late: the ResizeObserver callback only queues a
+ * `requestAnimationFrame`, and the class is added inside that frame. Under a
+ * busy main thread (the click into the equities workspace) that hop measured
+ * ~110 ms locally, so "no class anywhere" was true of a dock still mid-layout,
+ * its strips not yet at their final widths, and the flash began just after
+ * the wait had passed. `settleAnimationsForCapture` then FINISHED the thumb's
+ * fade-in transition, so the capture held the thumb at its full 25 % white:
+ * the terminal-light `app/equities-instances-dockview` golden regenerated
+ * 2026-10-24 carries it on the chart and watchlist strips (the two that
+ * overflow, so the only two whose thumb has any width). The local react host
+ * reproduced the early pass in 8 of 23 traced runs of that cell. So a strip
+ * counts as settled only once dockview has measured it: its `.dv-scrollbar`
+ * carries the inline `left` (`top` when vertical) that
+ * `calculateScrollbarStyles` writes on every pass, `"0px"` when nothing
+ * overflows. That pass is queued by the very callback that adds the class, so
+ * a strip's first measurement lands after its class does, and a measured strip
+ * without the class is genuinely past its flash (dockview-core 8.3.1,
+ * `Scrollbar`). Every strip reaches that state, hidden ones included:
+ * Chromium delivers a ResizeObserver's first notification on `observe()` even
+ * for a `display: none` or zero-size element (checked in the visual tier's
+ * Chromium, 2026-10-26), so no strip can hold the wait open forever by never
+ * being measured.
+ *
  * MUST stay self-contained — Playwright serialises this function's source and
  * evaluates it in the browser (`page.waitForFunction`), so it cannot close over
  * anything at module scope. Same constraint, same reason, as
@@ -66,6 +91,17 @@ export function dockTabStripsAreSettled(): boolean {
 
   for (const strip of strips) {
     if (strip.classList.contains("dv-scrollable-resizing")) {
+      return false;
+    }
+
+    // Not measured yet: dockview's first resize tick for this strip is still
+    // queued, so its flash is still to come (see "EARLY HAS A SECOND READING"
+    // above). A missing thumb reads as unmeasured on purpose: if dockview ever
+    // drops or renames it, the wait times out loudly instead of passing
+    // vacuously.
+    const thumb = strip.querySelector<HTMLElement>(".dv-scrollbar");
+
+    if (thumb === null || (thumb.style.left === "" && thumb.style.top === "")) {
       return false;
     }
   }
