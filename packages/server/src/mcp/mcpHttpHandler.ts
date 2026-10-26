@@ -26,9 +26,11 @@ export interface McpHandlerDeps {
   /** Per client IP, charged before the token is read, so a flood of bad
    * tokens is capped as cheaply as a flood of good ones. */
   readonly ipLimit: RateLimiter;
-  /** Per account, charged only for a token whose claim says administrator
-   * and before the directory read, so even a stolen administrator token
-   * cannot turn into unbounded account-store reads. */
+  /** Per administrator session (account + token issue time), charged only
+   * for a token whose claim says administrator and before the directory
+   * read, so even a stolen administrator token cannot turn into unbounded
+   * account-store reads — nor spend the budget of the account's other
+   * sessions. */
   readonly accountLimit: RateLimiter;
   readonly clientIp: (req: IncomingMessage) => string;
   readonly now: () => number;
@@ -173,7 +175,13 @@ async function serveMcpRequest(
     return;
   }
 
-  if (!deps.accountLimit.hit(verified.accountId, now)) {
+  // Keyed per session (account + the token's issue time), not per account:
+  // a leaked or revoked token then spends only its own budget, never the
+  // administrator's other sessions'. A token minted before B2c carries no
+  // issue time and shares one legacy bucket per account.
+  const sessionKey = `${verified.accountId}:${verified.issuedAt ?? "legacy"}`;
+
+  if (!deps.accountLimit.hit(sessionKey, now)) {
     deps.banList.strike(ip, "mcp-rate-limited", now);
     rejectRequest(res, 429, "rate_limited");
     return;

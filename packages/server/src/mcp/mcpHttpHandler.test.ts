@@ -149,9 +149,19 @@ describe("createMcpRequestHandler", () => {
     const response = await postToolsList(adminToken());
 
     expect(response.status).toBe(429);
-    expect(accountHits).toEqual([ADMIN_ID]);
+    expect(accountHits).toEqual([`${ADMIN_ID}:${ISSUED_AT}`]);
     expect(strikes).toEqual(["mcp-rate-limited"]);
     expect(directoryReads).toBe(0);
+  });
+
+  it("charges each administrator session its own budget, so one leaked token cannot spend another's", async () => {
+    await postToolsList(adminToken());
+    await postToolsList(adminToken(ISSUED_AT + 1_000));
+
+    expect(accountHits).toEqual([
+      `${ADMIN_ID}:${ISSUED_AT}`,
+      `${ADMIN_ID}:${ISSUED_AT + 1_000}`,
+    ]);
   });
 
   it("a token whose claim says user never charges the account budget", async () => {
@@ -325,8 +335,8 @@ describe("createMcpRequestHandler", () => {
     };
   }
 
-  function adminToken(): string {
-    return signToken("ann@desk.io", SECRET, 60_000, Date.now(), {
+  function adminToken(issuedAt: number = ISSUED_AT): string {
+    return signToken("ann@desk.io", SECRET, 60_000, issuedAt, {
       accountId: ADMIN_ID,
       access: "admin",
     });
@@ -400,3 +410,7 @@ const ADMIN_ID = "00000000-0000-4000-8000-000000000001";
 const CALLER_IP = "203.0.113.7";
 
 const NOW = 1_800_000_000_000;
+
+/** Every admin token the suite signs is issued at this instant unless a test
+ * says otherwise; the token's TTL is measured from it against the real clock. */
+const ISSUED_AT = Date.now();
