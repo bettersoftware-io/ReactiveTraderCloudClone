@@ -182,7 +182,7 @@ describe("JarvisBudgetService", () => {
 
       expect(second.exhausted()).toBe(false);
 
-      // Sonnet's worst case: $0.045 input + $0.06144 output.
+      // Sonnet's worst case: $0.03 input + $0.04096 output.
       first.beginRequest("claude-sonnet-5", SONNET_CEILING);
 
       expect(second.exhausted()).toBe(true);
@@ -242,7 +242,7 @@ describe("JarvisBudgetService", () => {
 
     it("a meter holds one reservation at a time: beginning again replaces it", async () => {
       const service = createService(createInMemorySpendStore(), {
-        houseDailyUsd: 0.2,
+        houseDailyUsd: 0.12,
       });
       await service.stateFor(OPERATOR, "operator");
       const first = service.meterFor(OPERATOR, "operator");
@@ -251,7 +251,7 @@ describe("JarvisBudgetService", () => {
       first.beginRequest("claude-sonnet-5", SONNET_CEILING);
       first.beginRequest("claude-sonnet-5", SONNET_CEILING);
 
-      // One $0.106 reservation fits under $0.20; two stacked would not.
+      // One $0.07096 reservation fits under $0.12; two stacked ($0.14192) would not.
       expect(second.exhausted()).toBe(false);
     });
   });
@@ -793,7 +793,7 @@ const TEN_CENTS_ON_HAIKU: JarvisTokenUsage = {
 };
 
 /** The worst case one request is reserved at (15k input tokens, the
- * per-request output cap); on Sonnet $0.10644. */
+ * per-request output cap); on Sonnet $0.07096. */
 const SONNET_CEILING: JarvisTokenUsage = {
   inputTokens: 15_000,
   outputTokens: 4_096,

@@ -177,7 +177,7 @@ describe("ops jarvis usage effects", () => {
       await vi.advanceTimersByTimeAsync(0);
       expect(sent).toHaveLength(1);
 
-      // $0.60 on Sonnet ($3/Mtok input).
+      // $0.40 on Sonnet ($2/Mtok input).
       jarvisBudget.meterFor(VIEWER, "operator").record("claude-sonnet-5", {
         inputTokens: 200_000,
         outputTokens: 0,
@@ -186,7 +186,7 @@ describe("ops jarvis usage effects", () => {
       });
       await vi.advanceTimersByTimeAsync(0);
 
-      expect(lastPayloadOf(sent).spentWindowUsd).toBe(0.6);
+      expect(lastPayloadOf(sent).spentWindowUsd).toBe(0.4);
     });
 
     it("after midnight with no record since, shows the new day's bounds, an empty current window and a zero spend", async () => {

@@ -28,7 +28,7 @@ export const JARVIS_PRICE_TABLE: Record<
   JarvisBrainPrice
 > = {
   "claude-haiku-4-5": { inputUsdPerMtok: 1, outputUsdPerMtok: 5 },
-  "claude-sonnet-5": { inputUsdPerMtok: 3, outputUsdPerMtok: 15 },
+  "claude-sonnet-5": { inputUsdPerMtok: 2, outputUsdPerMtok: 10 },
   "claude-opus-5": { inputUsdPerMtok: 5, outputUsdPerMtok: 25 },
 };
 

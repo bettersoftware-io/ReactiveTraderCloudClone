@@ -1358,7 +1358,7 @@ reset on (round 1 built rolling 5h windows, `JARVIS_USAGE_WINDOW_MS`, since
 removed). It rolls lazily — at the first `recordTurn`/`recordTokens` call on
 a later day, not on a timer; rolling clears only `currentWindow`,
 `sinceBoot` never clears. The price
-table ($/Mtok per brain — Haiku $1/$5, Sonnet $3/$15, Opus $5/$25 in/out;
+table ($/Mtok per brain — Haiku $1/$5, Sonnet $2/$10, Opus $5/$25 in/out;
 cache-read at 10% of input, cache-creation at 1.25× input) types `"scripted"`
 out entirely (`Exclude<JarvisBrain, "scripted">`) and short-circuits it to
 `$0` before ever touching the table — display-only estimate, labelled as
