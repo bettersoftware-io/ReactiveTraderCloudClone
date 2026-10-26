@@ -563,6 +563,54 @@ describe("InMemoryAccountDirectory — admin operations", () => {
     ]);
   });
 
+  it("lists accounts awaiting approval before approved ones, newest first within each, and the cap cuts the approved", async () => {
+    let now = 1_000;
+    const directory = createInMemoryAccountDirectory({
+      now: (): number => {
+        return now;
+      },
+      seeds: [],
+    });
+
+    for (const email of ["a@desk.io", "b@desk.io", "c@desk.io", "d@desk.io"]) {
+      now += 1_000;
+      await directory.signUp(createSignUp(email), IP);
+      await directory.confirmEmail(email, DEV_CONFIRMATION_CODE, PASSWORD, IP);
+    }
+
+    // The two OLDEST are approved; the two newest are still waiting.
+    await directory.setApproved(await idOf(directory, "a@desk.io"));
+    await directory.setApproved(await idOf(directory, "b@desk.io"));
+
+    async function emails(limit: number): Promise<string[]> {
+      const listing = await directory.listAccounts(limit);
+
+      return listing.outcome === "listed"
+        ? listing.accounts.map((account) => {
+            return account.email;
+          })
+        : [];
+    }
+
+    expect(await emails(10)).toEqual([
+      "d@desk.io",
+      "c@desk.io",
+      "b@desk.io",
+      "a@desk.io",
+    ]);
+    expect(await emails(3)).toEqual(["d@desk.io", "c@desk.io", "b@desk.io"]);
+
+    // Approving the newest sends it to the approved group, behind the waiting.
+    await directory.setApproved(await idOf(directory, "d@desk.io"));
+
+    expect(await emails(10)).toEqual([
+      "c@desk.io",
+      "d@desk.io",
+      "b@desk.io",
+      "a@desk.io",
+    ]);
+  });
+
   it("caps the listing at the limit", async () => {
     const listing = await createDirectory().listAccounts(2);
 

@@ -619,7 +619,7 @@ describe("AccountService.register under concurrency", () => {
 });
 
 describe("AccountService.resetPassword ends the account's sessions", () => {
-  it("stamps the account at the clock and then reports it stamped", async () => {
+  it("stamps the account at the clock, after the reply, and holds it in-process first", async () => {
     const revokeSessions = vi.fn((): Promise<AdminWrite> => {
       return Promise.resolve("ok");
     });
@@ -628,14 +628,62 @@ describe("AccountService.resetPassword ends the account's sessions", () => {
     expect(await service.resetPassword(RESET_REQUEST, IP)).toEqual({
       outcome: "changed",
     });
+    expect(revoked).toEqual([RESET_ID]);
+
+    await flushMicrotasks();
+
     expect(revokeSessions).toHaveBeenCalledExactlyOnceWith(
       RESET_ID,
       2 * 24 * 60 * 60 * 1_000,
     );
-    expect(revoked).toEqual([[RESET_ID, true]]);
   });
 
-  it("retries a failed stamp once and reports it stamped when the retry lands", async () => {
+  it("answers changed with the sockets already closed while the stamp never settles", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const revokeSessions = vi.fn((): Promise<AdminWrite> => {
+        return new Promise<AdminWrite>(() => {});
+      });
+
+      const { service, revoked, lines } = createRevokingFixture({
+        revokeSessions,
+      });
+
+      const reply = await service.resetPassword(RESET_REQUEST, IP);
+
+      expect(reply).toEqual({ outcome: "changed" });
+      expect(revoked).toEqual([RESET_ID]);
+
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(revokeSessions).toHaveBeenCalledTimes(1);
+      expect(lines).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("holds the revocation before the stamp is even started", async () => {
+    const order: string[] = [];
+    const { service } = createRevokingFixture({
+      revokeSessions: () => {
+        order.push("stamp");
+
+        return Promise.resolve("ok");
+      },
+      onRevoked: () => {
+        order.push("hold");
+      },
+    });
+
+    await service.resetPassword(RESET_REQUEST, IP);
+    await flushMicrotasks();
+
+    expect(order).toEqual(["hold", "stamp"]);
+  });
+
+  it("retries a failed stamp once and logs nothing when the retry lands", async () => {
     const revokeSessions = vi
       .fn<AccountDirectory["revokeSessions"]>()
       .mockResolvedValueOnce("unavailable")
@@ -646,13 +694,14 @@ describe("AccountService.resetPassword ends the account's sessions", () => {
     });
 
     await service.resetPassword(RESET_REQUEST, IP);
+    await flushMicrotasks();
 
     expect(revokeSessions).toHaveBeenCalledTimes(2);
-    expect(revoked).toEqual([[RESET_ID, true]]);
+    expect(revoked).toEqual([RESET_ID]);
     expect(lines).toEqual([]);
   });
 
-  it("still answers changed, reports it unstamped and logs the id when both attempts fail", async () => {
+  it("still answers changed, holds it and logs the id when both attempts fail", async () => {
     const revokeSessions = vi.fn((): Promise<AdminWrite> => {
       return Promise.resolve("unavailable");
     });
@@ -664,25 +713,82 @@ describe("AccountService.resetPassword ends the account's sessions", () => {
     expect(await service.resetPassword(RESET_REQUEST, IP)).toEqual({
       outcome: "changed",
     });
+    await flushMicrotasks();
+
     expect(revokeSessions).toHaveBeenCalledTimes(2);
-    expect(revoked).toEqual([[RESET_ID, false]]);
+    expect(revoked).toEqual([RESET_ID]);
     expect(lines).toEqual([`[accounts] stamp-failed id=${RESET_ID}`]);
   });
 
-  it("treats a stamp that throws like an unavailable one", async () => {
-    const revokeSessions = vi.fn((): Promise<AdminWrite> => {
-      return Promise.reject(new Error("boom ann@desk.io"));
-    });
+  it("treats a stamp that throws like an unavailable one, with no unhandled rejection", async () => {
+    const unhandled: unknown[] = [];
 
-    const { service, revoked, lines } = createRevokingFixture({
-      revokeSessions,
-    });
+    function record(reason: unknown): void {
+      unhandled.push(reason);
+    }
 
-    expect(await service.resetPassword(RESET_REQUEST, IP)).toEqual({
-      outcome: "changed",
-    });
-    expect(revoked).toEqual([[RESET_ID, false]]);
-    expect(lines.join("\n")).not.toContain("ann@desk.io");
+    process.on("unhandledRejection", record);
+
+    try {
+      const revokeSessions = vi.fn((): Promise<AdminWrite> => {
+        return Promise.reject(new Error("boom ann@desk.io"));
+      });
+
+      const { service, revoked, lines } = createRevokingFixture({
+        revokeSessions,
+      });
+
+      expect(await service.resetPassword(RESET_REQUEST, IP)).toEqual({
+        outcome: "changed",
+      });
+      await flushMicrotasks();
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(revokeSessions).toHaveBeenCalledTimes(2);
+      expect(revoked).toEqual([RESET_ID]);
+      expect(lines).toEqual([`[accounts] stamp-failed id=${RESET_ID}`]);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", record);
+    }
+  });
+
+  it("does not let a throwing log or hold change the outcome or reject", async () => {
+    const unhandled: unknown[] = [];
+
+    function record(reason: unknown): void {
+      unhandled.push(reason);
+    }
+
+    process.on("unhandledRejection", record);
+
+    try {
+      const { service } = createRevokingFixture({
+        revokeSessions: () => {
+          return Promise.resolve("unavailable");
+        },
+        onRevoked: () => {
+          throw new Error("closeAll blew up");
+        },
+        log: () => {
+          throw new Error("log blew up");
+        },
+      });
+
+      expect(await service.resetPassword(RESET_REQUEST, IP)).toEqual({
+        outcome: "changed",
+      });
+      await flushMicrotasks();
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", record);
+    }
   });
 
   it("uses the id the reset reports and never looks the address up", async () => {
@@ -693,12 +799,13 @@ describe("AccountService.resetPassword ends the account's sessions", () => {
     });
 
     await service.resetPassword(RESET_REQUEST, IP);
+    await flushMicrotasks();
 
     expect(lookups).not.toHaveBeenCalled();
-    expect(revoked).toEqual([[RESET_ID, true]]);
+    expect(revoked).toEqual([RESET_ID]);
   });
 
-  it("with the id in hand and the store down, still reports the account unstamped", async () => {
+  it("with the id in hand and the store down, still holds the account", async () => {
     const { service, revoked, lookups } = createRevokingFixture({
       revokeSessions: () => {
         return Promise.resolve("unavailable");
@@ -709,9 +816,10 @@ describe("AccountService.resetPassword ends the account's sessions", () => {
     });
 
     await service.resetPassword(RESET_REQUEST, IP);
+    await flushMicrotasks();
 
     expect(lookups).not.toHaveBeenCalled();
-    expect(revoked).toEqual([[RESET_ID, false]]);
+    expect(revoked).toEqual([RESET_ID]);
   });
 
   it("falls back to a lookup by address when the reset reported no id", async () => {
@@ -722,10 +830,13 @@ describe("AccountService.resetPassword ends the account's sessions", () => {
       },
     });
 
-    await service.resetPassword(RESET_REQUEST, IP);
+    expect(await service.resetPassword(RESET_REQUEST, IP)).toEqual({
+      outcome: "changed",
+    });
+    await flushMicrotasks();
 
     expect(lookups).toHaveBeenCalledExactlyOnceWith("ann@desk.io");
-    expect(revoked).toEqual([[RESET_ID, true]]);
+    expect(revoked).toEqual([RESET_ID]);
   });
 
   it.each(["unavailable", "missing"] as const)(
@@ -746,6 +857,8 @@ describe("AccountService.resetPassword ends the account's sessions", () => {
       expect(await service.resetPassword(RESET_REQUEST, IP)).toEqual({
         outcome: "changed",
       });
+      await flushMicrotasks();
+
       expect(revokeSessions).not.toHaveBeenCalled();
       expect(revoked).toEqual([]);
       expect(lines).toEqual(["[accounts] reset-lookup-failed"]);
@@ -766,6 +879,8 @@ describe("AccountService.resetPassword ends the account's sessions", () => {
     expect(await service.resetPassword(RESET_REQUEST, IP)).toEqual({
       outcome: "changed",
     });
+    await flushMicrotasks();
+
     expect(revoked).toEqual([]);
     expect(lines).toEqual(["[accounts] reset-lookup-failed"]);
   });
@@ -1556,7 +1671,7 @@ interface ServiceOverrides {
   readonly sendLimiter?: RateLimiter;
   readonly sendFuses?: SendFuses;
   readonly log?: (line: string) => void;
-  readonly onSessionsRevoked?: (accountId: string, stamped: boolean) => void;
+  readonly onSessionsRevoked?: (accountId: string) => void;
 }
 
 interface ServiceFixture {
@@ -1744,11 +1859,13 @@ interface RevokingOverrides {
   /** The id the reset reports; the default is RESET_ID, `null` is a store
    * that did not say. */
   readonly resetAccountId?: string | null;
+  readonly onRevoked?: (accountId: string) => void;
+  readonly log?: (line: string) => void;
 }
 
 interface RevokingFixture {
   readonly service: AccountService;
-  readonly revoked: [string, boolean][];
+  readonly revoked: string[];
   readonly lines: string[];
   readonly lookups: ReturnType<typeof vi.fn>;
 }
@@ -1761,7 +1878,7 @@ const RESET_REQUEST: ResetPasswordRequestDto = {
 };
 
 function createRevokingFixture(overrides: RevokingOverrides): RevokingFixture {
-  const revoked: [string, boolean][] = [];
+  const revoked: string[] = [];
   const lines: string[] = [];
   const lookups = vi.fn(
     overrides.findByEmail ??
@@ -1795,9 +1912,11 @@ function createRevokingFixture(overrides: RevokingOverrides): RevokingFixture {
     ...createOptions(directory),
     log: (line: string): void => {
       lines.push(line);
+      overrides.log?.(line);
     },
-    onSessionsRevoked: (accountId: string, stamped: boolean): void => {
-      revoked.push([accountId, stamped]);
+    onSessionsRevoked: (accountId: string): void => {
+      revoked.push(accountId);
+      overrides.onRevoked?.(accountId);
     },
   });
 

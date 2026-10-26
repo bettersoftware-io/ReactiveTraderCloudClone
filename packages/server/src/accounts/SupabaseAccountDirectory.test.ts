@@ -810,7 +810,7 @@ describe("SupabaseAccountDirectory — findByEmail and purge", () => {
 });
 
 describe("SupabaseAccountDirectory — admin operations", () => {
-  it("lists newest first, capped, with the admin columns", async () => {
+  it("lists waiting accounts first, then newest, capped, with the admin columns", async () => {
     const fake = createFakeFetch([
       createReply(200, [
         { ...createProfileRow(), sessions_not_before: STAMP_ISO },
@@ -822,7 +822,7 @@ describe("SupabaseAccountDirectory — admin operations", () => {
 
     expect(fake.requests[0]?.method).toBe("GET");
     expect(fake.requests[0]?.url).toBe(
-      `https://proj.supabase.co/rest/v1/profiles?select=${COLUMNS}&order=created_at.desc&limit=500`,
+      `https://proj.supabase.co/rest/v1/profiles?select=${COLUMNS}&order=approved.asc,created_at.desc&limit=500`,
     );
     expect(listing).toMatchObject({
       outcome: "listed",
@@ -831,6 +831,33 @@ describe("SupabaseAccountDirectory — admin operations", () => {
         { id: OTHER_ID, sessionsNotBefore: null },
       ],
     });
+  });
+
+  it("asks for accounts awaiting approval first, then newest, and keeps the order the store answers in", async () => {
+    // The store sorts; this fake plays back what it would answer for
+    // `order=approved.asc,created_at.desc`: waiting accounts (newest first),
+    // then approved ones (newest first).
+    const fake = createFakeFetch([
+      createReply(200, [
+        { ...createProfileRow(), id: "w-new", approved: false },
+        { ...createProfileRow(), id: "w-old", approved: false },
+        { ...createProfileRow(), id: "a-new", approved: true },
+        { ...createProfileRow(), id: "a-old", approved: true },
+      ]),
+    ]);
+
+    const listing = await createDirectory(fake).listAccounts(4);
+
+    expect(fake.requests[0]?.url).toContain(
+      "&order=approved.asc,created_at.desc&limit=4",
+    );
+    expect(fake.requests[0]?.url).not.toContain("%22");
+    expect(
+      listing.outcome === "listed" &&
+        listing.accounts.map((account) => {
+          return account.id;
+        }),
+    ).toEqual(["w-new", "w-old", "a-new", "a-old"]);
   });
 
   it("a listing with an unreadable row is unavailable (fail closed)", async () => {

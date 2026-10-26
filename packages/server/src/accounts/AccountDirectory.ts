@@ -128,7 +128,10 @@ export interface AccountDirectory {
    * answered while the count was being read. */
   countRegistrationsSince(sinceMs: number): Promise<RegistrationCount>;
   ping(): Promise<boolean>;
-  /** Up to `limit` accounts, newest first. */
+  /** Up to `limit` accounts: those not yet approved first, then approved
+   * ones, newest first within each group. The cap therefore cuts off the
+   * OLDEST APPROVED accounts, never one awaiting approval. (A blocked
+   * account sorts by its `approved` flag like any other.) */
   listAccounts(limit: number): Promise<AccountListing>;
   /** Sets `approved`. */
   setApproved(accountId: string): Promise<AdminWrite>;

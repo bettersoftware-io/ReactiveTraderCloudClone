@@ -461,7 +461,7 @@ export function createSupabaseAccountDirectory(
 
       const reply = await call({
         method: "GET",
-        path: `/rest/v1/profiles?select=${PROFILE_COLUMNS}&order=created_at.desc&limit=${limit}`,
+        path: `/rest/v1/profiles?select=${PROFILE_COLUMNS}&order=approved.asc,created_at.desc&limit=${limit}`,
       });
 
       if (reply.kind !== "ok" || !Array.isArray(reply.body)) {

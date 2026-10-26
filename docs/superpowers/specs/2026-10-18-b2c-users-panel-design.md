@@ -206,7 +206,10 @@ Supabase, in-memory and disabled.
 - `Call.method` gains `PATCH`.
 - An empty array returned by a PATCH means `not_found`.
 - The id is checked with `UUID_SHAPE` before any request.
-- `listAccounts` caps at `ADMIN_ACCOUNT_LIST_MAX` (500, in `limits.ts`).
+- `listAccounts` caps at `ADMIN_ACCOUNT_LIST_MAX` (500, in `limits.ts`). It
+  returns accounts not yet approved first, then approved ones, newest first
+  within each (`order=approved.asc,created_at.desc`), so the cap cuts the
+  oldest approved accounts and never one awaiting approval.
 - The in-memory directory implements all five over its map, so `dev:*:ws`,
   e2e and the fullstack journey can exercise them.
 - The disabled directory answers `unavailable`.
