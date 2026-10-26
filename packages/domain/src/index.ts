@@ -195,6 +195,7 @@ export {
 } from "./jarvis/jarvisConstants.js";
 export type {
   JarvisAvailabilityGate,
+  JarvisBudgetView,
   JarvisEvent,
   JarvisGateLevel,
   JarvisHistoryEntry,

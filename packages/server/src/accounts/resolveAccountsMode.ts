@@ -3,6 +3,9 @@ import {
   EMAIL_SENDS_PER_HOUR_MAX,
   MAX_REGISTRATIONS_PER_DAY,
 } from "../config/limits.js";
+import { createInMemorySpendStore } from "../services/jarvisBudget/InMemorySpendStore.js";
+import type { SpendStore } from "../services/jarvisBudget/SpendStore.js";
+import { createSupabaseSpendStore } from "../services/jarvisBudget/SupabaseSpendStore.js";
 import type { AccountDirectory } from "./AccountDirectory.js";
 import { createDisabledAccountDirectory } from "./DisabledAccountDirectory.js";
 import { DEV_ACCOUNT_SEEDS } from "./devAccounts.js";
@@ -20,6 +23,10 @@ export type AccountsMode =
 
 interface AccountDirectoryDeps {
   readonly now: () => number;
+  readonly timeoutMs: number;
+}
+
+interface SpendStoreOptions {
   readonly timeoutMs: number;
 }
 
@@ -106,6 +113,26 @@ export function createAccountDirectory(
   }
 
   return createDisabledAccountDirectory();
+}
+
+/**
+ * The spend store `mode` names. Supabase mode MUST get the durable store:
+ * a deployed server that kept the house budget in memory would reset it on
+ * every restart. In-memory and disabled modes keep it in the process.
+ */
+export function createSpendStore(
+  mode: AccountsMode,
+  options: SpendStoreOptions,
+): SpendStore {
+  if (mode.kind === "supabase") {
+    return createSupabaseSpendStore({
+      url: mode.url,
+      secretKey: mode.secretKey,
+      timeoutMs: options.timeoutMs,
+    });
+  }
+
+  return createInMemorySpendStore();
 }
 
 /**

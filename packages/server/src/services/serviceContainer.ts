@@ -20,8 +20,11 @@ import {
 } from "@rtc/domain";
 
 import type { AccountAdminService } from "../accounts/accountAdminService.js";
-import { JarvisGateService } from "./JarvisGateService.js";
-import { parseJarvisGateConfig } from "./jarvisGate.js";
+import { createInMemorySpendStore } from "./jarvisBudget/InMemorySpendStore.js";
+import { JarvisBudgetService } from "./jarvisBudget/JarvisBudgetService.js";
+import { parseJarvisBudgetConfig } from "./jarvisBudget/jarvisBudgetConfig.js";
+import type { JarvisTier } from "./jarvisBudget/jarvisTier.js";
+import type { SpendStore } from "./jarvisBudget/SpendStore.js";
 import { ThroughputService } from "./ThroughputService.js";
 import { UsageMeter } from "./UsageMeter.js";
 
@@ -48,8 +51,12 @@ export interface ServiceContainer {
   readonly marketData: MarketDataPort;
   readonly orders: OrderPort;
   readonly positions: PositionPort;
+  /** Today's Jarvis usage for the Ops card — display only. */
   readonly usageMeter: UsageMeter;
-  readonly jarvisGate: JarvisGateService;
+  /** Each person's daily Jarvis spend on the house key, and the house cap. */
+  readonly jarvisBudget: JarvisBudgetService;
+  /** Which house offer and budget a caller gets. A connection asks once. */
+  readonly jarvisTier: (caller: Caller) => Promise<JarvisTier>;
   /** Null on the shared container; set on a connection's scoped one. */
   readonly caller: Caller | null;
   /** The administrator rules behind the `admin.accounts.*` RPCs. */
@@ -70,18 +77,41 @@ function createUnavailableAccountAdminService(): AccountAdminService {
 }
 
 /**
+ * The tier lookup of a container built without an account directory: it
+ * cannot read a role, so every account is a member and only the roster
+ * persona (no account) is an operator — the narrower answer whenever the
+ * role is unknown, as `createTierLookup` does on a directory failure.
+ */
+function readTierFromLoginKind(caller: Caller): Promise<JarvisTier> {
+  return Promise.resolve(caller.accountId === null ? "operator" : "member");
+}
+
+/** What the composition root hands `createServices` beyond the env. Each
+ * one has a default that needs nothing outside the process, so a test can
+ * build a working container from `createServices({})` alone. */
+export interface ServiceOptions {
+  /** The administrator rules behind the `admin.accounts.*` RPCs; without
+   * one every call answers `unavailable`. */
+  readonly accountAdmin?: AccountAdminService;
+  /** Where the daily Jarvis spend is kept; in memory when omitted. */
+  readonly spendStore?: SpendStore;
+  /** How a caller's tier is read; by login kind when omitted. */
+  readonly jarvisTier?: (caller: Caller) => Promise<JarvisTier>;
+}
+
+/**
  * `env` defaults to `process.env` — the real, ambient environment — so every
  * existing call site (`index.ts`, and the many tests that call
  * `createServices()` with no argument) keeps reading real process env with
  * no change. Parameterized (mirroring `createJarvisLoops`'s own
  * `env: NodeJS.ProcessEnv` parameter in `agentLoop.ts`) so a test that wants
- * a specific `RTC_JARVIS_*` gate config can pass one explicitly instead of
+ * a specific `RTC_JARVIS_*` budget config can pass one explicitly instead of
  * the whole suite becoming sensitive to whatever's set in the ambient
  * process env it happens to run under.
  */
 export function createServices(
   env: NodeJS.ProcessEnv = process.env,
-  accountAdmin: AccountAdminService = createUnavailableAccountAdminService(),
+  options: ServiceOptions = {},
 ): ServiceContainer {
   const referenceData = new ReferenceDataSimulator();
   const pricing = new PricingSimulator();
@@ -96,10 +126,10 @@ export function createServices(
   const workflow = new CreditRfqSimulator(DEALERS_CATALOG);
   const throughput = new ThroughputService();
   const usageMeter = new UsageMeter();
-  const jarvisGate = new JarvisGateService(
-    usageMeter,
-    parseJarvisGateConfig(env),
-  );
+  const jarvisBudget = new JarvisBudgetService({
+    store: options.spendStore ?? createInMemorySpendStore(),
+    config: parseJarvisBudgetConfig(env),
+  });
   const marketData = new EquityMarketDataSimulator();
   const positions = new EquityPositionSimulator(marketData);
   const orders = new EquityOrderSimulator({
@@ -126,8 +156,10 @@ export function createServices(
     orders,
     positions,
     usageMeter,
-    jarvisGate,
+    jarvisBudget,
+    jarvisTier: options.jarvisTier ?? readTierFromLoginKind,
     caller: null,
-    accountAdmin,
+    accountAdmin:
+      options.accountAdmin ?? createUnavailableAccountAdminService(),
   };
 }

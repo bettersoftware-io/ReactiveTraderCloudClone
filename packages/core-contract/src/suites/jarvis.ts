@@ -222,6 +222,13 @@ function describeJarvisTurnCases(makeHarness: MakeHarness): void {
           text: "EURUSD moved",
           origin: "narrator",
         });
+        // The wire says so too: the server spends no stranger budget on a
+        // turn it can see is unprompted commentary.
+        expect(
+          h.driver.askLog().map((ask) => {
+            return ask.options?.origin;
+          }),
+        ).toEqual(["narrator"]);
       } finally {
         await h.teardown();
       }
@@ -246,6 +253,11 @@ function describeJarvisTurnCases(makeHarness: MakeHarness): void {
         const user = (await readJarvis(h)).entries.at(-2);
         expect(user).toMatchObject({ role: "user", text: "demo" });
         expect(user && "origin" in user).toBe(false);
+        expect(
+          h.driver.askLog().map((ask) => {
+            return ask.options?.origin;
+          }),
+        ).toEqual([undefined, undefined]);
       } finally {
         await h.teardown();
       }

@@ -40,7 +40,7 @@ import {
   type EquityQuote,
   type EqWatchlistSort,
   type Instrument,
-  type JarvisUsageSnapshot,
+  type JarvisUsage,
   type LayoutEngine,
   type LogEvent,
   type LoginWaitVariant,
@@ -228,7 +228,7 @@ export interface AppData {
    * Task 10 of Phase 3); defaults to null (the card's "NO USAGE DATA"
    * placeholder) — routed alongside `jarvis` above so a fixture that seeds
    * this actually reaches the card instead of silently capturing empty. */
-  jarvisUsage?: JarvisUsageSnapshot | null;
+  jarvisUsage?: JarvisUsage | null;
   /** Generative-UI desk panels J.A.R.V.I.S. has spawned (useJarvisPanels;
    * `JarvisPanelLayer`, Task 10 of the generative-UI round) — defaults to
    * none (the layer renders null). Each entry mirrors `JarvisPanelVm`'s

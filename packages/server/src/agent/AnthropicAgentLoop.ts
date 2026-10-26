@@ -3,7 +3,6 @@ import type { BetaToolRunnerRequestOptions } from "@anthropic-ai/sdk/lib/tools/B
 
 import type { ConfirmGate, JarvisToolDefinition } from "@rtc/agent-tools";
 
-import type { UsageMeter } from "../services/UsageMeter.js";
 import {
   AnthropicAgentSession,
   type AnthropicRunner,
@@ -62,15 +61,6 @@ export interface AnthropicAgentLoopOptions {
    * wants no roster check.
    */
   readonly knownSymbols: readonly string[];
-  /**
-   * Narrowed to the one method every session needs (`recordTokens`) rather
-   * than the full `UsageMeter` — the loop has no business calling
-   * `recordTurn` or reading `snapshot$` on a session's behalf, and a `Pick`
-   * keeps a test spy's fixture to exactly the one method it must fake.
-   * Optional: a loop built without one (e.g. a test that doesn't care about
-   * usage accounting) just means every session's usage tap is a no-op.
-   */
-  readonly usageMeter?: Pick<UsageMeter, "recordTokens">;
 }
 
 /**
@@ -78,7 +68,9 @@ export interface AnthropicAgentLoopOptions {
  * constructed ONCE here, in the constructor, and shared across every
  * session `createSession()` mints — `createSession()` itself does no SDK
  * client construction and makes no network call, only cheap allocation (see
- * `AnthropicAgentSession`'s doc comment).
+ * `AnthropicAgentSession`'s doc comment). Usage is not metered here: each
+ * turn brings its own meter (`JarvisTurnOptions.meter`), because whose
+ * budget a request spends is known per connection, not per loop.
  */
 export class AnthropicAgentLoop implements AgentLoop {
   private readonly runnerFactory: AnthropicRunnerFactory;
@@ -87,13 +79,10 @@ export class AnthropicAgentLoop implements AgentLoop {
     confirmTrade: ConfirmGate,
   ) => readonly JarvisToolDefinition[];
 
-  private readonly usageMeter?: Pick<UsageMeter, "recordTokens">;
-
   private readonly knownSymbols: readonly string[];
 
   constructor(options: AnthropicAgentLoopOptions) {
     this.buildTools = options.buildTools;
-    this.usageMeter = options.usageMeter;
     this.knownSymbols = options.knownSymbols;
     this.runnerFactory =
       options.runnerFactory ??
@@ -104,7 +93,6 @@ export class AnthropicAgentLoop implements AgentLoop {
     return new AnthropicAgentSession(
       this.runnerFactory,
       this.buildTools,
-      this.usageMeter,
       this.knownSymbols,
     );
   }

@@ -9,6 +9,7 @@ import {
   type JarvisHistoryEntry,
 } from "@rtc/domain";
 
+import type { TurnMeter } from "../services/jarvisBudget/JarvisBudgetService.js";
 import type { ServiceContainer } from "../services/serviceContainer.js";
 import { ScriptedAgentLoop } from "./ScriptedAgentLoop.js";
 
@@ -27,6 +28,10 @@ import { ScriptedAgentLoop } from "./ScriptedAgentLoop.js";
 export interface JarvisTurnOptions {
   readonly brain?: Exclude<JarvisBrain, "scripted">;
   readonly effort?: JarvisEffort;
+  /** The turn's budget: every model request is recorded into it, and it is
+   * asked before every further request whether the budget is spent. Absent,
+   * nothing is recorded and nothing stops the turn early. */
+  readonly meter?: TurnMeter;
 }
 
 /**

@@ -387,6 +387,31 @@ B2c adds a column and changes the wire, so the order matters:
    reaches `/mcp`: a token minted while it was a user is refused on its claim
    alone, before any directory read.
 
+## Rolling out B3a
+
+B3a adds the per-person daily Jarvis budget: a table, a function and a wire
+change (the availability frame carries the budget). The order matters:
+
+1. **Apply the migration**
+   `supabase/migrations/20261025000000_jarvis_spend_daily.sql` to the project
+   (SQL editor, or the Supabase connector), and make sure PostgREST's schema
+   cache has reloaded. It only adds the `jarvis_spend_daily` table and the
+   `record_jarvis_spend` function, both private to the server, so the server
+   that is running now is unaffected. **Do this before the deploy:** the new
+   server fails closed (house turns scripted, reason `unavailable`) while the
+   store cannot be reached.
+2. **Run the probe** (`accounts:probe`, see above). It now also executes
+   `record_jarvis_spend` on a sentinel day and deletes its rows afterwards; a
+   FAIL on the spend lines means step 1 is not in effect yet.
+3. **Deploy the server and both web clients together** (`deploy.yml`): the
+   `JARVIS_AVAILABILITY` frame changed shape, and the Ops usage card reads the
+   daily house budget.
+4. **Optionally set the two daily settings on Fly**
+   (`RTC_JARVIS_USER_DAILY_USD`, default 0.20; `RTC_JARVIS_HOUSE_DAILY_USD`,
+   default 3; `0` turns the house key off). Setting nothing keeps the
+   defaults. The retired `RTC_JARVIS_BUDGET_USD` and
+   `RTC_JARVIS_BUDGET_SOFT_RATIO` can be unset.
+
 ## Deploying
 
 Run the **Deploy** workflow manually — Actions tab → "Deploy" → Run workflow,

@@ -1229,7 +1229,12 @@ Jarvis entry.
 ## 18.15 The brain picker + usage display round — the receipt
 
 Round 1 (2026-08-02) of the "Jarvis LLM usage governance + model preferences"
-workstream — the `docs/STATUS.md` ⚪ entry P3 opened. It builds items (1)
+workstream — the `docs/STATUS.md` ⚪ entry P3 opened. (Since B3a the
+automatic gating is a per-person **daily** budget on a durable store, with
+no five-hour window and no soft gate: see the
+[B3 spec](../superpowers/specs/2026-10-25-b3-ai-metering-byo-keys-design.md)
+§3 and [running-real-jarvis.md](../running-real-jarvis.md#daily-budget--per-person-durable-no-restart-required).
+What follows describes this round as built.) It builds items (1)
 server-side usage metering, (3) footer/Ops surfacing, and (4) model+effort
 preference, plus a brain picker with Scripted as a first-class choice — the
 run-out-of-credits demo escape hatch. **Display-only, by design:** usage is
@@ -1343,12 +1348,16 @@ the same round that made the model selectable.
 ### `UsageMeter`
 
 `packages/server/src/services/UsageMeter.ts`, one instance in
-`serviceContainer` — **in-memory only**; a server restart zeroes it, and the
-Ops card's own copy says so ("resets on server restart") rather than
-implying persistence exists. Rolling **5h windows**
-(`JARVIS_USAGE_WINDOW_MS = 18_000_000` ms) anchor lazily — re-set at the
-first `recordTurn`/`recordTokens` call *after* expiry, not on a timer;
-rolling clears only `currentWindow`, `sinceBoot` never clears. The price
+`serviceContainer` — **in-memory only** and **display-only**; a server
+restart zeroes it, and the Ops card's own copy says so ("per-model rows
+reset on server restart") rather than implying persistence exists. (The
+budget is not this meter: it is the durable daily `JarvisBudgetService`,
+whose house line on the same card survives a restart — see the note at the
+top of §18.15.) Since B3a its window is the **UTC day**, the day the budgets
+reset on (round 1 built rolling 5h windows, `JARVIS_USAGE_WINDOW_MS`, since
+removed). It rolls lazily — at the first `recordTurn`/`recordTokens` call on
+a later day, not on a timer; rolling clears only `currentWindow`,
+`sinceBoot` never clears. The price
 table ($/Mtok per brain — Haiku $1/$5, Sonnet $3/$15, Opus $5/$25 in/out;
 cache-read at 10% of input, cache-creation at 1.25× input) types `"scripted"`
 out entirely (`Exclude<JarvisBrain, "scripted">`) and short-circuits it to
@@ -1475,7 +1484,9 @@ task's own change.
 Item (2) — Claude-Code-style usage windows, where exhausting the budget
 swaps the live loop to scripted until the window rolls — was explicitly out
 of this round's display-only scope. Everything it needs already exists.
-`UsageMeter`'s rolling windows are the accounting. The `brains` vocabulary is
+`UsageMeter`'s rolling windows are the accounting (B3a built the gating on
+the durable `JarvisBudgetService` instead, leaving the meter display-only).
+The `brains` vocabulary is
 the *same* mechanism `JARVIS_AVAILABILITY` already uses for "which brains
 can this connection pick from" — `RTC_JARVIS_FAKE` already demonstrates the
 collapse (`brains` narrows to `["scripted"]`, `defaultBrain` to

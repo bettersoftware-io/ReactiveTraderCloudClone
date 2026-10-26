@@ -2,7 +2,7 @@ import type {
   BetaMessageParam,
   BetaRawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type Mock, vi } from "vitest";
 
 import type { ConfirmGate, JarvisToolDefinition } from "@rtc/agent-tools";
 import {
@@ -13,6 +13,7 @@ import {
   type PanelSpecV1,
 } from "@rtc/domain";
 
+import type { TurnMeter } from "../services/jarvisBudget/JarvisBudgetService.js";
 import { AnthropicAgentLoop } from "./AnthropicAgentLoop.js";
 import type {
   AnthropicFinalMessage,
@@ -886,7 +887,7 @@ describe("AnthropicAgentLoop", () => {
     expect(calls[0]?.params.output_config).toBeUndefined();
   });
 
-  it("(Task 5 usage) per-iteration usage is recorded into the meter, keyed by the resolved model — a two-iteration turn (pause_turn resume) records twice with distinct usage", async () => {
+  it("(B3a meter) per-iteration usage is recorded into the turn's meter, keyed by the resolved model — a two-iteration turn (pause_turn resume) records twice with distinct usage", async () => {
     const first = createFakeStream([textDeltaEvent(0, "part 1")], {
       stop_reason: "pause_turn",
       content: [{ type: "text", text: "part 1" }],
@@ -919,29 +920,29 @@ describe("AnthropicAgentLoop", () => {
       };
     }
 
-    const recordTokens = vi.fn();
+    const meter = createMeterSpy();
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
       buildTools: createToolsFixture(),
       runnerFactory: createRunner,
-      usageMeter: { recordTokens },
     });
     const session = loop.createSession();
 
     await runTurnCollecting(session, "hi", [], undefined, {
       brain: "claude-sonnet-5",
+      meter,
     });
 
-    expect(recordTokens).toHaveBeenCalledTimes(2);
-    expect(recordTokens).toHaveBeenNthCalledWith(1, "claude-sonnet-5", {
+    expect(meter.record).toHaveBeenCalledTimes(2);
+    expect(meter.record).toHaveBeenNthCalledWith(1, "claude-sonnet-5", {
       inputTokens: 100,
       outputTokens: 20,
       cacheReadTokens: 5,
       cacheCreationTokens: 1,
     });
-    expect(recordTokens).toHaveBeenNthCalledWith(2, "claude-sonnet-5", {
+    expect(meter.record).toHaveBeenNthCalledWith(2, "claude-sonnet-5", {
       inputTokens: 50,
       outputTokens: 10,
       cacheReadTokens: 0,
@@ -949,27 +950,26 @@ describe("AnthropicAgentLoop", () => {
     });
   });
 
-  it("(Task 5 usage) a final message with no `usage` at all records zeros via the `?? 0` defaults, keyed by the default model", async () => {
+  it("(B3a meter) a final message with no `usage` at all records zeros via the `?? 0` defaults, keyed by the default model", async () => {
     const stream = createFakeStream([textDeltaEvent(0, "ok")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "ok" }],
       // usage omitted entirely — mirrors a fixture that doesn't care to set it.
     });
     const { factory } = scriptedRunner([stream]);
-    const recordTokens = vi.fn();
+    const meter = createMeterSpy();
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
       buildTools: createToolsFixture(),
       runnerFactory: factory,
-      usageMeter: { recordTokens },
     });
     const session = loop.createSession();
 
-    await runTurnCollecting(session, "hi");
+    await runTurnCollecting(session, "hi", [], undefined, { meter });
 
-    expect(recordTokens).toHaveBeenCalledExactlyOnceWith(DEFAULT_JARVIS_BRAIN, {
+    expect(meter.record).toHaveBeenCalledExactlyOnceWith(DEFAULT_JARVIS_BRAIN, {
       inputTokens: 0,
       outputTokens: 0,
       cacheReadTokens: 0,
@@ -977,7 +977,7 @@ describe("AnthropicAgentLoop", () => {
     });
   });
 
-  it("(Task 5 usage) no meter injected → the turn still completes normally, with no error and no crash", async () => {
+  it("(B3a meter) no meter on the turn → the turn still completes normally, with no error and no crash", async () => {
     const stream = createFakeStream([textDeltaEvent(0, "ok")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "ok" }],
@@ -995,7 +995,6 @@ describe("AnthropicAgentLoop", () => {
       knownSymbols: [],
       buildTools: createToolsFixture(),
       runnerFactory: factory,
-      // usageMeter deliberately omitted.
     });
     const session = loop.createSession();
 
@@ -1004,7 +1003,7 @@ describe("AnthropicAgentLoop", () => {
     expect(events).toEqual([{ type: "delta", text: "ok" }, { type: "done" }]);
   });
 
-  it("(Task 5 usage) a meter whose recordTokens throws does not corrupt the turn: it still completes with the full reply, logs server-side, and history still grows for the NEXT turn", async () => {
+  it("(B3a meter) a meter whose record throws does not corrupt the turn: it still completes with the full reply, logs server-side, and history still grows for the NEXT turn", async () => {
     const first = createFakeStream([textDeltaEvent(0, "Good morning, sir.")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "Good morning, sir." }],
@@ -1039,9 +1038,11 @@ describe("AnthropicAgentLoop", () => {
       };
     }
 
-    const recordTokens = vi.fn(() => {
+    const record = vi.fn(() => {
       throw new Error("usage meter exploded — must never corrupt the turn");
     });
+
+    const meter: TurnMeter = { ...createMeterSpy(), record };
 
     const consoleErrorSpy = vi
       .spyOn(console, "error")
@@ -1052,11 +1053,16 @@ describe("AnthropicAgentLoop", () => {
       knownSymbols: [],
       buildTools: createToolsFixture(),
       runnerFactory: createRunner,
-      usageMeter: { recordTokens },
     });
     const session = loop.createSession();
 
-    const events1 = await runTurnCollecting(session, "good morning");
+    const events1 = await runTurnCollecting(
+      session,
+      "good morning",
+      [],
+      undefined,
+      { meter },
+    );
 
     // The turn completes exactly as if the meter had never thrown: the full
     // reply, terminated with "done" — NOT the sanitized "desk link
@@ -1066,9 +1072,9 @@ describe("AnthropicAgentLoop", () => {
       { type: "delta", text: "Good morning, sir." },
       { type: "done" },
     ]);
-    expect(recordTokens).toHaveBeenCalledTimes(1);
+    expect(record).toHaveBeenCalledTimes(1);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "AnthropicAgentSession: usageMeter.recordTokens threw —",
+      "AnthropicAgentSession: meter.record threw —",
       expect.stringContaining("Error"),
     );
 
@@ -1077,7 +1083,7 @@ describe("AnthropicAgentLoop", () => {
     // "errored" outcome, and `runTurn`'s `.then` only appends to history on
     // "completed"). Turn 2's request replays turn 1's user + assistant
     // messages, exactly like the unthrottled case in test (a).
-    await runTurnCollecting(session, "thanks");
+    await runTurnCollecting(session, "thanks", [], undefined, { meter });
 
     expect(calls).toHaveLength(2);
     expect(calls[1]?.params.messages).toEqual([
@@ -1087,6 +1093,853 @@ describe("AnthropicAgentLoop", () => {
     ]);
 
     consoleErrorSpy.mockRestore();
+  });
+
+  it("(B3a mid-turn stop) a budget spent by a request stops the turn before the next one: the reply ends on the switch line, then done, and no second request is made", async () => {
+    const toolCallStream = createFakeStream(
+      [
+        textDeltaEvent(0, "Checking, sir."),
+        toolUseStartEvent(1, "t1", "get_price", { symbol: "EURUSD" }),
+        toolStopEvent(1),
+      ],
+      {
+        stop_reason: "tool_use",
+        content: [
+          { type: "text", text: "Checking, sir." },
+          {
+            type: "tool_use",
+            id: "t1",
+            name: "get_price",
+            input: { symbol: "EURUSD" },
+          },
+        ],
+        usage: {
+          input_tokens: 3_000,
+          output_tokens: 200,
+          cache_read_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+        },
+      },
+    );
+
+    const finalStream = createFakeStream([textDeltaEvent(0, "1.10000.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "1.10000." }],
+    });
+    let requests = 0;
+
+    function createRunner(): AnthropicRunner {
+      return {
+        async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+          requests += 1;
+          yield toolCallStream;
+          requests += 1;
+          yield finalStream;
+        },
+        pushMessages: (): void => {},
+      };
+    }
+
+    let spent = false;
+    const record = vi.fn((): void => {
+      spent = true;
+    });
+
+    const meter: MeterSpy = {
+      ...createMeterSpy(),
+      record,
+      exhausted: () => {
+        return spent;
+      },
+    };
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createRunner,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "price?", [], undefined, {
+      brain: "claude-haiku-4-5",
+      meter,
+    });
+
+    expect(events).toEqual([
+      { type: "delta", text: "Checking, sir." },
+      { type: "toolEvent", tool: "quote", status: "running" },
+      { type: "toolEvent", tool: "quote", status: "done" },
+      { type: "delta", text: BUDGET_STOP_NOTICE },
+      { type: "done" },
+    ]);
+    expect(requests).toBe(1);
+    expect(record).toHaveBeenCalledExactlyOnceWith("claude-haiku-4-5", {
+      inputTokens: 3_000,
+      outputTokens: 200,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+    // Only the request that was made was reserved; nothing is left open.
+    expect(meter.beginRequest).toHaveBeenCalledExactlyOnceWith(
+      "claude-haiku-4-5",
+      REQUEST_CEILING,
+    );
+    expect(meter.endRequest).not.toHaveBeenCalled();
+  });
+
+  it("(B3a budget check) a meter that throws when asked counts as spent: the turn makes no request", async () => {
+    const toolCallStream = createFakeStream(
+      [toolUseStartEvent(0, "t1", "get_price", { symbol: "EURUSD" })],
+      {
+        stop_reason: "tool_use",
+        content: [
+          {
+            type: "tool_use",
+            id: "t1",
+            name: "get_price",
+            input: { symbol: "EURUSD" },
+          },
+        ],
+      },
+    );
+
+    const finalStream = createFakeStream([textDeltaEvent(0, "1.10000.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "1.10000." }],
+    });
+    const { factory, calls } = scriptedRunner([toolCallStream, finalStream]);
+    const meter: TurnMeter = {
+      ...createMeterSpy(),
+      exhausted: () => {
+        throw new Error("budget copy exploded");
+      },
+    };
+
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "price?", [], undefined, {
+      meter,
+    });
+
+    expect(events).toEqual([
+      { type: "delta", text: BUDGET_SPENT_NOTICE },
+      { type: "done" },
+    ]);
+    expect(calls).toHaveLength(0);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "AnthropicAgentSession: meter.exhausted threw —",
+      "Error",
+    );
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("(B3a mid-turn stop) a turn whose last request spent the budget ends as usual: no switch line when no further request would follow", async () => {
+    const stream = createFakeStream([textDeltaEvent(0, "Done, sir.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "Done, sir." }],
+    });
+    const { factory } = scriptedRunner([stream]);
+    let spent = false;
+    const meter: TurnMeter = {
+      ...createMeterSpy(),
+      record: (): void => {
+        spent = true;
+      },
+      exhausted: () => {
+        return spent;
+      },
+    };
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "hi", [], undefined, {
+      meter,
+    });
+
+    expect(events).toEqual([
+      { type: "delta", text: "Done, sir." },
+      { type: "done" },
+    ]);
+  });
+
+  it("(B3a budget check) a budget already spent when the turn starts makes no request: the reply is the switch line alone", async () => {
+    const stream = createFakeStream([textDeltaEvent(0, "hi")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "hi" }],
+    });
+    const { factory, calls } = scriptedRunner([stream]);
+    const meter: MeterSpy = {
+      ...createMeterSpy(),
+      exhausted: () => {
+        return true;
+      },
+    };
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "hi", [], undefined, {
+      meter,
+    });
+
+    expect(events).toEqual([
+      { type: "delta", text: BUDGET_SPENT_NOTICE },
+      { type: "done" },
+    ]);
+    expect(calls).toHaveLength(0);
+    expect(meter.beginRequest).not.toHaveBeenCalled();
+    expect(meter.record).not.toHaveBeenCalled();
+  });
+
+  it("(B3a mid-turn stop) a pause_turn whose request spent the budget is not resumed: switch line, done, one request, nothing pushed back", async () => {
+    const pausedStream = createFakeStream(
+      [textDeltaEvent(0, "Working, sir.")],
+      {
+        stop_reason: "pause_turn",
+        content: [{ type: "text", text: "Working, sir." }],
+      },
+    );
+
+    const finalStream = createFakeStream([textDeltaEvent(0, " Done.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: " Done." }],
+    });
+    let requests = 0;
+    const pushMessages = vi.fn();
+
+    function createRunner(): AnthropicRunner {
+      return {
+        async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+          requests += 1;
+          yield pausedStream;
+          requests += 1;
+          yield finalStream;
+        },
+        pushMessages,
+      };
+    }
+
+    let spent = false;
+    const meter: TurnMeter = {
+      ...createMeterSpy(),
+      record: (): void => {
+        spent = true;
+      },
+      exhausted: () => {
+        return spent;
+      },
+    };
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createRunner,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "go", [], undefined, {
+      meter,
+    });
+
+    expect(events).toEqual([
+      { type: "delta", text: "Working, sir." },
+      { type: "delta", text: BUDGET_STOP_NOTICE },
+      { type: "done" },
+    ]);
+    expect(requests).toBe(1);
+    expect(pushMessages).not.toHaveBeenCalled();
+  });
+
+  it("(B3a metering) a request cancelled mid-reply on a brain that streams all it generates (Haiku) is still booked: its input as reported, its output estimated from every text, thinking and tool-input character that streamed", async () => {
+    // As the real protocol streams it: usage on `message_start` (output 1),
+    // then content, and no `message_delta` before the cancel — that only
+    // comes just before `message_stop`.
+    const meter = createMeterSpy();
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createAbortableRunnerFactory([
+        createMessageStartEvent({
+          input_tokens: 1_200,
+          output_tokens: 1,
+          cache_read_input_tokens: 300,
+          cache_creation_input_tokens: null,
+        }),
+        createThinkingDeltaEvent(0, "t".repeat(40)),
+        textDeltaEvent(1, "a".repeat(300)),
+        createInputJsonDeltaEvent(2, "j".repeat(40)),
+        textDeltaEvent(1, LAST_STREAMED_TEXT),
+      ]),
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(
+      session,
+      "price?",
+      [],
+      cancelOnLastStreamedText(session),
+      { brain: "claude-haiku-4-5", meter },
+    );
+
+    expect(events.at(-1)).toEqual({
+      type: "error",
+      message: CANCELLED_MESSAGE,
+    });
+    // 40 + 300 + 40 + 20 = 400 characters, at 4 a token.
+    expect(meter.record).toHaveBeenCalledExactlyOnceWith("claude-haiku-4-5", {
+      inputTokens: 1_200,
+      outputTokens: 100,
+      cacheReadTokens: 300,
+      cacheCreationTokens: 0,
+    });
+    expect(meter.endRequest).not.toHaveBeenCalled();
+  });
+
+  it("(B3a metering) a cancelled request whose reported output exceeds the estimate is booked at what was reported", async () => {
+    const meter = createMeterSpy();
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createAbortableRunnerFactory([
+        createMessageStartEvent({
+          input_tokens: 800,
+          output_tokens: 1,
+          cache_read_input_tokens: null,
+          cache_creation_input_tokens: null,
+        }),
+        createMessageDeltaEvent(250),
+        textDeltaEvent(0, LAST_STREAMED_TEXT),
+      ]),
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(
+      session,
+      "price?",
+      [],
+      cancelOnLastStreamedText(session),
+      { brain: "claude-sonnet-5", meter },
+    );
+
+    expect(meter.record).toHaveBeenCalledExactlyOnceWith("claude-sonnet-5", {
+      inputTokens: 800,
+      outputTokens: 250,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+  });
+
+  it("(B3a metering) a request cancelled before its first event is booked at an input estimate — its messages at 4 characters a token plus the persona and tools prefix — not released", async () => {
+    const meter = createMeterSpy();
+    let session: AgentSession | undefined;
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createCancellingRunnerFactory({
+        events: [],
+        cancel: () => {
+          session?.cancelTurn();
+        },
+      }),
+    });
+    session = loop.createSession();
+
+    const events = await runTurnCollecting(
+      session,
+      "p".repeat(3_960),
+      [],
+      undefined,
+      { brain: "claude-haiku-4-5", meter },
+    );
+
+    expect(events).toEqual([{ type: "error", message: CANCELLED_MESSAGE }]);
+    // `[{"role":"user","content":"…"}]` is 30 characters around the 3,960 of
+    // text: 3,990 / 4 rounds up to 998, plus the 2,100-token prefix. Nothing
+    // streamed, so Haiku's output estimate is 0.
+    expect(meter.record).toHaveBeenCalledExactlyOnceWith("claude-haiku-4-5", {
+      inputTokens: 3_098,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+    expect(meter.endRequest).not.toHaveBeenCalled();
+  });
+
+  it("(B3a metering) a request cancelled before its first event after a tool round-trip is estimated from the conversation the runner sends, not the turn's first message", async () => {
+    const firstRequest = createFakeStream(
+      [toolUseStartEvent(0, "t1", "get_price", { symbol: "EURUSD" })],
+      {
+        stop_reason: "tool_use",
+        content: [],
+        usage: {
+          input_tokens: 900,
+          output_tokens: 40,
+          cache_read_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+        },
+      },
+    );
+
+    const conversation: readonly BetaMessageParam[] = [
+      { role: "user", content: "price?" },
+      {
+        role: "assistant",
+        content: [
+          {
+            type: "tool_use",
+            id: "t1",
+            name: "get_price",
+            input: { symbol: "EURUSD" },
+          },
+        ],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "tool_result", tool_use_id: "t1", content: "r".repeat(800) },
+        ],
+      },
+    ];
+    const meter = createMeterSpy();
+    let session: AgentSession | undefined;
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createCancellingRunnerFactory({
+        events: [],
+        cancel: () => {
+          session?.cancelTurn();
+        },
+        finished: [firstRequest],
+        conversation,
+      }),
+    });
+    session = loop.createSession();
+
+    await runTurnCollecting(session, "price?", [], undefined, {
+      brain: "claude-haiku-4-5",
+      meter,
+    });
+
+    expect(meter.record).toHaveBeenNthCalledWith(2, "claude-haiku-4-5", {
+      inputTokens:
+        Math.ceil(JSON.stringify(conversation).length / 4) +
+        PROMPT_PREFIX_TOKENS,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+  });
+
+  it("(B3a metering) a thinking brain cancelled mid-thinking is booked at the per-request output cap: its thinking display is omitted, so nothing it billed streamed", async () => {
+    const meter = createMeterSpy();
+    let session: AgentSession | undefined;
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createCancellingRunnerFactory({
+        events: [
+          createMessageStartEvent({
+            input_tokens: 1_500,
+            output_tokens: 1,
+            cache_read_input_tokens: 2_000,
+            cache_creation_input_tokens: null,
+          }),
+          createThinkingDeltaEvent(0, ""),
+          createThinkingDeltaEvent(0, ""),
+        ],
+        cancel: () => {
+          session?.cancelTurn();
+        },
+      }),
+    });
+    session = loop.createSession();
+
+    await runTurnCollecting(session, "price?", [], undefined, {
+      brain: "claude-sonnet-5",
+      meter,
+    });
+
+    expect(meter.record).toHaveBeenCalledExactlyOnceWith("claude-sonnet-5", {
+      inputTokens: 1_500,
+      outputTokens: 4_096,
+      cacheReadTokens: 2_000,
+      cacheCreationTokens: 0,
+    });
+  });
+
+  it("(B3a metering) a request that fails after it was sent but before it reported usage books nothing and releases its reservation", async () => {
+    const stream: AnthropicMessageStream = {
+      // biome-ignore lint/correctness/useYield: fails before its first event
+      async *[Symbol.asyncIterator](): AsyncGenerator<BetaRawMessageStreamEvent> {
+        throw new Error("overloaded");
+      },
+      finalMessage: () => {
+        return new Promise(() => {});
+      },
+    };
+    const { factory } = scriptedRunner([stream]);
+    const meter = createMeterSpy();
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "hi", [], undefined, {
+      brain: "claude-sonnet-5",
+      meter,
+    });
+
+    expect(events.at(-1)).toEqual({
+      type: "error",
+      message: DESK_LINK_FALTERED_MESSAGE,
+    });
+    expect(meter.record).not.toHaveBeenCalled();
+    expect(meter.endRequest).toHaveBeenCalledTimes(1);
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("(B3a metering) a cancel while a trade awaits confirmation releases the next request's reservation: the runner hands over a stream on the aborted signal, which the SDK never sends", async () => {
+    const tradeInput = {
+      symbol: "EURUSD",
+      direction: Direction.Buy,
+      notional: 1_000_000,
+    };
+
+    const tradeStream = createFakeStream(
+      [
+        toolUseStartEvent(0, "t1", "execute_trade", tradeInput),
+        toolStopEvent(0),
+      ],
+      {
+        stop_reason: "tool_use",
+        content: [],
+        usage: {
+          input_tokens: 900,
+          output_tokens: 60,
+          cache_read_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+        },
+      },
+    );
+
+    const unsentStream: AnthropicMessageStream = {
+      // biome-ignore lint/correctness/useYield: an aborted request has no events
+      async *[Symbol.asyncIterator](): AsyncGenerator<BetaRawMessageStreamEvent> {
+        throw new Error("Request was aborted.");
+      },
+      finalMessage: () => {
+        return new Promise(() => {});
+      },
+    };
+
+    function createRunner(params: FactoryParams): AnthropicRunner {
+      return {
+        async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+          yield tradeStream;
+
+          const tool = asFakeTools(params.tools).find((candidate) => {
+            return candidate.name === "execute_trade";
+          });
+
+          // As the SDK runner does: run the tool, then hand over the next
+          // request's stream.
+          await tool?.run(tradeInput);
+          yield unsentStream;
+        },
+        pushMessages: (): void => {},
+      };
+    }
+
+    function createFixtureTools(
+      confirmTrade: ConfirmGate,
+    ): readonly JarvisToolDefinition[] {
+      return [createFakeExecuteTradeTool(confirmTrade, () => {})];
+    }
+
+    const meter = createMeterSpy();
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(createFixtureTools),
+      runnerFactory: createRunner,
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(
+      session,
+      "buy 1m EURUSD",
+      [],
+      (event: JarvisEvent): void => {
+        if (event.type === "confirmRequest") {
+          session.cancelTurn();
+        }
+      },
+      { brain: "claude-sonnet-5", meter },
+    );
+
+    expect(meter.beginRequest).toHaveBeenCalledTimes(2);
+    expect(meter.record).toHaveBeenCalledExactlyOnceWith("claude-sonnet-5", {
+      inputTokens: 900,
+      outputTokens: 60,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+    expect(meter.endRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("(B3a metering) the estimate counts only the cancelled request's own content, not an earlier request's", async () => {
+    const firstRequest = createFakeStream(
+      [
+        textDeltaEvent(0, "a".repeat(400)),
+        toolUseStartEvent(1, "t1", "get_price", { symbol: "EURUSD" }),
+        toolStopEvent(1),
+      ],
+      {
+        stop_reason: "tool_use",
+        content: [],
+        usage: {
+          input_tokens: 900,
+          output_tokens: 120,
+          cache_read_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+        },
+      },
+    );
+    const meter = createMeterSpy();
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createAbortableRunnerFactory(
+        [
+          createMessageStartEvent({
+            input_tokens: 1_000,
+            output_tokens: 1,
+            cache_read_input_tokens: null,
+            cache_creation_input_tokens: null,
+          }),
+          textDeltaEvent(0, LAST_STREAMED_TEXT),
+        ],
+        [firstRequest],
+      ),
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(
+      session,
+      "price?",
+      [],
+      cancelOnLastStreamedText(session),
+      { brain: "claude-haiku-4-5", meter },
+    );
+
+    expect(meter.record).toHaveBeenNthCalledWith(2, "claude-haiku-4-5", {
+      inputTokens: 1_000,
+      outputTokens: 5,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+  });
+
+  it("(B3a metering) a request that errors before any content is booked with message_start's input and output", async () => {
+    const stream: AnthropicMessageStream = {
+      async *[Symbol.asyncIterator](): AsyncGenerator<BetaRawMessageStreamEvent> {
+        yield createMessageStartEvent({
+          input_tokens: 2_000,
+          output_tokens: 1,
+          cache_read_input_tokens: null,
+          cache_creation_input_tokens: 500,
+        });
+        throw new Error("connection reset");
+      },
+      finalMessage: () => {
+        return new Promise(() => {});
+      },
+    };
+    const { factory } = scriptedRunner([stream]);
+    const meter = createMeterSpy();
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "price?", [], undefined, {
+      brain: "claude-haiku-4-5",
+      meter,
+    });
+
+    expect(events.at(-1)).toEqual({
+      type: "error",
+      message: DESK_LINK_FALTERED_MESSAGE,
+    });
+    expect(meter.record).toHaveBeenCalledExactlyOnceWith("claude-haiku-4-5", {
+      inputTokens: 2_000,
+      outputTokens: 1,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 500,
+    });
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("(B3a metering) a request that errors mid-reply is booked with its output estimated from what streamed", async () => {
+    const stream: AnthropicMessageStream = {
+      async *[Symbol.asyncIterator](): AsyncGenerator<BetaRawMessageStreamEvent> {
+        yield createMessageStartEvent({
+          input_tokens: 2_000,
+          output_tokens: 1,
+          cache_read_input_tokens: null,
+          cache_creation_input_tokens: null,
+        });
+        yield textDeltaEvent(0, "x".repeat(81));
+        throw new Error("connection reset");
+      },
+      finalMessage: () => {
+        return new Promise(() => {});
+      },
+    };
+    const { factory } = scriptedRunner([stream]);
+    const meter = createMeterSpy();
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(session, "price?", [], undefined, {
+      brain: "claude-haiku-4-5",
+      meter,
+    });
+
+    // 81 characters round UP to 21 tokens: an estimate never under-books.
+    expect(meter.record).toHaveBeenCalledExactlyOnceWith("claude-haiku-4-5", {
+      inputTokens: 2_000,
+      outputTokens: 21,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("(B3a metering) a request that fails before it reports any usage books nothing and releases its reservation", async () => {
+    function createRunner(): AnthropicRunner {
+      return {
+        [Symbol.asyncIterator]: (): AsyncIterator<AnthropicMessageStream> => {
+          return {
+            next: (): Promise<IteratorResult<AnthropicMessageStream>> => {
+              return Promise.reject(new Error("connection refused"));
+            },
+          };
+        },
+        pushMessages: (): void => {},
+      };
+    }
+
+    const meter = createMeterSpy();
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createRunner,
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(session, "hi", [], undefined, { meter });
+
+    expect(meter.beginRequest).toHaveBeenCalledTimes(1);
+    expect(meter.record).not.toHaveBeenCalled();
+    expect(meter.endRequest).toHaveBeenCalledTimes(1);
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("(B3a metering) every request is reserved before it is made, and a reservation for a request the runner never sends is released", async () => {
+    // The runner stops after a tool_use, as `max_iterations` does: the turn
+    // reserved a next request that never went out.
+    const toolCallStream = createFakeStream(
+      [toolUseStartEvent(0, "t1", "get_price", { symbol: "EURUSD" })],
+      {
+        stop_reason: "tool_use",
+        content: [
+          {
+            type: "tool_use",
+            id: "t1",
+            name: "get_price",
+            input: { symbol: "EURUSD" },
+          },
+        ],
+      },
+    );
+    const { factory } = scriptedRunner([toolCallStream]);
+    const meter = createMeterSpy();
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(session, "price?", [], undefined, { meter });
+
+    expect(meter.beginRequest).toHaveBeenCalledTimes(2);
+    expect(meter.record).toHaveBeenCalledTimes(1);
+    expect(meter.endRequest).toHaveBeenCalledTimes(1);
+    const [firstReservation] = meter.beginRequest.mock.invocationCallOrder;
+    const [booking] = meter.record.mock.invocationCallOrder;
+    expect(firstReservation).toBeLessThan(booking ?? 0);
   });
 
   it("(Task 3) render_panel is composed into the live tool list even when buildTools contributes none", async () => {
@@ -1659,6 +2512,187 @@ function createDriveBatchInputFixture(): DriveAppInputFixture {
   return { commands: [{ kind: "switchTab", tab: "equities" }] };
 }
 
+interface MeterSpy extends TurnMeter {
+  readonly beginRequest: Mock<TurnMeter["beginRequest"]>;
+  readonly record: Mock<TurnMeter["record"]>;
+  readonly endRequest: Mock<TurnMeter["endRequest"]>;
+}
+
+/** A turn meter that records every request and is never spent. */
+function createMeterSpy(): MeterSpy {
+  return {
+    beginRequest: vi.fn<TurnMeter["beginRequest"]>(),
+    record: vi.fn<TurnMeter["record"]>(),
+    endRequest: vi.fn<TurnMeter["endRequest"]>(),
+    exhausted: () => {
+      return false;
+    },
+  };
+}
+
+interface MessageStartUsageFixture {
+  readonly input_tokens: number;
+  readonly output_tokens: number;
+  readonly cache_read_input_tokens: number | null;
+  readonly cache_creation_input_tokens: number | null;
+}
+
+/** A `message_start` carrying only the usage the meter reads. */
+function createMessageStartEvent(
+  usage: MessageStartUsageFixture,
+): BetaRawMessageStreamEvent {
+  return {
+    type: "message_start",
+    message: { usage },
+  } as unknown as BetaRawMessageStreamEvent;
+}
+
+function createThinkingDeltaEvent(
+  index: number,
+  thinking: string,
+): BetaRawMessageStreamEvent {
+  return {
+    type: "content_block_delta",
+    index,
+    delta: { type: "thinking_delta", thinking, estimated_tokens: null },
+  };
+}
+
+function createInputJsonDeltaEvent(
+  index: number,
+  partialJson: string,
+): BetaRawMessageStreamEvent {
+  return {
+    type: "content_block_delta",
+    index,
+    delta: { type: "input_json_delta", partial_json: partialJson },
+  };
+}
+
+/** A runner whose last request streams `events`, then hangs until the turn's
+ * signal aborts and rejects — how a real request reacts to a cancel. Any
+ * `finished` streams are requests that completed before it. */
+function createAbortableRunnerFactory(
+  events: readonly BetaRawMessageStreamEvent[],
+  finished: readonly AnthropicMessageStream[] = [],
+): AnthropicRunnerFactory {
+  return (_params: FactoryParams, options: FactoryOptions): AnthropicRunner => {
+    const signal = options.signal;
+    const stream: AnthropicMessageStream = {
+      async *[Symbol.asyncIterator](): AsyncGenerator<BetaRawMessageStreamEvent> {
+        for (const event of events) {
+          yield event;
+        }
+
+        await new Promise<never>((_resolve, reject) => {
+          if (signal?.aborted) {
+            reject(new Error("aborted"));
+          }
+
+          signal?.addEventListener("abort", () => {
+            reject(new Error("aborted"));
+          });
+        });
+      },
+      finalMessage: () => {
+        return new Promise(() => {});
+      },
+    };
+
+    return {
+      async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+        for (const done of finished) {
+          yield done;
+        }
+
+        yield stream;
+      },
+      pushMessages: (): void => {},
+    };
+  };
+}
+
+interface CancellingRunnerFixture {
+  /** What the last request streams before the cancel. */
+  readonly events: readonly BetaRawMessageStreamEvent[];
+  /** Cancels the turn. */
+  readonly cancel: () => void;
+  /** Requests that completed before the last one. */
+  readonly finished?: readonly AnthropicMessageStream[];
+  /** The runner's current conversation, as the real runner's `params`
+   * expose it; left out, the runner has no `params`. */
+  readonly conversation?: readonly BetaMessageParam[];
+}
+
+/** Like `createAbortableRunnerFactory`, but the last request cancels the
+ * turn itself once its `events` have streamed — a stop pressed at a moment
+ * no client event marks (before the first event, or mid-thinking). */
+function createCancellingRunnerFactory(
+  fixture: CancellingRunnerFixture,
+): AnthropicRunnerFactory {
+  return (_params: FactoryParams, options: FactoryOptions): AnthropicRunner => {
+    const signal = options.signal;
+    const stream: AnthropicMessageStream = {
+      async *[Symbol.asyncIterator](): AsyncGenerator<BetaRawMessageStreamEvent> {
+        for (const event of fixture.events) {
+          yield event;
+        }
+
+        fixture.cancel();
+
+        if (signal?.aborted) {
+          throw new Error("aborted");
+        }
+      },
+      finalMessage: () => {
+        return new Promise(() => {});
+      },
+    };
+
+    return {
+      async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+        for (const done of fixture.finished ?? []) {
+          yield done;
+        }
+
+        yield stream;
+      },
+      pushMessages: (): void => {},
+      ...(fixture.conversation === undefined
+        ? {}
+        : { params: { messages: fixture.conversation } }),
+    };
+  };
+}
+
+/** Cancels the turn the moment the stream's last text reaches the client,
+ * as a person pressing stop mid-reply would. */
+function cancelOnLastStreamedText(
+  session: AgentSession,
+): (event: JarvisEvent) => void {
+  return (event: JarvisEvent): void => {
+    if (event.type === "delta" && event.text === LAST_STREAMED_TEXT) {
+      session.cancelTurn();
+    }
+  };
+}
+
+/** A `message_delta` whose cumulative output count is `outputTokens`. */
+function createMessageDeltaEvent(
+  outputTokens: number,
+): BetaRawMessageStreamEvent {
+  return {
+    type: "message_delta",
+    delta: { stop_reason: null, stop_sequence: null },
+    usage: {
+      output_tokens: outputTokens,
+      input_tokens: null,
+      cache_read_input_tokens: null,
+      cache_creation_input_tokens: null,
+    },
+  } as unknown as BetaRawMessageStreamEvent;
+}
+
 function createToolsFixture(
   buildExtra: (
     confirmTrade: ConfirmGate,
@@ -1678,3 +2712,23 @@ const SESSION_CAP_MESSAGE =
   "We've had quite the session, sir — do reconnect for a fresh one.";
 
 const CANCELLED_MESSAGE = "Cancelled, sir.";
+
+/** 20 characters; the abort tests cancel when it streams. */
+const LAST_STREAMED_TEXT = "b".repeat(20);
+
+/** The persona and tools prefix a cancelled request's input estimate adds. */
+const PROMPT_PREFIX_TOKENS = 2_100;
+
+const BUDGET_SPENT_NOTICE =
+  "Today's AI budget is used — switching to the scripted brain.";
+
+const BUDGET_STOP_NOTICE = `\n\n${BUDGET_SPENT_NOTICE}`;
+
+/** The worst case a request is reserved at: 15k input tokens and the
+ * per-request output cap. */
+const REQUEST_CEILING = {
+  inputTokens: 15_000,
+  outputTokens: 4_096,
+  cacheReadTokens: 0,
+  cacheCreationTokens: 0,
+};

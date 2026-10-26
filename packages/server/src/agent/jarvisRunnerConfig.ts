@@ -18,6 +18,27 @@ import type { JarvisBrain } from "@rtc/domain";
 export const JARVIS_MAX_TOKENS_PER_TURN = 4_096;
 
 /**
+ * The input side of the worst case one request is reserved at against the
+ * daily budget while it is in flight (the output side is
+ * `JARVIS_MAX_TOKENS_PER_TURN`). The wire caps bound a first request's input
+ * near 13k tokens: 4,000 characters of text and 20 × 2,000 of history (about
+ * 11k tokens at ~4 characters a token) plus the ~2.1k-token persona and tools
+ * prefix. 15k leaves room for a later request's tool results. A reservation
+ * only has to make turns running at once see each other; the request's real
+ * cost replaces it when it is booked.
+ */
+export const JARVIS_RESERVE_INPUT_TOKENS = 15_000;
+
+/**
+ * The tokens every request carries ahead of its messages: the persona and the
+ * eight tool schemas, measured at ~2.1k (see `SYSTEM_BLOCKS` in
+ * `AnthropicAgentSession`). A request cancelled before the provider reported
+ * its usage is booked at its messages' estimate plus this prefix — the
+ * messages alone would leave out the part every request pays.
+ */
+export const JARVIS_PROMPT_PREFIX_TOKENS = 2_100;
+
+/**
  * Brains whose Anthropic request may carry `output_config.effort` — a
  * capability SET rather than a per-model-name conditional in
  * `AnthropicAgentSession`, so a future brain that also supports adaptive

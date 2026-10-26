@@ -115,6 +115,50 @@ describe("supabase migrations", () => {
   const sql = readAllMigrations();
 });
 
+/**
+ * `jarvis_spend_daily` holds each person's daily AI spend. Like `profiles` it
+ * is private to the server: RLS on, no policy, and the recording function is
+ * callable only by the server's secret key.
+ */
+describe("jarvis spend migration", () => {
+  it("enables row-level security on jarvis_spend_daily", () => {
+    expect(spendSql).toMatch(
+      /alter table public\.jarvis_spend_daily enable row level security/i,
+    );
+  });
+
+  it("revokes table access from the anon and authenticated roles", () => {
+    expect(spendSql).toMatch(
+      /revoke all on public\.jarvis_spend_daily from anon, authenticated/i,
+    );
+  });
+
+  it("revokes execute on record_jarvis_spend from public, anon and authenticated", () => {
+    expect(spendSql).toMatch(
+      /revoke execute on function public\.record_jarvis_spend\([^)]*\) from public, anon, authenticated/i,
+    );
+  });
+
+  it("pins the function's search path", () => {
+    expect(spendSql).toMatch(/security definer set search_path = ''/i);
+  });
+
+  it("defines no policy and grants nothing", () => {
+    expect(spendSql).not.toMatch(/create\s+policy/i);
+    expect(spendSql).not.toMatch(/\bgrant\b/i);
+  });
+
+  it("keeps the sums exact: numeric, never floating point", () => {
+    expect(spendSql).toMatch(/spend_usd\s+numeric\s+not null default 0/i);
+    expect(spendSql).not.toMatch(/\b(float|double precision|real)\b/i);
+  });
+
+  const spendSql = readFileSync(
+    join(MIGRATIONS_DIR, "20261025000000_jarvis_spend_daily.sql"),
+    "utf8",
+  ).replace(/^--.*$/gm, "");
+});
+
 function readAllMigrations(): string {
   return readdirSync(MIGRATIONS_DIR)
     .filter((name) => {

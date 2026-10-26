@@ -16,6 +16,10 @@
  *
  *   SUPABASE_URL=… SUPABASE_SECRET_KEY=… PROBE_EMAIL_DOMAIN=… pnpm --filter @rtc/server accounts:probe
  *
+ * Last, it executes the daily-budget SQL function (`record_jarvis_spend`) on
+ * a sentinel day (2000-01-01) and owner (`roster:__probe__`), reads the
+ * totals back, and deletes the probe's rows for that day.
+ *
  * Prints account ids, outcomes and how long each directory call took (in
  * ms, to compare a known and an unknown address for a response-time
  * oracle) — never a key, a password or a code.
@@ -37,6 +41,7 @@ import type {
   SignUpOutcome,
 } from "../src/accounts/AccountDirectory.ts";
 import { createSupabaseAccountDirectory } from "../src/accounts/SupabaseAccountDirectory.ts";
+import { createSupabaseSpendStore } from "../src/services/jarvisBudget/SupabaseSpendStore.ts";
 
 const url: string = process.env.SUPABASE_URL ?? "";
 const secretKey: string = process.env.SUPABASE_SECRET_KEY ?? "";
@@ -303,6 +308,92 @@ async function deleteAccount(accountId: string): Promise<number> {
   return response.status;
 }
 
+const SPEND_PROBE_DAY = "2000-01-01";
+const SPEND_PROBE_OWNER = "roster:__probe__";
+const SPEND_PROBE_USD = 0.01;
+const EPSILON = 1e-9;
+
+interface SpendDeletion {
+  readonly status: number;
+  readonly removed: number;
+}
+
+/** Deletes the spend rows the probe wrote: its own owner row and the house
+ * row for the sentinel day. Returns the PostgREST status. */
+async function deleteSpendRows(): Promise<SpendDeletion> {
+  const owners = ["house", SPEND_PROBE_OWNER]
+    .map((owner) => {
+      return encodeURIComponent(`"${owner}"`);
+    })
+    .join(",");
+
+  const response = await fetch(
+    `${url.replace(/\/+$/, "")}/rest/v1/jarvis_spend_daily?day=eq.${SPEND_PROBE_DAY}&owner=in.(${owners})`,
+    {
+      method: "DELETE",
+      headers: {
+        apikey: secretKey,
+        Authorization: `Bearer ${secretKey}`,
+        Prefer: "return=representation",
+      },
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+  const rows: unknown = response.ok ? await response.json() : [];
+
+  return {
+    status: response.status,
+    removed: Array.isArray(rows) ? rows.length : 0,
+  };
+}
+
+/** Runs the budget's SQL function and table on the live project. */
+async function probeSpendStore(): Promise<void> {
+  const spend = createSupabaseSpendStore({ url, secretKey, timeoutMs: 10_000 });
+
+  try {
+    await spend.record(
+      SPEND_PROBE_OWNER,
+      SPEND_PROBE_DAY,
+      "house",
+      SPEND_PROBE_USD,
+    );
+    const second = await spend.record(
+      SPEND_PROBE_OWNER,
+      SPEND_PROBE_DAY,
+      "house",
+      SPEND_PROBE_USD,
+    );
+    check(
+      "record_jarvis_spend adds up an owner's day",
+      second !== "unavailable" &&
+        Math.abs(second.ownerUsd - 2 * SPEND_PROBE_USD) < EPSILON &&
+        second.houseUsd >= 2 * SPEND_PROBE_USD - EPSILON,
+      second === "unavailable"
+        ? second
+        : `owner ${second.ownerUsd}, house ${second.houseUsd}`,
+    );
+
+    const read = await spend.read(SPEND_PROBE_OWNER, SPEND_PROBE_DAY, "house");
+    check(
+      "the spend table reads the totals back",
+      read !== "unavailable" &&
+        Math.abs(read.ownerUsd - 2 * SPEND_PROBE_USD) < EPSILON &&
+        read.houseUsd >= 2 * SPEND_PROBE_USD - EPSILON,
+      read === "unavailable"
+        ? read
+        : `owner ${read.ownerUsd}, house ${read.houseUsd}`,
+    );
+  } finally {
+    const { status, removed } = await deleteSpendRows();
+    check(
+      "spend cleanup",
+      status >= 200 && status < 300 && removed > 0,
+      `day ${SPEND_PROBE_DAY}, delete answered ${status}, removed ${removed} rows`,
+    );
+  }
+}
+
 console.log("accounts probe: starting");
 check("ping", await directory.ping(), "profiles table reachable");
 
@@ -495,6 +586,8 @@ if (freshId !== null) {
     );
   }
 }
+
+await probeSpendStore();
 
 console.log(
   failures === 0

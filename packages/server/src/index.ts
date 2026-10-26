@@ -16,6 +16,7 @@ import { createAccountAdminService } from "./accounts/accountAdminService.js";
 import { createAccountStatusCache } from "./accounts/accountStatusCache.js";
 import {
   createAccountDirectory,
+  createSpendStore,
   isRegistrationOpen,
   readSignupLevers,
   resolveAccountsMode,
@@ -87,6 +88,7 @@ import {
 import { createMcpRequestHandler } from "./mcp/mcpHttpHandler.js";
 import { createConnectionLog } from "./observability/connectionLog.js";
 import { scopeServicesToConnection } from "./services/connectionScope.js";
+import { createTierLookup } from "./services/jarvisBudget/jarvisTier.js";
 import {
   createServices,
   type ServiceContainer,
@@ -119,8 +121,8 @@ function buildJarvisToolsFor(
 /** The seam `createJarvisLoops` warns and falls through without: builds the
  * real `AnthropicAgentLoop`, wiring each session's own `buildJarvisTools`
  * call (see `AnthropicAgentLoopOptions.buildTools`'s doc comment for why that
- * must happen per session, not once here) and `services.usageMeter` so every
- * real Claude turn's token usage reaches the ops usage dock.
+ * must happen per session, not once here). Token usage reaches the budget
+ * and the ops usage dock through each turn's meter (`jarvis.effects.ts`).
  * `createJarvisLoops` only invokes this when `env.ANTHROPIC_API_KEY` is
  * already known truthy, hence the `?? ""` fallback below is unreachable in
  * practice, not a silent-empty-key path. Satisfies `AnthropicLoopBuilder`
@@ -134,7 +136,6 @@ function buildAnthropicLoop(
     buildTools: (confirmTrade: ConfirmGate) => {
       return buildJarvisToolsFor(services, confirmTrade);
     },
-    usageMeter: services.usageMeter,
     // render_panel's roster check (LIVE brains only) — the same static
     // roster the desk tools' own reads ultimately source from
     // (`ReferenceDataSimulator.getCurrencyPairs()` is just this constant
@@ -146,17 +147,6 @@ function buildAnthropicLoop(
     }),
   });
 }
-
-const services = createServices();
-const jarvisLoops = createJarvisLoops(
-  process.env,
-  services,
-  buildAnthropicLoop,
-);
-
-// One merged effect for the process; a listener is built PER CONNECTION
-// below so each socket gets its own connection-scoped services (S10).
-const effect = combineEffects(...buildEffects(jarvisLoops));
 
 const auth = new AuthService({
   secret: process.env.AUTH_SECRET ?? "",
@@ -205,6 +195,28 @@ const accountDirectory = createAccountDirectory(accountsMode, {
   now: readClock,
   timeoutMs: ACCOUNT_DIRECTORY_TIMEOUT_MS,
 });
+
+// The daily Jarvis budget rides on the same store choice as the directory:
+// Supabase mode keeps it in the database, the dev modes in the process. The
+// tier lookup reads the role from the same directory.
+const spendStore = createSpendStore(accountsMode, {
+  timeoutMs: ACCOUNT_DIRECTORY_TIMEOUT_MS,
+});
+
+const services = createServices(process.env, {
+  spendStore,
+  jarvisTier: createTierLookup(accountDirectory),
+});
+
+const jarvisLoops = createJarvisLoops(
+  process.env,
+  services,
+  buildAnthropicLoop,
+);
+
+// One merged effect for the process; a listener is built PER CONNECTION
+// below so each socket gets its own connection-scoped services (S10).
+const effect = combineEffects(...buildEffects(jarvisLoops));
 
 const accountStatus = createAccountStatusCache({
   directory: accountDirectory,

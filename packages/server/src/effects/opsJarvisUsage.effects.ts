@@ -1,113 +1,120 @@
 import {
+  combineLatest,
+  from,
   map,
   merge,
   type Observable,
-  skip,
+  of,
   switchMap,
-  take,
   throttleTime,
-  withLatestFrom,
 } from "rxjs";
 
 import type { JarvisUsage, JarvisUsageSnapshot } from "@rtc/domain";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import { out, stream, type WsEffect } from "@rtc/ws-effects";
 
-import type { JarvisGateState } from "../services/JarvisGateService.js";
-import { spentWindowUsd } from "../services/jarvisGate.js";
+import { nextUtcMidnightMs } from "../services/jarvisBudget/utcDay.js";
+import { readConnectionBudget } from "./connectionBudget.js";
 import type { Ctx } from "./context.js";
 
-function buildPayload(
-  ctx: Ctx,
+const DAY_MS = 86_400_000;
+
+/** The snapshot as of today. `UsageMeter` rolls its day only when a record
+ * arrives, so after midnight with no turn yet its snapshot still holds
+ * yesterday's rows: those belong to no day the card shows. */
+function snapshotOfToday(
   snapshot: JarvisUsageSnapshot,
-  gate: JarvisGateState,
-): JarvisUsage {
-  const { budgetUsd, softRatio } = ctx.jarvisGate.config;
+  nowMs: number,
+): JarvisUsageSnapshot {
+  if (snapshot.windowEndMs > nowMs) {
+    return snapshot;
+  }
+
+  const windowEndMs = nextUtcMidnightMs(nowMs);
 
   return {
     ...snapshot,
-    budgetUsd: budgetUsd === "off" ? null : budgetUsd,
-    softBudgetUsd: budgetUsd === "off" ? null : budgetUsd * softRatio,
-    spentWindowUsd: spentWindowUsd(snapshot),
-    gateLevel: gate.level,
+    windowStartMs: windowEndMs - DAY_MS,
+    windowEndMs,
+    currentWindow: [],
   };
 }
 
+/** The Ops card's payload (spec §3.8): today's usage rows beside today's
+ * house-wide spend against the house cap. The soft stage is retired, so
+ * `softBudgetUsd` is always null and `gateLevel` is `"hard"` exactly when
+ * the house spend has reached the cap. */
+function buildPayload(ctx: Ctx, snapshot: JarvisUsageSnapshot): JarvisUsage {
+  const house = ctx.jarvisBudget.houseToday();
+
+  return {
+    ...snapshotOfToday(snapshot, Date.now()),
+    budgetUsd: house.limitUsd,
+    softBudgetUsd: null,
+    spentWindowUsd: house.spentUsd,
+    gateLevel: house.spentUsd >= house.limitUsd ? "hard" : "none",
+  };
+}
+
+/** Emits once the house copy is current, then again after every budget
+ * change has been re-read. `houseToday()` answers from the budget service's
+ * in-process copy, which only a `stateFor` fills from the store — after a
+ * restart it reads $0 until someone's budget is read. So the subscribing
+ * connection reads its own caller's budget first (every Ops subscriber is a
+ * signed-in caller); a connection with no caller has nothing to read with,
+ * and shows what the copy holds. */
+function houseCopyReadings$(ctx: Ctx): Observable<void> {
+  const caller = ctx.caller;
+
+  if (caller === null) {
+    return of(undefined);
+  }
+
+  return merge(of(undefined), ctx.jarvisBudget.changes$).pipe(
+    switchMap((): Observable<void> => {
+      return from(
+        readConnectionBudget(ctx, caller).then((): undefined => {
+          return undefined;
+        }),
+      );
+    }),
+  );
+}
+
 /**
- * Pushes `ctx.usageMeter.snapshot$` (a `BehaviorSubject` — subscribing
- * always replays the current snapshot first, so a late-attaching ops
- * panel isn't stuck waiting for the next `recordTurn`/`recordTokens` call)
- * enriched with the budget-gate envelope (`ctx.jarvisGate`) to the
- * requesting connection as `SERVER_MSG.OPS_JARVIS_USAGE`.
+ * Pushes the Jarvis usage card's payload to the requesting connection as
+ * `SERVER_MSG.OPS_JARVIS_USAGE`: `ctx.usageMeter.snapshot$` (a
+ * `BehaviorSubject` — subscribing always replays the current snapshot, so a
+ * late-attaching ops panel isn't stuck waiting for the next record) beside
+ * the house budget from `ctx.jarvisBudget`.
  *
- * Two legs, `merge`d, each building the payload through the same
- * `buildPayload` helper so every emission pairs a snapshot with the gate
- * level judged from THAT snapshot (never a stale one):
+ * Two inputs, `combineLatest`ed, each frame building the payload through the
+ * same `buildPayload`:
  *
- * - `routine$`: `snapshot$` throttled exactly as before —
+ * - the snapshot, throttled —
  *   `throttleTime(1_000, undefined, { leading: true, trailing: true })`,
- *   since `recordTokens` can fire many times a second during a busy
- *   Anthropic streaming turn and the ops dock only needs roughly-live
- *   numbers — paired with `withLatestFrom(ctx.jarvisGate.state$)`, the gate
- *   level current at the moment THIS (possibly throttled/delayed) snapshot
- *   fires.
- * - `transitions$`: `ctx.jarvisGate.state$` unthrottled, so a gate flip
- *   surfaces immediately rather than waiting out `routine$`'s throttle
- *   window. `skip(1)` drops the state `BehaviorSubject`'s own
- *   replay-on-subscribe emission — `routine$`'s leading emission already
- *   carries the correct initial pairing, so replaying it a second time here
- *   would double the frame sent to a freshly-subscribing socket. Each real
- *   transition then PULLS the snapshot fresh via `switchMap(take(1))`
- *   rather than caching a parallel subscription's pushed value (e.g.
- *   `withLatestFrom(snapshot$)`): `ctx.jarvisGate` derives its state
- *   synchronously and reentrantly from the SAME `snapshot$` this effect
- *   also observes, and that reentrant `state$` emission fires nested
- *   inside `snapshot$`'s own notification to ITS subscribers —
- *   `JarvisGateService` subscribes at service-construction time, earlier
- *   than this per-connection effect, so a long-lived `withLatestFrom`
- *   cache here would still be holding the PRE-`recordTokens` value at that
- *   exact synchronous moment (proven by direct RxJS repro: a
- *   `withLatestFrom` cache trails one step behind, silently pairing a
- *   fresh gate level with a stale $0 spend). A fresh subscribe to a
- *   `BehaviorSubject` always reads its CURRENT value directly — a
- *   `BehaviorSubject.next()` updates its held value before notifying any
- *   observer, including reentrant ones — sidestepping that ordering race
- *   entirely.
+ *   since a busy Anthropic turn records tokens several times a second and
+ *   the ops dock only needs roughly-live rows;
+ * - every reading of the house copy (`houseCopyReadings$`), unthrottled, so
+ *   a spend, a store outage or the midnight reset reaches the card at once.
+ *   The first frame waits for the first reading, so it never shows a $0
+ *   house spend that is only an unread copy.
  *
- * A gate flip immediately after a throttled `recordTokens` can therefore
- * emit `transitions$`'s fresh frame now and `routine$`'s trailing frame
- * later; both carry the same, correct pairing, so the bounded duplicate is
- * harmless. Per the Task 1 review ruling, `JarvisGateState.resetsAtMs` is
- * never read here — it retains the previous window's end while
- * `level === "none"`, so it cannot source a reset time for this payload;
- * the card's reset line already renders `snapshot.windowEndMs`.
+ * The house figures are read when a frame is built, never cached with the
+ * snapshot, so a frame's `spentWindowUsd` and `gateLevel` always agree with
+ * each other. A frame pushed by a reading can carry rows up to one throttle
+ * window old; the throttle's trailing frame brings them up to date.
  */
 const jarvisUsage$: WsEffect<Ctx> = stream(
   CLIENT_MSG.OPS_JARVIS_USAGE_SUBSCRIBE,
   (_payload, ctx) => {
-    const routine$ = ctx.usageMeter.snapshot$.pipe(
+    const snapshots$ = ctx.usageMeter.snapshot$.pipe(
       throttleTime(1_000, undefined, { leading: true, trailing: true }),
-      withLatestFrom(ctx.jarvisGate.state$),
-      map(([snapshot, gate]) => {
-        return buildPayload(ctx, snapshot, gate);
-      }),
     );
 
-    const transitions$: Observable<JarvisUsage> = ctx.jarvisGate.state$.pipe(
-      skip(1),
-      switchMap((gate) => {
-        return ctx.usageMeter.snapshot$.pipe(
-          take(1),
-          map((snapshot) => {
-            return buildPayload(ctx, snapshot, gate);
-          }),
-        );
-      }),
-    );
-
-    return merge(routine$, transitions$).pipe(
-      map((payload) => {
-        return out(SERVER_MSG.OPS_JARVIS_USAGE, payload);
+    return combineLatest([snapshots$, houseCopyReadings$(ctx)]).pipe(
+      map(([snapshot]) => {
+        return out(SERVER_MSG.OPS_JARVIS_USAGE, buildPayload(ctx, snapshot));
       }),
     );
   },

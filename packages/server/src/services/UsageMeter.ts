@@ -7,8 +7,9 @@ import {
   type JarvisUsageSnapshot,
 } from "@rtc/domain";
 
-/** Rolling rate-limit window Jarvis usage is bucketed into: 5 hours. */
-export const JARVIS_USAGE_WINDOW_MS = 18_000_000; // 5h
+import { nextUtcMidnightMs } from "./jarvisBudget/utcDay.js";
+
+const DAY_MS = 86_400_000;
 
 /**
  * Display-only price table for estimating live-Claude Jarvis usage cost.
@@ -59,7 +60,16 @@ function createAccumulator(): BrainAccumulator {
   };
 }
 
-function estimateCostUsd(brain: JarvisBrain, acc: BrainAccumulator): number {
+/**
+ * The estimated USD cost of some token usage on a brain — one request's for
+ * the daily budget, a window's running totals for the Ops rows. Both price
+ * through this one function so the budget is enforced against exactly the
+ * figure the Ops card shows.
+ */
+export function estimateUsageCostUsd(
+  brain: JarvisBrain,
+  usage: JarvisTokenUsage,
+): number {
   if (brain === "scripted") {
     return 0;
   }
@@ -67,10 +77,10 @@ function estimateCostUsd(brain: JarvisBrain, acc: BrainAccumulator): number {
   const price = JARVIS_PRICE_TABLE[brain];
 
   return (
-    (acc.inputTokens * price.inputUsdPerMtok +
-      acc.outputTokens * price.outputUsdPerMtok +
-      acc.cacheReadTokens * price.inputUsdPerMtok * 0.1 +
-      acc.cacheCreationTokens * price.inputUsdPerMtok * 1.25) /
+    (usage.inputTokens * price.inputUsdPerMtok +
+      usage.outputTokens * price.outputUsdPerMtok +
+      usage.cacheReadTokens * price.inputUsdPerMtok * 0.1 +
+      usage.cacheCreationTokens * price.inputUsdPerMtok * 1.25) /
     1e6
   );
 }
@@ -83,7 +93,7 @@ function toRow(brain: JarvisBrain, acc: BrainAccumulator): JarvisBrainUsageRow {
     outputTokens: acc.outputTokens,
     cacheReadTokens: acc.cacheReadTokens,
     cacheCreationTokens: acc.cacheCreationTokens,
-    estimatedCostUsd: estimateCostUsd(brain, acc),
+    estimatedCostUsd: estimateUsageCostUsd(brain, acc),
   };
 }
 
@@ -104,16 +114,18 @@ function toRows(
 }
 
 /**
- * In-memory Jarvis usage meter: per-brain turn counts and Anthropic token
- * accounting, bucketed into a 5h current window (mirroring Anthropic's own
- * rate-limit window) plus a cumulative since-boot total. Server-process
- * lifetime only — no persistence, no cross-instance aggregation.
+ * In-memory Jarvis usage meter for the Ops card: per-brain turn counts and
+ * house-key token accounting for today (the UTC day, the same day the
+ * budgets reset on) plus a cumulative since-boot total. Display only — the
+ * budgets are enforced by `JarvisBudgetService` over the durable spend store,
+ * never by this meter. Server-process lifetime only — no persistence, no
+ * cross-instance aggregation.
  *
- * Window semantics: the current window anchors at the first record after
- * the previous window's end (or ever, since `windowEndMs` starts at `0` and
- * any real or injected clock reading is `>= 0`). Once `now() >= windowEndMs`
- * the current-window accumulators reset and the record that observed the
- * rollover re-anchors `windowStartMs`/`windowEndMs`; `sinceBoot` never resets.
+ * Window semantics: the window is the UTC day of the latest record. It
+ * rolls lazily, when a record arrives on a later day (`windowEndMs` starts at
+ * `0`, so the first record always anchors it); until then a snapshot can
+ * still show a past day, which its `windowEndMs` gives away. `sinceBoot`
+ * never resets.
  */
 export class UsageMeter {
   private readonly now: () => number;
@@ -184,8 +196,8 @@ export class UsageMeter {
     const t = this.now();
 
     if (t >= this.windowEndMs) {
-      this.windowStartMs = t;
-      this.windowEndMs = t + JARVIS_USAGE_WINDOW_MS;
+      this.windowEndMs = nextUtcMidnightMs(t);
+      this.windowStartMs = this.windowEndMs - DAY_MS;
       this.currentWindow.clear();
     }
   }

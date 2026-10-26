@@ -1,4 +1,4 @@
-import { type Observable, of, Subject } from "rxjs";
+import { firstValueFrom, type Observable, of, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -12,6 +12,7 @@ import {
 } from "@rtc/domain";
 import {
   CLIENT_MSG,
+  type JarvisAvailabilityPayload,
   type JarvisCancelPayload,
   type JarvisChatPayload,
   type JarvisConfirmPayload,
@@ -31,13 +32,19 @@ import {
   type JarvisLoops,
   type JarvisTurnOptions,
 } from "../agent/agentLoop.js";
-import { JarvisGateService } from "../services/JarvisGateService.js";
-import type { JarvisGateConfig } from "../services/jarvisGate.js";
+import { scopeServicesToConnection } from "../services/connectionScope.js";
+import { createInMemorySpendStore } from "../services/jarvisBudget/InMemorySpendStore.js";
+import type { JarvisTier } from "../services/jarvisBudget/jarvisTier.js";
+import type {
+  SpendStore,
+  SpendTotals,
+} from "../services/jarvisBudget/SpendStore.js";
 import {
+  type Caller,
   createServices,
   type ServiceContainer,
 } from "../services/serviceContainer.js";
-import { JARVIS_USAGE_WINDOW_MS, UsageMeter } from "../services/UsageMeter.js";
+import type { JarvisTokenUsage } from "../services/UsageMeter.js";
 import type { Ctx } from "./context.js";
 import { jarvisEffects } from "./jarvis.effects.js";
 
@@ -141,7 +148,7 @@ describe("jarvis availability", () => {
   it("responds { available: false, brains: [], defaultBrain: 'scripted' } to jarvis.subscribe when no loops are present", () => {
     const sent: Outbound[] = [];
     const socket = createSocket(sent);
-    const ctx = { jarvisGate: createUngatedGate() } as unknown as Ctx;
+    const ctx = { caller: null } as unknown as Ctx;
     createWsListener(combineEffects(...jarvisEffects(null)), ctx)(socket);
 
     socket.messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
@@ -171,9 +178,10 @@ describe("jarvis availability", () => {
     ]);
   });
 
-  it("responds with every JARVIS_BRAINS entry and DEFAULT_JARVIS_BRAIN when a live anthropic loop is present too", () => {
+  it("responds with every JARVIS_BRAINS entry and DEFAULT_JARVIS_BRAIN to an operator when a live anthropic loop is present too", async () => {
+    vi.setSystemTime(NOON);
     // `{}` explicit, not the ambient `process.env` default — this test's
-    // gate must read "none" regardless of whatever RTC_JARVIS_* is set in
+    // budget must not be spent regardless of whatever RTC_JARVIS_* is set in
     // whatever environment the suite happens to run under (mirrors
     // `createJarvisLoops`'s own explicit-env call just below).
     const services = createServices({});
@@ -191,9 +199,13 @@ describe("jarvis availability", () => {
 
     const sent: Outbound[] = [];
     const socket = createSocket(sent);
-    createWsListener(combineEffects(...jarvisEffects(loops)), services)(socket);
+    createWsListener(
+      combineEffects(...jarvisEffects(loops)),
+      scopeServicesToConnection(services, OPERATOR),
+    )(socket);
 
     socket.messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    await settleBudgetReads();
 
     expect(sent).toEqual([
       {
@@ -202,6 +214,13 @@ describe("jarvis availability", () => {
           available: true,
           brains: JARVIS_BRAINS,
           defaultBrain: DEFAULT_JARVIS_BRAIN,
+          budget: {
+            keyKind: "house",
+            spentUsd: 0,
+            limitUsd: null,
+            exhausted: null,
+            resetsAtMs: NEXT_MIDNIGHT,
+          },
         },
       },
     ]);
@@ -932,7 +951,11 @@ describe("jarvis effects — chat turns are serialized (concatMap, not mergeMap)
 });
 
 describe("jarvis effects — dual-brain routing (spy loops)", () => {
-  it("no brain in the payload routes to loops.defaultBrain, reaching the anthropic session with resolved options", () => {
+  beforeEach(() => {
+    vi.setSystemTime(NOON);
+  });
+
+  it("no brain in the payload routes to loops.defaultBrain, reaching the anthropic session with resolved options and the turn's meter", async () => {
     const { loops, scriptedSpy, anthropicSpy, messages$, sent } =
       dualLoopsHarness();
 
@@ -940,19 +963,21 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
       type: CLIENT_MSG.JARVIS_CHAT,
       payload: { text: "hi", turnId: STUB_TURN_ID } satisfies JarvisChatPayload,
     });
+    await settleBudgetReads();
 
     expect(scriptedSpy.createSession).not.toHaveBeenCalled();
     expect(anthropicSpy.createSession).toHaveBeenCalledTimes(1);
     expect(anthropicSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", [], {
       brain: loops.defaultBrain,
       effort: undefined,
+      meter: expect.anything(),
     });
     expect(sent).toEqual([
       { type: SERVER_MSG.JARVIS_DONE, payload: { turnId: STUB_TURN_ID } },
     ]);
   });
 
-  it("brain: 'scripted' routes to the scripted session; the anthropic spy is never touched", () => {
+  it("brain: 'scripted' routes to the scripted session; the anthropic spy is never touched", async () => {
     const { scriptedSpy, anthropicSpy, messages$ } = dualLoopsHarness();
 
     messages$.next({
@@ -963,13 +988,14 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
         brain: "scripted",
       } satisfies JarvisChatPayload,
     });
+    await settleBudgetReads();
 
     expect(scriptedSpy.createSession).toHaveBeenCalledTimes(1);
     expect(scriptedSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", []);
     expect(anthropicSpy.createSession).not.toHaveBeenCalled();
   });
 
-  it("an explicit real-model brain + effort routes to the anthropic session carrying both", () => {
+  it("an explicit real-model brain + effort routes to the anthropic session carrying both", async () => {
     const { anthropicSpy, messages$ } = dualLoopsHarness();
 
     messages$.next({
@@ -981,24 +1007,28 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
         effort: "high",
       } satisfies JarvisChatPayload,
     });
+    await settleBudgetReads();
 
     expect(anthropicSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", [], {
       brain: "claude-opus-5",
       effort: "high",
+      meter: expect.anything(),
     });
   });
 
-  it("an unrecognized brain string falls back to the default brain (lenient parse seam, not a rejected frame)", () => {
+  it("an unrecognized brain string falls back to the default brain (lenient parse seam, not a rejected frame)", async () => {
     const { loops, anthropicSpy, messages$, sent } = dualLoopsHarness();
 
     messages$.next({
       type: CLIENT_MSG.JARVIS_CHAT,
       payload: { text: "hi", turnId: STUB_TURN_ID, brain: "gpt-5" },
     });
+    await settleBudgetReads();
 
     expect(anthropicSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", [], {
       brain: loops.defaultBrain,
       effort: undefined,
+      meter: expect.anything(),
     });
     // Not treated as malformed: no JARVIS_ERROR, the turn still completes.
     expect(sent).toEqual([
@@ -1006,7 +1036,7 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
     ]);
   });
 
-  it("a recognized but un-offered brain (not a member of loops.brains) falls back to the default brain", () => {
+  it("a recognized but un-offered brain (not a member of loops.brains) falls back to the default brain", async () => {
     const scriptedSpy = createSpyLoop();
     const anthropicSpy = createSpyLoop();
     const loops: JarvisLoops = {
@@ -1026,14 +1056,16 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
         brain: "claude-opus-5",
       } satisfies JarvisChatPayload,
     });
+    await settleBudgetReads();
 
     expect(anthropicSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", [], {
       brain: "claude-haiku-4-5",
       effort: undefined,
+      meter: expect.anything(),
     });
   });
 
-  it("a scripted-only conversation never constructs the anthropic session (laziness)", () => {
+  it("a scripted-only conversation never constructs the anthropic session (laziness)", async () => {
     const { scriptedSpy, anthropicSpy, messages$ } = dualLoopsHarness();
 
     messages$.next({
@@ -1052,12 +1084,13 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
         brain: "scripted",
       } satisfies JarvisChatPayload,
     });
+    await settleBudgetReads();
 
     expect(scriptedSpy.createSession).toHaveBeenCalledTimes(1);
     expect(anthropicSpy.createSession).not.toHaveBeenCalled();
   });
 
-  it("an anthropic-only conversation never constructs the scripted session (laziness)", () => {
+  it("an anthropic-only conversation never constructs the scripted session (laziness)", async () => {
     const { scriptedSpy, anthropicSpy, messages$ } = dualLoopsHarness();
 
     messages$.next({
@@ -1068,12 +1101,13 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
         brain: "claude-sonnet-5",
       } satisfies JarvisChatPayload,
     });
+    await settleBudgetReads();
 
     expect(anthropicSpy.createSession).toHaveBeenCalledTimes(1);
     expect(scriptedSpy.createSession).not.toHaveBeenCalled();
   });
 
-  it("records ctx.usageMeter.recordTurn(resolvedBrain) exactly once per accepted chat frame, in order", () => {
+  it("records ctx.usageMeter.recordTurn(resolvedBrain) exactly once per accepted chat frame, in order", async () => {
     const recordTurn = vi.fn();
     const { messages$ } = dualLoopsHarness(recordTurn);
 
@@ -1093,13 +1127,14 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
         brain: "scripted",
       } satisfies JarvisChatPayload,
     });
+    await settleBudgetReads();
 
     expect(recordTurn).toHaveBeenCalledTimes(2);
     expect(recordTurn).toHaveBeenNthCalledWith(1, "claude-sonnet-5");
     expect(recordTurn).toHaveBeenNthCalledWith(2, "scripted");
   });
 
-  it("recordTurn is NOT called for a malformed chat frame — never an accepted turn", () => {
+  it("recordTurn is NOT called for a malformed chat frame — never an accepted turn", async () => {
     const recordTurn = vi.fn();
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { messages$ } = dualLoopsHarness(recordTurn);
@@ -1108,16 +1143,17 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
       type: CLIENT_MSG.JARVIS_CHAT,
       payload: { turnId: "bad-frame" },
     });
+    await settleBudgetReads();
 
     expect(recordTurn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
 
-  it("jarvis.confirm forwards to BOTH live sessions — cross-talk is a no-op only because each session's own ownership guard gates it, not the effect layer", () => {
+  it("jarvis.confirm forwards to BOTH live sessions — cross-talk is a no-op only because each session's own ownership guard gates it, not the effect layer", async () => {
     const { scriptedSpy, anthropicSpy, messages$ } = dualLoopsHarness();
 
     // Bring both sessions to life first (both default runTurn impls
-    // complete immediately, so both chat frames finish synchronously).
+    // complete immediately, so both chat frames finish once read).
     messages$.next({
       type: CLIENT_MSG.JARVIS_CHAT,
       payload: {
@@ -1134,6 +1170,7 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
         brain: "claude-sonnet-5",
       } satisfies JarvisChatPayload,
     });
+    await settleBudgetReads();
 
     messages$.next({
       type: CLIENT_MSG.JARVIS_CONFIRM,
@@ -1168,7 +1205,7 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
     expect(anthropicSpy.createSession).not.toHaveBeenCalled();
   });
 
-  it("jarvis.cancel forwards to every EXISTING session when it matches the in-flight turnId, even an idle one", () => {
+  it("jarvis.cancel forwards to every EXISTING session when it matches the in-flight turnId, even an idle one", async () => {
     const scriptedSpy = createSpyLoop();
     const turnSubjects: Subject<JarvisEvent>[] = [];
     const anthropicSpy = createSpyLoop((): Observable<JarvisEvent> => {
@@ -1203,6 +1240,7 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
         brain: "claude-sonnet-5",
       } satisfies JarvisChatPayload,
     });
+    await settleBudgetReads();
 
     messages$.next({
       type: CLIENT_MSG.JARVIS_CANCEL,
@@ -1213,7 +1251,7 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
     expect(scriptedSpy.sessions[0]?.cancelTurn).toHaveBeenCalledTimes(1);
   });
 
-  it("finalize disposes every session that was actually created for the connection", () => {
+  it("finalize disposes every session that was actually created for the connection", async () => {
     const { scriptedSpy, anthropicSpy, messages$, closed$ } =
       dualLoopsHarness();
 
@@ -1233,6 +1271,7 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
         brain: "claude-sonnet-5",
       } satisfies JarvisChatPayload,
     });
+    await settleBudgetReads();
 
     expect(scriptedSpy.sessions[0]?.dispose).not.toHaveBeenCalled();
     expect(anthropicSpy.sessions[0]?.dispose).not.toHaveBeenCalled();
@@ -1243,7 +1282,7 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
     expect(anthropicSpy.sessions[0]?.dispose).toHaveBeenCalledTimes(1);
   });
 
-  it("finalize never disposes a session that was never created", () => {
+  it("finalize never disposes a session that was never created", async () => {
     const { scriptedSpy, anthropicSpy, messages$, closed$ } =
       dualLoopsHarness();
 
@@ -1255,6 +1294,7 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
         brain: "scripted",
       } satisfies JarvisChatPayload,
     });
+    await settleBudgetReads();
 
     closed$.next();
 
@@ -1263,15 +1303,43 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
   });
 });
 
-describe("budget gate", () => {
-  it("re-pushes availability when the gate trips, narrowed and carrying gate metadata", () => {
-    const { meter, messages$, sent } = availabilityGateHarness({
-      budgetUsd: 0.5,
-      softRatio: 0.8,
-      forceLevel: null,
-    });
+describe("per-caller offers and the daily budget", () => {
+  beforeEach(() => {
+    vi.setSystemTime(NOON);
+  });
+
+  it("offers a member scripted, Haiku and Sonnet, Haiku by default, with the member's daily limit", async () => {
+    const services = createBudgetServices();
+    const { messages$, sent } = wireSpySocket(services, MEMBER);
 
     messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    await settleBudgetReads();
+
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.JARVIS_AVAILABILITY,
+        payload: {
+          available: true,
+          brains: ["scripted", "claude-haiku-4-5", "claude-sonnet-5"],
+          defaultBrain: "claude-haiku-4-5",
+          budget: {
+            keyKind: "house",
+            spentUsd: 0,
+            limitUsd: 0.2,
+            exhausted: null,
+            resetsAtMs: NEXT_MIDNIGHT,
+          },
+        },
+      },
+    ]);
+  });
+
+  it("offers an operator (the roster persona) every brain and no personal limit", async () => {
+    const services = createBudgetServices();
+    const { messages$, sent } = wireSpySocket(services, OPERATOR);
+
+    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    await settleBudgetReads();
 
     expect(sent).toEqual([
       {
@@ -1279,170 +1347,66 @@ describe("budget gate", () => {
         payload: {
           available: true,
           brains: JARVIS_BRAINS,
-          defaultBrain: "claude-haiku-4-5",
+          defaultBrain: DEFAULT_JARVIS_BRAIN,
+          budget: {
+            keyKind: "house",
+            spentUsd: 0,
+            limitUsd: null,
+            exhausted: null,
+            resetsAtMs: NEXT_MIDNIGHT,
+          },
         },
       },
     ]);
+  });
 
-    const beforeTrip = Date.now();
+  it("offers a connection with no signed-in caller the scripted brain only, with no budget — there is no one to meter", async () => {
+    const services = createBudgetServices();
+    const { anthropicSpy, scriptedSpy, messages$, sent } = wireSpySocket(
+      services,
+      null,
+    );
 
-    // $1.00 estimated (200_000 input tokens * $5/Mtok for claude-opus-5) —
-    // over the $0.50 budget, so this trips "hard" in one call.
-    meter.recordTokens("claude-opus-5", {
-      inputTokens: 200_000,
-      outputTokens: 0,
-      cacheReadTokens: 0,
-      cacheCreationTokens: 0,
+    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "hi",
+        turnId: STUB_TURN_ID,
+        brain: "claude-haiku-4-5",
+      } satisfies JarvisChatPayload,
     });
+    await settleBudgetReads();
 
-    expect(sent).toHaveLength(2);
-    expect(sent[1]).toEqual({
+    expect(sent[0]).toEqual({
       type: SERVER_MSG.JARVIS_AVAILABILITY,
       payload: {
         available: true,
         brains: ["scripted"],
         defaultBrain: "scripted",
-        gate: {
-          level: "hard",
-          resetsAtMs: beforeTrip + JARVIS_USAGE_WINDOW_MS,
-          gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
-        },
       },
     });
+    expect(scriptedSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", []);
+    expect(anthropicSpy.createSession).not.toHaveBeenCalled();
   });
 
-  it("soft gate keeps haiku and scripted and lists exactly sonnet+opus as gated", () => {
-    const { meter, messages$, sent } = availabilityGateHarness({
-      budgetUsd: 1,
-      softRatio: 0.8,
-      forceLevel: null,
-    });
+  it("offers a member only the scripted brain when the process has no live model (RTC_JARVIS_FAKE=1), still with the budget", async () => {
+    const services = createBudgetServices();
+    const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
 
-    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
-    expect(sent).toHaveLength(1);
+    if (!loops) {
+      throw new Error("expected a non-null JarvisLoops");
+    }
 
-    // $0.45 of the $1 budget (90_000 input tokens * $5/Mtok) — under the
-    // soft threshold ($0.80): the gate stays "none", no new push.
-    meter.recordTokens("claude-opus-5", {
-      inputTokens: 90_000,
-      outputTokens: 0,
-      cacheReadTokens: 0,
-      cacheCreationTokens: 0,
-    });
-    expect(sent).toHaveLength(1);
-
-    const beforeSoft = Date.now();
-
-    // Cumulative $0.85 (+80_000 input tokens) — crosses the $0.80 soft
-    // threshold without reaching the $1 hard one.
-    meter.recordTokens("claude-opus-5", {
-      inputTokens: 80_000,
-      outputTokens: 0,
-      cacheReadTokens: 0,
-      cacheCreationTokens: 0,
-    });
-
-    expect(sent).toHaveLength(2);
-    expect(sent[1]).toEqual({
-      type: SERVER_MSG.JARVIS_AVAILABILITY,
-      payload: {
-        available: true,
-        brains: ["scripted", "claude-haiku-4-5"],
-        defaultBrain: "claude-haiku-4-5",
-        gate: {
-          level: "soft",
-          resetsAtMs: beforeSoft + JARVIS_USAGE_WINDOW_MS,
-          gated: ["claude-sonnet-5", "claude-opus-5"],
-        },
-      },
-    });
-  });
-
-  it("lifts by timer without any new record (fake timers advance past windowEndMs)", async () => {
-    const { meter, messages$, sent } = availabilityGateHarness({
-      budgetUsd: 0.5,
-      softRatio: 0.8,
-      forceLevel: null,
-    });
-
-    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
-
-    const beforeTrip = Date.now();
-
-    meter.recordTokens("claude-opus-5", {
-      inputTokens: 200_000,
-      outputTokens: 0,
-      cacheReadTokens: 0,
-      cacheCreationTokens: 0,
-    });
-
-    expect(sent).toHaveLength(2);
-    expect(sent[1]).toEqual({
-      type: SERVER_MSG.JARVIS_AVAILABILITY,
-      payload: {
-        available: true,
-        brains: ["scripted"],
-        defaultBrain: "scripted",
-        gate: {
-          level: "hard",
-          resetsAtMs: beforeTrip + JARVIS_USAGE_WINDOW_MS,
-          gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
-        },
-      },
-    });
-
-    // No further record — the lift is the gate's own timer firing at
-    // windowEndMs, re-judging the same (now-stale) snapshot as "none".
-    await vi.advanceTimersByTimeAsync(JARVIS_USAGE_WINDOW_MS + 1);
-
-    expect(sent).toHaveLength(3);
-    expect(sent[2]).toEqual({
-      type: SERVER_MSG.JARVIS_AVAILABILITY,
-      payload: {
-        available: true,
-        brains: JARVIS_BRAINS,
-        defaultBrain: "claude-haiku-4-5",
-      },
-    });
-  });
-
-  it("loops === null never attaches gate metadata to the unavailable payload, even while forced-hard", () => {
-    const gate = new JarvisGateService(new UsageMeter(), {
-      budgetUsd: 1,
-      softRatio: 0.8,
-      forceLevel: "hard",
-    });
     const sent: Outbound[] = [];
     const socket = createSocket(sent);
-    const ctx = { jarvisGate: gate } as unknown as Ctx;
-    createWsListener(combineEffects(...jarvisEffects(null)), ctx)(socket);
+    createWsListener(
+      combineEffects(...jarvisEffects(loops)),
+      scopeServicesToConnection(services, MEMBER),
+    )(socket);
 
     socket.messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
-
-    // `buildAvailabilityPayload`'s `loops === null` branch must win outright
-    // — no `gate` field, no narrowed `brains` — regardless of the gate
-    // level: `applyGateToOffer` is never even called against the (empty)
-    // env-capability offer.
-    expect(sent).toEqual([
-      {
-        type: SERVER_MSG.JARVIS_AVAILABILITY,
-        payload: { available: false, brains: [], defaultBrain: "scripted" },
-      },
-    ]);
-  });
-
-  it("subscribing while ALREADY gated gets the gated payload in the very first frame", () => {
-    const { sent, messages$ } = availabilityGateHarness({
-      budgetUsd: 1,
-      softRatio: 0.8,
-      forceLevel: "hard",
-    });
-
-    // No prior subscribe on this connection at all — the very first
-    // JARVIS_SUBSCRIBE frame lands after the gate is already tripped
-    // (forced hard from construction), proving `state$`'s `BehaviorSubject`
-    // replay reaches a brand-new observer, not just a pre-existing one.
-    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    await settleBudgetReads();
 
     expect(sent).toEqual([
       {
@@ -1451,50 +1415,84 @@ describe("budget gate", () => {
           available: true,
           brains: ["scripted"],
           defaultBrain: "scripted",
-          gate: {
-            level: "hard",
-            resetsAtMs: 0,
-            gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
+          budget: {
+            keyKind: "house",
+            spentUsd: 0,
+            limitUsd: 0.2,
+            exhausted: null,
+            resetsAtMs: NEXT_MIDNIGHT,
           },
         },
       },
     ]);
   });
 
-  it("two subscribe frames on one socket leave exactly one live observer: a gate transition produces exactly one new frame, not two", () => {
-    const { meter, messages$, sent } = availabilityGateHarness({
-      budgetUsd: 0.5,
-      softRatio: 0.8,
-      forceLevel: null,
-    });
+  it("reads a caller whose tier lookup fails as a member: a failure never widens the offer", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
-    // Two JARVIS_SUBSCRIBE frames on the SAME socket — a reconnect replay,
-    // or simply a client re-sending the handshake. Each produces its own
-    // immediate frame (the state$ BehaviorSubject replays "none" to every
-    // new subscriber), so `sent` legitimately holds two frames here — the
-    // assertion below is about what happens on the NEXT transition, not
-    // about de-duplicating these two.
+    const services = createServices(
+      {},
+      {
+        jarvisTier: (): Promise<JarvisTier> => {
+          return Promise.reject(new Error("directory down"));
+        },
+      },
+    );
+    const { messages$, sent } = wireSpySocket(services, OPERATOR);
+
     messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    await settleBudgetReads();
+
+    expect(
+      (sent[0]?.payload as JarvisAvailabilityPayload | undefined)?.brains,
+    ).toEqual(["scripted", "claude-haiku-4-5", "claude-sonnet-5"]);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "jarvis-budget: tier lookup failed, reading the caller as a member: directory down",
+    );
+  });
+
+  it("runs a member's request for Opus on the default brain (Haiku): Opus is not on a member's offer", async () => {
+    const services = createBudgetServices();
+    const { anthropicSpy, messages$ } = wireSpySocket(services, MEMBER);
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "hi",
+        turnId: STUB_TURN_ID,
+        brain: "claude-opus-5",
+      } satisfies JarvisChatPayload,
+    });
+    await settleBudgetReads();
+
+    expect(anthropicSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", [], {
+      brain: "claude-haiku-4-5",
+      effort: undefined,
+      meter: expect.anything(),
+    });
+  });
+
+  it("an exhausted member: the subscribed socket is pushed a hard gate, and a chat asking for Haiku runs scripted", async () => {
+    const services = createBudgetServices();
+    const { anthropicSpy, scriptedSpy, messages$, sent } = wireSpySocket(
+      services,
+      MEMBER,
+    );
+
     messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    await settleBudgetReads();
+    expect(sent).toHaveLength(1);
+
+    // $0.20 on Haiku ($1/Mtok input) — exactly the member's daily limit.
+    services.jarvisBudget
+      .meterFor(MEMBER, "member")
+      .record("claude-haiku-4-5", createUsageFixture(200_000));
+    await settleBudgetReads();
+
     expect(sent).toHaveLength(2);
-
-    const beforeTrip = Date.now();
-
-    // $1.00 estimated — trips "hard". A mergeMap'd (uncapped) availability
-    // effect would still hold BOTH subscribe frames' observers live, so
-    // this single transition would append TWO new frames (one per stale
-    // observer) instead of one. switchMap tore the first one down when the
-    // second JARVIS_SUBSCRIBE arrived, so only one observer is left —
-    // exactly one new frame, not two.
-    meter.recordTokens("claude-opus-5", {
-      inputTokens: 200_000,
-      outputTokens: 0,
-      cacheReadTokens: 0,
-      cacheCreationTokens: 0,
-    });
-
-    expect(sent).toHaveLength(3);
-    expect(sent[2]).toEqual({
+    expect(sent[1]).toEqual({
       type: SERVER_MSG.JARVIS_AVAILABILITY,
       payload: {
         available: true,
@@ -1502,50 +1500,297 @@ describe("budget gate", () => {
         defaultBrain: "scripted",
         gate: {
           level: "hard",
-          resetsAtMs: beforeTrip + JARVIS_USAGE_WINDOW_MS,
-          gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
+          resetsAtMs: NEXT_MIDNIGHT,
+          gated: ["claude-haiku-4-5", "claude-sonnet-5"],
+        },
+        budget: {
+          keyKind: "house",
+          spentUsd: 0.2,
+          limitUsd: 0.2,
+          exhausted: "user",
+          resetsAtMs: NEXT_MIDNIGHT,
         },
       },
     });
-  });
-
-  it("a turn frame requesting a gated brain resolves to the gated offer's default", () => {
-    const gate = new JarvisGateService(new UsageMeter(), {
-      budgetUsd: 1,
-      softRatio: 0.8,
-      forceLevel: "soft",
-    });
-    const { anthropicSpy, messages$ } = dualLoopsHarness(vi.fn(), gate);
 
     messages$.next({
       type: CLIENT_MSG.JARVIS_CHAT,
       payload: {
         text: "hi",
         turnId: STUB_TURN_ID,
-        brain: "claude-opus-5",
+        brain: "claude-haiku-4-5",
       } satisfies JarvisChatPayload,
     });
+    await settleBudgetReads();
 
-    // "claude-opus-5" is soft-gated away; the offer's surviving default
-    // (DEFAULT_JARVIS_BRAIN, "claude-haiku-4-5") is what the turn actually
-    // routes to — the scripted-vs-anthropic routing here still reaches the
-    // anthropic session, just on the fallback brain.
-    expect(anthropicSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", [], {
-      brain: "claude-haiku-4-5",
-      effort: undefined,
+    expect(scriptedSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", []);
+    expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+  });
+
+  it("a turn's meter reserves its requests in the caller's budget, where the caller's other turns see them, and releases them", async () => {
+    const store = createInMemorySpendStore();
+    await store.record("account:acc-ann", TODAY, "house", 0.15);
+    const services = createBudgetServices({}, store);
+    await services.jarvisBudget.stateFor(MEMBER, "member");
+    const otherTab = services.jarvisBudget.meterFor(MEMBER, "member");
+    const seenByOtherTab: boolean[] = [];
+    const scriptedSpy = createSpyLoop();
+    const anthropicSpy = createSpyLoop(
+      (options?: JarvisTurnOptions): Observable<JarvisEvent> => {
+        options?.meter?.beginRequest("claude-sonnet-5", SONNET_CEILING);
+        seenByOtherTab.push(otherTab.exhausted());
+        options?.meter?.endRequest();
+        seenByOtherTab.push(otherTab.exhausted());
+        return of<JarvisEvent>({ type: "done" });
+      },
+    );
+
+    const loops: JarvisLoops = {
+      scripted: scriptedSpy.loop,
+      anthropic: anthropicSpy.loop,
+      brains: JARVIS_BRAINS,
+      defaultBrain: DEFAULT_JARVIS_BRAIN,
+    };
+    const socket = createSocket([]);
+    createWsListener(
+      combineEffects(...jarvisEffects(loops)),
+      scopeServicesToConnection(services, MEMBER),
+    )(socket);
+
+    socket.messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "hi",
+        turnId: STUB_TURN_ID,
+        brain: "claude-sonnet-5",
+      } satisfies JarvisChatPayload,
+    });
+    await settleBudgetReads();
+
+    expect(seenByOtherTab).toEqual([true, false]);
+  });
+
+  it("a spend store that cannot be read fails closed: the subscribed socket is gated as unavailable, and a chat asking for Haiku runs scripted", async () => {
+    const unreachableStore: SpendStore = {
+      kind: "supabase",
+      read: (): Promise<"unavailable"> => {
+        return Promise.resolve("unavailable");
+      },
+      record: (): Promise<"unavailable"> => {
+        return Promise.resolve("unavailable");
+      },
+    };
+    const services = createBudgetServices({}, unreachableStore);
+    const { anthropicSpy, scriptedSpy, messages$, sent } = wireSpySocket(
+      services,
+      MEMBER,
+    );
+
+    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "hi",
+        turnId: STUB_TURN_ID,
+        brain: "claude-haiku-4-5",
+      } satisfies JarvisChatPayload,
+    });
+    await settleBudgetReads();
+
+    const availability = sent.filter((m) => {
+      return m.type === SERVER_MSG.JARVIS_AVAILABILITY;
+    });
+    expect(availability).toEqual([
+      {
+        type: SERVER_MSG.JARVIS_AVAILABILITY,
+        payload: {
+          available: true,
+          brains: ["scripted"],
+          defaultBrain: "scripted",
+          gate: {
+            level: "hard",
+            resetsAtMs: NEXT_MIDNIGHT,
+            gated: ["claude-haiku-4-5", "claude-sonnet-5"],
+          },
+          budget: {
+            keyKind: "house",
+            spentUsd: 0,
+            limitUsd: 0.2,
+            exhausted: "unavailable",
+            resetsAtMs: NEXT_MIDNIGHT,
+          },
+        },
+      },
+    ]);
+    expect(scriptedSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", []);
+    expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+  });
+
+  it("two tabs of one caller: a turn that spends the budget on one pushes the gated frame to both, and feeds the Ops usage meter", async () => {
+    const services = createBudgetServices();
+    // Each tab's turn spends $0.20 on Haiku through the meter the effect
+    // hands the session — the way a real Anthropic session records.
+    const scriptedSpy = createSpyLoop();
+    const anthropicSpy = createSpyLoop(
+      (options?: JarvisTurnOptions): Observable<JarvisEvent> => {
+        options?.meter?.record("claude-haiku-4-5", createUsageFixture(200_000));
+        return of<JarvisEvent>({ type: "done" });
+      },
+    );
+
+    const loops: JarvisLoops = {
+      scripted: scriptedSpy.loop,
+      anthropic: anthropicSpy.loop,
+      brains: JARVIS_BRAINS,
+      defaultBrain: DEFAULT_JARVIS_BRAIN,
+    };
+    // One effect for the process, one scoped container per socket — the
+    // way `index.ts` composes every connection.
+    const effect = combineEffects(...jarvisEffects(loops));
+    const sentA: Outbound[] = [];
+    const socketA = createSocket(sentA);
+    createWsListener(
+      effect,
+      scopeServicesToConnection(services, MEMBER),
+    )(socketA);
+    const sentB: Outbound[] = [];
+    const socketB = createSocket(sentB);
+    createWsListener(
+      effect,
+      scopeServicesToConnection(services, MEMBER),
+    )(socketB);
+
+    socketA.messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    socketB.messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    await settleBudgetReads();
+
+    socketA.messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "hi",
+        turnId: STUB_TURN_ID,
+        brain: "claude-haiku-4-5",
+      } satisfies JarvisChatPayload,
+    });
+    await settleBudgetReads();
+
+    for (const sent of [sentA, sentB]) {
+      const availability = sent.filter((m) => {
+        return m.type === SERVER_MSG.JARVIS_AVAILABILITY;
+      });
+      expect(gateLevelOf(availability.at(-1))).toBe("hard");
+    }
+
+    const usage = await firstValueFrom(services.usageMeter.snapshot$);
+    expect(usage.sinceBoot).toEqual([
+      expect.objectContaining({
+        brain: "claude-haiku-4-5",
+        turns: 1,
+        inputTokens: 200_000,
+      }),
+    ]);
+  });
+
+  it("midnight lifts a spent budget: a gated socket that sends nothing is pushed an ungated frame at 00:00 UTC", async () => {
+    const store = createInMemorySpendStore();
+    await store.record("account:acc-ann", TODAY, "house", 0.2);
+    const services = createBudgetServices({}, store);
+    const { messages$, sent } = wireSpySocket(services, MEMBER);
+
+    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    await settleBudgetReads();
+
+    expect(sent).toHaveLength(1);
+    expect(gateLevelOf(sent[0])).toBe("hard");
+
+    await vi.advanceTimersByTimeAsync(NEXT_MIDNIGHT - NOON);
+    await settleBudgetReads();
+
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toEqual({
+      type: SERVER_MSG.JARVIS_AVAILABILITY,
+      payload: {
+        available: true,
+        brains: ["scripted", "claude-haiku-4-5", "claude-sonnet-5"],
+        defaultBrain: "claude-haiku-4-5",
+        budget: {
+          keyKind: "house",
+          spentUsd: 0,
+          limitUsd: 0.2,
+          exhausted: null,
+          resetsAtMs: NEXT_MIDNIGHT + DAY_MS,
+        },
+      },
     });
   });
 
-  it("hard gate routes every turn to the scripted loop", () => {
-    const gate = new JarvisGateService(new UsageMeter(), {
-      budgetUsd: 1,
-      softRatio: 0.8,
-      forceLevel: "hard",
-    });
+  it("a narrator turn asking for Haiku runs scripted and records nothing against the budget", async () => {
+    const services = createBudgetServices();
+    const { anthropicSpy, scriptedSpy, messages$ } = wireSpySocket(
+      services,
+      MEMBER,
+    );
 
-    const { scriptedSpy, anthropicSpy, messages$ } = dualLoopsHarness(
-      vi.fn(),
-      gate,
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "narrate",
+        turnId: STUB_TURN_ID,
+        brain: "claude-haiku-4-5",
+        origin: "narrator",
+      } satisfies JarvisChatPayload,
+    });
+    await settleBudgetReads();
+
+    expect(scriptedSpy.sessions[0]?.runTurn).toHaveBeenCalledWith(
+      "narrate",
+      [],
+    );
+    expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+    expect(
+      (await services.jarvisBudget.stateFor(MEMBER, "member")).spentUsd,
+    ).toBe(0);
+  });
+
+  it("an origin other than narrator reads as the person's own turn", async () => {
+    const services = createBudgetServices();
+    const { anthropicSpy, messages$ } = wireSpySocket(services, MEMBER);
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "hi",
+        turnId: STUB_TURN_ID,
+        brain: "claude-haiku-4-5",
+        origin: "robot",
+      },
+    });
+    await settleBudgetReads();
+
+    expect(anthropicSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", [], {
+      brain: "claude-haiku-4-5",
+      effort: undefined,
+      meter: expect.anything(),
+    });
+  });
+
+  it("a cancel that lands while the turn's budget read is pending keeps the turn from starting", async () => {
+    const pendingReads: ((totals: SpendTotals) => void)[] = [];
+    const slowStore: SpendStore = {
+      kind: "in-memory",
+      read: (): Promise<SpendTotals> => {
+        return new Promise((resolve) => {
+          pendingReads.push(resolve);
+        });
+      },
+      record: (): Promise<SpendTotals> => {
+        return Promise.resolve({ ownerUsd: 0, houseUsd: 0 });
+      },
+    };
+    const services = createBudgetServices({}, slowStore);
+    const { anthropicSpy, scriptedSpy, messages$, sent } = wireSpySocket(
+      services,
+      MEMBER,
     );
 
     messages$.next({
@@ -1553,12 +1798,65 @@ describe("budget gate", () => {
       payload: {
         text: "hi",
         turnId: STUB_TURN_ID,
-        brain: "claude-opus-5",
+        brain: "claude-haiku-4-5",
       } satisfies JarvisChatPayload,
     });
+    await settleBudgetReads();
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CANCEL,
+      payload: { turnId: STUB_TURN_ID } satisfies JarvisCancelPayload,
+    });
+    expect(pendingReads).toHaveLength(1);
+    pendingReads[0]?.({ ownerUsd: 0, houseUsd: 0 });
+    await settleBudgetReads();
 
-    expect(scriptedSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", []);
     expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+    expect(scriptedSpy.createSession).not.toHaveBeenCalled();
+    expect(sent).toEqual([]);
+  });
+
+  it("two subscribe frames on one socket leave exactly one live observer: a budget change pushes exactly one new frame, not two", async () => {
+    const services = createBudgetServices();
+    const { messages$, sent } = wireSpySocket(services, MEMBER);
+
+    // Two JARVIS_SUBSCRIBE frames on the SAME socket — a reconnect replay,
+    // or simply a client re-sending the handshake. Each produces its own
+    // immediate frame, so `sent` legitimately holds two frames here — the
+    // assertion below is about what happens on the NEXT change.
+    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    await settleBudgetReads();
+    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    await settleBudgetReads();
+    expect(sent).toHaveLength(2);
+
+    // A mergeMap'd (uncapped) availability effect would still hold BOTH
+    // subscribe frames' observers live, so this one change would append
+    // TWO new frames. switchMap tore the first one down when the second
+    // JARVIS_SUBSCRIBE arrived — exactly one new frame.
+    services.jarvisBudget
+      .meterFor(MEMBER, "member")
+      .record("claude-haiku-4-5", createUsageFixture(200_000));
+    await settleBudgetReads();
+
+    expect(sent).toHaveLength(3);
+    expect(gateLevelOf(sent[2])).toBe("hard");
+  });
+
+  it("a budget change that leaves this caller's frame as it was pushes nothing", async () => {
+    const services = createBudgetServices();
+    const { messages$, sent } = wireSpySocket(services, MEMBER);
+
+    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    await settleBudgetReads();
+
+    // Someone else's spend moves the house total, not this member's view.
+    await services.jarvisBudget.stateFor(OTHER_MEMBER, "member");
+    services.jarvisBudget
+      .meterFor(OTHER_MEMBER, "member")
+      .record("claude-haiku-4-5", createUsageFixture(10_000));
+    await settleBudgetReads();
+
+    expect(sent).toHaveLength(1);
   });
 });
 
@@ -1609,52 +1907,6 @@ function createSocket(sent: Outbound[]): TestSocket {
       sent.push(m);
     },
   };
-}
-
-/** A `JarvisGateService` that never gates (`budgetUsd: "off"`) — the default
- * stand-in for every createHarness below that doesn't itself exercise the budget
- * gate, so `ctx.jarvisGate.current().level` reads `"none"` throughout and
- * `resolveBrain`'s gated offer is always the full, ungated one. */
-function createUngatedGate(): JarvisGateService {
-  return new JarvisGateService(new UsageMeter(), {
-    budgetUsd: "off",
-    softRatio: 0.8,
-    forceLevel: null,
-  });
-}
-
-interface AvailabilityGateHarness {
-  readonly meter: UsageMeter;
-  readonly gate: JarvisGateService;
-  readonly messages$: Subject<Inbound>;
-  readonly sent: Outbound[];
-}
-
-/** The common setup for the "budget gate" describe block's availability-push
- * tests below: a real `JarvisGateService` (built from the given config) over
- * a real `UsageMeter`, wired to a fixed full-`JARVIS_BRAINS` `JarvisLoops`
- * (session-spy-free `vi.fn()` stubs — these tests only exercise the
- * availability effect, never a chat turn). Does NOT send the initial
- * `JARVIS_SUBSCRIBE` itself — callers drive `messages$` explicitly, same as
- * every other createHarness in this file, so a test that needs more than one
- * subscribe frame (e.g. proving a socket holds at most one live observer)
- * can send exactly as many as it needs. */
-function availabilityGateHarness(
-  config: JarvisGateConfig,
-): AvailabilityGateHarness {
-  const meter = new UsageMeter();
-  const gate = new JarvisGateService(meter, config);
-  const loops: JarvisLoops = {
-    scripted: { createSession: vi.fn() },
-    anthropic: { createSession: vi.fn() },
-    brains: JARVIS_BRAINS,
-    defaultBrain: "claude-haiku-4-5",
-  };
-  const sent: Outbound[] = [];
-  const socket = createSocket(sent);
-  const ctx = { jarvisGate: gate } as unknown as Ctx;
-  createWsListener(combineEffects(...jarvisEffects(loops)), ctx)(socket);
-  return { meter, gate, messages$: socket.messages$, sent };
 }
 
 function createHarness(): Harness {
@@ -1741,8 +1993,8 @@ interface StubHarness {
  * below sends no `brain`, so routing always resolves to `"scripted"` and
  * reaches this loop) — no `ServiceContainer` / fake timers, since a stub
  * `runTurn` returning `of(…)` emits synchronously. A minimal stub `ctx`
- * supplies just `usageMeter.recordTurn` (a no-op spy) and an ungated
- * `jarvisGate` — the two `Ctx` members `jarvisEffects` reads. */
+ * supplies just `usageMeter.recordTurn` (a no-op spy) and no caller, so no
+ * budget is read and every turn runs at once. */
 function createStubHarness(loop: AgentLoop): StubHarness {
   const loops: JarvisLoops = {
     scripted: loop,
@@ -1753,7 +2005,7 @@ function createStubHarness(loop: AgentLoop): StubHarness {
 
   const ctx = {
     usageMeter: { recordTurn: vi.fn() },
-    jarvisGate: createUngatedGate(),
+    caller: null,
   } as unknown as Ctx;
   const sent: Outbound[] = [];
   const socket = createSocket(sent);
@@ -1784,7 +2036,9 @@ interface SpyLoop {
  * technique `createControllableStubLoop` below uses) for a test that needs
  * the turn to stay "in flight" (e.g. to exercise `jarvis.cancel`). */
 function createSpyLoop(
-  runTurnImpl: () => Observable<JarvisEvent> = (): Observable<JarvisEvent> => {
+  runTurnImpl: (
+    options?: JarvisTurnOptions,
+  ) => Observable<JarvisEvent> = (): Observable<JarvisEvent> => {
     return of<JarvisEvent>({ type: "done" });
   },
 ): SpyLoop {
@@ -1799,9 +2053,9 @@ function createSpyLoop(
       (
         _text: string,
         _history: readonly JarvisHistoryEntry[],
-        _options?: JarvisTurnOptions,
+        options?: JarvisTurnOptions,
       ): Observable<JarvisEvent> => {
-        return runTurnImpl();
+        return runTurnImpl(options);
       },
     );
     const resolveConfirmation = vi.fn();
@@ -1820,16 +2074,22 @@ interface DualLoopsHarness {
   readonly sent: Outbound[];
 }
 
-/** Wires `jarvisEffects` to a caller-supplied `JarvisLoops`, with an
- * injectable `recordTurn` spy standing in for `ctx.usageMeter.recordTurn`
- * and an injectable `jarvisGate` (an ungated stand-in by default) — the two
- * `Ctx` members `jarvisEffects` reads. */
+/** Wires `jarvisEffects` to a caller-supplied `JarvisLoops` on a connection
+ * scoped to the roster persona (an operator: every brain offered, no personal
+ * limit), with an injectable `recordTurn` spy standing in for
+ * `ctx.usageMeter.recordTurn`. The budget is the real default one over an
+ * in-memory store, so a turn is routed only after its budget read settles. */
 function wireDualLoops(
   loops: JarvisLoops,
   recordTurn: ReturnType<typeof vi.fn> = vi.fn(),
-  jarvisGate: JarvisGateService = createUngatedGate(),
 ): DualLoopsHarness {
-  const ctx = { usageMeter: { recordTurn }, jarvisGate } as unknown as Ctx;
+  const ctx: Ctx = {
+    ...scopeServicesToConnection(createBudgetServices(), OPERATOR),
+    usageMeter: {
+      recordTurn,
+      recordTokens: vi.fn(),
+    } as unknown as Ctx["usageMeter"],
+  };
   const sent: Outbound[] = [];
   const socket = createSocket(sent);
   createWsListener(combineEffects(...jarvisEffects(loops)), ctx)(socket);
@@ -1844,12 +2104,9 @@ interface DualSpyHarness extends DualLoopsHarness {
 
 /** The common case for the dual-brain routing tests: a full `JarvisLoops`
  * (all four `JARVIS_BRAINS`, `DEFAULT_JARVIS_BRAIN`) built from two fresh
- * `createSpyLoop()`s, wired via `wireDualLoops`. `jarvisGate` defaults to an
- * ungated stand-in — the budget-gate tests below pass a forced/tripped
- * `JarvisGateService` instead, to prove `resolveBrain` actually consults it. */
+ * `createSpyLoop()`s, wired via `wireDualLoops`. */
 function dualLoopsHarness(
   recordTurn: ReturnType<typeof vi.fn> = vi.fn(),
-  jarvisGate: JarvisGateService = createUngatedGate(),
 ): DualSpyHarness {
   const scriptedSpy = createSpyLoop();
   const anthropicSpy = createSpyLoop();
@@ -1860,12 +2117,83 @@ function dualLoopsHarness(
     defaultBrain: DEFAULT_JARVIS_BRAIN,
   };
 
-  const { messages$, closed$, sent } = wireDualLoops(
-    loops,
-    recordTurn,
-    jarvisGate,
-  );
+  const { messages$, closed$, sent } = wireDualLoops(loops, recordTurn);
   return { loops, scriptedSpy, anthropicSpy, messages$, closed$, sent };
+}
+
+/** A container over a real `JarvisBudgetService` — the default one
+ * `createServices` builds — on the given store, with every `RTC_JARVIS_*`
+ * setting at its default unless `env` says otherwise. Build it after the
+ * test has pinned the clock: the service arms its midnight timer at once. */
+function createBudgetServices(
+  env: NodeJS.ProcessEnv = {},
+  spendStore: SpendStore = createInMemorySpendStore(),
+): ServiceContainer {
+  return createServices(env, { spendStore });
+}
+
+/** One socket on a connection scoped to `caller` (null: the unscoped shared
+ * container), served by a full dual-loop set of spy loops. */
+function wireSpySocket(
+  services: ServiceContainer,
+  caller: Caller | null,
+): DualSpyHarness {
+  const scriptedSpy = createSpyLoop();
+  const anthropicSpy = createSpyLoop();
+  const loops: JarvisLoops = {
+    scripted: scriptedSpy.loop,
+    anthropic: anthropicSpy.loop,
+    brains: JARVIS_BRAINS,
+    defaultBrain: DEFAULT_JARVIS_BRAIN,
+  };
+
+  const ctx =
+    caller === null ? services : scopeServicesToConnection(services, caller);
+  const sent: Outbound[] = [];
+  const socket = createSocket(sent);
+  createWsListener(combineEffects(...jarvisEffects(loops)), ctx)(socket);
+  return {
+    loops,
+    scriptedSpy,
+    anthropicSpy,
+    messages$: socket.messages$,
+    closed$: socket.closed$,
+    sent,
+  };
+}
+
+/** The gate level on an availability frame; undefined when ungated. */
+function gateLevelOf(frame: Outbound | undefined): string | undefined {
+  if (frame === undefined) {
+    throw new Error("expected a jarvis.availability frame");
+  }
+
+  return (frame.payload as JarvisAvailabilityPayload).gate?.level;
+}
+
+/** Lets every pending budget read (tier lookup, store read) settle and the
+ * turn or frame that waits on it go out. The in-memory store answers in
+ * microtasks; advancing the fake clock by zero drains them. */
+async function settleBudgetReads(): Promise<void> {
+  await vi.advanceTimersByTimeAsync(0);
+}
+
+/** The worst case one Sonnet request is reserved at: $0.10644. */
+const SONNET_CEILING: JarvisTokenUsage = {
+  inputTokens: 15_000,
+  outputTokens: 4_096,
+  cacheReadTokens: 0,
+  cacheCreationTokens: 0,
+};
+
+/** Input-only usage: Haiku bills $1/Mtok input, so N tokens cost N/1e6 USD. */
+function createUsageFixture(inputTokens: number): JarvisTokenUsage {
+  return {
+    inputTokens,
+    outputTokens: 0,
+    cacheReadTokens: 0,
+    cacheCreationTokens: 0,
+  };
 }
 
 interface CapturingStubLoop {
@@ -1987,3 +2315,28 @@ const DECLINED_REPLY = "Understood, sir — standing down. Nothing was executed.
 
 const FILL_REPLY =
   "Very good, sir. Bought 5,000,000 EUR at 1.0922 — the trade is on your blotter.";
+
+const NOON = Date.UTC(2026, 9, 25, 12);
+
+const TODAY = "2026-10-25";
+
+const NEXT_MIDNIGHT = Date.UTC(2026, 9, 26);
+
+const DAY_MS = 86_400_000;
+
+/** An approved account with role `user`: the default tier lookup reads any
+ * account as a member. */
+const MEMBER: Caller = {
+  username: "ann",
+  accountId: "acc-ann",
+  issuedAt: null,
+};
+
+const OTHER_MEMBER: Caller = {
+  username: "bob",
+  accountId: "acc-bob",
+  issuedAt: null,
+};
+
+/** The roster persona: no account, an operator. */
+const OPERATOR: Caller = { username: "demo", accountId: null, issuedAt: null };

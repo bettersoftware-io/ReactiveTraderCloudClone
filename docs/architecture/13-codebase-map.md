@@ -665,7 +665,7 @@ src/
 ```
 src/
 ├── effects/        declarative WsEffects — fx · credit · ops · equities · jarvis, assembled by buildEffects(loops)
-├── services/         serviceContainer (ServiceContainer) · ThroughputService · UsageMeter · JarvisGateService
+├── services/         serviceContainer (ServiceContainer) · ThroughputService · UsageMeter · jarvisBudget/ (JarvisBudgetService, SpendStore)
 ├── agent/             ScriptedAgentLoop · AnthropicAgentLoop (@anthropic-ai/sdk confined here) · Jarvis persona + tools
 ├── auth/               AuthService · token · rateLimit · loadUsers
 ├── http/               /login handler

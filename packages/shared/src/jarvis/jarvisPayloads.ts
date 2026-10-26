@@ -1,6 +1,7 @@
 import type {
   JarvisAvailabilityGate,
   JarvisBrain,
+  JarvisBudgetView,
   JarvisEffort,
   JarvisHistoryEntry,
 } from "@rtc/domain";
@@ -34,6 +35,10 @@ export interface JarvisChatPayload {
   readonly brain?: JarvisBrain;
   /** Absent on pre-round clients — server falls back to DEFAULT_JARVIS_EFFORT. */
   readonly effort?: JarvisEffort;
+  /** `"narrator"` marks a turn the app asked for on its own, not one the
+   * person typed; on the house key it runs on the scripted brain and costs
+   * nothing. Absent, or any other value, reads as `"user"`. */
+  readonly origin?: "user" | "narrator";
 }
 
 /** `CLIENT_MSG.JARVIS_CONFIRM` payload — resolves a pending confirmRequest. */
@@ -57,4 +62,7 @@ export interface JarvisAvailabilityPayload {
   readonly brains?: readonly JarvisBrain[];
   readonly defaultBrain?: JarvisBrain;
   readonly gate?: JarvisAvailabilityGate;
+  /** The caller's budget for today. Absent on pre-B3a servers and on a
+   * connection with no signed-in caller; clients ignore it until B3b. */
+  readonly budget?: JarvisBudgetView;
 }

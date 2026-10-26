@@ -3,7 +3,7 @@
  * spec exists yet for this surface (Task 10), and no neighboring ops card
  * (LatencyHistogram/ServiceHealth/LiveEventLog) has its own co-located test
  * either — but this component has enough real branch logic (null vs
- * populated, per-section empty lists, the windowEndMs=0 sentinel) to be
+ * populated, per-section empty lists, the fixed UTC reset line) to be
  * worth pinning directly rather than leaving to a future contract spec.
  */
 import { afterEach, describe, expect, it } from "vitest";
@@ -66,12 +66,12 @@ describe("JarvisUsageCard", () => {
     expect(cardText).toContain("$0.12");
     expect(cardText).toContain("$1.20");
     expect(cardText).toContain("$4.50");
-    expect(cardText).toContain("Window resets");
-    expect(cardText).not.toContain("Window resets —");
-    expect(cardText).toContain("resets on server restart");
+    expect(cardText).toContain("TODAY (UTC)");
+    expect(cardText).toContain("Resets 00:00 UTC");
+    expect(cardText).toContain("per-model rows reset on server restart");
   });
 
-  it("prints — instead of a bogus epoch clock when windowEndMs is the 0 sentinel", () => {
+  it("prints the fixed UTC reset even when windowEndMs is the 0 sentinel", () => {
     page.mount({
       windowStartMs: 0,
       windowEndMs: 0,
@@ -80,7 +80,7 @@ describe("JarvisUsageCard", () => {
     });
 
     const cardText = page.text("ops-jarvis-usage-card");
-    expect(cardText).toContain("Window resets —");
+    expect(cardText).toContain("Resets 00:00 UTC");
     expect(cardText).toContain("No turns yet");
   });
 
@@ -95,39 +95,25 @@ describe("JarvisUsageCard", () => {
     expect(page.exists("ops-jarvis-budget-line")).toBe(false);
   });
 
-  it("renders BUDGET OFF when budgetUsd is null (gating disabled)", () => {
-    page.mount({
-      windowStartMs: 0,
-      windowEndMs: 0,
-      currentWindow: [],
-      sinceBoot: [],
-      budgetUsd: null,
-    } as JarvisUsageSnapshot);
-
-    expect(page.text("ops-jarvis-budget-line")).toBe("BUDGET OFF");
-    expect(page.exists("ops-jarvis-gate-badge")).toBe(false);
-  });
-
-  it("renders the spend/budget/soft-gate line and a SOFT GATE badge", () => {
+  it("renders the house-budget line with no badge while under the cap", () => {
     page.mount({
       windowStartMs: 0,
       windowEndMs: 0,
       currentWindow: [],
       sinceBoot: [],
       budgetUsd: 10,
-      softBudgetUsd: 8,
+      softBudgetUsd: null,
       spentWindowUsd: 8.5,
-      gateLevel: "soft",
+      gateLevel: "none",
     } as JarvisUsageSnapshot);
 
-    expect(page.text("ops-jarvis-budget-line")).toContain(
-      "$8.50 of $10.00 this window — soft gate at $8.00",
+    expect(page.text("ops-jarvis-budget-line")).toBe(
+      "$8.50 of $10.00 house budget today (UTC)",
     );
-    expect(page.text("ops-jarvis-gate-badge")).toBe("SOFT GATE");
-    expect(page.attribute("ops-jarvis-gate-badge", "data-gate")).toBe("soft");
+    expect(page.exists("ops-jarvis-gate-badge")).toBe(false);
   });
 
-  it("renders a HARD GATE badge and defaults spent/soft-budget when absent", () => {
+  it("renders · EXHAUSTED when the budget is spent and defaults spent when absent", () => {
     page.mount({
       windowStartMs: 0,
       windowEndMs: 0,
@@ -138,9 +124,9 @@ describe("JarvisUsageCard", () => {
     } as JarvisUsageSnapshot);
 
     expect(page.text("ops-jarvis-budget-line")).toContain(
-      "$0.00 of $10.00 this window — soft gate at $0.00",
+      "$0.00 of $10.00 house budget today (UTC)",
     );
-    expect(page.text("ops-jarvis-gate-badge")).toBe("HARD GATE");
+    expect(page.text("ops-jarvis-gate-badge")).toBe("· EXHAUSTED");
     expect(page.attribute("ops-jarvis-gate-badge", "data-gate")).toBe("hard");
   });
 });

@@ -10,11 +10,11 @@ import { jarvisEffects } from "./jarvis.effects.js";
 import { opsEffects } from "./ops.effects.js";
 import { opsJarvisUsageEffects } from "./opsJarvisUsage.effects.js";
 
-// `opsJarvisUsageEffects` reads only `ctx.usageMeter`, which is always
-// present on the `ServiceContainer` regardless of whether Jarvis itself is
-// wired — so it belongs in the unconditional set, not behind `buildEffects`'
-// `loops` gate (the ops usage dock stays queryable even with Jarvis absent,
-// correctly reporting an all-zero snapshot).
+// `opsJarvisUsageEffects` reads only `ctx.usageMeter` and `ctx.jarvisBudget`,
+// which are always present on the `ServiceContainer` regardless of whether
+// Jarvis itself is wired — so it belongs in the unconditional set, not behind
+// `buildEffects`' `loops` gate (the ops usage dock stays queryable even with
+// Jarvis absent, correctly reporting an all-zero snapshot).
 export const allEffects: WsEffect<Ctx>[] = [
   ...fxEffects,
   ...creditEffects,
