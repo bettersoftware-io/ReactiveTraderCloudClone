@@ -69,12 +69,12 @@ export function AppRoot({
   const ref = useRef<Composition | null>(null);
 
   if (ref.current === null) {
-    const { ports, dispose } = buildNativePorts({
+    const { ports, dispose: disposePorts } = buildNativePorts({
       simulator,
       sessionStore,
       preferences,
     });
-    const { presenters, commands } = createApp(ports);
+    const { presenters, commands, dispose: disposeApp } = createApp(ports);
 
     const devtools = createNativeDevtools();
     const inputs = buildViewModelInputs(presenters, devtools);
@@ -87,9 +87,22 @@ export function AppRoot({
 
     ref.current = {
       viewModel,
+      // The core first: it owns timers (the narrator's per-pair tickers
+      // among them) that outlive the mount otherwise, and it may write a
+      // pending layout change through the ports before it resolves — so
+      // the ports and the devtools relay close only once it has.
       dispose: (): void => {
-        devtools?.hub.dispose();
-        dispose();
+        void disposeApp()
+          .catch((error: unknown) => {
+            console.warn(
+              "[AppRoot] the application core failed to dispose",
+              error,
+            );
+          })
+          .finally(() => {
+            devtools?.hub.dispose();
+            disposePorts();
+          });
       },
     };
   }

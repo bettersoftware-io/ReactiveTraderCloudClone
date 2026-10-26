@@ -18,6 +18,24 @@ test("mount then unmount of simulator AppRoot does not throw", async () => {
   await expect(page.unmount()).resolves.toBeUndefined();
 });
 
+// Unmount must release what the application core owns, not only the ports:
+// the narrator machine keeps a 1 s ticker per pair alive until `app.dispose()`
+// runs, so a core left undisposed keeps timers running after every unmount —
+// in the app on each demo-toggle remount, and here it kept jest from exiting.
+test("unmount disposes the application core", async () => {
+  await page.mountChild("child");
+  const disposeApp = mockAppDisposals.at(-1);
+  expect(disposeApp).toBeDefined();
+  expect(disposeApp).not.toHaveBeenCalled();
+
+  await page.unmount();
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
+  expect(disposeApp).toHaveBeenCalledTimes(1);
+});
+
 // AppRoot no longer auto-logs-in on mount — the app is now gated behind
 // AuthGate/LoginScreen (wired in _layout.tsx), so the composition boots with
 // no credential submitted and the auth presenter stays "unauthenticated"
@@ -91,5 +109,28 @@ const page = appRootPage();
 jest.mock("#/app/readBuildStamp", () => {
   return {
     BUILD_STAMP: { commit: "f0482c5", builtAt: "2026-10-04T15:20Z" },
+  };
+});
+
+// Wraps the real core so a test can see whether unmount disposed it. The
+// `mock` prefix is what lets jest.mock's hoisted factory reach the array.
+const mockAppDisposals: jest.Mock<() => Promise<void>>[] = [];
+
+jest.mock("@rtc/client-core-rxjs", () => {
+  const actual = jest.requireActual<typeof import("@rtc/client-core-rxjs")>(
+    "@rtc/client-core-rxjs",
+  );
+
+  return {
+    ...actual,
+    createApp: (
+      ...args: Parameters<typeof actual.createApp>
+    ): ReturnType<typeof actual.createApp> => {
+      const app = actual.createApp(...args);
+      const dispose = jest.fn(app.dispose);
+      mockAppDisposals.push(dispose);
+
+      return { ...app, dispose };
+    },
   };
 });
