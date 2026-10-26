@@ -1064,16 +1064,24 @@ waited, so a revocation cannot slip between the read and the connect.
 Invalidating the status cache also drops lookups already in flight (a
 generation guard), so a stale answer is never stored.
 
-**What the browser does.** `WsAdapter` treats `4401` as final: no reconnect,
-one emission on the transport's `sessionEnded()` stream, and every pending
-RPC rejects. It is deliberately not a connection event: the
-connection-status fold stays the only subscriber of `connectionEvents`,
-whose client-side effects (idle routing, the browser's activity listeners)
-run once per subscription. Each core subscribes `transport.sessionEnded()`
-once, at construction, and answers it by signing out with "Your session has
-ended. Please sign in again." and clearing the stored session; the
-transport gate then disconnects. The person lands on the sign-in screen
-with that line. Only a bundle that knows `4401` does this: a tab still running
+**What the browser does.** `WsAdapter` treats `4401` as final: no reconnect
+(and no `reconnectAttempt`), one emission on the transport's `sessionEnded()`
+stream, and every pending RPC rejects. The session end is deliberately not a
+connection event: the connection-status fold stays the only subscriber of
+`connectionEvents`, whose client-side effects (idle routing, the browser's
+activity listeners) run once per subscription. Each core subscribes
+`transport.sessionEnded()` once, at construction, and answers it by signing
+out with "Your session has ended. Please sign in again." and clearing the
+stored session; the transport gate then disconnects (a no-op on an adapter
+the `4401` already suspended). The person lands on the sign-in screen with
+that line. The lost socket itself is still reported on `connectionEvents` as
+one `gatewayDisconnected`, after `sessionEnded()` and a microtask later, as a
+sign-out's own release reports it, so the sign-out lands first and the
+status reads DISCONNECTED, not CONNECTED, until the next sign-in's socket
+opens (until 2026-10-26 a `4401` reported none, and the status kept reading
+CONNECTED while nobody was signed in).
+
+Only a bundle that knows `4401` signs out like this: a tab still running
 the pre-B2c bundle, or a React Native build without the B2c EAS Update, treats
 the close as an ordinary drop and reconnects about every 3 s — its token
 (no `iat`) is accepted at the upgrade and closed at once, forever, and the

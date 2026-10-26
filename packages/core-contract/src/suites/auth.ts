@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { AuthViewState, StoredSession } from "@rtc/core-api";
 import {
+  type AuthOutcome,
   DEFAULT_LOGIN_WAIT_VARIANT,
   LOGIN_WAIT_VARIANTS,
   type LoginWaitVariant,
@@ -31,12 +32,21 @@ const SIGNED_OUT: AuthViewState = {
   waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
 };
 
+const SESSION_ENDED: AuthViewState = {
+  ...SIGNED_OUT,
+  error: "Your session has ended. Please sign in again.",
+  failure: "session_ended",
+};
+
 /** `presenters.auth` — the login / lock / unlock / logout lifecycle over the
  * auth port and the session store. Every case pins the clock at `NOW`
  * BEFORE composing, because the session is resumed at composition.
  *
- * Uncontracted (ruling 6): the outcome of a login still in flight when
- * `logout()` runs, and the order two overlapping logins settle in. */
+ * Signing out (`logout()`, or the transport's session end) releases a login
+ * or unlock still in flight: its port call is unsubscribed, and an outcome
+ * that lands in the same turn as the sign-out — before an Effect interrupt
+ * has been delivered — commits nothing. Uncontracted (ruling 6): the order
+ * two overlapping logins settle in. */
 export function describeAuthContract(
   label: string,
   makeHarness: MakeHarness,
@@ -495,6 +505,140 @@ export function describeAuthContract(
       });
     });
 
+    // An outcome landing AFTER the sign-out finds the port call released (or,
+    // on the Effect core, an interrupt not yet delivered); one landing JUST
+    // BEFORE it, in the same turn, may not have been committed yet (the async
+    // core commits a microtask later, the Effect core a fiber step later) —
+    // either way the sign-out has the last word.
+    it.each(createSignOutRaces())(
+      "%s while %s is in flight: an outcome that %s, landing %s it in the same turn, writes no session and the sign-out stands",
+      async (signOut, attempt, _, order, outcome) => {
+        await withFakeClock(async (clock) => {
+          vi.setSystemTime(NOW);
+          const h = makeHarness(
+            attempt === "an unlock"
+              ? { session: createSession(NOW + 1_000), transport: true }
+              : {},
+          );
+
+          try {
+            const auth = h.app.presenters.auth;
+            const c = collect(auth.state$);
+
+            if (attempt === "an unlock") {
+              auth.lock();
+              auth.unlock("pw");
+            } else {
+              auth.login(DEMO.username, "pw");
+            }
+
+            await clock.settle();
+            expect(h.driver.pendingLogins()).toHaveLength(1);
+
+            if (order === "just before") {
+              h.driver.resolveLogin(outcome);
+            }
+
+            if (signOut === "logout") {
+              auth.logout();
+            } else {
+              h.driver.endSession();
+            }
+
+            if (order === "after") {
+              h.driver.resolveLogin(outcome);
+            }
+
+            await clock.settle();
+            expect(c.values.at(-1)).toEqual(
+              signOut === "logout" ? SIGNED_OUT : SESSION_ENDED,
+            );
+            expect(h.driver.storedSession()).toBeNull();
+            c.unsubscribe();
+          } finally {
+            await h.teardown();
+          }
+        });
+      },
+    );
+
+    it.each([
+      ["logout() releases an unlock in flight", "unlock", "logout"],
+      ["a session end releases an unlock in flight", "unlock", "endSession"],
+      ["logout() releases a login in flight", "login", "logout"],
+      ["dispose() releases a login in flight", "login", "dispose"],
+    ] as const)(
+      "%s: its port call is unsubscribed",
+      async (_, attempt, signOut) => {
+        await withFakeClock(async (clock) => {
+          vi.setSystemTime(NOW);
+          const h = makeHarness(
+            attempt === "unlock"
+              ? { session: createSession(NOW + 1_000), transport: true }
+              : {},
+          );
+
+          try {
+            const auth = h.app.presenters.auth;
+
+            if (attempt === "unlock") {
+              auth.lock();
+              auth.unlock("pw");
+            } else {
+              auth.login(DEMO.username, "pw");
+            }
+
+            await clock.settle();
+            expect(h.driver.pendingLogins()).toHaveLength(1);
+
+            if (signOut === "logout") {
+              auth.logout();
+            } else if (signOut === "endSession") {
+              h.driver.endSession();
+            } else {
+              await h.app.dispose();
+            }
+
+            await clock.settle();
+            expect(h.driver.pendingLogins()).toEqual([]);
+            expect(h.driver.storedSession()).toBeNull();
+          } finally {
+            await h.teardown();
+          }
+        });
+      },
+    );
+
+    it("a login after a logout that released one in flight still signs in", async () => {
+      await withFakeClock(async (clock) => {
+        vi.setSystemTime(NOW);
+        const h = makeHarness();
+
+        try {
+          const auth = h.app.presenters.auth;
+          const c = collect(auth.state$);
+          auth.login(DEMO.username, "first");
+          auth.logout();
+          auth.login(DEMO.username, "pw");
+          await clock.settle();
+          expect(h.driver.pendingLogins()).toEqual([
+            { username: DEMO.username, password: "pw" },
+          ]);
+          h.driver.resolveLogin(createOkOutcome());
+          await clock.settle();
+          expect(c.values.at(-1)).toMatchObject({
+            status: "authenticated",
+            user: DEMO.user,
+            error: null,
+          });
+          expect(h.driver.storedSession()?.token).toBe("tok-late");
+          c.unsubscribe();
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
     it("a double-submitted login that succeeds twice ends signed in", async () => {
       await withFakeClock(async (clock) => {
         vi.setSystemTime(NOW);
@@ -525,6 +669,47 @@ export function describeAuthContract(
       });
     });
   });
+}
+
+type SignOutRace = readonly [
+  signOut: "logout" | "a session end",
+  attempt: "an unlock" | "a login",
+  outcomeText: string,
+  order: "after" | "just before",
+  outcome: AuthOutcome,
+];
+
+/** Every sign-out × attempt in flight × outcome × arrival order. A session
+ * end only ever meets an unlock: it is a no-op unless a session is
+ * authenticated, and a login is not one. */
+function createSignOutRaces(): readonly SignOutRace[] {
+  const pairs = [
+    ["logout", "an unlock"],
+    ["a session end", "an unlock"],
+    ["logout", "a login"],
+  ] as const;
+
+  const outcomes = [
+    ["succeeds", createOkOutcome()],
+    ["is refused", createRefusedOutcome()],
+  ] as const;
+  const orders = ["after", "just before"] as const;
+
+  return pairs.flatMap(([signOut, attempt]) => {
+    return outcomes.flatMap(([outcomeText, outcome]) => {
+      return orders.map((order): SignOutRace => {
+        return [signOut, attempt, outcomeText, order, outcome];
+      });
+    });
+  });
+}
+
+function createRefusedOutcome(): AuthOutcome {
+  return { ok: false, reason: "invalid" };
+}
+
+function createOkOutcome(): AuthOutcome {
+  return { ok: true, token: "tok-late", user: DEMO.user, exp: NOW + 5_000 };
 }
 
 function createSession(exp: number): StoredSession {
