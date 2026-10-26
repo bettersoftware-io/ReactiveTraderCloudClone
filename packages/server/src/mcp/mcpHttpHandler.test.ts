@@ -13,6 +13,8 @@ import type {
 } from "../accounts/AccountDirectory.js";
 import { createRevocationLedger } from "../accounts/revocationLedger.js";
 import { AuthService, parseAuthUsers } from "../auth/AuthService.js";
+import type { BanList, StrikeReason } from "../auth/banList.js";
+import type { RateLimiter } from "../auth/rateLimit.js";
 import { signToken } from "../auth/token.js";
 import { createServices } from "../services/serviceContainer.js";
 import { createMcpRequestHandler } from "./mcpHttpHandler.js";
@@ -21,6 +23,12 @@ describe("createMcpRequestHandler", () => {
   beforeEach(async () => {
     findAccountError = null;
     directoryReads = 0;
+    ipAllowed = true;
+    accountAllowed = true;
+    bannedUntilMs = null;
+    ipHits = [];
+    accountHits = [];
+    strikes = [];
     lookup = { outcome: "found", account: createRecord({}) };
     revocations = createRevocationLedger(10);
     auth = new AuthService({
@@ -45,6 +53,19 @@ describe("createMcpRequestHandler", () => {
         },
       },
       revocations,
+      banList: createFakeBanList(),
+      ipLimit: createFakeLimiter(ipHits, () => {
+        return ipAllowed;
+      }),
+      accountLimit: createFakeLimiter(accountHits, () => {
+        return accountAllowed;
+      }),
+      clientIp: (): string => {
+        return CALLER_IP;
+      },
+      now: (): number => {
+        return NOW;
+      },
     });
     httpServer = createServer((req, res) => {
       serveMcp(req, res);
@@ -87,6 +108,66 @@ describe("createMcpRequestHandler", () => {
     const listed = await client.listTools();
     expect(listed.tools).toHaveLength(7);
     await client.close();
+  });
+
+  it("refuses a banned caller 429 with Retry-After before reading the token or the directory", async () => {
+    bannedUntilMs = NOW + 90_000;
+
+    const response = await postToolsList(adminToken());
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("90");
+    expect(ipHits).toEqual([]);
+    expect(directoryReads).toBe(0);
+  });
+
+  it("charges the per-IP budget by the resolved client address", async () => {
+    await postToolsList(adminToken());
+
+    expect(ipHits).toEqual([CALLER_IP]);
+  });
+
+  it("refuses a caller over the per-IP budget 429 rate_limited with a strike, before the token is read", async () => {
+    ipAllowed = false;
+
+    const response = await postToolsList(adminToken());
+
+    expect(response.status).toBe(429);
+    expect(await response.json()).toEqual({
+      jsonrpc: "2.0",
+      error: { code: -32000, message: "rate_limited" },
+      id: null,
+    });
+    expect(strikes).toEqual(["mcp-rate-limited"]);
+    expect(accountHits).toEqual([]);
+    expect(directoryReads).toBe(0);
+  });
+
+  it("refuses an administrator over the per-account budget 429 before the directory read", async () => {
+    accountAllowed = false;
+
+    const response = await postToolsList(adminToken());
+
+    expect(response.status).toBe(429);
+    expect(accountHits).toEqual([`${ADMIN_ID}:${ISSUED_AT}`]);
+    expect(strikes).toEqual(["mcp-rate-limited"]);
+    expect(directoryReads).toBe(0);
+  });
+
+  it("charges each administrator session its own budget, so one leaked token cannot spend another's", async () => {
+    await postToolsList(adminToken());
+    await postToolsList(adminToken(ISSUED_AT + 1_000));
+
+    expect(accountHits).toEqual([
+      `${ADMIN_ID}:${ISSUED_AT}`,
+      `${ADMIN_ID}:${ISSUED_AT + 1_000}`,
+    ]);
+  });
+
+  it("a token whose claim says user never charges the account budget", async () => {
+    await expectAdminOnly(userClaimToken());
+
+    expect(accountHits).toEqual([]);
   });
 
   it("a missing Authorization header is rejected 401 before any MCP handling", async () => {
@@ -204,8 +285,58 @@ describe("createMcpRequestHandler", () => {
 
   let directoryReads: number;
 
-  function adminToken(): string {
-    return signToken("ann@desk.io", SECRET, 60_000, Date.now(), {
+  let ipAllowed: boolean;
+
+  let accountAllowed: boolean;
+
+  let bannedUntilMs: number | null;
+
+  let ipHits: string[];
+
+  let accountHits: string[];
+
+  let strikes: StrikeReason[];
+
+  function createFakeBanList(): BanList {
+    return {
+      strike: (_ip: string, reason: StrikeReason): boolean => {
+        strikes.push(reason);
+        return false;
+      },
+      isBanned: (): boolean => {
+        return bannedUntilMs !== null;
+      },
+      bannedUntil: (): number | null => {
+        return bannedUntilMs;
+      },
+      size: (): number => {
+        return 0;
+      },
+    };
+  }
+
+  /** Records every key it is charged with into `hits` (the array is read
+   * through a closure, so `beforeEach` may replace it). */
+  function createFakeLimiter(
+    hits: string[],
+    allow: () => boolean,
+  ): RateLimiter {
+    return {
+      hit: (key: string): boolean => {
+        hits.push(key);
+        return allow();
+      },
+      peek: (): boolean => {
+        return allow();
+      },
+      size: (): number => {
+        return hits.length;
+      },
+    };
+  }
+
+  function adminToken(issuedAt: number = ISSUED_AT): string {
+    return signToken("ann@desk.io", SECRET, 60_000, issuedAt, {
       accountId: ADMIN_ID,
       access: "admin",
     });
@@ -275,3 +406,11 @@ interface TextContentBlock {
 const SECRET = "test-secret";
 
 const ADMIN_ID = "00000000-0000-4000-8000-000000000001";
+
+const CALLER_IP = "203.0.113.7";
+
+const NOW = 1_800_000_000_000;
+
+/** Every admin token the suite signs is issued at this instant unless a test
+ * says otherwise; the token's TTL is measured from it against the real clock. */
+const ISSUED_AT = Date.now();

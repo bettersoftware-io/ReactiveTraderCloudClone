@@ -13,6 +13,7 @@ describe("banList", () => {
       "login-failed": 1,
       "login-rate-limited": 2,
       "account-rate-limited": 2,
+      "mcp-rate-limited": 2,
       "code-failed": 1,
       "frame-too-large": 3,
       "message-flood": 3,

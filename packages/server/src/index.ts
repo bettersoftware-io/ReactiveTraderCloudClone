@@ -66,6 +66,8 @@ import {
   createAccountLimits,
   createCodeEntryLimiter,
   createLoginLimiter,
+  createMcpAccountLimiter,
+  createMcpIpLimiter,
   createSendFuses,
   createSendLimiter,
 } from "./http/accountLimits.js";
@@ -310,16 +312,21 @@ function approveWithoutPrompt(): Promise<boolean> {
   return Promise.resolve(true);
 }
 
+function clientIp(req: IncomingMessage): string {
+  return resolveClientIp(req, TRUSTED_IP_HEADER);
+}
+
 const serveMcp = createMcpRequestHandler({
   auth,
   tools: buildJarvisToolsFor(services, approveWithoutPrompt),
   accounts: accountDirectory,
   revocations,
+  banList,
+  ipLimit: createMcpIpLimiter(),
+  accountLimit: createMcpAccountLimiter(),
+  clientIp,
+  now: readClock,
 });
-
-function clientIp(req: IncomingMessage): string {
-  return resolveClientIp(req, TRUSTED_IP_HEADER);
-}
 
 // ── POST routes ─────────────────────────────────────────────────
 

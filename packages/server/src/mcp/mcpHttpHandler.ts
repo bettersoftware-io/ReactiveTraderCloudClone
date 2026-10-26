@@ -9,6 +9,8 @@ import type { CachedAccount } from "../accounts/accountStatusCache.js";
 import type { RevocationLedger } from "../accounts/revocationLedger.js";
 import { hasSessionEnded } from "../accounts/sessionEnd.js";
 import type { AuthService } from "../auth/AuthService.js";
+import type { BanList } from "../auth/banList.js";
+import type { RateLimiter } from "../auth/rateLimit.js";
 import { buildJarvisMcpServer } from "./buildJarvisMcpServer.js";
 
 export interface McpHandlerDeps {
@@ -18,6 +20,20 @@ export interface McpHandlerDeps {
    * demotion or block must bite on the next request. */
   readonly accounts: Pick<AccountDirectory, "findAccount">;
   readonly revocations: RevocationLedger;
+  /** Checked first, like `/login` and the upgrade: a banned caller costs a
+   * Map lookup. A refused request over either budget is a strike. */
+  readonly banList: BanList;
+  /** Per client IP, charged before the token is read, so a flood of bad
+   * tokens is capped as cheaply as a flood of good ones. */
+  readonly ipLimit: RateLimiter;
+  /** Per administrator session (account + token issue time), charged only
+   * for a token whose claim says administrator and before the directory
+   * read, so even a stolen administrator token cannot turn into unbounded
+   * account-store reads — nor spend the budget of the account's other
+   * sessions. */
+  readonly accountLimit: RateLimiter;
+  readonly clientIp: (req: IncomingMessage) => string;
+  readonly now: () => number;
 }
 
 const BEARER_SCHEME_LENGTH: number = "Bearer ".length;
@@ -111,6 +127,23 @@ async function serveMcpRequest(
   res: ServerResponse,
   deps: McpHandlerDeps,
 ): Promise<void> {
+  const ip = deps.clientIp(req);
+  const now = deps.now();
+  const bannedUntil = deps.banList.bannedUntil(ip, now);
+
+  if (bannedUntil !== null) {
+    rejectRequest(res, 429, "banned", {
+      "Retry-After": String(Math.ceil((bannedUntil - now) / 1_000)),
+    });
+    return;
+  }
+
+  if (!deps.ipLimit.hit(ip, now)) {
+    deps.banList.strike(ip, "mcp-rate-limited", now);
+    rejectRequest(res, 429, "rate_limited");
+    return;
+  }
+
   const token = bearerToken(req);
 
   const verified = token === null ? null : deps.auth.verifyToken(token);
@@ -139,6 +172,18 @@ async function serveMcpRequest(
   // admin).
   if (verified.access !== "admin") {
     rejectRequest(res, 403, "admin_only");
+    return;
+  }
+
+  // Keyed per session (account + the token's issue time), not per account:
+  // a leaked or revoked token then spends only its own budget, never the
+  // administrator's other sessions'. A token minted before B2c carries no
+  // issue time and shares one legacy bucket per account.
+  const sessionKey = `${verified.accountId}:${verified.issuedAt ?? "legacy"}`;
+
+  if (!deps.accountLimit.hit(sessionKey, now)) {
+    deps.banList.strike(ip, "mcp-rate-limited", now);
+    rejectRequest(res, 429, "rate_limited");
     return;
   }
 
