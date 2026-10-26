@@ -175,6 +175,26 @@ export class UsersPanelPage extends MountedComponent<Record<string, never>> {
     );
   }
 
+  /** True when that row button holds the focus. */
+  isButtonFocused(id: string, button: UserRowButton): boolean {
+    return (
+      within(this.root).queryByTestId(`user-${button}-${id}`) ===
+      this.root.ownerDocument.activeElement
+    );
+  }
+
+  /** True when nothing holds the focus (it fell to the page). */
+  isFocusOnPage(): boolean {
+    const active = this.root.ownerDocument.activeElement;
+
+    return active === null || active === this.root.ownerDocument.body;
+  }
+
+  /** Moves the focus to one of the row's buttons, as a Tab would. */
+  focusButton(id: string, button: UserRowButton): void {
+    within(this.root).getByTestId(`user-${button}-${id}`).focus();
+  }
+
   /** The rename field's error text, or null when none is shown. */
   nameError(id: string): string | null {
     return (
