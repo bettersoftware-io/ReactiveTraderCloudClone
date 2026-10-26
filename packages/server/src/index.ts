@@ -243,13 +243,11 @@ const accounts = createAccountService({
   log: (line: string): void => {
     console.log(line);
   },
-  onSessionsRevoked: (accountId: string, stamped: boolean): void => {
-    // A stamp that could not be written is held here instead, so this
-    // process still treats the older tokens as ended.
-    if (!stamped) {
-      revocations.record(accountId, readClock());
-    }
-
+  onSessionsRevoked: (accountId: string): void => {
+    // Held here before the reset's reply goes out and before the durable
+    // stamp is tried, so this process treats the older tokens as ended
+    // whether or not the store answers; the stamp makes it survive a restart.
+    revocations.record(accountId, readClock());
     accountStatus.invalidate(accountId);
     sessionRegistry.closeAll(accountId);
   },

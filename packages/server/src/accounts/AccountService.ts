@@ -56,10 +56,13 @@ export interface AccountServiceOptions {
   /** One fixed line per detached send that did not answer `sent`: the route
    * and the outcome word, never the address. */
   readonly log: (line: string) => void;
-  /** Called after a reset ended the account's sessions. `stamped` is false
-   * when the stamp could not be written to the directory (so the caller must
-   * fall back to the in-process ledger). */
-  readonly onSessionsRevoked: (accountId: string, stamped: boolean) => void;
+  /** Called when a password reset ends the account's sessions, as soon as the
+   * id is known and BEFORE the durable stamp is attempted: the caller holds
+   * the revocation in-process, closes the account's sockets and drops its
+   * cached status. Holding does not wait for the stamp, so no window exists
+   * in which this process honours an older token while the store is slow or
+   * down; the stamp that follows only makes the end survive a restart. */
+  readonly onSessionsRevoked: (accountId: string) => void;
 }
 
 type RegisterOutcome =
@@ -399,24 +402,66 @@ export function createAccountService(
       return { outcome: changed };
     }
 
-    await endSessionsAfterReset(changed.accountId, email);
+    endSessionsAfterReset(changed.accountId, email);
 
     return { outcome: "changed" };
   }
 
-  /** A password reset ends every session of the account. Never changes the
-   * reset's outcome: the password HAS changed. The id comes from the reset
-   * itself; only a store that did not say falls back to a lookup. Logs the
+  /** A password reset ends every session of the account, without the reply
+   * waiting on it: the reply is already decided (the password HAS changed),
+   * and each directory call here can take a full timeout.
+   *
+   * When the reset reported the id, the in-process end (`onSessionsRevoked`)
+   * runs synchronously, before the reply resolves. Only a store that did not
+   * say falls back to a lookup, and that — like the durable stamp, retried
+   * once — runs detached. Nothing here throws or rejects out. Logs the
    * account id only. */
-  async function endSessionsAfterReset(
+  function endSessionsAfterReset(knownId: string | null, email: string): void {
+    if (knownId !== null) {
+      endInProcess(knownId);
+    }
+
+    detachStamp(knownId, email);
+  }
+
+  function endInProcess(accountId: string): void {
+    try {
+      options.onSessionsRevoked(accountId);
+    } catch {
+      // The reply is already decided and the password has changed: a hold
+      // that throws is reported, and a log that throws is dropped.
+      try {
+        options.log(`[accounts] session-end-failed id=${accountId}`);
+      } catch {
+        // Nothing left to tell.
+      }
+    }
+  }
+
+  /** The lookup (when the id is not known yet), the in-process end that
+   * follows it, and the durable stamp with its one retry. Never rejects. */
+  function detachStamp(knownId: string | null, email: string): void {
+    stampAfterReset(knownId, email).catch(() => {
+      // A log or a callback that throws must not become an unhandled
+      // rejection: nothing awaits this, so Node would terminate the process.
+    });
+  }
+
+  async function stampAfterReset(
     knownId: string | null,
     email: string,
   ): Promise<void> {
-    const found = knownId ?? (await findForReset(email));
+    let found = knownId;
 
     if (found === null) {
-      options.log("[accounts] reset-lookup-failed");
-      return;
+      found = await findForReset(email);
+
+      if (found === null) {
+        options.log("[accounts] reset-lookup-failed");
+        return;
+      }
+
+      endInProcess(found);
     }
 
     let stamped = (await stampOnce(found)) === "ok";
@@ -428,8 +473,6 @@ export function createAccountService(
     if (!stamped) {
       options.log(`[accounts] stamp-failed id=${found}`);
     }
-
-    options.onSessionsRevoked(found, stamped);
   }
 
   async function findForReset(email: string): Promise<string | null> {

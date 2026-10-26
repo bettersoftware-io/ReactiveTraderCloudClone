@@ -1107,12 +1107,23 @@ sequenceDiagram
 | Unblock | **No.** Tokens issued before the block stay ended after an unblock |
 | Delete | The row is removed, so the account is missing |
 
-**The ledger and its residual.** If a stamp fails after a reset, the server
-retries once. On a second failure it logs `[accounts] stamp-failed id=<id>`
-(an account id, never an address), records the stamp in an in-process ledger,
-invalidates the cache and closes the account's sockets anyway; the outcome
-stays `changed`. Residual: a machine restart forgets the ledger, so a token
-issued before that reset is usable until it expires (at most eight hours).
+**Order, the ledger and its residual.** The reset's reply never waits on
+ending sessions: `/reset-password` answers `changed` as soon as Supabase's
+verify answers. When that response carried the account id, the server
+records the stamp in the in-process ledger, invalidates the status cache and
+closes the account's sockets *before* the reply resolves, so no window exists
+in which this process honours an older token. Only then does the durable
+stamp run, detached: one write, one retry on failure, never an unhandled
+rejection. A second failure logs `[accounts] stamp-failed id=<id>` (an
+account id, never an address); the outcome stays `changed` either way. When
+the verify response carried no id, the `findByEmail` fallback and the
+in-process end run detached too (a failed lookup logs
+`[accounts] reset-lookup-failed`), so on that path the sockets close once the
+lookup answers rather than before the reply. The ledger is therefore written
+for every reset, not only for a failed stamp; it is bounded
+(`REVOCATION_LEDGER_MAX_ENTRIES`, oldest-recorded dropped first) and a restart
+forgets it. Residual: if the durable stamp failed, a token issued before that
+reset is usable on a restarted process until it expires (at most eight hours).
 Blocks and renames have no such residual: their stamp is part of the same
 write that changes the account.
 
