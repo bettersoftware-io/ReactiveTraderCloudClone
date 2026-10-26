@@ -47,7 +47,7 @@ flowchart TB
 | Set | What it is | Gates? | Rendered where | Baseline when |
 |---|---|---|---|---|
 | **`__screenshots__/react/`** | The canonical **x86** baseline. The cross-framework contract `@rtc/client-solid` also asserts against. | ✅ **`visual.yml` on push to `main`** | pinned Playwright container (`v1.63.0-noble`) | `CI=1` |
-| **`__screenshots__/react-local/<arch>/`** | Your machine's **native** pixels (`darwin-arm64`, `linux-arm64`). Powers the instant local loop. | ❌ never — feedback only | your machine, no Docker | `CI` unset |
+| **`__screenshots__/react-local/<arch>/`** | Your machine's **native** pixels (only `darwin-arm64` is committed). Powers the instant local loop. | ❌ never — feedback only | your machine, no Docker | `CI` unset |
 
 Both live under `packages/ui-contract/goldens/<tier>/__screenshots__/` — a
 sibling package, alongside the shared scenario manifest/`goldenPath.ts` these

@@ -381,5 +381,5 @@ baked in the Playwright container via `update-visual-goldens.yml` (which now
 **cleans the `react/` dirs before regen**, since the folder move orphans the old
 flat goldens that `--update` never deletes); the per-arch `react-local/<arch>/`
 set is regenerated on the dev machine. Local gen is ~11 min/arch; the container
-run is comparable. (`react-local/linux-arm64` must be regenerated in the aarch64
-sandbox — no darwin box reproduces its pixels.)
+run is comparable. (The `react-local/linux-arm64` set this once referred to was
+deleted 2026-10-26.)
