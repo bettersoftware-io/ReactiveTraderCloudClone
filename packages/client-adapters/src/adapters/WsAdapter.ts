@@ -20,12 +20,24 @@ interface WsMessage {
 interface PendingRpc {
   resolve: (p: unknown) => void;
   reject: (e: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
 }
 
 const DEFAULT_RECONNECT_DELAY_MS = 3_000;
 
+/** How long an `rpc()` waits for its reply before it is rejected as a lost
+ * transport. A close already rejects every pending call, but an RPC the
+ * server never answers on a socket that stays open (a dropped frame, a
+ * handler that never settles) would otherwise hang its caller forever. The
+ * slowest legitimate reply is an account action that waits on up to three
+ * 5 s directory timeouts, so 30 s leaves twice that. */
+const DEFAULT_RPC_TIMEOUT_MS = 30_000;
+
 export interface WsAdapterOptions {
   reconnectDelayMs?: number;
+  /** How long an `rpc()` waits for its reply; defaults to 30 s (see
+   * `DEFAULT_RPC_TIMEOUT_MS`). */
+  rpcTimeoutMs?: number;
   /** Whether to open the socket from the constructor. Defaults to `true` for
    * back-compat. Composition roots that gate the transport behind
    * authentication pass `false` and drive `connect()`/`disconnect()` from the
@@ -43,6 +55,8 @@ export class WsAdapter implements IWsAdapter {
   private readonly tokenProvider: () => string | undefined;
 
   private readonly reconnectDelayMs: number;
+
+  private readonly rpcTimeoutMs: number;
 
   private readonly handlers = new Map<string, Set<MessageHandler>>();
 
@@ -85,6 +99,7 @@ export class WsAdapter implements IWsAdapter {
     this.tokenProvider = tokenProvider;
     this.reconnectDelayMs =
       options.reconnectDelayMs ?? DEFAULT_RECONNECT_DELAY_MS;
+    this.rpcTimeoutMs = options.rpcTimeoutMs ?? DEFAULT_RPC_TIMEOUT_MS;
 
     if (options.autoConnect ?? true) {
       this.openSocket();
@@ -180,6 +195,7 @@ export class WsAdapter implements IWsAdapter {
 
         if (rpc) {
           this.pendingRpcs.delete(msg.correlationId);
+          clearTimeout(rpc.timer);
           rpc.resolve(msg.payload);
           return;
         }
@@ -320,13 +336,19 @@ export class WsAdapter implements IWsAdapter {
   rpc(type: string, payload?: unknown): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const correlationId = String(this.nextCorrelationId++);
-      this.pendingRpcs.set(correlationId, { resolve, reject });
 
       if (this.ws?.readyState !== WebSocket.OPEN) {
-        this.pendingRpcs.delete(correlationId);
         reject(new Error("WebSocket not connected"));
         return;
       }
+
+      // Outcome unknown, exactly like a dropped connection: the request may
+      // or may not have reached the server, so it is the same error.
+      const timer = setTimeout(() => {
+        this.pendingRpcs.delete(correlationId);
+        reject(createTransportLostError(`WsAdapter rpc ${type} timed out`));
+      }, this.rpcTimeoutMs);
+      this.pendingRpcs.set(correlationId, { resolve, reject, timer });
 
       const msg: WsMessage = { type, payload, correlationId };
       this.ws.send(JSON.stringify(msg));
@@ -428,6 +450,7 @@ export class WsAdapter implements IWsAdapter {
 
   private rejectPendingRpcs(reason: string): void {
     for (const rpc of this.pendingRpcs.values()) {
+      clearTimeout(rpc.timer);
       rpc.reject(createTransportLostError(reason));
     }
 
