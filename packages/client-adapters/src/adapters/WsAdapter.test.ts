@@ -681,6 +681,104 @@ describe("WsAdapter.rpc() + message routing", () => {
     await expect(promise).resolves.toEqual({ tradeId: 7 });
     adapter.dispose();
   });
+  it("rejects an rpc() the server never answers after 30 s by default, as a lost transport", async () => {
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
+    open(adapter);
+    const pending = adapter.rpc("admin.accounts.list");
+    const settled = pending.catch((error: unknown) => {
+      return error;
+    });
+
+    await vi.advanceTimersByTimeAsync(DEFAULT_RPC_TIMEOUT_MS - 1);
+    expect(
+      await Promise.race([settled, Promise.resolve("still pending")]),
+    ).toBe("still pending");
+
+    await vi.advanceTimersByTimeAsync(1);
+    const error = await settled;
+    expect(isTransportLost(error)).toBe(true);
+    expect(String(error)).toMatch(/timed out/);
+    adapter.dispose();
+  });
+  it("honours a configured rpcTimeoutMs", async () => {
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return undefined;
+      },
+      { rpcTimeoutMs: 1_000 },
+    );
+    open(adapter);
+    const settled = adapter.rpc("rpc.executeTrade").catch((error: unknown) => {
+      return error;
+    });
+
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect(isTransportLost(await settled)).toBe(true);
+    adapter.dispose();
+  });
+  it("an answer before the timeout clears its timer", async () => {
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
+    open(adapter);
+    const timersBefore = vi.getTimerCount();
+    const promise = adapter.rpc("rpc.executeTrade", { foo: 1 });
+    expect(vi.getTimerCount()).toBe(timersBefore + 1);
+
+    lastMock.onmessage?.(
+      new MessageEvent("message", {
+        data: JSON.stringify({
+          type: "rpc.executeTrade.response",
+          payload: { tradeId: 7 },
+          correlationId: "1",
+        }),
+      }),
+    );
+
+    await expect(promise).resolves.toEqual({ tradeId: 7 });
+    expect(vi.getTimerCount()).toBe(timersBefore);
+    adapter.dispose();
+  });
+  it("a reply arriving after the timeout is not delivered to the rejected rpc()", async () => {
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
+    open(adapter);
+    const pending = adapter.rpc("rpc.executeTrade", { foo: 1 });
+    const settled = pending.catch((error: unknown) => {
+      return error;
+    });
+    await vi.advanceTimersByTimeAsync(DEFAULT_RPC_TIMEOUT_MS);
+
+    lastMock.onmessage?.(
+      new MessageEvent("message", {
+        data: JSON.stringify({
+          type: "rpc.executeTrade.response",
+          payload: { tradeId: 7 },
+          correlationId: "1",
+        }),
+      }),
+    );
+
+    expect(isTransportLost(await settled)).toBe(true);
+    adapter.dispose();
+  });
+  it("dispose() clears the timers of the rpc()s it rejects", async () => {
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
+    open(adapter);
+    const timersBefore = vi.getTimerCount();
+    const pending = adapter.rpc("rpc.executeTrade", { foo: 1 });
+    adapter.dispose();
+
+    await expect(pending).rejects.toThrow(/WsAdapter disposed/);
+    expect(vi.getTimerCount()).toBeLessThanOrEqual(timersBefore);
+  });
   it("dispose() rejects every pending rpc()", async () => {
     const adapter = new WsAdapter("ws://test", () => {
       return undefined;
@@ -1017,3 +1115,7 @@ function trackSettlement(promise: Promise<unknown>): Settlement {
 
   return settlement;
 }
+
+/** The adapter's documented default — pinned here as a literal so a change to
+ * it is a visible decision, not a silent drift. */
+const DEFAULT_RPC_TIMEOUT_MS = 30_000;
