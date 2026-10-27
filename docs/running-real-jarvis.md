@@ -196,6 +196,28 @@ task beside the app's `dev:android`), the same trap `CLAUDE.md` documents for
 `pnpm --filter @rtc/server dev` (tsx watch) — so
 `RTC_JARVIS_FORCE_GATE=exhausted pnpm dev:ws` reaches the process untouched.
 
+### What the overlay shows (B3b)
+
+Signed in as a member on a keyed server, the Jarvis header carries a **brain
+readout** under the status line: the brain that will answer, the key, and what
+is left of today's allowance with a thin meter, for example
+`Claude Haiku 4.5 · house key · $0.14 of $0.20 left today`. Administrators and
+the roster persona have no personal limit, so theirs reads
+`… · house key · no personal limit` with no meter. When a limit is spent the
+readout turns to a warning and names the reason: `Scripted · today's AI budget
+used · back at 00:00 UTC`, `Scripted · house AI budget used · …`, or
+`Scripted · AI budget unavailable` (no reset time is known). The demo login
+and every simulator mode read `Scripted · demo`. Against a server without the
+budget (before B3a) the readout shows the brain and key but no amount.
+
+Each reply is **tagged** with the brain the server ran it on, which can differ
+from the one picked (a gate, a narrator turn). An optional **brain pill**
+beside the input shows the active brain and what is left, with a menu to
+switch brains. Preferences → Jarvis has three switches: Brain readout (on by
+default), Reply tags (on) and Brain pill (off). To see the exhausted copy
+without spending a token, use `RTC_JARVIS_FORCE_GATE=exhausted` as in the
+previous section. Design: [architecture §18.15](architecture/18-jarvis-ai-agent-surface.md#the-brain-indicators-b3b).
+
 ## Rate limits, and how Jarvis behaves when any limit trips
 
 Beyond spend, the Console has genuinely fine-grained rate machinery

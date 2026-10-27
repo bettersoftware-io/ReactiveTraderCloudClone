@@ -1502,6 +1502,72 @@ Round-1 open items and the interim PAYG billing decision are tracked in
 [`docs/STATUS.md`](../STATUS.md) under the Jarvis LLM usage governance ⚪
 entry.
 
+### The brain indicators (B3b)
+
+B3b ([spec §4](../superpowers/specs/2026-10-25-b3-ai-metering-byo-keys-design.md),
+[plan](../superpowers/plans/2026-10-27-b3b-brain-indicators.md)) makes the
+budget visible. Three small additions, all read-only views of state that
+already existed:
+
+- **The `jarvis.brain` frame.** The server sends `{ brain, turnId }` as the
+  **first** frame of every turn, naming the brain it actually ran. That can
+  differ from the one asked for (budget gate, narrator turn, an un-offered
+  brain, a missing live session), so the client never infers it. The domain
+  `JarvisEvent` union gains a `brain` variant and `JARVIS_BRAIN_NAMES` maps
+  each id to its display name. The controller stamps the name onto the turn's
+  `JarvisEntry.brain`; until the frame arrives an entry carries the brain the
+  client asked for.
+- **The budget on the client.** `WsJarvisAdapter.parseAvailability` now reads
+  the availability frame's `budget` (a malformed one parses to `null`, never
+  a throw) and adds `demo`, which is `true` only for the in-browser scripted
+  brain (`JARVIS_SIM_AVAILABILITY`: the demo login and every `dev:*`
+  simulator mode; a live server never sets it). `JarvisState` carries
+  `budget` and `demo` beside `available` and `effectiveBrain`.
+- **The copy lives in `@rtc/core-logic`**, so both web clients render the
+  same words: `describeBrainReadout` (header line, tone and a meter fraction,
+  or `null` when Jarvis is unavailable), `describeReplyTag` (the brain's name)
+  and `describeBrainPill` (`Haiku 4.5 · $0.14`, `Haiku 4.5` with no live
+  amount, `Scripted`). It switches on the budget's `keyKind`, so B3c's own-key
+  lines add a case rather than restructuring. Copy is sentence case; CSS
+  `text-transform: uppercase` shows it in capitals.
+
+| State | Readout |
+|---|---|
+| in-browser scripted brain | `Scripted · demo` |
+| scripted, not gated | `Scripted` |
+| live brain, member | `Claude Haiku 4.5 · house key · $0.14 of $0.20 left today`, plus a meter |
+| live brain, administrator or roster persona (no personal limit) | `… · house key · no personal limit`, no meter |
+| live brain, no `budget` (older server, no signed-in caller) | `… · house key`, no amount, no meter |
+| exhausted (`user` or `forced`) | `Scripted · today's AI budget used · back at HH:MM UTC` |
+| exhausted (`house`) | `Scripted · house AI budget used · back at HH:MM UTC` |
+| exhausted (`unavailable`) | `Scripted · AI budget unavailable` (no reset time is known) |
+
+An amount is clamped at zero: the budget may overshoot by one request
+(§3.4), and that reads `$0.00 of $0.20 left today` with an empty meter, never
+a negative amount or width. The meter is a static bar that changes between
+turns with no transition ([performance.md](../performance.md)). The
+"continuing on …" system line B3a left is now the reason-aware switch line
+from the same copy, for example `Today's AI budget is used — switching to the
+Scripted brain until 00:00 UTC.`
+
+**Three switches, one preference.** The spec's three names became a single
+`jarvisIndicators` preference, `{ readout, replyTags, brainPill }`, stored as
+one JSON string under `rt-jarvis-indicators` and read field by field against
+the defaults, so a partial, garbled or future-version value keeps every valid
+field. Defaults: readout **on**, reply tags **on**, brain pill **off**. They
+sit in the Preferences modal's Jarvis group as "Brain readout", "Reply tags"
+and "Brain pill". The pill (a menu button beside the input) lists the brains
+the way the Preferences picker does, gated ones disabled, and picking one
+writes the same `jarvisBrain` preference. Escape closes the menu only: the
+menu prevents the default and both overlays' `closeOnEscape` return early on
+`defaultPrevented`. React Native implements the preferences port but renders
+none of this yet.
+
+**Wire compat.** An old client ignores `jarvis.brain` (`WsAdapter` routes by
+type). A new client on an old server receives none and tags each reply with the
+brain it asked for, never blank. B3b therefore deploys the server and both web
+clients, in any order, with no migration.
+
 ## 18.16 The generative-UI surface (round 1)
 
 Round 1 (2026-08-04) of the "Jarvis generative UI" workstream (design:
