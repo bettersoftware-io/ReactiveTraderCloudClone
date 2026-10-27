@@ -22,6 +22,7 @@ import {
   JARVIS_BRAINS,
   type JarvisAvailabilityGate,
   type JarvisBrain,
+  type JarvisBudgetView,
   type JarvisEvent,
   type JarvisHistoryEntry,
 } from "@rtc/domain";
@@ -103,6 +104,10 @@ type ConfirmRequestFramePayload = Omit<
 type ErrorFramePayload = Omit<Extract<JarvisEvent, ErrorTag>, "type"> & {
   readonly turnId: string;
 };
+interface BrainFramePayload {
+  readonly turnId: string;
+  readonly brain: JarvisBrain;
+}
 interface DoneFramePayload {
   readonly turnId: string;
 }
@@ -169,19 +174,28 @@ function buildPanelEvent(panelId: unknown, spec: unknown): JarvisEvent {
   return { type: "panel", panelId: resolvedPanelId, spec: result.spec };
 }
 
-/** Attach the seven `SERVER_MSG.JARVIS_*` listeners that feed one turn's
+/** Attach the eight `SERVER_MSG.JARVIS_*` listeners that feed one turn's
  * `JarvisEvent`s to `subscriber`, re-attaching the `type` discriminant the
  * wire strips off. Every frame is filtered to `payload.turnId === turnId`
  * first — a frame belonging to a different turn (a P2-era straggler arriving
  * after this turn's own listeners replaced a torn-down turn's) is ignored
  * silently rather than misdelivered. `done`/`error` frames also complete the
- * subscriber. Returns the seven `ws.on()` unregister functions for teardown. */
+ * subscriber. Returns the eight `ws.on()` unregister functions for teardown. */
 function attachJarvisTurnListeners(
   ws: IWsAdapter,
   turnId: string,
   subscriber: JarvisTurnSubscriber,
 ): Array<() => void> {
   return [
+    ws.on(SERVER_MSG.JARVIS_BRAIN, (payload) => {
+      const p = payload as BrainFramePayload;
+
+      if (p.turnId !== turnId || !isJarvisBrain(p.brain)) {
+        return;
+      }
+
+      subscriber.next({ type: "brain", brain: p.brain });
+    }),
     ws.on(SERVER_MSG.JARVIS_DELTA, (payload) => {
       const p = payload as DeltaFramePayload;
 
@@ -373,6 +387,61 @@ function parseGate(gate: unknown): JarvisAvailabilityGate | null {
   };
 }
 
+/** The not-yet-validated shape `parseBudget` casts an unknown `budget` field
+ * into before checking each field individually. */
+interface BudgetCandidate {
+  keyKind?: unknown;
+  spentUsd?: unknown;
+  limitUsd?: unknown;
+  exhausted?: unknown;
+  resetsAtMs?: unknown;
+}
+
+const BUDGET_EXHAUSTED_REASONS: readonly unknown[] = [
+  "user",
+  "house",
+  "unavailable",
+  "forced",
+];
+
+/** Validates an unknown `budget` field off `JARVIS_AVAILABILITY` into a
+ * `JarvisBudgetView`, or `null` on ANY shape mismatch — the same silent-drop
+ * rule as `parseGate`: a malformed budget never throws and never takes the
+ * rest of the frame with it. `limitUsd` may be `null` (no personal limit);
+ * `exhausted` is `null` or one of the four known reasons. */
+function parseBudget(budget: unknown): JarvisBudgetView | null {
+  if (typeof budget !== "object" || budget === null) {
+    return null;
+  }
+
+  const candidate = budget as BudgetCandidate;
+  const { spentUsd, limitUsd, exhausted, resetsAtMs } = candidate;
+
+  if (candidate.keyKind !== "house") {
+    return null;
+  }
+
+  if (typeof spentUsd !== "number" || typeof resetsAtMs !== "number") {
+    return null;
+  }
+
+  if (limitUsd !== null && typeof limitUsd !== "number") {
+    return null;
+  }
+
+  if (exhausted !== null && !BUDGET_EXHAUSTED_REASONS.includes(exhausted)) {
+    return null;
+  }
+
+  return {
+    keyKind: "house",
+    spentUsd,
+    limitUsd,
+    exhausted: exhausted as JarvisBudgetView["exhausted"],
+    resetsAtMs,
+  };
+}
+
 /** Normalizes a wire `JarvisAvailabilityPayload` into the core-api
  * `JarvisAvailability` shape: `brains`/`defaultBrain` are OPTIONAL on the
  * wire (a pre-round server never sends them), so an absent `brains` maps to
@@ -391,8 +460,8 @@ function parseAvailability(
     brains: payload.brains ?? (payload.available ? JARVIS_BRAINS : []),
     defaultBrain: payload.defaultBrain ?? DEFAULT_JARVIS_BRAIN,
     gate: parseGate(payload.gate),
-    // Placeholder until the budget frame is parsed (B3b Task 3).
-    budget: null,
+    budget: parseBudget(payload.budget),
+    // A live server is never the in-browser demo.
     demo: false,
   };
 }
@@ -421,13 +490,31 @@ function jarvisAvailabilityGateEquals(
   );
 }
 
+/** Field-wise equality for one `JarvisBudgetView | null` pair. */
+function jarvisBudgetEquals(
+  a: JarvisBudgetView | null,
+  b: JarvisBudgetView | null,
+): boolean {
+  if (a === null || b === null) {
+    return a === b;
+  }
+
+  return (
+    a.keyKind === b.keyKind &&
+    a.spentUsd === b.spentUsd &&
+    a.limitUsd === b.limitUsd &&
+    a.exhausted === b.exhausted &&
+    a.resetsAtMs === b.resetsAtMs
+  );
+}
+
 /** Structural equality for `JarvisAvailability` — `distinctUntilChanged`'s
  * default `===` never matches two freshly-parsed objects, even when their
  * contents are identical (every `JARVIS_AVAILABILITY` push builds a new
  * object). `brains` is compared element-by-element in order rather than by
  * reference: `JARVIS_BRAINS` is a fixed, order-stable list, so index
  * comparison is sufficient and avoids a set/sort allocation per compare.
- * `gate` delegates to `jarvisAvailabilityGateEquals`. */
+ * `gate` and `budget` delegate to their own field-wise comparisons. */
 function jarvisAvailabilityEquals(
   a: JarvisAvailability,
   b: JarvisAvailability,
@@ -439,7 +526,9 @@ function jarvisAvailabilityEquals(
     a.brains.every((brain, index) => {
       return brain === b.brains[index];
     }) &&
-    jarvisAvailabilityGateEquals(a.gate, b.gate)
+    a.demo === b.demo &&
+    jarvisAvailabilityGateEquals(a.gate, b.gate) &&
+    jarvisBudgetEquals(a.budget, b.budget)
   );
 }
 

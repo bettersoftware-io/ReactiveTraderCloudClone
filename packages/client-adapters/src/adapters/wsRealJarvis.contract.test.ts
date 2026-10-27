@@ -1260,6 +1260,165 @@ describe("WsJarvisAdapter.availability$()", () => {
       },
     ]);
   });
+
+  it("a jarvis.brain frame for the current turn yields a brain event; another turn's is ignored", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisEvent[] = [];
+    adapter.ask("hello").subscribe((event) => {
+      received.push(event);
+    });
+
+    const turnId = sentTurnId(ws);
+    ws.emit(SERVER_MSG.JARVIS_BRAIN, {
+      turnId: "some-other-turn",
+      brain: "scripted",
+    });
+    expect(received).toEqual([]);
+
+    ws.emit(SERVER_MSG.JARVIS_BRAIN, { turnId, brain: "claude-haiku-4-5" });
+    expect(received).toEqual([{ type: "brain", brain: "claude-haiku-4-5" }]);
+  });
+
+  it("a budget on the availability payload keeps every field", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
+    });
+
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      budget: {
+        keyKind: "house",
+        spentUsd: 0.14,
+        limitUsd: 0.2,
+        exhausted: null,
+        resetsAtMs: 1_700_000_000_000,
+      },
+    });
+
+    expect(received[0]?.budget).toEqual({
+      keyKind: "house",
+      spentUsd: 0.14,
+      limitUsd: 0.2,
+      exhausted: null,
+      resetsAtMs: 1_700_000_000_000,
+    });
+  });
+
+  it("a budget with a null limit (administrator) and a reason is kept", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
+    });
+
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      budget: {
+        keyKind: "house",
+        spentUsd: 1,
+        limitUsd: null,
+        exhausted: "house",
+        resetsAtMs: 5,
+      },
+    });
+
+    expect(received[0]?.budget).toEqual({
+      keyKind: "house",
+      spentUsd: 1,
+      limitUsd: null,
+      exhausted: "house",
+      resetsAtMs: 5,
+    });
+  });
+
+  it("a payload without a budget gives budget: null", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
+    });
+
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true });
+
+    expect(received[0]?.budget).toBeNull();
+  });
+
+  it.each([
+    ["a non-numeric spentUsd", { spentUsd: "lots" }],
+    ["an unknown exhausted reason", { exhausted: "bored" }],
+    ["a non-numeric limitUsd", { limitUsd: "none" }],
+    ["a non-numeric resetsAtMs", { resetsAtMs: "soon" }],
+    ["an unknown keyKind", { keyKind: "own" }],
+  ])(
+    "a malformed budget (%s) gives budget: null, not a throw",
+    (_name, patch) => {
+      const ws = new FakeWsAdapter();
+      const adapter = new WsJarvisAdapter(ws);
+      const received: JarvisAvailability[] = [];
+      adapter.availability$().subscribe((availability) => {
+        received.push(availability);
+      });
+
+      ws.emitConnectionEvent("gatewayConnected");
+      ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+        available: true,
+        budget: {
+          keyKind: "house",
+          spentUsd: 0.1,
+          limitUsd: 0.2,
+          exhausted: null,
+          resetsAtMs: 5,
+          ...patch,
+        },
+      });
+
+      expect(received).toHaveLength(1);
+      expect(received[0]?.budget).toBeNull();
+    },
+  );
+
+  it("distinctUntilChanged: two frames differing only in budget.spentUsd are both emitted", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
+    });
+
+    const budget = {
+      keyKind: "house",
+      spentUsd: 0.1,
+      limitUsd: 0.2,
+      exhausted: null,
+      resetsAtMs: 5,
+    };
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true, budget });
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      budget: { ...budget, spentUsd: 0.15 },
+    });
+    // Same contents again: deduped.
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      budget: { ...budget, spentUsd: 0.15 },
+    });
+
+    expect(
+      received.map((a) => {
+        return a.budget?.spentUsd;
+      }),
+    ).toEqual([0.1, 0.15]);
+  });
 });
 
 // A named tag (rather than an inline `{ type: "confirmRequest" }` literal)
