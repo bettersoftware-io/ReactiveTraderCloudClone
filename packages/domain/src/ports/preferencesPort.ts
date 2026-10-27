@@ -133,8 +133,8 @@ export interface PreferencesPort {
   jarvisNarrator$(): Observable<JarvisNarratorPreference>;
   setJarvisNarrator(preference: JarvisNarratorPreference): void;
   /** Replay-current Jarvis indicators stream; emits synchronously on
-   * subscribe. Which of the budget readout, the per-reply brain tags and the
-   * header brain pill are shown. Independent of every other Jarvis
+   * subscribe. Which of the header budget readout, the per-reply brain tags
+   * and the input-bar brain pill are shown. Independent of every other Jarvis
    * preference. */
   jarvisIndicators$(): Observable<JarvisIndicators>;
   setJarvisIndicators(next: JarvisIndicators): void;

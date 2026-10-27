@@ -1514,9 +1514,9 @@ already existed:
   differ from the one asked for (budget gate, narrator turn, an un-offered
   brain, a missing live session), so the client never infers it. The domain
   `JarvisEvent` union gains a `brain` variant and `JARVIS_BRAIN_NAMES` maps
-  each id to its display name. The controller stamps the name onto the turn's
-  `JarvisEntry.brain`; until the frame arrives an entry carries the brain the
-  client asked for.
+  each id to its display name. The controller stamps the brain id onto the
+  turn's `JarvisEntry.brain` (`describeReplyTag` renders its name); until the
+  frame arrives an entry carries the brain the client asked for.
 - **The budget on the client.** `WsJarvisAdapter.parseAvailability` now reads
   the availability frame's `budget` (a malformed one parses to `null`, never
   a throw) and adds `demo`, which is `true` only for the in-browser scripted
@@ -1544,11 +1544,13 @@ already existed:
 
 An amount is clamped at zero: the budget may overshoot by one request
 (§3.4), and that reads `$0.00 of $0.20 left today` with an empty meter, never
-a negative amount or width. The meter is a static bar that changes between
-turns with no transition ([performance.md](../performance.md)). The
-"continuing on …" system line B3a left is now the reason-aware switch line
-from the same copy, for example `Today's AI budget is used — switching to the
-Scripted brain until 00:00 UTC.`
+a negative amount or width; a limit of zero or less shows no meter at all.
+The meter is a static bar that changes between turns with no transition
+([performance.md](../performance.md)). The readout reads in
+`--text-secondary`, and an exhausted one in the theme's amber,
+`--accent-aware`. The "continuing on …" system line B3a left is now the
+reason-aware switch line from the same copy, for example `Today's AI budget
+is used — switching to the scripted brain until 00:00 UTC.`
 
 **Three switches, one preference.** The spec's three names became a single
 `jarvisIndicators` preference, `{ readout, replyTags, brainPill }`, stored as
@@ -1558,10 +1560,16 @@ field. Defaults: readout **on**, reply tags **on**, brain pill **off**. They
 sit in the Preferences modal's Jarvis group as "Brain readout", "Reply tags"
 and "Brain pill". The pill (a menu button beside the input) lists the brains
 the way the Preferences picker does, gated ones disabled, and picking one
-writes the same `jarvisBrain` preference. Escape closes the menu only: the
-menu prevents the default and both overlays' `closeOnEscape` return early on
-`defaultPrevented`. React Native implements the preferences port but renders
-none of this yet.
+writes the same `jarvisBrain` preference. Opening the menu focuses the checked
+brain. Escape closes the menu only, wherever focus is: while the menu is open
+the pill holds a `document` keydown listener in the capture phase, which runs
+before the overlay's own bubble-phase listener, prevents the default, stops
+the event and returns focus to the pill. A handler on the pill or the menu
+would not be enough, because Safari and Firefox on macOS do not focus a
+clicked button, and Chrome loses focus to a click into the input. Both
+overlays' `closeOnEscape` still return early on `defaultPrevented` as a second
+guard. React Native implements the preferences port but renders none of this
+yet.
 
 **Wire compat.** An old client ignores `jarvis.brain` (`WsAdapter` routes by
 type). A new client on an old server receives none and tags each reply with the

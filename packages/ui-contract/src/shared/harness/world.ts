@@ -523,8 +523,8 @@ export interface World {
    * DEFAULT_JARVIS_NARRATOR. */
   readonly jarvisNarrator: BehaviorSubject<JarvisNarratorPreference>;
   /** The STORED Jarvis indicators preference (B3b) — which of the budget
-   * readout, reply tags and header brain pill are shown. Defaults to
-   * DEFAULT_JARVIS_INDICATORS. */
+   * readout (header), reply tags and brain pill (input bar) are shown.
+   * Defaults to DEFAULT_JARVIS_INDICATORS. */
   readonly jarvisIndicators: BehaviorSubject<JarvisIndicators>;
   /** Jarvis token-usage/cost telemetry backing useJarvisUsage() (the
    * JarvisUsageCard ops surface, Task 10 of Phase 3) — mirrors `topology$`

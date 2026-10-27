@@ -389,9 +389,9 @@ export function isJarvisNarratorPreference(
 }
 
 /** The three Jarvis indicator switches (spec B3b §4.4), kept as ONE record so
- * a single stored value carries them: `readout` is the budget line under the
- * Jarvis input, `replyTags` the brain tag on each reply, `brainPill` the
- * brain chip in the overlay's header. */
+ * a single stored value carries them: `readout` is the brain and budget line
+ * in the overlay's header, under the status line; `replyTags` the brain tag on
+ * each reply; `brainPill` the brain chip in the input bar. */
 export interface JarvisIndicators {
   readonly readout: boolean;
   readonly replyTags: boolean;
