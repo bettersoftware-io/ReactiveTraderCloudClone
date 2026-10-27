@@ -21,11 +21,7 @@ import { JarvisOverlay } from "@ui-contract/components";
 import { cleanupMounted, createWorld, mountWith } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-  formatGateResetTime,
-  JARVIS_GUIDE_CATALOG,
-  sampleGuideChips,
-} from "@rtc/core-logic";
+import { JARVIS_GUIDE_CATALOG, sampleGuideChips } from "@rtc/core-logic";
 import { Direction } from "@rtc/domain";
 
 afterEach(() => {
@@ -323,6 +319,8 @@ describe("JarvisOverlay", () => {
         brains: [],
         defaultBrain: "scripted",
         gate: null,
+        budget: null,
+        demo: false,
       },
     });
     const overlay = mountWith(world, JarvisOverlay);
@@ -360,6 +358,8 @@ describe("JarvisOverlay", () => {
         resetsAtMs,
         gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
       },
+      budget: null,
+      demo: false,
     });
 
     const entries = overlay.entries();
@@ -369,7 +369,7 @@ describe("JarvisOverlay", () => {
     expect(last?.done).toBe(true);
     expect(last?.origin).toBe("system");
     expect(last?.text).toBe(
-      `Usage budget reached — continuing on scripted until ${formatGateResetTime(resetsAtMs)}.`,
+      "Today's AI budget is used — switching to the scripted brain until 22:13 UTC.",
     );
   });
 });

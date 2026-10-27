@@ -62,6 +62,8 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
   // No fixture exercises a budget gate (Task 6/8 scenarios add that
   // separately) — every existing golden stays pixel-identical.
   gate: null,
+  budget: null,
+  demo: false,
   // Matches INITIAL's own 0 (never-opened session) — no pre-Task-10
   // component reads it yet, so this keeps every existing golden
   // pixel-identical.

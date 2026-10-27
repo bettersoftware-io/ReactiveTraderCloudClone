@@ -1189,6 +1189,8 @@ export function createWorld(seeds: WorldSeeds = {}): World {
       brains: JARVIS_BRAINS,
       defaultBrain: DEFAULT_JARVIS_BRAIN,
       gate: null,
+      budget: null,
+      demo: false,
     },
   );
 

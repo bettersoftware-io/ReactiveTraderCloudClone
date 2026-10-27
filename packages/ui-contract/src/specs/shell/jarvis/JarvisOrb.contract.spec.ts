@@ -27,6 +27,8 @@ describe("JarvisOrb", () => {
         brains: [],
         defaultBrain: "scripted",
         gate: null,
+        budget: null,
+        demo: false,
       },
     });
     const orb = mountWith(world, JarvisOrb);

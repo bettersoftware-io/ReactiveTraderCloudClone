@@ -74,6 +74,8 @@ describe("createJarvisMachine (Effect core)", () => {
         brains: ["scripted", "claude-haiku-4-5"] as const,
         defaultBrain: "scripted" as const,
         gate: null,
+        budget: null,
+        demo: false,
       }),
       preferredBrain$: brain$,
       effort$,

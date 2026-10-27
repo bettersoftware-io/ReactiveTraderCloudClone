@@ -815,6 +815,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         brains: ["scripted", "claude-haiku-4-5"],
         defaultBrain: "claude-haiku-4-5",
         gate: null,
+        budget: null,
+        demo: false,
       },
     ]);
   });
@@ -839,6 +841,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         brains: [],
         defaultBrain: "claude-haiku-4-5",
         gate: null,
+        budget: null,
+        demo: false,
       },
     ]);
   });
@@ -859,6 +863,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         brains: JARVIS_BRAINS,
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
+        budget: null,
+        demo: false,
       },
     ]);
   });
@@ -879,6 +885,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         brains: [],
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
+        budget: null,
+        demo: false,
       },
     ]);
   });
@@ -917,6 +925,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         brains: [],
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
+        budget: null,
+        demo: false,
       },
     ]);
     expect(completed).toBe(false);
@@ -933,12 +943,16 @@ describe("WsJarvisAdapter.availability$()", () => {
         brains: [],
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
+        budget: null,
+        demo: false,
       },
       {
         available: true,
         brains: ["scripted"],
         defaultBrain: "scripted",
         gate: null,
+        budget: null,
+        demo: false,
       },
     ]);
     expect(completed).toBe(false);
@@ -970,12 +984,16 @@ describe("WsJarvisAdapter.availability$()", () => {
         brains: JARVIS_BRAINS,
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
+        budget: null,
+        demo: false,
       },
       {
         available: false,
         brains: [],
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
+        budget: null,
+        demo: false,
       },
     ]);
   });
@@ -1003,12 +1021,16 @@ describe("WsJarvisAdapter.availability$()", () => {
         brains: [],
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
+        budget: null,
+        demo: false,
       },
       {
         available: true,
         brains: JARVIS_BRAINS,
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
+        budget: null,
+        demo: false,
       },
     ]);
   });
@@ -1044,6 +1066,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         brains: ["scripted"],
         defaultBrain: "scripted",
         gate: null,
+        budget: null,
+        demo: false,
       },
     ]);
   });
@@ -1119,6 +1143,8 @@ describe("WsJarvisAdapter.availability$()", () => {
           resetsAtMs: 1_700_000_000_000,
           gated: ["claude-opus-5"],
         },
+        budget: null,
+        demo: false,
       },
     ]);
   });
@@ -1161,6 +1187,8 @@ describe("WsJarvisAdapter.availability$()", () => {
           brains: ["scripted", "claude-haiku-4-5"],
           defaultBrain: "claude-haiku-4-5",
           gate: null,
+          budget: null,
+          demo: false,
         },
       ]);
     },
@@ -1227,6 +1255,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         brains: ["scripted"],
         defaultBrain: "scripted",
         gate: { level: "soft", resetsAtMs: 100, gated: ["claude-opus-5"] },
+        budget: null,
+        demo: false,
       },
     ]);
   });

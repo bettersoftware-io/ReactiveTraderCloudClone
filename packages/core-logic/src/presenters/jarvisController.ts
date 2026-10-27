@@ -70,6 +70,8 @@ export const JARVIS_INITIAL_STATE: JarvisState = {
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
   gate: null,
+  budget: null,
+  demo: false,
   openCount: 0,
 };
 
@@ -83,6 +85,8 @@ export const JARVIS_SIM_AVAILABILITY: JarvisAvailability = {
   brains: ["scripted"],
   defaultBrain: "scripted",
   gate: null,
+  budget: null,
+  demo: true,
 };
 
 /** Resolves which brain a turn actually runs with: the preferred brain when
@@ -119,11 +123,36 @@ export function formatGateResetTime(resetsAtMs: number): string {
   });
 }
 
-/** The budget-downgrade system line's trailing clause: empty for the `0`
- * sentinel (the line reads "...continuing on Haiku 4.5." with no dangling
- * "until —"), else " until HH:MM". */
+/** The switch line's trailing clause: empty for the `0` sentinel (no dangling
+ * "until —"), else " until HH:MM UTC" — the budget window resets at 00:00 UTC,
+ * so the time is rendered in UTC whatever the viewer's locale. */
 function untilClause(resetsAtMs: number): string {
-  return resetsAtMs === 0 ? "" : ` until ${formatGateResetTime(resetsAtMs)}`;
+  if (resetsAtMs === 0) {
+    return "";
+  }
+
+  const iso = new Date(resetsAtMs).toISOString();
+  return ` until ${iso.slice(11, 16)} UTC`;
+}
+
+/** The system line appended when a gate moves this session's brain (spec
+ * §3.8, D5): reason-aware, naming the brain now running. A gate with no
+ * `budget.exhausted` (an older server) reads as the caller's own budget. A
+ * store that cannot be reached has no known reset, so it carries no clause. */
+function formatSwitchLine(
+  exhausted: NonNullable<JarvisAvailability["budget"]>["exhausted"],
+  to: JarvisBrain,
+  resetsAtMs: number,
+): string {
+  const target = `switching to the ${JARVIS_BRAIN_LABELS[to]} brain`;
+
+  if (exhausted === "unavailable") {
+    return `The AI budget is unavailable — ${target}.`;
+  }
+
+  const subject =
+    exhausted === "house" ? "The house AI budget" : "Today's AI budget";
+  return `${subject} is used — ${target}${untilClause(resetsAtMs)}.`;
 }
 
 /** The transcript text a folded `DriveOutcome` reads as — `"applied"` →
@@ -311,10 +340,15 @@ function eventPatch(
       };
 
     case "brain":
-      // Deliberate no-op until the reply tag reads it (B3b Task 2): the brain
-      // the server ran is not folded into chat entries yet.
+      // The server says which brain actually ran this turn; it overwrites the
+      // brain the client asked for (stamped by planTurn) and leaves the text.
       return (s: JarvisState): JarvisState => {
-        return s;
+        return {
+          ...s,
+          entries: updateEntryById(s.entries, entryId, (e) => {
+            return { ...e, brain: event.brain };
+          }),
+        };
       };
 
     case "panel":
@@ -481,6 +515,8 @@ export function createJarvisController(): JarvisController {
     brains: JARVIS_BRAINS,
     defaultBrain: DEFAULT_JARVIS_BRAIN,
     gate: null,
+    budget: null,
+    demo: false,
   };
   let preferredBrain: JarvisBrain = DEFAULT_JARVIS_BRAIN;
   let effectiveBrain: JarvisBrain = JARVIS_INITIAL_STATE.effectiveBrain;
@@ -515,15 +551,18 @@ export function createJarvisController(): JarvisController {
         ...(origin ? { origin } : {}),
       };
 
+      // sendScripted() pins the turn's brain to "scripted" regardless of
+      // effectiveBrain — see JarvisIntents.sendScripted's doc.
+      const brain: JarvisBrain =
+        req.kind === "sendScripted" ? "scripted" : effectiveBrain;
+
       const jarvisEntry: JarvisEntry = {
         id: nextEntryId++,
         role: "jarvis",
         text: "",
         done: false,
+        brain,
       };
-      // sendScripted() pins the turn's brain to "scripted" regardless of
-      // effectiveBrain — see JarvisIntents.sendScripted's doc.
-      const brain = req.kind === "sendScripted" ? "scripted" : effectiveBrain;
 
       inFlightEntryId = jarvisEntry.id;
 
@@ -596,6 +635,8 @@ export function createJarvisController(): JarvisController {
           available: value.available,
           brains: value.brains,
           gate,
+          budget: value.budget,
+          demo: value.demo,
           effectiveBrain: nextEffectiveBrain,
         };
 
@@ -614,7 +655,11 @@ export function createJarvisController(): JarvisController {
         const entry: JarvisEntry = {
           id: nextEntryId++,
           role: "jarvis",
-          text: `Usage budget reached — continuing on ${JARVIS_BRAIN_LABELS[nextEffectiveBrain]}${untilClause(gate.resetsAtMs)}.`,
+          text: formatSwitchLine(
+            value.budget?.exhausted ?? null,
+            nextEffectiveBrain,
+            gate.resetsAtMs,
+          ),
           done: true,
           origin: "system",
         };

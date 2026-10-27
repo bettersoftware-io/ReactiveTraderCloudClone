@@ -693,6 +693,8 @@ function createBaseJarvisState(
     brains: JARVIS_BRAINS,
     effectiveBrain: DEFAULT_JARVIS_BRAIN,
     gate: null,
+    budget: null,
+    demo: false,
     openCount: 0,
     ...overrides,
   };

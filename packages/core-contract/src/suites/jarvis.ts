@@ -77,7 +77,13 @@ function describeJarvisTurnCases(makeHarness: MakeHarness): void {
         expect(state.phase).toBe("speaking");
         expect(state.entries.slice(1)).toEqual([
           { id: state.entries[1]?.id, role: "user", text: "hi", done: true },
-          { id: state.entries[2]?.id, role: "jarvis", text: "", done: false },
+          {
+            id: state.entries[2]?.id,
+            role: "jarvis",
+            text: "",
+            done: false,
+            brain: state.effectiveBrain,
+          },
         ]);
         expect(h.driver.askLog()).toEqual([
           {
@@ -85,6 +91,65 @@ function describeJarvisTurnCases(makeHarness: MakeHarness): void {
             options: { brain: state.effectiveBrain, effort: "high" },
           },
         ]);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("a turn's reply is tagged with the effective brain it asked for, and a brain event overwrites the tag but not the text", async () => {
+      const h = makeHarness({ jarvisAvailability: createAvailability() });
+
+      try {
+        h.app.presenters.jarvisPreferences.setBrain("claude-haiku-4-5");
+        await settle();
+        h.app.presenters.jarvis.intents.send("hi");
+        await settle();
+        expect(await lastEntry(h)).toMatchObject({
+          role: "jarvis",
+          brain: "claude-haiku-4-5",
+        });
+        h.driver.replyJarvis([{ type: "delta", text: "hello" }]);
+        await settle();
+        h.driver.replyJarvis([{ type: "brain", brain: "scripted" }]);
+        await settle();
+        expect(await lastEntry(h)).toMatchObject({
+          brain: "scripted",
+          text: "hello",
+        });
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("a turn whose port never emits a brain event keeps the brain it asked for after done", async () => {
+      const h = makeHarness({ jarvisAvailability: createAvailability() });
+
+      try {
+        h.app.presenters.jarvisPreferences.setBrain("claude-haiku-4-5");
+        await settle();
+        await sendTurn(h, "hi", [{ type: "delta", text: "ok" }]);
+        expect(await lastEntry(h)).toMatchObject({
+          done: true,
+          text: "ok",
+          brain: "claude-haiku-4-5",
+        });
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("a sendScripted turn is tagged scripted whatever the effective brain", async () => {
+      const h = makeHarness({ jarvisAvailability: createAvailability() });
+
+      try {
+        h.app.presenters.jarvisPreferences.setBrain("claude-haiku-4-5");
+        await settle();
+        h.app.presenters.jarvis.intents.sendScripted("demo");
+        await settle();
+        expect(await lastEntry(h)).toMatchObject({
+          role: "jarvis",
+          brain: "scripted",
+        });
       } finally {
         await h.teardown();
       }

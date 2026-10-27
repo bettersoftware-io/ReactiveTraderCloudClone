@@ -391,6 +391,9 @@ function parseAvailability(
     brains: payload.brains ?? (payload.available ? JARVIS_BRAINS : []),
     defaultBrain: payload.defaultBrain ?? DEFAULT_JARVIS_BRAIN,
     gate: parseGate(payload.gate),
+    // Placeholder until the budget frame is parsed (B3b Task 3).
+    budget: null,
+    demo: false,
   };
 }
 

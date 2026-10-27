@@ -580,6 +580,8 @@ const SIM_JARVIS_AVAILABILITY: JarvisAvailability = {
   brains: ["scripted"],
   defaultBrain: "scripted",
   gate: null,
+  budget: null,
+  demo: true,
 };
 
 export interface ScriptedPorts {

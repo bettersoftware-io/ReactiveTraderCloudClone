@@ -319,6 +319,8 @@ describe("PreferencesModal", () => {
         brains: ["scripted"],
         defaultBrain: "scripted",
         gate: null,
+        budget: null,
+        demo: false,
       },
     });
 
@@ -336,6 +338,8 @@ describe("PreferencesModal", () => {
         brains: JARVIS_BRAINS,
         defaultBrain: "claude-haiku-4-5",
         gate: null,
+        budget: null,
+        demo: false,
       },
     });
 
@@ -352,6 +356,8 @@ describe("PreferencesModal", () => {
         brains: JARVIS_BRAINS,
         defaultBrain: "claude-haiku-4-5",
         gate: null,
+        budget: null,
+        demo: false,
       },
       jarvisBrain: "scripted",
     });
@@ -379,6 +385,8 @@ describe("PreferencesModal", () => {
           resetsAtMs,
           gated: ["claude-haiku-4-5"],
         },
+        budget: null,
+        demo: false,
       },
     });
 
@@ -413,6 +421,8 @@ describe("PreferencesModal", () => {
           resetsAtMs,
           gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
         },
+        budget: null,
+        demo: false,
       },
     });
     expect(gatedPage.jarvisBrainHintText()).toBe(
@@ -439,6 +449,8 @@ describe("PreferencesModal", () => {
           resetsAtMs: 0,
           gated: ["claude-sonnet-5", "claude-opus-5"],
         },
+        budget: null,
+        demo: false,
       },
       jarvisBrain: "claude-haiku-4-5",
     });
@@ -466,6 +478,8 @@ describe("PreferencesModal", () => {
           resetsAtMs,
           gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
         },
+        budget: null,
+        demo: false,
       },
       jarvisBrain: "claude-haiku-4-5",
     });
@@ -488,6 +502,8 @@ describe("PreferencesModal", () => {
         brains: ["scripted"],
         defaultBrain: "scripted",
         gate: null,
+        budget: null,
+        demo: false,
       },
       jarvisBrain: "claude-haiku-4-5",
     });

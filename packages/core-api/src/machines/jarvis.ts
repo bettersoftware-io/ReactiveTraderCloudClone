@@ -2,6 +2,7 @@ import type {
   Direction,
   JarvisAvailabilityGate,
   JarvisBrain,
+  JarvisBudgetView,
   JarvisEvent,
   JarvisSkin,
 } from "@rtc/domain";
@@ -30,6 +31,10 @@ export interface JarvisEntry {
    * `JarvisState.gate`'s doc). Absent (not `false`) on every ordinary
    * `send()` turn's entries. */
   readonly origin?: "narrator" | "system";
+  /** On a JARVIS-role reply: the brain that ran it. Set to the brain the
+   * client asked for when the turn starts, then overwritten by the server's
+   * `brain` event. Absent on user entries and system lines. */
+  readonly brain?: JarvisBrain;
 }
 
 export interface JarvisConfirmation {
@@ -86,6 +91,11 @@ export interface JarvisState {
    * together, and the one system-line entry a gate that DOES move
    * `effectiveBrain` appends into `entries`. */
   readonly gate: JarvisAvailabilityGate | null;
+  /** The caller's budget for today, mirrored from the live `availability$`
+   * feed (`null` when none was sent, and in sim mode). */
+  readonly budget: JarvisBudgetView | null;
+  /** `true` in the in-browser scripted demo, mirrored from `availability$`. */
+  readonly demo: boolean;
   /** Times the overlay has been opened this session — the chip-rotation
    * seed. Increments only on a closed→open transition, via `open()` or the
    * opening branch of `toggle()`; never on `close()`, and never on a

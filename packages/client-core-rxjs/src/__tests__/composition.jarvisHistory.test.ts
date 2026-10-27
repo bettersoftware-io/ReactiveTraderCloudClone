@@ -171,7 +171,7 @@ describe("composition — jarvis history-source wiring", () => {
     presenters.jarvis.intents.send("second");
 
     // Greeting + the completed "first" turn — the system line
-    // ("Usage budget reached...") does not reach the model.
+    // ("Today's AI budget is used...") does not reach the model.
     expect(lastChatHistory(ws)).toEqual([
       { role: "jarvis", text: JARVIS_GREETING },
       { role: "user", text: "first" },
