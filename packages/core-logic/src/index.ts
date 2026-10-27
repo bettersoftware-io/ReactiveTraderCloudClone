@@ -44,6 +44,7 @@ export * from "#/presenters/candleStitch";
 export * from "#/presenters/eqDrawingsFold";
 export * from "#/presenters/eqWorkspaceFold";
 export * from "#/presenters/incidentFold";
+export * from "#/presenters/jarvisBrainIndicators";
 export * from "#/presenters/jarvisController";
 export * from "#/presenters/jarvisDemoScript";
 export * from "#/presenters/jarvisDriveCommands";

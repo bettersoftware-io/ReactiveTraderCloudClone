@@ -123,6 +123,13 @@ export function formatGateResetTime(resetsAtMs: number): string {
   });
 }
 
+/** `HH:MM UTC` rendering of a gate's `resetsAtMs`, whatever the viewer's
+ * locale — the budget window resets at 00:00 UTC. Shared by the switch line
+ * and the brain readout. */
+export function formatGateResetTimeUtc(resetsAtMs: number): string {
+  return `${new Date(resetsAtMs).toISOString().slice(11, 16)} UTC`;
+}
+
 /** The switch line's trailing clause: empty for the `0` sentinel (no dangling
  * "until —"), else " until HH:MM UTC" — the budget window resets at 00:00 UTC,
  * so the time is rendered in UTC whatever the viewer's locale. */
@@ -131,8 +138,7 @@ function untilClause(resetsAtMs: number): string {
     return "";
   }
 
-  const iso = new Date(resetsAtMs).toISOString();
-  return ` until ${iso.slice(11, 16)} UTC`;
+  return ` until ${formatGateResetTimeUtc(resetsAtMs)}`;
 }
 
 /** The system line appended when a gate moves this session's brain (spec
