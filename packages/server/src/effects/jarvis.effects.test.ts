@@ -6,6 +6,7 @@ import {
   Direction,
   type DriveBatchV1,
   JARVIS_BRAINS,
+  type JarvisBrain,
   type JarvisEvent,
   type JarvisHistoryEntry,
   type PanelSpecV1,
@@ -240,10 +241,14 @@ describe("jarvis effects", () => {
     await vi.advanceTimersByTimeAsync(5_000);
 
     expect(sent[0]).toEqual({
+      type: SERVER_MSG.JARVIS_BRAIN,
+      payload: { brain: "scripted", turnId },
+    });
+    expect(sent[1]).toEqual({
       type: SERVER_MSG.JARVIS_TOOL_EVENT,
       payload: { tool: "quote", status: "running", turnId },
     });
-    expect(sent[1]).toEqual({
+    expect(sent[2]).toEqual({
       type: SERVER_MSG.JARVIS_TOOL_EVENT,
       payload: { tool: "quote", status: "done", turnId },
     });
@@ -252,7 +257,7 @@ describe("jarvis effects", () => {
       payload: { turnId },
     });
 
-    const deltas = sent.slice(2, -1);
+    const deltas = sent.slice(3, -1);
     expect(deltas.length).toBeGreaterThan(1);
     expect(
       deltas.every((m) => {
@@ -866,7 +871,13 @@ describe("jarvis effects — wire-type mapping (stub loop, no simulators)", () =
         } satisfies JarvisChatPayload,
       });
 
-      expect(sent).toEqual([{ type: wireType, payload: body }]);
+      expect(sent).toEqual([
+        {
+          type: SERVER_MSG.JARVIS_BRAIN,
+          payload: { brain: "scripted", turnId: STUB_TURN_ID },
+        },
+        { type: wireType, payload: body },
+      ]);
     },
   );
 });
@@ -973,6 +984,10 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
       meter: expect.anything(),
     });
     expect(sent).toEqual([
+      {
+        type: SERVER_MSG.JARVIS_BRAIN,
+        payload: { brain: loops.defaultBrain, turnId: STUB_TURN_ID },
+      },
       { type: SERVER_MSG.JARVIS_DONE, payload: { turnId: STUB_TURN_ID } },
     ]);
   });
@@ -1032,6 +1047,10 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
     });
     // Not treated as malformed: no JARVIS_ERROR, the turn still completes.
     expect(sent).toEqual([
+      {
+        type: SERVER_MSG.JARVIS_BRAIN,
+        payload: { brain: loops.defaultBrain, turnId: STUB_TURN_ID },
+      },
       { type: SERVER_MSG.JARVIS_DONE, payload: { turnId: STUB_TURN_ID } },
     ]);
   });
@@ -1860,6 +1879,88 @@ describe("per-caller offers and the daily budget", () => {
   });
 });
 
+describe("jarvis effects — each turn is stamped with the brain that ran", () => {
+  beforeEach(() => {
+    vi.setSystemTime(NOON);
+  });
+
+  it("a member asking for Sonnet within budget: the first frame names Sonnet", async () => {
+    const { messages$, sent } = wireSpySocket(createBudgetServices(), MEMBER);
+
+    messages$.next(chatFrame("claude-sonnet-5"));
+    await settleBudgetReads();
+
+    expectBrainFirst(sent, "claude-sonnet-5");
+  });
+
+  it("a member asking for Opus, which is not offered: the first frame names the resolved default, Haiku", async () => {
+    const { messages$, sent } = wireSpySocket(createBudgetServices(), MEMBER);
+
+    messages$.next(chatFrame("claude-opus-5"));
+    await settleBudgetReads();
+
+    expectBrainFirst(sent, "claude-haiku-4-5");
+  });
+
+  it("an exhausted member asking for Haiku: the first frame names scripted", async () => {
+    const services = createBudgetServices();
+    const { messages$, sent } = wireSpySocket(services, MEMBER);
+
+    services.jarvisBudget
+      .meterFor(MEMBER, "member")
+      .record("claude-haiku-4-5", createUsageFixture(200_000));
+    await settleBudgetReads();
+
+    messages$.next(chatFrame("claude-haiku-4-5"));
+    await settleBudgetReads();
+
+    expectBrainFirst(sent, "scripted");
+  });
+
+  it("a narrator turn asking for Haiku: the first frame names scripted", async () => {
+    const { messages$, sent } = wireSpySocket(createBudgetServices(), MEMBER);
+
+    messages$.next(chatFrame("claude-haiku-4-5", "narrator"));
+    await settleBudgetReads();
+
+    expectBrainFirst(sent, "scripted");
+  });
+
+  it("a model brain with no live anthropic session falls back to scripted, and the frame says so", async () => {
+    const scriptedSpy = createSpyLoop();
+    const loops: JarvisLoops = {
+      scripted: scriptedSpy.loop,
+      anthropic: null,
+      brains: JARVIS_BRAINS,
+      defaultBrain: DEFAULT_JARVIS_BRAIN,
+    };
+    const { messages$, sent } = wireDualLoops(loops);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {
+      return undefined;
+    });
+
+    messages$.next(chatFrame("claude-haiku-4-5"));
+    await settleBudgetReads();
+    logged.mockRestore();
+
+    expect(scriptedSpy.createSession).toHaveBeenCalledTimes(1);
+    expectBrainFirst(sent, "scripted");
+  });
+
+  it("the brain frame precedes every other frame of the turn", async () => {
+    const { messages$, sent } = wireSpySocket(createBudgetServices(), MEMBER);
+
+    messages$.next(chatFrame("claude-haiku-4-5"));
+    await settleBudgetReads();
+
+    expect(
+      sent.map((frame) => {
+        return frame.type;
+      }),
+    ).toEqual([SERVER_MSG.JARVIS_BRAIN, SERVER_MSG.JARVIS_DONE]);
+  });
+});
+
 interface WireMappingCase {
   readonly event: JarvisEvent;
   readonly wireType: string;
@@ -1897,6 +1998,32 @@ interface TestSocket {
   readonly messages$: Subject<Inbound>;
   readonly closed$: Subject<void>;
   send(message: Outbound): void;
+}
+
+function brainFramesOf(sent: readonly Outbound[]): Outbound[] {
+  return sent.filter((frame) => {
+    return frame.type === SERVER_MSG.JARVIS_BRAIN;
+  });
+}
+
+function chatFrame(brain: JarvisBrain, origin?: "narrator"): Inbound {
+  return {
+    type: CLIENT_MSG.JARVIS_CHAT,
+    payload: {
+      text: "hi",
+      turnId: STUB_TURN_ID,
+      brain,
+      origin,
+    } satisfies JarvisChatPayload,
+  };
+}
+
+function expectBrainFirst(sent: readonly Outbound[], brain: JarvisBrain): void {
+  expect(sent[0]).toEqual({
+    type: SERVER_MSG.JARVIS_BRAIN,
+    payload: { brain, turnId: STUB_TURN_ID },
+  });
+  expect(brainFramesOf(sent)).toHaveLength(1);
 }
 
 function createSocket(sent: Outbound[]): TestSocket {

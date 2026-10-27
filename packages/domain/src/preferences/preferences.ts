@@ -357,6 +357,15 @@ export const JARVIS_BRAIN_LABELS: Record<JarvisBrain, string> = {
   "claude-opus-5": "Opus 5",
 };
 
+/** Full display names, for sentences ("Claude Haiku 4.5 · house key"); the
+ * short form in `JARVIS_BRAIN_LABELS` serves the chip and the pill. */
+export const JARVIS_BRAIN_NAMES: Readonly<Record<JarvisBrain, string>> = {
+  scripted: "Scripted",
+  "claude-haiku-4-5": "Claude Haiku 4.5",
+  "claude-sonnet-5": "Claude Sonnet 5",
+  "claude-opus-5": "Claude Opus 5",
+};
+
 /** Whether the app-driving proactive narrator (`NarratorMachine`) is allowed
  * to dispatch unsolicited `narrate()` turns into the Jarvis transcript.
  * `"on"` is the default — the narrator's whole point is surfacing an

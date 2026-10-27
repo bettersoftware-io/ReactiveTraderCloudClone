@@ -302,6 +302,7 @@ export {
   isJarvisNarratorPreference,
   isPowerSaverLevel,
   JARVIS_BRAIN_LABELS,
+  JARVIS_BRAIN_NAMES,
   JARVIS_BRAINS,
   JARVIS_EFFORTS,
   JARVIS_NARRATOR_PREFERENCES,

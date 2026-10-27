@@ -7,11 +7,14 @@ import type { PanelSpecV1 } from "./panelSpec.js";
  * What a Jarvis brain emits during one chat turn: speech, tool progress, a
  * trade to confirm, a panel to draw, commands to drive the desk, and the
  * turn's end. The Jarvis machine folds these and the UIs render them, so the
- * union is domain vocabulary. How each variant travels as a
+ * union is domain vocabulary. The server opens each turn with `brain`: the
+ * brain that actually ran it, which may differ from the one the client asked
+ * for (budget gate, narrator turn, no live session). How each variant travels as a
  * `SERVER_MSG.JARVIS_*` payload is `@rtc/shared`'s concern
  * (`jarvis/jarvisPayloads.ts`).
  */
 export type JarvisEvent =
+  | { readonly type: "brain"; readonly brain: JarvisBrain }
   | { readonly type: "delta"; readonly text: string }
   | {
       readonly type: "toolEvent";

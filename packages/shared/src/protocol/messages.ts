@@ -117,6 +117,8 @@ export const SERVER_MSG = {
   ORDERS: "stream.orders",
   POSITIONS: "stream.positions",
   // Jarvis
+  // First frame of every turn: the brain the server actually ran it on.
+  JARVIS_BRAIN: "jarvis.brain",
   JARVIS_DELTA: "jarvis.delta",
   JARVIS_TOOL_EVENT: "jarvis.toolEvent",
   JARVIS_CONFIRM_REQUEST: "jarvis.confirmRequest",

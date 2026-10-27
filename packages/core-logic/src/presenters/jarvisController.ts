@@ -310,6 +310,13 @@ function eventPatch(
         };
       };
 
+    case "brain":
+      // Deliberate no-op until the reply tag reads it (B3b Task 2): the brain
+      // the server ran is not folded into chat entries yet.
+      return (s: JarvisState): JarvisState => {
+        return s;
+      };
+
     case "panel":
       // Deliberate no-op: panel events are owned by the separate
       // JarvisPanelsMachine (Task 5), not this chat-state machine.
