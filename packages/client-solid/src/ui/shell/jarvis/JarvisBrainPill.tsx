@@ -1,4 +1,11 @@
-import { createSignal, For, type JSX, Show } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  For,
+  type JSX,
+  onCleanup,
+  Show,
+} from "solid-js";
 
 import { describeBrainPill } from "@rtc/core-logic";
 import {
@@ -16,10 +23,15 @@ import styles from "./JarvisBrainPill.module.css";
  * `JARVIS_BRAINS` order; a brain the active gate has removed is disabled, the
  * same rule as the Preferences Brain picker. The menu has no animation.
  *
- * Escape inside the menu closes the menu only: the overlay's own Escape
- * listener lives on `document` and returns early for a defaultPrevented key.
- * (Solid delegates its handlers to `document` too, so stopPropagation alone
- * could not hold a sibling document listener back.)
+ * While the menu is open, Escape closes the menu only, wherever focus is: a
+ * `document` keydown listener in the CAPTURE phase runs before any bubble
+ * listener (the overlay's own Escape listener, and Solid's delegated
+ * handlers, among them), calls `preventDefault()` + `stopPropagation()`,
+ * closes the menu and returns focus to the pill. A key handler on the pill or
+ * the menu would miss the Escape whenever focus sits elsewhere — Safari and
+ * macOS Firefox do not focus a clicked button, and Chrome loses it to a click
+ * into the input. Opening the menu moves focus to the checked item (the ARIA
+ * menu pattern).
  */
 export function JarvisBrainPill(): JSX.Element {
   const { useJarvis, useJarvisPreferences } = useViewModel();
@@ -27,6 +39,7 @@ export function JarvisBrainPill(): JSX.Element {
   const { setBrain } = useJarvisPreferences();
   const [menuOpen, setMenuOpen] = createSignal(false);
   let pillRef: HTMLButtonElement | undefined;
+  let menuRef: HTMLDivElement | undefined;
 
   function offered(): readonly JarvisBrain[] {
     return JARVIS_BRAINS.filter((brain) => {
@@ -50,7 +63,7 @@ export function JarvisBrainPill(): JSX.Element {
   }
 
   function closeMenuOnEscape(event: KeyboardEvent): void {
-    if (event.key !== "Escape" || !menuOpen()) {
+    if (event.key !== "Escape") {
       return;
     }
 
@@ -58,6 +71,19 @@ export function JarvisBrainPill(): JSX.Element {
     event.stopPropagation();
     closeMenuToPill();
   }
+
+  createEffect(() => {
+    if (!menuOpen()) {
+      return;
+    }
+
+    document.addEventListener("keydown", closeMenuOnEscape, true);
+    focusCheckedOption(menuRef);
+
+    onCleanup(() => {
+      document.removeEventListener("keydown", closeMenuOnEscape, true);
+    });
+  });
 
   function chooseBrain(brain: JarvisBrain) {
     return () => {
@@ -76,7 +102,6 @@ export function JarvisBrainPill(): JSX.Element {
         aria-expanded={menuOpen()}
         class={styles.pill}
         onClick={toggleMenu}
-        onKeyDown={closeMenuOnEscape}
       >
         {describeBrainPill(state())}
         <span class={styles.caret} aria-hidden="true">
@@ -85,11 +110,11 @@ export function JarvisBrainPill(): JSX.Element {
       </button>
       <Show when={menuOpen()}>
         <div
+          ref={menuRef}
           role="menu"
           aria-label="Brain"
           data-testid="jarvis-brain-menu"
           class={styles.menu}
-          onKeyDown={closeMenuOnEscape}
         >
           <For each={offered()}>
             {(brain: JarvisBrain) => {
@@ -115,4 +140,17 @@ export function JarvisBrainPill(): JSX.Element {
       </Show>
     </div>
   );
+}
+
+/** Focus the menu's checked item, or its first enabled one when the checked
+ * item is disabled (a disabled button cannot take focus). */
+function focusCheckedOption(menu: HTMLElement | undefined): void {
+  const target =
+    menu?.querySelector<HTMLButtonElement>(
+      '[role="menuitemradio"][aria-checked="true"]:not(:disabled)',
+    ) ??
+    menu?.querySelector<HTMLButtonElement>(
+      '[role="menuitemradio"]:not(:disabled)',
+    );
+  target?.focus();
 }

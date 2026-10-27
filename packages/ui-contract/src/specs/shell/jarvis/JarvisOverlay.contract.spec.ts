@@ -829,6 +829,68 @@ describe("brain pill", () => {
     expect(overlay.isOpen()).toBe(false);
   });
 
+  it("moves focus to the checked brain when the menu opens", async () => {
+    const overlay = mountWith(
+      createWorld({
+        jarvisAvailability: liveAvailability(null),
+        jarvisIndicators: PILL_ON,
+      }),
+      JarvisOverlay,
+    );
+    await overlay.pressHotkey();
+
+    await overlay.clickBrainPill();
+
+    expect(overlay.focusedBrainOption()).toBe("claude-haiku-4-5");
+  });
+
+  it("closes only the menu on Escape while focus is in the input", async () => {
+    const overlay = mountWith(
+      createWorld({
+        jarvisAvailability: liveAvailability(null),
+        jarvisIndicators: PILL_ON,
+      }),
+      JarvisOverlay,
+    );
+    await overlay.pressHotkey();
+    await overlay.clickBrainPill();
+    await overlay.clickInput();
+    expect(overlay.isBrainMenuOpen()).toBe(true);
+
+    await overlay.pressEscape();
+
+    expect(overlay.isBrainMenuOpen()).toBe(false);
+    expect(overlay.isOpen()).toBe(true);
+    expect(overlay.isBrainPillFocused()).toBe(true);
+
+    await overlay.pressEscape();
+
+    expect(overlay.isOpen()).toBe(false);
+  });
+
+  it("closes only the menu on Escape while nothing is focused", async () => {
+    const overlay = mountWith(
+      createWorld({
+        jarvisAvailability: liveAvailability(null),
+        jarvisIndicators: PILL_ON,
+      }),
+      JarvisOverlay,
+    );
+    await overlay.pressHotkey();
+    await overlay.clickBrainPill();
+    overlay.blurToBody();
+    expect(overlay.isBrainMenuOpen()).toBe(true);
+
+    await overlay.pressEscape();
+
+    expect(overlay.isBrainMenuOpen()).toBe(false);
+    expect(overlay.isOpen()).toBe(true);
+
+    await overlay.pressEscape();
+
+    expect(overlay.isOpen()).toBe(false);
+  });
+
   const PILL_ON = { ...DEFAULT_JARVIS_INDICATORS, brainPill: true };
 });
 

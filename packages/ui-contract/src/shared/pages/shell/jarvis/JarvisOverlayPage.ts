@@ -169,6 +169,43 @@ export class JarvisOverlayPage extends MountedComponent<Record<string, never>> {
     return document.activeElement === this.pill();
   }
 
+  /** The brain of the focused menu item, or `null` when focus is not on a
+   * menu item. */
+  focusedBrainOption(): string | null {
+    const active = document.activeElement;
+
+    if (!(active instanceof HTMLElement)) {
+      return null;
+    }
+
+    if (active.getAttribute("role") !== "menuitemradio") {
+      return null;
+    }
+
+    return (active.getAttribute("data-testid") ?? "").replace(
+      "jarvis-brain-option-",
+      "",
+    );
+  }
+
+  /** Click into the chat input — moves focus off the pill and its menu the
+   * way a real click does (the menu has no outside-click dismissal). */
+  async clickInput(): Promise<void> {
+    await this.user.click(
+      within(this.requireOverlay()).getByTestId("jarvis-input"),
+    );
+  }
+
+  /** Drop focus to `document.body` — what Safari and macOS Firefox leave
+   * behind after a mouse click on a button, which they do not focus. */
+  blurToBody(): void {
+    const active = document.activeElement;
+
+    if (active instanceof HTMLElement) {
+      active.blur();
+    }
+  }
+
   /** True while the pill's menu is rendered. */
   isBrainMenuOpen(): boolean {
     return (

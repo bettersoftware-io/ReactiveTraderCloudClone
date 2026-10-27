@@ -345,7 +345,10 @@
 /* The brain readout under the status line (B3b): one line of sentence-case
  * copy shown in capitals, plus a static budget meter. The fill width comes
  * from the inline custom property --meter-fill and changes only between
- * turns — no transition, no animation (docs/performance.md). */
+ * turns — no transition, no animation (docs/performance.md). The normal tone
+ * reads in --text-secondary (the reply tags stay --text-muted); the warning
+ * tone (an exhausted budget, which never has a meter) is the app's amber,
+ * --accent-aware. */
 .brainReadout {
   flex: none;
   display: flex;
@@ -357,11 +360,11 @@
   font-size: 8.5px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .brainReadout[data-tone="warning"] {
-  color: var(--warn);
+  color: var(--accent-aware);
 }
 
 .brainMeter {
@@ -374,10 +377,6 @@
   width: var(--meter-fill);
   height: 100%;
   background: var(--accent-primary);
-}
-
-.brainReadout[data-tone="warning"] .brainMeterFill {
-  background: var(--warn);
 }
 
 /* ------------------------------------------------------------ waveform --- */
