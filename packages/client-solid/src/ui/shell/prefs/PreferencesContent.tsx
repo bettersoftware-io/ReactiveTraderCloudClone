@@ -40,11 +40,13 @@ import styles from "./PreferencesContent.module.css";
  * lives in `ModalShell`; this component renders only the grid.
  *
  * The columns are loosely balanced by ROW COUNT — column 1 (DISPLAY/MOTION)
- * holds 15 rows, column 2 (TRADING/NOTIFICATIONS/DATA & PRIVACY/JARVIS) 20
- * (re-measured; the three Jarvis indicator switches are the latest rows directly against this file's rendered rows after two rounds
- * landed concurrently: the "Layout engine" segment in column 1's MOTION and
- * the "Reset workspace layout" action in column 2's DATA & PRIVACY; the
- * un-counted Brain-row gate hint is conditional decoration, not a row).
+ * holds 15 rows, column 2 (TRADING/NOTIFICATIONS/DATA & PRIVACY/JARVIS) 20,
+ * re-measured directly against this file's rendered rows. The latest rows are
+ * the three Jarvis indicator switches at the foot of column 2; before them,
+ * two rounds landed concurrently: the "Layout engine" segment in column 1's
+ * MOTION and the "Reset workspace layout" action in column 2's DATA &
+ * PRIVACY. The un-counted Brain-row gate hint is conditional decoration, not
+ * a row.
  * MOTION exists because DISPLAY had grown to hold every movement-related
  * control and left the grid lopsided 15/9 — splitting "how it looks" from
  * "how it moves" rebalanced it at the time. The JARVIS section (added later)

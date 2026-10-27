@@ -200,13 +200,19 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
       });
   }
 
-  /** Number of preference ROWS in a column — toggles plus distinct segment
-   * groups. Segments carry a testid per OPTION rather than per row
-   * (`pref-segment-density-compact`), so the group prefix is what gets
-   * counted; otherwise a 4-option row would weigh four times a toggle. */
+  /** Number of preference ROWS in a column — toggles, distinct segment
+   * groups and action rows. Segments carry a testid per OPTION rather than
+   * per row (`pref-segment-density-compact`), so the group prefix is what
+   * gets counted; otherwise a 4-option row would weigh four times a toggle.
+   * An action row (`PrefAction`, e.g. "Reset workspace layout") is the one
+   * `pref-*` BUTTON that is neither a toggle nor a segment option. */
   rowCountInColumn(index: number): number {
     const column = this.columnAt(index);
     const toggles = column.querySelectorAll('[data-testid^="pref-toggle-"]');
+    const actions = column.querySelectorAll(
+      'button[data-testid^="pref-"]:not([data-testid^="pref-toggle-"]):not([data-testid^="pref-segment-"])',
+    );
+
     const segmentGroups = new Set(
       [...column.querySelectorAll('[data-testid^="pref-segment-"]')].map(
         (el) => {
@@ -216,7 +222,7 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
         },
       ),
     );
-    return toggles.length + segmentGroups.size;
+    return toggles.length + segmentGroups.size + actions.length;
   }
 
   private columnAt(index: number): HTMLElement {

@@ -140,12 +140,13 @@ describe("PreferencesModal", () => {
     // A tolerance rather than exact counts, so adding ONE row stays legal and
     // only real drift fails — the point is the property, not a snapshot.
     //
-    // The JARVIS section (brain + effort segments) was appended later at the
-    // foot of column 2 WITHOUT rebalancing — PreferencesModal.tsx's own doc
-    // comment: "sits at the foot of column 2, so it doesn't reopen that
-    // balance". Its 2 rows are carved out of the comparison below so this
-    // guard still catches real drift in the ORIGINAL catalogue, rather than
-    // needing a permanently wider tolerance for one intentional exception.
+    // The JARVIS section (brain, effort and narrator segments, then the three
+    // indicator switches) was appended later at the foot of column 2 WITHOUT
+    // rebalancing — PreferencesModal.tsx's own doc comment: "sits at the foot
+    // of column 2, so it doesn't reopen that balance". Its 6 rows are carved
+    // out of the comparison below so this guard still catches real drift in
+    // the ORIGINAL catalogue, rather than needing a permanently wider
+    // tolerance for one intentional exception.
     //
     // The Application core row (Task 5 of the runtime-core-switch spec) is a
     // second such deliberate, unrebalanced append — into column 1's MOTION,
@@ -153,7 +154,7 @@ describe("PreferencesModal", () => {
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },
     });
-    const JARVIS_ROW_COUNT = 5; // brain, effort, and the three indicator switches
+    const JARVIS_ROW_COUNT = 6; // brain, effort, narrator, and the three indicator switches
     const CORE_ROW_COUNT = 1; // pref-segment-coreImpl
     const left = page.rowCountInColumn(0) - CORE_ROW_COUNT;
     const right = page.rowCountInColumn(1) - JARVIS_ROW_COUNT;
