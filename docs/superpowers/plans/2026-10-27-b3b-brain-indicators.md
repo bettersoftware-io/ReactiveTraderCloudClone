@@ -10,6 +10,8 @@
 
 **Spec:** [docs/superpowers/specs/2026-10-25-b3-ai-metering-byo-keys-design.md](../specs/2026-10-25-b3-ai-metering-byo-keys-design.md), §4 (with §3.1, §3.8 and D5, D8, D17)
 
+**Rulings made during execution:** [2026-10-27-b3b-brain-indicators-rulings.md](2026-10-27-b3b-brain-indicators-rulings.md)
+
 ## Global Constraints
 
 - Both web clients render every indicator identically. `.module.css` files are byte-identical between `client-react` and `client-solid` (`client-solid/tests/parity/cssParity.test.ts`). The React Native client is out of scope, but it implements the preferences port and must compile.
