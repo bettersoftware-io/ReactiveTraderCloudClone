@@ -342,6 +342,44 @@
   color: var(--accent-primary);
 }
 
+/* The brain readout under the status line (B3b): one line of sentence-case
+ * copy shown in capitals, plus a static budget meter. The fill width comes
+ * from the inline custom property --meter-fill and changes only between
+ * turns — no transition, no animation (docs/performance.md). */
+.brainReadout {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.brainReadout[data-tone="warning"] {
+  color: var(--warn);
+}
+
+.brainMeter {
+  width: 120px;
+  height: 2px;
+  background: var(--border-primary);
+}
+
+.brainMeterFill {
+  width: var(--meter-fill);
+  height: 100%;
+  background: var(--accent-primary);
+}
+
+.brainReadout[data-tone="warning"] .brainMeterFill {
+  background: var(--warn);
+}
+
 /* ------------------------------------------------------------ waveform --- */
 
 .waveform {
@@ -579,6 +617,14 @@
 .entry[data-origin="narrator"] .entryText {
   border: 1px solid var(--accent-2);
   border-left: 2px solid var(--accent-2);
+}
+
+.replyTag {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .narratorBadge {

@@ -11,6 +11,9 @@ import {
 
 import type { JarvisConfirmation, JarvisEntry } from "@rtc/core-api";
 import {
+  type BrainReadout,
+  describeBrainReadout,
+  describeReplyTag,
   JARVIS_GUIDE_CATALOG,
   type JarvisGuideItem,
   type JarvisGuideSection,
@@ -44,7 +47,7 @@ import styles from "./JarvisOverlay.module.css";
  * overlay at whatever it looked like on first mount).
  */
 export function JarvisOverlay(): JSX.Element {
-  const { useJarvis, useJarvisDemo } = useViewModel();
+  const { useJarvis, useJarvisDemo, useJarvisPreferences } = useViewModel();
   const {
     state,
     close,
@@ -55,6 +58,7 @@ export function JarvisOverlay(): JSX.Element {
     setSkin,
   } = useJarvis();
   const { state: demoState, startDemo, stopDemo } = useJarvisDemo();
+  const { indicators } = useJarvisPreferences();
   const [inputValue, setInputValue] = createSignal("");
   const [guideOpen, setGuideOpen] = createSignal(false);
   let listRef: HTMLDivElement | undefined;
@@ -177,6 +181,10 @@ export function JarvisOverlay(): JSX.Element {
     }
 
     return state().phase === "speaking" ? "● SPEAKING" : "◈ LISTENING";
+  }
+
+  function readout(): BrainReadout | null {
+    return indicators().readout ? describeBrainReadout(state()) : null;
   }
 
   function speaking(): boolean {
@@ -353,6 +361,28 @@ export function JarvisOverlay(): JSX.Element {
 
           <div class={styles.wordmark}>J.A.R.V.I.S</div>
           <div class={styles.status}>{status()}</div>
+          <Show when={readout()}>
+            {(current: Accessor<BrainReadout>) => {
+              return (
+                <div
+                  class={styles.brainReadout}
+                  data-testid="jarvis-brain-readout"
+                  data-tone={current().tone}
+                >
+                  <span>{current().text}</span>
+                  <Show when={current().meterFraction !== null}>
+                    <div class={styles.brainMeter} aria-hidden="true">
+                      <div
+                        class={styles.brainMeterFill}
+                        data-testid="jarvis-brain-meter"
+                        style={meterFillStyle(current().meterFraction ?? 0)}
+                      />
+                    </div>
+                  </Show>
+                </div>
+              );
+            }}
+          </Show>
 
           {/* Voice waveform — 26 bars, `transform: scaleY()` only, each with
               its own literal duration/delay pair in the stylesheet (never a
@@ -408,6 +438,18 @@ export function JarvisOverlay(): JSX.Element {
                         <span class={styles.caret} aria-hidden="true" />
                       </Show>
                     </span>
+                    <Show when={indicators().replyTags && entry.brain}>
+                      {(brain: Accessor<NonNullable<JarvisEntry["brain"]>>) => {
+                        return (
+                          <span
+                            data-testid="jarvis-entry-brain"
+                            class={styles.replyTag}
+                          >
+                            {describeReplyTag(brain())}
+                          </span>
+                        );
+                      }}
+                    </Show>
                   </div>
                 );
               }}
@@ -639,3 +681,9 @@ const SKIN_MARK: Record<JarvisSkin, string> = {
 const WAVE_BARS: readonly number[] = Array.from({ length: 26 }, (_, i) => {
   return i;
 });
+
+/** The meter fill's width as an inline custom property (the stylesheet reads
+ * `var(--meter-fill)`), so the one runtime value stays out of a style literal. */
+function meterFillStyle(fraction: number): JSX.CSSProperties {
+  return { "--meter-fill": `${fraction * 100}%` } as JSX.CSSProperties;
+}

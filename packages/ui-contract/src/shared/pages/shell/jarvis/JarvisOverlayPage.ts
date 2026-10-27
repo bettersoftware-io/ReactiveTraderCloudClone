@@ -15,6 +15,9 @@ export interface JarvisEntryView {
   readonly text: string;
   readonly done: boolean;
   readonly origin: string | undefined;
+  /** The reply's brain tag (`jarvis-entry-brain`) text, or `undefined` when
+   * the entry carries none. Excluded from {@link JarvisEntryView.text}. */
+  readonly tag: string | undefined;
 }
 
 /**
@@ -67,13 +70,47 @@ export class JarvisOverlayPage extends MountedComponent<Record<string, never>> {
     return within(overlay)
       .queryAllByTestId("jarvis-entry")
       .map((el): JarvisEntryView => {
+        const tag = within(el).queryByTestId("jarvis-entry-brain");
+        const tagText = tag?.textContent ?? "";
+        const fullText = el.textContent ?? "";
+
         return {
           role: el.getAttribute("data-role") ?? "",
-          text: el.textContent ?? "",
+          text: fullText.slice(0, fullText.length - tagText.length),
+          tag: tag ? tagText : undefined,
           done: el.getAttribute("data-done") === "true",
           origin: el.getAttribute("data-origin") ?? undefined,
         };
       });
+  }
+
+  private readout(): HTMLElement | null {
+    return within(this.requireOverlay()).queryByTestId("jarvis-brain-readout");
+  }
+
+  /** The brain readout's visible (sentence-case) text, or `null` when the
+   * readout is not rendered. */
+  readoutText(): string | null {
+    return this.readout()?.textContent?.trim() ?? null;
+  }
+
+  /** The readout's `data-tone` ("normal" | "warning"), or `null` when absent. */
+  readoutTone(): string | null {
+    return this.readout()?.getAttribute("data-tone") ?? null;
+  }
+
+  /** The meter's fill as a fraction in `[0, 1]`, read off its inline `--meter-fill`
+   * percentage; `null` when there is no meter. Compare approximately. */
+  readoutMeterFraction(): number | null {
+    const readout = this.readout();
+    const fill = readout
+      ? within(readout).queryByTestId("jarvis-brain-meter")
+      : null;
+
+    const percent = fill
+      ? (fill as HTMLElement).style.getPropertyValue("--meter-fill")
+      : "";
+    return percent === "" ? null : Number.parseFloat(percent) / 100;
   }
 
   /** The most recently rendered entry, or null when there are none. */
