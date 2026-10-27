@@ -10,7 +10,7 @@ This project aims to recreate [ReactiveTraderCloud](https://github.com/AdaptiveC
 
 Monorepo (pnpm workspaces + Turborepo): three shipping clients (React, Solid, RN/Expo) over three interchangeable application cores (RxJS, async/await, Effect-TS) behind the types-only `@rtc/core-api`. What is pending lives in `docs/STATUS.md`; `docs/architecture.md` is the authoritative architecture reference.
 
-Package roles and the allowed dependency edges are in each `package.json`, `docs/architecture/06-package-dependencies.md` (§6) and `.dependency-cruiser.mts`, which enforces them: dependencies flow inward only; `@rtc/domain` and `@rtc/ws-effects` take `rxjs` as their only runtime dependency; the Anthropic and MCP SDKs are confined to `packages/server/src/agent/` and `packages/server/src/mcp/`. The rules with their reasons are in the `application-core-rules` skill.
+Package roles and the allowed dependency edges are in each `package.json`, `docs/architecture/06-package-dependencies.md` (§6) and `.dependency-cruiser.mts`, which enforces them: dependencies flow inward only; `@rtc/domain` takes `rxjs` as its only runtime dependency; the Anthropic and MCP SDKs are confined to `packages/server/src/agent/` and `packages/server/src/mcp/`. The rules with their reasons are in the `application-core-rules` skill.
 
 **Application cores.** Before changing a member of an application core (`client-core-rxjs` / `-async` / `-effect`), or `core-api`, `core-logic` or `core-contract`, load the `application-core-rules` skill — the guarantees there are what the contract suites test, and the reasons behind them.
 
@@ -60,7 +60,7 @@ Editing a command under `.claude/commands/`? Load the `authoring-slash-commands`
 ## Architecture Goals
 
 - Follow clean architecture principles (separation of concerns, dependency inversion)
-- "Make choices, defer commitment" — any framework (React, RxJS, ws-effects, Vite, Vitest) should be replaceable by changing only its package, not the monorepo config or domain logic
+- "Make choices, defer commitment" — any framework (React, RxJS, rx-ws-effects, Vite, Vitest) should be replaceable by changing only its package, not the monorepo config or domain logic
 - Turborepo config is framework-blind (task names + dependency graph only)
 - Reference implementation: https://github.com/AdaptiveConsulting/ReactiveTraderCloud
 

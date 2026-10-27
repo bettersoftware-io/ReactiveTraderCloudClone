@@ -6,7 +6,7 @@ Entities, use cases, port interfaces, and simulators — pure TypeScript, the in
 |---|---|
 | **Ring** | ①② Entities & Use Cases — the yolk (`docs/architecture/01-overview.md` §1.3.1). `src/simulators/` is the one exception: it's ring ③ (gateways) even though it lives in this package — production port implementations, not test doubles. |
 | **Runtime deps** | `rxjs` only — the single permitted exception, enforced by pnpm strict mode (`packages/domain/package.json` `dependencies`) |
-| **Consumed by** | `@rtc/shared`, `@rtc/core-api`, `@rtc/core-logic`, `@rtc/core-contract`, the three application cores (`@rtc/client-core-rxjs`, `@rtc/client-core-async`, `@rtc/client-core-effect`), `@rtc/client-adapters`, both bindings packages, `@rtc/ui-contract`, `@rtc/agent-tools`, the clients (`@rtc/client-react`, `@rtc/client-solid`, `@rtc/client-react-native`), `@rtc/server`, and the `tests` workspace (`grep -l '"@rtc/domain"' packages/*/package.json`); `@rtc/ws-effects` (rxjs-only) and the isolated `@rtc/client-prototype` do not |
+| **Consumed by** | `@rtc/shared`, `@rtc/core-api`, `@rtc/core-logic`, `@rtc/core-contract`, the three application cores (`@rtc/client-core-rxjs`, `@rtc/client-core-async`, `@rtc/client-core-effect`), `@rtc/client-adapters`, both bindings packages, `@rtc/ui-contract`, `@rtc/agent-tools`, the clients (`@rtc/client-react`, `@rtc/client-solid`, `@rtc/client-react-native`), `@rtc/server`, and the `tests` workspace (`grep -l '"@rtc/domain"' packages/*/package.json`); the isolated `@rtc/client-prototype` does not |
 | **Must never import** | `@rtc/shared`, `@rtc/client-react`, or `@rtc/server` (dependency-cruiser rule `domain-stays-pure`, `.dependency-cruiser.mts`); any Node built-in outside test files (`domain-no-node-builtins` — the package must run in any JS environment, browser or RN). Gate 23 additionally bans `src/ports/__contracts__/` describers from importing `simulators/`, `@rtc/client-react`, or `@rtc/shared/__fixtures__/` (`docs/architecture/12-architectural-gates.md`). |
 
 ## Folder map
@@ -28,7 +28,7 @@ Entity slices, one per business/cross-cutting concern, plus the ring-crossing fo
 | `src/telemetry/` | Ops entities — `LogEvent`, `MetricSample`, `SessionInfo`, `ServiceTopology`, the `mulberry32` PRNG |
 | `src/ports/` | Port interfaces — the dependency-inverted boundaries every adapter (simulator or `WsAdapter`-backed) implements. Inventory below. |
 | `src/usecases/` | Application orchestration — the use cases that sit between presenters and ports (`src/usecases/index.ts`). |
-| `src/simulators/` | Production in-memory port implementations, used in both simulator mode (in-process) and live mode (hosted on `@rtc/server` behind `@rtc/ws-effects`). Inventory below. |
+| `src/simulators/` | Production in-memory port implementations, used in both simulator mode (in-process) and live mode (hosted on `@rtc/server` behind its `rx-ws-effects` effects). Inventory below. |
 | `src/__testUtils__/` | Shared test helpers (golden-file loader, `defined()` assertion) — not shipped as part of the public API surface |
 
 ### `src/ports/` inventory
@@ -61,7 +61,7 @@ Every interface, its declaring file, and the shape it commits adapters to. All 1
 
 ### `src/simulators/` inventory
 
-One class per port (plus the metric simulators), each a production `implements` of one port above (not a test double — these run in-process in simulator mode and are hosted behind `@rtc/ws-effects` on `@rtc/server` in live mode), plus shared helper modules. Production files only: most simulators also have `.test.ts` / `.contract.test.ts` / `__golden__/` peers in the same folder, deliberately omitted here.
+One class per port (plus the metric simulators), each a production `implements` of one port above (not a test double — these run in-process in simulator mode and are hosted behind the `rx-ws-effects` effects on `@rtc/server` in live mode), plus shared helper modules. Production files only: most simulators also have `.test.ts` / `.contract.test.ts` / `__golden__/` peers in the same folder, deliberately omitted here.
 
 | File | Implements / role |
 |---|---|

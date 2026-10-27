@@ -1,4 +1,5 @@
-import { firstValueFrom } from "rxjs";
+import { createWsListener } from "@better-software/rx-ws-effects";
+import { firstValueFrom, throwError } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
 import { FakeWs } from "./FakeWs.testHelpers.js";
@@ -30,6 +31,25 @@ describe("toSocket", () => {
     const closed = firstValueFrom(socket.closed$);
     ws.closeConnection();
     await expect(closed).resolves.toBeUndefined();
+  });
+
+  it("is closed with 1011 when the listener gives up on the connection, so the client reconnects", () => {
+    const ws = new FakeWs();
+    const loggedError = vi.spyOn(console, "error").mockImplementation(() => {
+      // The listener logs the failure; the test only reads it.
+    });
+
+    const serveConnection = createWsListener(() => {
+      return throwError(() => {
+        return new Error("an effect failed");
+      });
+    }, undefined);
+
+    serveConnection(toSocket(ws as unknown as import("ws").WebSocket));
+
+    expect(ws.closedWith).toEqual({ code: 1011, reason: "internal" });
+    expect(loggedError).toHaveBeenCalledOnce();
+    loggedError.mockRestore();
   });
 
   it("drops a malformed (non-JSON) frame without emitting or erroring, and still delivers the next valid frame", async () => {

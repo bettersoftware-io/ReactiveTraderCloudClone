@@ -1,4 +1,12 @@
 import {
+  type Inbound,
+  matchType,
+  type Outbound,
+  out,
+  stream,
+  type WsEffect,
+} from "@better-software/rx-ws-effects";
+import {
   catchError,
   concatMap,
   defer,
@@ -29,14 +37,6 @@ import {
   type JarvisConfirmPayload,
   SERVER_MSG,
 } from "@rtc/shared";
-import {
-  type Inbound,
-  matchType,
-  type Outbound,
-  out,
-  stream,
-  type WsEffect,
-} from "@rtc/ws-effects";
 
 import type { AgentSession, JarvisLoops } from "../agent/agentLoop.js";
 import type {

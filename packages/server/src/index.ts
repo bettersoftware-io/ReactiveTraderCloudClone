@@ -1,5 +1,9 @@
 import { createServer, type IncomingMessage } from "node:http";
 
+import {
+  combineEffects,
+  createWsListener,
+} from "@better-software/rx-ws-effects";
 import { type VerifyClientCallbackAsync, WebSocketServer } from "ws";
 
 import {
@@ -9,7 +13,6 @@ import {
 } from "@rtc/agent-tools";
 import { KNOWN_CURRENCY_PAIRS } from "@rtc/domain";
 import { SESSION_ENDED_CLOSE_CODE } from "@rtc/shared";
-import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
 import { createAccountService } from "./accounts/AccountService.js";
 import { createAccountAdminService } from "./accounts/accountAdminService.js";

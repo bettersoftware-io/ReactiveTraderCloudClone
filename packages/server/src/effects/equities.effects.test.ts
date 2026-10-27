@@ -1,14 +1,14 @@
-import { of, Subject, throwError } from "rxjs";
-import { describe, expect, it, vi } from "vitest";
-
-import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import {
   combineEffects,
   createWsListener,
   type Inbound,
   type Outbound,
   type Socket,
-} from "@rtc/ws-effects";
+} from "@better-software/rx-ws-effects";
+import { of, Subject, throwError } from "rxjs";
+import { describe, expect, it, vi } from "vitest";
+
+import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
 import type { Ctx } from "./context.js";
 import { equitiesEffects } from "./equities.effects.js";

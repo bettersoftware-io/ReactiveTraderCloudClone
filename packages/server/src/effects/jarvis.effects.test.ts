@@ -1,3 +1,9 @@
+import {
+  combineEffects,
+  createWsListener,
+  type Inbound,
+  type Outbound,
+} from "@better-software/rx-ws-effects";
 import { firstValueFrom, type Observable, of, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -18,12 +24,6 @@ import {
   type JarvisConfirmPayload,
   SERVER_MSG,
 } from "@rtc/shared";
-import {
-  combineEffects,
-  createWsListener,
-  type Inbound,
-  type Outbound,
-} from "@rtc/ws-effects";
 
 import {
   type AgentLoop,

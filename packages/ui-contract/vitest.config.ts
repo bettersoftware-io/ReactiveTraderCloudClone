@@ -1,6 +1,6 @@
 import { defineConfig } from "vitest/config";
 
-// Mirrors packages/ws-effects/vitest.config.ts's shape. `include` is scoped to
+// `include` is scoped to
 // plain `*.test.ts` files (src/visual/scenarios.test.ts and
 // src/visual/holdMotion.test.ts, both pure-logic unit tests with no DOM/driver
 // dependency — note the default `node` environment applies, so neither has a
