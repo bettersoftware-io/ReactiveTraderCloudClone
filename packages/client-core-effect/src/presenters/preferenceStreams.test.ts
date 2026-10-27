@@ -95,6 +95,12 @@ const CASES: StreamCase[] = [
     },
   },
   {
+    port: "jarvisIndicators$",
+    stream: (h: EffectHost, p: PreferencesPort) => {
+      return createJarvisPreferencesPresenter(h, p).indicators$;
+    },
+  },
+  {
     port: "eqWatchlistSort$",
     stream: (h: EffectHost, p: PreferencesPort) => {
       return createEqWatchlistSortPreferencePresenter(h, p).sort$;

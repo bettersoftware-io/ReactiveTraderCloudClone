@@ -57,6 +57,7 @@ import {
   DEFAULT_FORCE_BOOT_ANIMATION,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_INDICATORS,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
@@ -79,6 +80,7 @@ import {
   type JarvisBrain,
   type JarvisEffort,
   type JarvisEvent,
+  type JarvisIndicators,
   type JarvisNarratorPreference,
   type JarvisSkin,
   type JarvisUsage,
@@ -385,6 +387,9 @@ export interface CommandLog {
   /** Each narrator preference written through
    * useJarvisPreferences().setNarrator, in order. */
   jarvisNarratorSets: JarvisNarratorPreference[];
+  /** Each indicators record written through
+   * useJarvisPreferences().setIndicators, in order. */
+  jarvisIndicatorsSets: JarvisIndicators[];
   /** Each core impl asked for through useCoreSelection().select(), in order —
    * only when it differs from the current core (mirrors the real
    * createCoreSelection no-op rule for re-selecting the active core). */
@@ -517,6 +522,10 @@ export interface World {
    * `NarratorMachine` dep here (that wiring is a later P5 task). Defaults to
    * DEFAULT_JARVIS_NARRATOR. */
   readonly jarvisNarrator: BehaviorSubject<JarvisNarratorPreference>;
+  /** The STORED Jarvis indicators preference (B3b) — which of the budget
+   * readout, reply tags and header brain pill are shown. Defaults to
+   * DEFAULT_JARVIS_INDICATORS. */
+  readonly jarvisIndicators: BehaviorSubject<JarvisIndicators>;
   /** Jarvis token-usage/cost telemetry backing useJarvisUsage() (the
    * JarvisUsageCard ops surface, Task 10 of Phase 3) — mirrors `topology$`
    * above (null until first push / not seeded). */
@@ -782,6 +791,8 @@ export interface WorldSeeds {
   jarvisEffort?: JarvisEffort;
   /** Seeds `World.jarvisNarrator` (P5); defaults to DEFAULT_JARVIS_NARRATOR. */
   jarvisNarrator?: JarvisNarratorPreference;
+  /** Seeds `World.jarvisIndicators`; defaults to DEFAULT_JARVIS_INDICATORS. */
+  jarvisIndicators?: JarvisIndicators;
   /** Seeds `World.chartSubstrate`; defaults to DEFAULT_CHART_SUBSTRATE ("dom"). */
   chartSubstrate?: ChartSubstrate;
   /** Seeds `World.layoutEngine`; defaults to the literal "inhouse" (pinned
@@ -847,6 +858,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     jarvisBrain: jarvisBrainSeed,
     jarvisEffort: jarvisEffortSeed,
     jarvisNarrator: jarvisNarratorSeed,
+    jarvisIndicators: jarvisIndicatorsSeed,
     chartSubstrate: chartSubstrateSeed,
     layoutEngine: layoutEngineSeed,
     workspaceLayout: workspaceLayoutSeed,
@@ -1206,6 +1218,10 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     jarvisNarratorSeed ?? DEFAULT_JARVIS_NARRATOR,
   );
 
+  const jarvisIndicators = new BehaviorSubject<JarvisIndicators>(
+    jarvisIndicatorsSeed ?? DEFAULT_JARVIS_INDICATORS,
+  );
+
   const jarvisUsage$ = new BehaviorSubject<JarvisUsage | null>(
     opsSeed.jarvisUsage ?? null,
   );
@@ -1377,6 +1393,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     jarvisBrainSets: [],
     jarvisEffortSets: [],
     jarvisNarratorSets: [],
+    jarvisIndicatorsSets: [],
     coreSelects: [],
     accountNavigations: [],
     accountRegister: [],
@@ -1427,6 +1444,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     jarvisBrain,
     jarvisEffort,
     jarvisNarrator,
+    jarvisIndicators,
     jarvisUsage$,
     setJarvisUsage: (value: JarvisUsage | null) => {
       return jarvisUsage$.next(value);

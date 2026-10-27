@@ -74,6 +74,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_INDICATORS,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
@@ -95,6 +96,7 @@ import {
   type Instrument,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisIndicators,
   type JarvisNarratorPreference,
   type JarvisSkin,
   type JarvisUsage,
@@ -299,6 +301,8 @@ interface UseJarvisPreferencesResult {
   setEffort: (effort: JarvisEffort) => void;
   narrator: Accessor<JarvisNarratorPreference>;
   setNarrator: (preference: JarvisNarratorPreference) => void;
+  indicators: Accessor<JarvisIndicators>;
+  setIndicators: (next: JarvisIndicators) => void;
 }
 
 /** The generative-UI desk panels J.A.R.V.I.S. has spawned this session —
@@ -913,6 +917,11 @@ export function createViewModel(
     DEFAULT_JARVIS_NARRATOR,
   );
 
+  const jarvisIndicatorsPreferenceState = state(
+    presenters.jarvisPreferences.indicators$,
+    DEFAULT_JARVIS_INDICATORS,
+  );
+
   function setJarvisBrainPreference(brain: JarvisBrain): void {
     presenters.jarvisPreferences.setBrain(brain);
   }
@@ -925,6 +934,10 @@ export function createViewModel(
     preference: JarvisNarratorPreference,
   ): void {
     presenters.jarvisPreferences.setNarrator(preference);
+  }
+
+  function setJarvisIndicatorsPreference(next: JarvisIndicators): void {
+    presenters.jarvisPreferences.setIndicators(next);
   }
 
   const viewModeState = state(
@@ -1668,6 +1681,8 @@ export function createViewModel(
         setEffort: setJarvisEffortPreference,
         narrator: toSignal(jarvisNarratorPreferenceState),
         setNarrator: setJarvisNarratorPreference,
+        indicators: toSignal(jarvisIndicatorsPreferenceState),
+        setIndicators: setJarvisIndicatorsPreference,
       };
     },
     useJarvisUsage: () => {

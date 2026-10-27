@@ -4,6 +4,7 @@ import type { JarvisPreferencesPresenter as JarvisPreferencesPresenterApi } from
 import type {
   JarvisBrain,
   JarvisEffort,
+  JarvisIndicators,
   JarvisNarratorPreference,
   PreferencesPort,
 } from "@rtc/domain";
@@ -23,6 +24,8 @@ export class JarvisPreferencesPresenter
 
   readonly narrator$: Observable<JarvisNarratorPreference>;
 
+  readonly indicators$: Observable<JarvisIndicators>;
+
   constructor(private readonly preferences: PreferencesPort) {
     this.brain$ = preferences
       .jarvisBrain$()
@@ -32,6 +35,9 @@ export class JarvisPreferencesPresenter
       .pipe(shareReplay({ bufferSize: 1, refCount: true }));
     this.narrator$ = preferences
       .jarvisNarrator$()
+      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+    this.indicators$ = preferences
+      .jarvisIndicators$()
       .pipe(shareReplay({ bufferSize: 1, refCount: true }));
   }
 
@@ -45,5 +51,9 @@ export class JarvisPreferencesPresenter
 
   setNarrator(preference: JarvisNarratorPreference): void {
     this.preferences.setJarvisNarrator(preference);
+  }
+
+  setIndicators(next: JarvisIndicators): void {
+    this.preferences.setJarvisIndicators(next);
   }
 }

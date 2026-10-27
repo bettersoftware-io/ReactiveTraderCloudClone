@@ -18,6 +18,7 @@ import {
   DEFAULT_FORCE_BOOT_ANIMATION,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_INDICATORS,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
@@ -37,8 +38,10 @@ import {
   JARVIS_SKINS,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisIndicators,
   type JarvisNarratorPreference,
   type JarvisSkin,
+  jarvisIndicatorsEqual,
   LAYOUT_ENGINES,
   type LayoutEngine,
   LOGIN_WAIT_DELAYS,
@@ -49,6 +52,7 @@ import {
   type LoginWaitVariant,
   type PowerSaverLevel,
   type PreferencesPort,
+  readJarvisIndicators,
   THEME_SKINS,
   type ThemeModePreference,
   type ThemeSkin,
@@ -76,6 +80,7 @@ export const JARVIS_SKIN_STORAGE_KEY = "rtc-jarvis-skin";
 export const JARVIS_BRAIN_STORAGE_KEY = "rt-jarvis-brain";
 export const JARVIS_EFFORT_STORAGE_KEY = "rt-jarvis-effort";
 export const JARVIS_NARRATOR_STORAGE_KEY = "rt-jarvis-narrator";
+export const JARVIS_INDICATORS_STORAGE_KEY = "rt-jarvis-indicators";
 
 function isAmbientStyle(value: string | null): value is AmbientStyle {
   return (
@@ -185,6 +190,17 @@ interface StoredPreferences {
   jarvisBrain?: JarvisBrain;
   jarvisEffort?: JarvisEffort;
   jarvisNarrator?: JarvisNarratorPreference;
+  jarvisIndicators?: JarvisIndicators;
+}
+
+/** The indicators record is stored as one JSON string; malformed JSON gives
+ * the defaults, anything parseable is decoded field by field. */
+function parseStoredJarvisIndicators(raw: string): JarvisIndicators {
+  try {
+    return readJarvisIndicators(JSON.parse(raw));
+  } catch {
+    return DEFAULT_JARVIS_INDICATORS;
+  }
 }
 
 /** Read every preference key from AsyncStorage once and return the validated,
@@ -215,6 +231,7 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       jarvisBrain,
       jarvisEffort,
       jarvisNarrator,
+      jarvisIndicators,
     ] = await Promise.all([
       AsyncStorage.getItem(THEME_STORAGE_KEY),
       AsyncStorage.getItem(THEME_SKIN_STORAGE_KEY),
@@ -237,6 +254,7 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       AsyncStorage.getItem(JARVIS_BRAIN_STORAGE_KEY),
       AsyncStorage.getItem(JARVIS_EFFORT_STORAGE_KEY),
       AsyncStorage.getItem(JARVIS_NARRATOR_STORAGE_KEY),
+      AsyncStorage.getItem(JARVIS_INDICATORS_STORAGE_KEY),
     ]);
 
     const stored: StoredPreferences = {};
@@ -331,6 +349,10 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       stored.jarvisNarrator = jarvisNarrator;
     }
 
+    if (jarvisIndicators !== null) {
+      stored.jarvisIndicators = parseStoredJarvisIndicators(jarvisIndicators);
+    }
+
     return stored;
   } catch {
     // AsyncStorage may be unavailable — fall back to all defaults.
@@ -407,6 +429,8 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly jarvisNarratorSubject: BehaviorSubject<JarvisNarratorPreference>;
 
+  private readonly jarvisIndicatorsSubject: BehaviorSubject<JarvisIndicators>;
+
   /** When `seed` is provided (the `hydrate()` path) every subject starts on its
    * persisted value and NO async load runs. When omitted, subjects start on
    * defaults and `selfHydrate()` reads the store asynchronously. */
@@ -480,6 +504,9 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
     );
     this.jarvisNarratorSubject = new BehaviorSubject<JarvisNarratorPreference>(
       s.jarvisNarrator ?? DEFAULT_JARVIS_NARRATOR,
+    );
+    this.jarvisIndicatorsSubject = new BehaviorSubject<JarvisIndicators>(
+      s.jarvisIndicators ?? DEFAULT_JARVIS_INDICATORS,
     );
 
     if (seed === undefined) {
@@ -573,6 +600,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
     if (s.jarvisNarrator !== undefined) {
       this.jarvisNarratorSubject.next(s.jarvisNarrator);
+    }
+
+    if (s.jarvisIndicators !== undefined) {
+      this.jarvisIndicatorsSubject.next(s.jarvisIndicators);
     }
   }
 
@@ -802,5 +833,19 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
       () => {},
     );
     this.jarvisNarratorSubject.next(preference);
+  }
+
+  jarvisIndicators$(): Observable<JarvisIndicators> {
+    return this.jarvisIndicatorsSubject.pipe(
+      distinctUntilChanged(jarvisIndicatorsEqual),
+    );
+  }
+
+  setJarvisIndicators(next: JarvisIndicators): void {
+    void AsyncStorage.setItem(
+      JARVIS_INDICATORS_STORAGE_KEY,
+      JSON.stringify(next),
+    ).catch(() => {});
+    this.jarvisIndicatorsSubject.next(next);
   }
 }

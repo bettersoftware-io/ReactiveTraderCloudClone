@@ -8,6 +8,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_INDICATORS,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LAYOUT_ENGINE,
@@ -28,6 +29,7 @@ import {
   FORCE_BOOT_ANIMATION_STORAGE_KEY,
   JARVIS_BRAIN_STORAGE_KEY,
   JARVIS_EFFORT_STORAGE_KEY,
+  JARVIS_INDICATORS_STORAGE_KEY,
   JARVIS_NARRATOR_STORAGE_KEY,
   JARVIS_SKIN_STORAGE_KEY,
   LAYOUT_ENGINE_STORAGE_KEY,
@@ -155,6 +157,13 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
 
       if (seed.jarvisNarrator) {
         localStorage.setItem(JARVIS_NARRATOR_STORAGE_KEY, seed.jarvisNarrator);
+      }
+
+      if (seed.jarvisIndicators) {
+        localStorage.setItem(
+          JARVIS_INDICATORS_STORAGE_KEY,
+          JSON.stringify(seed.jarvisIndicators),
+        );
       }
 
       return new LocalStoragePreferencesAdapter();
@@ -300,6 +309,41 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
       DEFAULT_JARVIS_NARRATOR,
     );
   });
+
+  it("falls back to the defaults for a garbled stored jarvisIndicators", async () => {
+    localStorage.setItem(JARVIS_INDICATORS_STORAGE_KEY, "{not json");
+    const port = new LocalStoragePreferencesAdapter();
+    expect(await firstValueFrom(port.jarvisIndicators$())).toEqual(
+      DEFAULT_JARVIS_INDICATORS,
+    );
+  });
+
+  it("keeps the valid fields of a partial stored jarvisIndicators", async () => {
+    localStorage.setItem(
+      JARVIS_INDICATORS_STORAGE_KEY,
+      JSON.stringify({ readout: false, brainPill: "yes" }),
+    );
+    const port = new LocalStoragePreferencesAdapter();
+    expect(await firstValueFrom(port.jarvisIndicators$())).toEqual({
+      ...DEFAULT_JARVIS_INDICATORS,
+      readout: false,
+    });
+  });
+
+  it("persists setJarvisIndicators as JSON under its own key, across a new instance", async () => {
+    const next = { readout: false, replyTags: false, brainPill: true };
+    new LocalStoragePreferencesAdapter().setJarvisIndicators(next);
+
+    expect(
+      JSON.parse(localStorage.getItem(JARVIS_INDICATORS_STORAGE_KEY) ?? ""),
+    ).toEqual(next);
+    expect(localStorage.getItem(JARVIS_NARRATOR_STORAGE_KEY)).toBeNull();
+    expect(
+      await firstValueFrom(
+        new LocalStoragePreferencesAdapter().jarvisIndicators$(),
+      ),
+    ).toEqual(next);
+  });
 });
 
 function clearStorage(): void {
@@ -324,4 +368,5 @@ function clearStorage(): void {
   localStorage.removeItem(JARVIS_BRAIN_STORAGE_KEY);
   localStorage.removeItem(JARVIS_EFFORT_STORAGE_KEY);
   localStorage.removeItem(JARVIS_NARRATOR_STORAGE_KEY);
+  localStorage.removeItem(JARVIS_INDICATORS_STORAGE_KEY);
 }

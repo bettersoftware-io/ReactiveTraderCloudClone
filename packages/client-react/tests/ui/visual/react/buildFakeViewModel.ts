@@ -13,6 +13,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_FORCE_BOOT_ANIMATION,
   DEFAULT_JARVIS_BRAIN,
+  DEFAULT_JARVIS_INDICATORS,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
@@ -649,6 +650,8 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         setEffort: noop,
         narrator: "on",
         setNarrator: noop,
+        indicators: data.jarvisIndicators ?? DEFAULT_JARVIS_INDICATORS,
+        setIndicators: noop,
       };
     },
     // Jarvis token-usage/cost telemetry (Task 10) — data-driven off

@@ -14,6 +14,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_INDICATORS,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LAYOUT_ENGINE,
@@ -27,6 +28,7 @@ import {
   type EqWatchlistSort,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisIndicators,
   type JarvisNarratorPreference,
   type JarvisSkin,
   type LayoutEngine,
@@ -65,6 +67,7 @@ export interface PreferencesSeed {
   jarvisBrain?: JarvisBrain;
   jarvisEffort?: JarvisEffort;
   jarvisNarrator?: JarvisNarratorPreference;
+  jarvisIndicators?: JarvisIndicators;
 }
 
 /**
@@ -628,6 +631,53 @@ export function describePreferencesPortContract(
       it("reads back a seeded jarvisNarrator", async () => {
         const port = makeSeeded({ jarvisNarrator: "off" });
         expect(await firstValueFrom(port.jarvisNarrator$())).toBe("off");
+      });
+    });
+
+    describe("jarvisIndicators", () => {
+      const CHANGED: JarvisIndicators = {
+        readout: false,
+        replyTags: true,
+        brainPill: true,
+      };
+
+      it("empty store emits the default jarvisIndicators", async () => {
+        const port = makeSeeded({});
+        expect(await firstValueFrom(port.jarvisIndicators$())).toEqual(
+          DEFAULT_JARVIS_INDICATORS,
+        );
+      });
+
+      it("setJarvisIndicators pushes the new value to subscribers", async () => {
+        const port = makeSeeded({});
+        const seen: JarvisIndicators[] = [];
+        const sub = port.jarvisIndicators$().subscribe((v) => {
+          seen.push(v);
+        });
+        port.setJarvisIndicators(CHANGED);
+        sub.unsubscribe();
+        expect(seen).toEqual([DEFAULT_JARVIS_INDICATORS, CHANGED]);
+      });
+
+      it("reads back a seeded jarvisIndicators", async () => {
+        const port = makeSeeded({ jarvisIndicators: CHANGED });
+        expect(await firstValueFrom(port.jarvisIndicators$())).toEqual(CHANGED);
+      });
+
+      it("setJarvisIndicators does not touch jarvisNarrator", async () => {
+        const port = makeSeeded({});
+        port.setJarvisIndicators(CHANGED);
+        expect(await firstValueFrom(port.jarvisNarrator$())).toBe(
+          DEFAULT_JARVIS_NARRATOR,
+        );
+      });
+
+      it("setJarvisNarrator does not touch jarvisIndicators", async () => {
+        const port = makeSeeded({});
+        port.setJarvisNarrator("off");
+        expect(await firstValueFrom(port.jarvisIndicators$())).toEqual(
+          DEFAULT_JARVIS_INDICATORS,
+        );
       });
     });
   });

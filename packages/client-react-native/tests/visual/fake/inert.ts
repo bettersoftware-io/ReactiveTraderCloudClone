@@ -13,6 +13,7 @@ import { JARVIS_DEMO_STEPS } from "@rtc/core-logic";
 import {
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_INDICATORS,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
   type LogEvent,
@@ -254,6 +255,8 @@ const JARVIS_PREFERENCES_RESULT: UseJarvisPreferencesResult = {
   setEffort: noop,
   narrator: DEFAULT_JARVIS_NARRATOR,
   setNarrator: noop,
+  indicators: DEFAULT_JARVIS_INDICATORS,
+  setIndicators: noop,
 };
 
 /** No generative-UI desk panels ever spawned — the real presenter starts

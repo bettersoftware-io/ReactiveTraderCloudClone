@@ -22,6 +22,7 @@ import type {
   JarvisBrain,
   JarvisEffort,
   JarvisEvent,
+  JarvisIndicators,
   JarvisNarratorPreference,
   LayoutEngine,
   LogEvent,
@@ -102,6 +103,9 @@ export interface MountOptions<P> {
   /** Seed the initial STORED Jarvis narrator preference (useJarvisPreferences);
    * defaults to DEFAULT_JARVIS_NARRATOR. */
   jarvisNarrator?: JarvisNarratorPreference;
+  /** Seed the initial Jarvis indicators preference (useJarvisPreferences);
+   * defaults to DEFAULT_JARVIS_INDICATORS. */
+  jarvisIndicators?: JarvisIndicators;
   /** Seeds `useChartSubstrate`; defaults to `"dom"`. */
   chartSubstrate?: ChartSubstrate;
   /** Seeds the persisted `workspaceLayoutV1` string (GenUI L3 pinned panels);
@@ -357,6 +361,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     jarvisBrain: opts.jarvisBrain,
     jarvisEffort: opts.jarvisEffort,
     jarvisNarrator: opts.jarvisNarrator,
+    jarvisIndicators: opts.jarvisIndicators,
     chartSubstrate: opts.chartSubstrate,
     layoutEngine: opts.layoutEngine,
     workspaceLayout: opts.workspaceLayout,
