@@ -94,7 +94,10 @@ function describeLiveBudget(
       return {
         text: `${head} · ${formatUsd(left)} of ${formatUsd(budget.limitUsd)} left today`,
         tone: "normal",
-        meterFraction: left / budget.limitUsd,
+        // A non-positive limit has no meter (and 0 / 0 would be NaN). The
+        // server reads a 0 limit as already spent, but this copy does not
+        // lean on that.
+        meterFraction: budget.limitUsd > 0 ? left / budget.limitUsd : null,
       };
     }
   }

@@ -50,6 +50,24 @@ describe("describeBrainReadout", () => {
       },
     },
     {
+      name: "a zero limit has no meter",
+      state: aState("claude-haiku-4-5", aBudget({ limitUsd: 0, spentUsd: 0 })),
+      expected: {
+        text: "Claude Haiku 4.5 · house key · $0.00 of $0.00 left today",
+        tone: "normal",
+        meterFraction: null,
+      },
+    },
+    {
+      name: "a negative limit has no meter",
+      state: aState("claude-haiku-4-5", aBudget({ limitUsd: -1, spentUsd: 0 })),
+      expected: {
+        text: "Claude Haiku 4.5 · house key · $0.00 of $0.00 left today",
+        tone: "normal",
+        meterFraction: null,
+      },
+    },
+    {
       name: "no personal limit",
       state: aState("claude-opus-5", aBudget({ limitUsd: null })),
       expected: {
