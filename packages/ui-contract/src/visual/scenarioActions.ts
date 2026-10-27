@@ -543,6 +543,8 @@ const scenarioActions: Record<string, ScenarioAction> = {
   "jarvis/indicators-unavailable": { fullPage: true },
   "jarvis/indicators-demo": { fullPage: true },
   "jarvis/indicators-all-off": { fullPage: true },
+  "jarvis/indicators-readout-off": { fullPage: true },
+  "jarvis/indicators-tags-off": { fullPage: true },
   "jarvis/indicators-pill": { fullPage: true },
   "jarvis/indicators-pill-menu": {
     fullPage: true,
