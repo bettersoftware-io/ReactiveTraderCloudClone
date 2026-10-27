@@ -1114,6 +1114,43 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "JarvisOverlay",
     fixtureKey: "jarvis-chat",
   },
+  // B3b brain indicators: readout + meter, reply tags, input-bar pill.
+  "jarvis/indicators-house-live": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-house-live",
+  },
+  "jarvis/indicators-no-limit": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-no-limit",
+  },
+  "jarvis/indicators-spent": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-spent",
+  },
+  "jarvis/indicators-house-spent": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-house-spent",
+  },
+  "jarvis/indicators-unavailable": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-unavailable",
+  },
+  "jarvis/indicators-demo": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-demo",
+  },
+  "jarvis/indicators-all-off": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-all-off",
+  },
+  "jarvis/indicators-pill": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-pill",
+  },
+  "jarvis/indicators-pill-menu": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-pill",
+  },
   // Task 10 (Phase 3, brain picker): the footer status chip, reused off the
   // full StatusBar component (there's no standalone chip token) — the
   // scripted vs. default-brain (haiku) label is the only visible delta.
