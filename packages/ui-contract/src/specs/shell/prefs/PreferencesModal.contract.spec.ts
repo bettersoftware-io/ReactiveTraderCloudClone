@@ -13,7 +13,11 @@ import {
   formatGateResetTime,
   parseWorkspaceLayout,
 } from "@rtc/core-logic";
-import { JARVIS_BRAINS, type PanelSpecV1 } from "@rtc/domain";
+import {
+  DEFAULT_JARVIS_INDICATORS,
+  JARVIS_BRAINS,
+  type PanelSpecV1,
+} from "@rtc/domain";
 
 afterEach(() => {
   cleanupMounted();
@@ -149,7 +153,7 @@ describe("PreferencesModal", () => {
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },
     });
-    const JARVIS_ROW_COUNT = 2; // pref-segment-jarvisBrain, pref-segment-jarvisEffort
+    const JARVIS_ROW_COUNT = 5; // brain, effort, and the three indicator switches
     const CORE_ROW_COUNT = 1; // pref-segment-coreImpl
     const left = page.rowCountInColumn(0) - CORE_ROW_COUNT;
     const right = page.rowCountInColumn(1) - JARVIS_ROW_COUNT;
@@ -741,6 +745,63 @@ describe("PreferencesModal — reset workspace layout", () => {
     await flushWorkspacePersistence();
 
     expect(world.workspaceLayout.getValue()).toBeNull();
+  });
+});
+
+describe("PreferencesModal Jarvis indicator switches", () => {
+  it("shows readout and reply tags on, the brain pill off, by default", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+
+    expect(page.cosmeticOn("jarvisReadout")).toBe(true);
+    expect(page.cosmeticOn("jarvisReplyTags")).toBe(true);
+    expect(page.cosmeticOn("jarvisBrainPill")).toBe(false);
+  });
+
+  it("reflects a stored record", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      jarvisIndicators: { readout: false, replyTags: false, brainPill: true },
+    });
+
+    expect(page.cosmeticOn("jarvisReadout")).toBe(false);
+    expect(page.cosmeticOn("jarvisReplyTags")).toBe(false);
+    expect(page.cosmeticOn("jarvisBrainPill")).toBe(true);
+  });
+
+  it.each([
+    ["jarvisReadout", { readout: false }],
+    ["jarvisReplyTags", { replyTags: true }],
+    ["jarvisBrainPill", { brainPill: true }],
+  ] as const)(
+    "flipping %s writes the record with only that field changed",
+    async (key, change) => {
+      const page = mount(PreferencesModal, {
+        props: { open: true, onClose: () => {} },
+        jarvisIndicators: { readout: true, replyTags: false, brainPill: false },
+      });
+
+      await page.toggleCosmetic(key);
+
+      expect(page.jarvisIndicatorsSets()).toEqual([
+        { readout: true, replyTags: false, brainPill: false, ...change },
+      ]);
+    },
+  );
+
+  it("keeps the other fields when a second switch is flipped", async () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+
+    await page.toggleCosmetic("jarvisBrainPill");
+    await page.toggleCosmetic("jarvisReadout");
+
+    expect(page.jarvisIndicatorsSets()).toEqual([
+      { ...DEFAULT_JARVIS_INDICATORS, brainPill: true },
+      { ...DEFAULT_JARVIS_INDICATORS, brainPill: true, readout: false },
+    ]);
   });
 });
 

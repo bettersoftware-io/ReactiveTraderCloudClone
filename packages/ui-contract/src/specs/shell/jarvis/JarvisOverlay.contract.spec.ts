@@ -22,7 +22,11 @@ import { cleanupMounted, createWorld, mountWith } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { JarvisAvailability } from "@rtc/core-api";
-import { JARVIS_GUIDE_CATALOG, sampleGuideChips } from "@rtc/core-logic";
+import {
+  describeBrainPill,
+  JARVIS_GUIDE_CATALOG,
+  sampleGuideChips,
+} from "@rtc/core-logic";
 import {
   DEFAULT_JARVIS_INDICATORS,
   Direction,
@@ -713,6 +717,119 @@ describe("reply tags", () => {
       }),
     ).toBe(true);
   });
+});
+
+describe("brain pill", () => {
+  it("is absent by default", async () => {
+    const overlay = mountWith(createWorld(), JarvisOverlay);
+    await overlay.pressHotkey();
+
+    expect(overlay.hasBrainPill()).toBe(false);
+  });
+
+  it("reads the Task 4 pill string, without the caret, when the indicator is on", async () => {
+    const budget: JarvisBudgetView = {
+      keyKind: "house",
+      spentUsd: 0.06,
+      limitUsd: 0.2,
+      exhausted: null,
+      resetsAtMs: 0,
+    };
+    const availability = liveAvailability(budget);
+    const overlay = mountWith(
+      createWorld({
+        jarvisAvailability: availability,
+        jarvisIndicators: PILL_ON,
+      }),
+      JarvisOverlay,
+    );
+    await overlay.pressHotkey();
+
+    expect(overlay.brainPillText()).toBe(
+      describeBrainPill({
+        available: true,
+        effectiveBrain: "claude-haiku-4-5",
+        budget,
+        demo: false,
+      }),
+    );
+    expect(overlay.brainPillText()).toBe("Haiku 4.5 · $0.14");
+  });
+
+  it("opens a menu of the offered brains with the gated ones disabled", async () => {
+    const overlay = mountWith(
+      createWorld({
+        jarvisAvailability: {
+          available: true,
+          brains: ["scripted", "claude-haiku-4-5", "claude-sonnet-5"],
+          defaultBrain: "claude-haiku-4-5",
+          gate: {
+            level: "soft",
+            resetsAtMs: 1_754_000_000_000,
+            gated: ["claude-sonnet-5"],
+          },
+          budget: null,
+          demo: false,
+        },
+        jarvisIndicators: PILL_ON,
+      }),
+      JarvisOverlay,
+    );
+    await overlay.pressHotkey();
+    expect(overlay.isBrainMenuOpen()).toBe(false);
+    expect(overlay.isBrainMenuExpanded()).toBe(false);
+
+    await overlay.clickBrainPill();
+
+    expect(overlay.isBrainMenuOpen()).toBe(true);
+    expect(overlay.isBrainMenuExpanded()).toBe(true);
+    expect(overlay.brainOptionViews()).toEqual([
+      { brain: "scripted", checked: false, disabled: false },
+      { brain: "claude-haiku-4-5", checked: true, disabled: false },
+      { brain: "claude-sonnet-5", checked: false, disabled: true },
+    ]);
+  });
+
+  it("records the chosen brain, closes the menu and returns focus to the pill", async () => {
+    const world = createWorld({
+      jarvisAvailability: liveAvailability(null),
+      jarvisIndicators: PILL_ON,
+    });
+    const overlay = mountWith(world, JarvisOverlay);
+    await overlay.pressHotkey();
+    await overlay.clickBrainPill();
+
+    await overlay.chooseBrain("claude-sonnet-5");
+
+    expect(overlay.jarvisBrainSets()).toEqual(["claude-sonnet-5"]);
+    expect(overlay.isBrainMenuOpen()).toBe(false);
+    expect(overlay.isBrainPillFocused()).toBe(true);
+    expect(overlay.isOpen()).toBe(true);
+  });
+
+  it("closes only the menu on the first Escape and the overlay on the second", async () => {
+    const overlay = mountWith(
+      createWorld({
+        jarvisAvailability: liveAvailability(null),
+        jarvisIndicators: PILL_ON,
+      }),
+      JarvisOverlay,
+    );
+    await overlay.pressHotkey();
+    await overlay.clickBrainPill();
+
+    await overlay.pressEscape();
+
+    expect(overlay.isBrainMenuOpen()).toBe(false);
+    expect(overlay.isOpen()).toBe(true);
+    expect(overlay.isBrainPillFocused()).toBe(true);
+
+    await overlay.pressEscape();
+
+    expect(overlay.isOpen()).toBe(false);
+  });
+
+  const PILL_ON = { ...DEFAULT_JARVIS_INDICATORS, brainPill: true };
 });
 
 /** {@link probeScrollTop}'s return: a live read of the last clamped

@@ -18,6 +18,7 @@ import {
 import { JARVIS_SKINS, type JarvisSkin } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { JarvisBrainPill } from "./JarvisBrainPill";
 import { JarvisConfirmCard } from "./JarvisConfirmCard";
 import { useJarvisHotkey } from "./useJarvisHotkey";
 
@@ -83,7 +84,8 @@ export function JarvisOverlay(): ReactElement | null {
     }
 
     function closeOnEscape(event: KeyboardEvent): void {
-      if (event.key !== "Escape") {
+      // A defaultPrevented Escape was already spent closing the brain menu.
+      if (event.key !== "Escape" || event.defaultPrevented) {
         return;
       }
 
@@ -540,6 +542,7 @@ export function JarvisOverlay(): ReactElement | null {
             onChange={changeDraft}
             onKeyDown={sendDraftOnEnter}
           />
+          {indicators.brainPill ? <JarvisBrainPill /> : null}
           <button
             type="button"
             data-testid="jarvis-send"

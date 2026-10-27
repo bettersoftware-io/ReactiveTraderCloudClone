@@ -8,6 +8,7 @@ import type {
   ChartSubstrate,
   JarvisBrain,
   JarvisEffort,
+  JarvisIndicators,
   JarvisNarratorPreference,
   LayoutEngine,
   LoginWaitDelay,
@@ -408,6 +409,12 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
   /** Each effort written through useJarvisPreferences().setEffort, in order. */
   jarvisEffortSets(): JarvisEffort[] {
     return this.commandLog().jarvisEffortSets;
+  }
+
+  /** Each indicators record written through
+   * useJarvisPreferences().setIndicators, in order. */
+  jarvisIndicatorsSets(): JarvisIndicators[] {
+    return this.commandLog().jarvisIndicatorsSets;
   }
 
   /** Each narrator preference written through

@@ -20,6 +20,13 @@ export interface JarvisEntryView {
   readonly tag: string | undefined;
 }
 
+/** One brain-menu item as rendered. */
+export interface BrainOptionView {
+  readonly brain: string;
+  readonly checked: boolean;
+  readonly disabled: boolean;
+}
+
 /**
  * Page object for the cinematic J.A.R.V.I.S overlay (`JarvisOverlay`, Task 8).
  * Hook-driven: reads/drives `useJarvis()` off the REAL JarvisMachine (Task 9,
@@ -111,6 +118,94 @@ export class JarvisOverlayPage extends MountedComponent<Record<string, never>> {
       ? (fill as HTMLElement).style.getPropertyValue("--meter-fill")
       : "";
     return percent === "" ? null : Number.parseFloat(percent) / 100;
+  }
+
+  private pill(): HTMLElement | null {
+    return within(this.requireOverlay()).queryByTestId("jarvis-brain-pill");
+  }
+
+  private requirePill(): HTMLElement {
+    const el = this.pill();
+
+    if (!el) {
+      throw new Error("the brain pill is not rendered");
+    }
+
+    return el;
+  }
+
+  /** True while the input-bar brain pill is rendered. */
+  hasBrainPill(): boolean {
+    return this.pill() !== null;
+  }
+
+  /** The pill's visible text with its aria-hidden caret excluded, or `null`
+   * when the pill is not rendered. */
+  brainPillText(): string | null {
+    const pill = this.pill();
+
+    if (!pill) {
+      return null;
+    }
+
+    const caret = pill.querySelector('[aria-hidden="true"]');
+    const full = pill.textContent ?? "";
+    const caretText = caret?.textContent ?? "";
+    return full.slice(0, full.length - caretText.length).trim();
+  }
+
+  /** Click the pill (opens or closes its menu). */
+  async clickBrainPill(): Promise<void> {
+    await this.user.click(this.requirePill());
+  }
+
+  /** The pill's `aria-expanded`. */
+  isBrainMenuExpanded(): boolean {
+    return this.requirePill().getAttribute("aria-expanded") === "true";
+  }
+
+  /** True while the pill is the focused element. */
+  isBrainPillFocused(): boolean {
+    return document.activeElement === this.pill();
+  }
+
+  /** True while the pill's menu is rendered. */
+  isBrainMenuOpen(): boolean {
+    return (
+      within(this.requireOverlay()).queryByTestId("jarvis-brain-menu") !== null
+    );
+  }
+
+  private brainOptions(): HTMLButtonElement[] {
+    const menu = within(this.requireOverlay()).getByTestId("jarvis-brain-menu");
+    return within(menu).getAllByRole("menuitemradio") as HTMLButtonElement[];
+  }
+
+  /** Each menu item as `{ brain, checked, disabled }`, in render order. The
+   * brain is read off the item's `jarvis-brain-option-<brain>` test id. */
+  brainOptionViews(): BrainOptionView[] {
+    return this.brainOptions().map((el): BrainOptionView => {
+      return {
+        brain: (el.getAttribute("data-testid") ?? "").replace(
+          "jarvis-brain-option-",
+          "",
+        ),
+        checked: el.getAttribute("aria-checked") === "true",
+        disabled: el.disabled,
+      };
+    });
+  }
+
+  /** Click the menu item for `brain`. */
+  async chooseBrain(brain: string): Promise<void> {
+    await this.user.click(
+      within(this.requireOverlay()).getByTestId(`jarvis-brain-option-${brain}`),
+    );
+  }
+
+  /** Each brain written through useJarvisPreferences().setBrain, in order. */
+  jarvisBrainSets(): string[] {
+    return this.commandLog().jarvisBrainSets;
   }
 
   /** The most recently rendered entry, or null when there are none. */
