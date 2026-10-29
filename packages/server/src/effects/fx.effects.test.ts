@@ -1,3 +1,10 @@
+import {
+  combineEffects,
+  createWsListener,
+  type Inbound,
+  type Outbound,
+  type Socket,
+} from "@better-software/rx-ws-effects";
 import { from, of, Subject } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
@@ -8,13 +15,6 @@ import {
   TradeStatus,
 } from "@rtc/domain";
 import { CLIENT_MSG, type ExecutionRequestDto, SERVER_MSG } from "@rtc/shared";
-import {
-  combineEffects,
-  createWsListener,
-  type Inbound,
-  type Outbound,
-  type Socket,
-} from "@rtc/ws-effects";
 
 import type { Ctx } from "./context.js";
 import { fxEffects } from "./fx.effects.js";

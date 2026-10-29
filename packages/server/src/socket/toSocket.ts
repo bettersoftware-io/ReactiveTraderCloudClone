@@ -1,7 +1,6 @@
+import type { Inbound, Outbound, Socket } from "@better-software/rx-ws-effects";
 import { fromEvent, map, Observable, take } from "rxjs";
 import type { WebSocket } from "ws";
-
-import type { Inbound, Outbound, Socket } from "@rtc/ws-effects";
 
 import type { TokenBucket } from "./tokenBucket.js";
 
@@ -89,6 +88,12 @@ export function toSocket(ws: WebSocket, guard?: InboundGuardOptions): Socket {
       if (ws.readyState === ws.OPEN) {
         ws.send(JSON.stringify(message));
       }
+    },
+    // The listener calls this when it gives up on the connection (an effect
+    // failed, or `send` threw), so the client sees the drop and reconnects
+    // instead of talking to a connection nothing serves any more.
+    close: (): void => {
+      ws.close(1011, "internal");
     },
   };
 }

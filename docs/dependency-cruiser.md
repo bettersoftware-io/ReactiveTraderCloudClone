@@ -28,7 +28,7 @@ graph TD
     wb["@rtc/web-boot<br/>(boot code both web clients share)"]
     core["@rtc/client-adapters + @rtc/client-core-rxjs<br/>(adapters + the default application core)"]
     server["@rtc/server<br/>(WebSocket server)"]
-    wse["@rtc/ws-effects<br/>(effects framework, rxjs only)"]
+    wse["@better-software/rx-ws-effects<br/>(effects framework from npm, rxjs only)"]
     shared["@rtc/shared<br/>(DTOs / wire protocol)"]
     domain["@rtc/domain<br/>(entities, ports, use cases, simulators)<br/>runtime dep: rxjs only"]
     proto["@rtc/client-prototype<br/>(design island — no @rtc/* deps)"]
@@ -58,7 +58,6 @@ graph TD
     server -. "forbidden:<br/>server-not-client" .-x webc
     shared -. "forbidden:<br/>shared-no-apps" .-x server
     domain -. "forbidden:<br/>domain-stays-pure" .-x shared
-    wse -. "forbidden:<br/>ws-effects-stays-pure" .-x domain
     motion -. "forbidden:<br/>motion-core-stays-pure" .-x domain
     boot -. "forbidden:<br/>boot-splash-stays-pure" .-x domain
     dockv -. "forbidden:<br/>layout-dockview-stays-pure" .-x domain
@@ -83,7 +82,6 @@ graph is the `from`/`pathNot` allowlists in `.dependency-cruiser.mts`.
 Solid arrows are permitted imports; dashed crossed (`-.-x`) arrows are examples of
 the edges the `forbidden` rules reject. `domain-stays-pure` forbids
 `domain → shared` (and by extension `domain → client/server`);
-`ws-effects-stays-pure` keeps the effects framework domain-blind;
 `motion-core-stays-pure` keeps the view-layer motion-math package zero-dependency
 -- stricter than the rxjs-only exception, since it forbids `rxjs` too;
 `boot-splash-stays-pure` keeps the boot/splash canvas engine and gate a
@@ -127,7 +125,6 @@ new package is forbidden by default until it is explicitly allowed. (The
 | `shared-no-apps` | `^packages/shared/src` | `shared\|domain\|motion-core` | Shared may only reach inward to domain, plus motion-core for the scripted Jarvis brain's speech-chunk pacing |
 | `client-not-server` | `^packages/client-react/src` | — (rejects `^packages/server/`) | The two apps never couple |
 | `server-not-client` | `^packages/server/src` | — (rejects `^packages/client-react/`) | (mirror of the above) |
-| `ws-effects-stays-pure` | `^packages/ws-effects/src` | nothing (`pathNot ^packages/ws-effects/`) | The effects framework is domain-blind and app-agnostic (rxjs only) |
 | `agent-tools-stays-inner` | `^packages/agent-tools/src` | `agent-tools\|domain` | The Jarvis desk-tool registry reaches only inward to domain — never `shared`, `client-adapters`, a client, the bindings, or the server |
 | `no-anthropic-sdk-in-inner-packages` | `^packages/` **except** `^packages/server/` | — (rejects `node_modules/@anthropic-ai/`) | The Anthropic SDK is server-only, confined to `src/agent/`. Written as an **allowlist inversion** over the single permitted importer rather than a blocklist of today's inner packages — a blocklist silently left the browser clients uncovered, where an SDK import could ship a key-bearing code path into a bundle. npm-package bans need this shape: the workspace-path rules above are blind to `node_modules` edges |
 | `devtools-core-stays-pure` | `^packages/devtools-core/src` | nothing (`pathNot ^packages/devtools-core/`) | `@rtc/devtools-core` decorates by structural shape — no other `@rtc/*` package |
@@ -175,9 +172,9 @@ allowlist is matched against the **bare package path** (e.g. `^packages/server/`
 so importing a server **test** file from the client is rejected too — not only
 `server/src`.
 
-**Full coverage:** every one of the twenty-seven workspace packages is either the
+**Full coverage:** every one of the twenty-six workspace packages is either the
 `from` of a package-boundary rule or reachable only inward. The pure leaves
-(`domain`, `motion-core`, `boot-splash`, `layout-dockview`, `ws-effects`,
+(`domain`, `motion-core`, `boot-splash`, `layout-dockview`,
 `devtools-core`, `devtools-relay`, `client-prototype`) allow *nothing*; the
 bridges and harness (`react-bindings`, `solid-bindings`, `ui-contract`,
 `client-adapters`, `core-api`, `core-logic`, `core-contract`, `web-boot`, the three

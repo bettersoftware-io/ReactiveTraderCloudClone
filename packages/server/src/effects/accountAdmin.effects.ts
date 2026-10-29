@@ -1,3 +1,4 @@
+import { rpc, type WsEffect } from "@better-software/rx-ws-effects";
 import { from, type Observable } from "rxjs";
 
 import type { AccountAdminAction } from "@rtc/domain";
@@ -8,7 +9,6 @@ import {
   isAccountRenamePayload,
   SERVER_MSG,
 } from "@rtc/shared";
-import { rpc, type WsEffect } from "@rtc/ws-effects";
 
 import type { AdminAnswer } from "../accounts/accountAdminService.js";
 import type { Ctx } from "./context.js";

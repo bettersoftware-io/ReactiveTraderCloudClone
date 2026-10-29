@@ -63,8 +63,6 @@
       "@rtc/layout-dockview/*": ["packages/layout-dockview/src/*"],
       "@rtc/ui-contract": ["packages/ui-contract/src/index.ts"],
       "@rtc/ui-contract/*": ["packages/ui-contract/src/*"],
-      "@rtc/ws-effects": ["packages/ws-effects/src/index.ts"],
-      "@rtc/ws-effects/*": ["packages/ws-effects/src/*"],
       "@rtc/agent-tools": ["packages/agent-tools/src/index.ts"],
       "@rtc/agent-tools/*": ["packages/agent-tools/src/*"],
       "@rtc/devtools-core": ["packages/devtools-core/src/index.ts"],

@@ -104,7 +104,6 @@ project-local `.pnpm-store` fallback:
     "packages/react-bindings/node_modules",
     "packages/client-react/node_modules",
     "packages/client-react-native/node_modules",
-    "packages/ws-effects/node_modules",
     "packages/client-prototype/node_modules",
     "packages/server/node_modules",
     "tests/node_modules",
@@ -113,7 +112,6 @@ project-local `.pnpm-store` fallback:
     "packages/client-adapters/dist",
     "packages/react-bindings/dist",
     "packages/client-react/dist",
-    "packages/ws-effects/dist",
     "packages/client-prototype/dist",
     "packages/server/dist",
     ".pnpm-store",
@@ -124,7 +122,6 @@ project-local `.pnpm-store` fallback:
     "packages/react-bindings/.turbo",
     "packages/client-react/.turbo",
     "packages/client-react-native/.turbo",
-    "packages/ws-effects/.turbo",
     "packages/client-prototype/.turbo",
     "packages/server/.turbo",
     "tests/.turbo"

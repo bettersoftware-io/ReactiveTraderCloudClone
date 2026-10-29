@@ -1,11 +1,11 @@
 # @rtc/server
 
-The WebSocket server: a thin Node.js host that exposes the domain simulators to every client over declarative `@rtc/ws-effects` effects (assembled by `buildEffects`), plus `/login`, the five registered-account endpoints (`/register`, `/resend-code`, `/confirm-email`, `/request-reset`, `/reset-password`), `/health`, `/health/accounts` and an `/mcp` endpoint.
+The WebSocket server: a thin Node.js host that exposes the domain simulators to every client over declarative `@better-software/rx-ws-effects` effects (assembled by `buildEffects`), plus `/login`, the five registered-account endpoints (`/register`, `/resend-code`, `/confirm-email`, `/request-reset`, `/reset-password`), `/health`, `/health/accounts` and an `/mcp` endpoint.
 
 | | |
 |---|---|
 | **Ring** | ③ Interface Adapters for the controllers/gateways (`src/effects/` + `src/socket/`'s `toSocket`) + ④ Frameworks & Drivers for the host wiring (`src/index.ts`, `node:http` + `ws`) -- per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
-| **Runtime deps** | `@rtc/domain`, `@rtc/shared`, `@rtc/ws-effects`, `@rtc/agent-tools`, `rxjs`, `ws`, `@anthropic-ai/sdk` (confined to `src/agent/`), `@modelcontextprotocol/sdk` (confined to `src/mcp/`) (`packages/server/package.json` `dependencies`) |
+| **Runtime deps** | `@rtc/domain`, `@rtc/shared`, `@rtc/agent-tools`, `@better-software/rx-ws-effects`, `rxjs`, `ws`, `@anthropic-ai/sdk` (confined to `src/agent/`), `@modelcontextprotocol/sdk` (confined to `src/mcp/`) (`packages/server/package.json` `dependencies`) |
 | **Consumed by** | `tests` only -- no other workspace package lists `@rtc/server` as a dependency (`grep -l '"@rtc/server"' packages/*/package.json tests/package.json`); the `tests` workspace spawns it as a child process via `pnpm --filter @rtc/server exec tsx src/index.ts` (`tests/fullstack/_orchestration.ts`), not an import |
 | **Must never import** | `@rtc/client-react` -- enforced by the dependency-cruiser `server-not-client` rule (`from: ^packages/server/src`, `to: ^packages/client-react/`, `.dependency-cruiser.mts`, see [§6](../../docs/architecture/06-package-dependencies.md#6-package-dependencies)). It also never imports `@rtc/client-adapters` in practice (`grep -rln "@rtc/client-adapters" packages/server/src` returns nothing) and skips `@rtc/domain`'s `usecases/` entirely (`grep -rn "UseCase" packages/server/src` returns nothing) -- use cases are client-side orchestration; the server drives the domain simulators directly. |
 
@@ -18,7 +18,7 @@ The WebSocket server: a thin Node.js host that exposes the domain simulators to 
 | `src/agent/` | The Jarvis agent loops: `ScriptedAgentLoop` (the transport-neutral scripted brain from `@rtc/shared`) and `AnthropicAgentLoop` (the only place `@anthropic-ai/sdk` is imported), chosen per connection by `createJarvisLoops` in `agentLoop.ts`; also the `render_panel` and app-driving tools and the persona. |
 | `src/mcp/` | The `/mcp` Streamable-HTTP endpoint: `buildJarvisMcpServer` exposes the `@rtc/agent-tools` registry to external MCP clients, `mcpHttpHandler` serves it behind the same token auth (the only place `@modelcontextprotocol/sdk` is imported). |
 | `src/observability/` | `connectionLog.ts` -- the structured stdout line per WebSocket lifecycle event (see below). |
-| `src/socket/` | The transport seam: `toSocket` adapts a raw `ws` `WebSocket` into `@rtc/ws-effects`'s domain-blind `Socket` shape (`messages$`/`closed$`/`send`), `protocol.ts` holds the `WsMessage` envelope, and `FakeWs.testHelpers.ts` is the in-memory test double. Named `socket`, not `ws`, on purpose -- see the note below. |
+| `src/socket/` | The transport seam: `toSocket` adapts a raw `ws` `WebSocket` into `@better-software/rx-ws-effects`'s domain-blind `Socket` shape (`messages$`/`closed$`/`send`/`close`), `protocol.ts` holds the `WsMessage` envelope, and `FakeWs.testHelpers.ts` is the in-memory test double. Named `socket`, not `ws`, on purpose -- see the note below. |
 | `src/auth/` | `AuthService` -- scrypt-hashes + `timingSafeEqual`-checks credentials from the `AUTH_USERS` roster and issues/verifies signed session tokens (`token.ts`; an account session carries the account id and access level too); `loadUsers.ts` parses the `"user:pass,user2:pass2"` `AUTH_USERS` format and refuses a username containing `@`; `rateLimit.ts` is the per-IP rate limiter every POST route runs through; `banList.ts` the in-app ban list. |
 | `src/accounts/` | Registered accounts (B2a, [docs/authentication.md §7](../../docs/authentication.md#7-registered-accounts-b2a)): the `AccountDirectory` port and its three implementations (Supabase over plain `fetch`, in-memory for dev, disabled), `AccountService` (the policy), `resolveAccountsMode` (which store, and the startup refusals), `accountStatusCache` (the upgrade re-check) and `sessionUserFor`. The only code in the repo that knows Supabase exists. |
 | `src/http/` | `loginHandler.ts` -- `authenticateLoginRequest` (the pure `/login` request handler: ban check → rate-limit → parse → `AuthService.login` for a roster username, `AccountService.login` for an email address) and `describeUpgrade` (the WebSocket-upgrade token check, reads `?access=` and calls `AuthService.verifyToken`); `upgradeGate.ts` (the whole upgrade decision, including the account status re-check); `accountHandlers.ts` + `accountLimits.ts` (the five account endpoints and their limiters); `postRouter.ts` (one preflight, ban check, body cap and error mapping for all six POST routes); `accountsHealth.ts` (`/health/accounts`). |
@@ -47,7 +47,7 @@ The WebSocket server: a thin Node.js host that exposes the domain simulators to 
 2. `src/http/loginHandler.ts` -- `authenticateLoginRequest` (the `/login` request/response shape) and `authorizeUpgrade` (the WS-upgrade gate); both are pure functions, easy to test without a real HTTP server.
 3. `src/auth/AuthService.ts` -- credential verification (scrypt + `timingSafeEqual`) and session-token issuance/verification (delegates signing to `token.ts`).
 4. `src/effects/index.ts` -- `allEffects` and `buildEffects`; shows the domain effect arrays (and the Jarvis ones) before opening any single one.
-5. `src/socket/toSocket.ts` -- the adapter that turns a `ws` `WebSocket` into the `Socket` shape `@rtc/ws-effects` expects; the seam between this package's one framework dependency (`ws`) and the domain-blind effects framework.
+5. `src/socket/toSocket.ts` -- the adapter that turns a `ws` `WebSocket` into the `Socket` shape `@better-software/rx-ws-effects` expects; the seam between this package's one framework dependency (`ws`) and the domain-blind effects framework.
 6. `src/services/serviceContainer.ts` -- `createServices()`; ties each `@rtc/domain` simulator/port to its field on `Ctx`, the object every effect receives as its second argument.
 
 ## Auth
@@ -127,8 +127,9 @@ Every per-caller bound lives in `src/config/limits.ts` (hardening spec §2.2 /
 |---|---|---|
 | Largest WebSocket frame, in bytes (`ws` closes that socket with 1009) — sized for a full Jarvis turn in a 3-byte script | `WS_MAX_PAYLOAD_BYTES` | 256 KiB |
 | `jarvis.chat` message text | `JARVIS_WIRE_TEXT_MAX` (local to `src/effects/jarvis.effects.ts`, beside the history caps) | 4 000 chars |
-| Live `stream()` inner streams per effect per connection | `@rtc/ws-effects` `StreamOptions.maxActive` | 64 |
-| Distinct `keyedStream()` keys per effect per connection | `@rtc/ws-effects` `KeyedStreamOptions.maxKeys` | 128 |
+| Live `stream()` inner streams per effect per connection | rx-ws-effects `StreamOptions.maxActive` | 64 |
+| Distinct `keyedStream()` keys per effect per connection | rx-ws-effects `KeyedStreamOptions.maxKeys` | 128 |
+| `rpc()` requests waiting on their handler per effect per connection (one over is nacked) | rx-ws-effects `RpcOptions.maxActive` | 64 |
 | Shared blotter / equity order book / RFQ store | `@rtc/domain` simulator constructor arguments | 500 / 500 / 200, oldest evicted first |
 | `/login` body (bytes received, `413` past it) | `LOGIN_MAX_BODY_BYTES` | 4 KiB |
 | `/mcp` declared `Content-Length` (`413` past it; a chunked body is bounded only by the MCP SDK's own 4 MB limit, behind the Bearer check) | `MCP_MAX_BODY_BYTES` | 64 KiB |
@@ -270,6 +271,6 @@ logged-out app that (correctly) opens no socket produces **no** `connect` and no
 - [Its §13 card](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)
 - [§14.2 Adapter Tables Per App -- Server](../../docs/architecture/14-composition-and-wiring.md#142-adapter-tables-per-app)
 - [§14.3 Boot Sequences -- Server](../../docs/architecture/14-composition-and-wiring.md#143-boot-sequences)
-- [§7 The Declarative Effects Server](../../docs/architecture/07-communication-patterns.md#the-declarative-effects-server-rtcws-effects) -- why the old `wsHandler.ts` switch was replaced, and the error-isolation this package relies on
+- [§7 The Declarative Effects Server](../../docs/architecture/07-communication-patterns.md#the-declarative-effects-server-rx-ws-effects) -- why the old `wsHandler.ts` switch was replaced, and the error-isolation this package relies on
 - [§10.6 Declarative WS effects over a server `switch`](../../docs/architecture/10-key-design-decisions.md#10-key-design-decisions) -- the design decision record
-- [`@rtc/ws-effects` README](../ws-effects/README.md) -- the framework this package's `src/effects/` and `src/index.ts` are built on
+- [`@better-software/rx-ws-effects` README](https://github.com/bettersoftware-io/rx-ws-effects#readme) -- the framework this package's `src/effects/` and `src/index.ts` are built on

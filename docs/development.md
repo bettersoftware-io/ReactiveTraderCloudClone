@@ -43,7 +43,7 @@ pnpm build       # Topological build: domain → shared → client + server
 ```bash
 pnpm dev                          # @rtc/client-react, simulator mode — alias of dev:react, zero setup, no backend (Vite, http://localhost:5173)
 pnpm dev:react:fs                 # full stack: WS server + @rtc/client-react wired to it (ws://localhost:4000)
-pnpm --filter @rtc/server dev     # backend only (native WebSocket + @rtc/ws-effects, tsx watch)
+pnpm --filter @rtc/server dev     # backend only (native WebSocket + rx-ws-effects, tsx watch)
 ```
 
 The client is served by Vite (default `http://localhost:5173`). The composition
@@ -277,7 +277,7 @@ covered separately by two layers:
 
 - **Server protocol tests** (`packages/server/src/effects/index.test.ts` and the per-domain
   `*.effects.test.ts` files beside it, run by `pnpm test`) — drive the real
-  `@rtc/ws-effects` listener through a fake socket and assert it
+  `rx-ws-effects` listener through a fake socket and assert it
   routes client frames to domain calls and emits the correct `@rtc/shared` wire
   shapes (subscribe routing, state-of-the-world markers, ack/nack, teardown).
 - **Full-stack smokes** (`tests/fullstack/`, run by `pnpm test:e2e`) — boot the

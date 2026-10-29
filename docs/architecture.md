@@ -49,7 +49,7 @@ This document is split into one file per section under
    - [Observable Pipeline](architecture/07-communication-patterns.md#observable-pipeline)
    - [Runtime Topology: What Runs When](architecture/07-communication-patterns.md#runtime-topology-what-runs-when)
    - [Animated: The Life of a Price Tick](architecture/07-communication-patterns.md#animated-the-life-of-a-price-tick)
-   - [The Declarative Effects Server (`@rtc/ws-effects`)](architecture/07-communication-patterns.md#the-declarative-effects-server-rtcws-effects)
+   - [The Declarative Effects Server (`rx-ws-effects`)](architecture/07-communication-patterns.md#the-declarative-effects-server-rx-ws-effects)
    - [Equities Over the Wire](architecture/07-communication-patterns.md#equities-over-the-wire-gap-closed)
    - [Deployment Topology](architecture/07-communication-patterns.md#deployment-topology)
 8. [Replaceability Matrix](architecture/08-replaceability-matrix.md)

@@ -31,7 +31,7 @@
 | **RN Composition Root** | `packages/client-react-native/src/app/{AppRoot.tsx,buildNativePorts.ts}` | Same recipe with `EXPO_PUBLIC_SERVER_URL` + sim/live toggle |
 | **RN Platform Adapters** | `packages/client-react-native/src/app/adapters/*.ts` | AsyncStorage preferences, Appearance color scheme |
 | **RN UI + Routes** | `packages/client-react-native/{app,src/ui}/**` | expo-router tabs; screens with react-native-svg charts + `src/ui/theme/tokens.ts` |
-| **WS Effects Framework** | `packages/ws-effects/src/{types,stream,rpc,combineEffects,createWsListener,operators}.ts` | `WsEffect` primitive + sugar; rxjs-only |
+| **WS Effects Framework** | the npm package `@better-software/rx-ws-effects` ([source](https://github.com/bettersoftware-io/rx-ws-effects)); its adapter here is `packages/server/src/socket/toSocket.ts` | `WsEffect` primitive + sugar; rxjs-only |
 | **Motion Core** | `packages/motion-core/src/{flip,rankGlide,reducedMotion}.ts` | `flipDeltas`, `coalesceOrder`/`computeRankDirections`/`sameOrder`, easing/duration constants; zero runtime deps |
 | **Boot Splash** | `packages/boot-splash/src/{bootCanvas,bootSplashGate}.ts` + `variants/` | Canvas boot-scene engine + reduced-motion/webdriver gate; each web client adds its own `BootSequence`/`BootGate` shell |
 | **Dockview Layout Engine** | `packages/layout-dockview/src/createDockEngine.ts` (+ `styles/`) | `createDockEngine` over `dockview` (the default `LayoutEngine`, ADR-002); each web client bridges it via `ui/shell/layout/dockview/DockviewLayoutEngine.tsx` |

@@ -50,14 +50,14 @@ Ensures clients have a consistent view after (re)connection.
 
 ### Observable Pipeline
 
-RxJS `Observable<T>` is the universal streaming abstraction across the boundary -- streams *and* one-shot ops. Simulators on the server emit Observables directly; the ws-effects layer projects them onto the wire; client WS adapters wrap incoming WS messages as Observables. The presenter layer applies UI-shaping operators; the bindings package turns the resulting stream into a hook. **The whole path, server to pixel, is one composed Observable pipeline.**
+RxJS `Observable<T>` is the universal streaming abstraction across the boundary -- streams *and* one-shot ops. Simulators on the server emit Observables directly; the rx-ws-effects layer projects them onto the wire; client WS adapters wrap incoming WS messages as Observables. The presenter layer applies UI-shaping operators; the bindings package turns the resulting stream into a hook. **The whole path, server to pixel, is one composed Observable pipeline.**
 
 ```
 Domain Port (interface)     ->  Observable<PriceTick>
   |
 Simulator (server)          ->  defer(...) + new Observable / interval / Subject
   |
-ws-effects stream()         ->  matchType(SUBSCRIBE_PRICING) -> mergeMap(project) -> out frames
+rx-ws-effects stream()      ->  matchType(SUBSCRIBE_PRICING) -> mergeMap(project) -> out frames
   |
 Client WS Adapter           ->  new Observable<T>(sub => ws.onmessage handler)   [@rtc/client-adapters]
   |
@@ -136,11 +136,11 @@ The same story as an animation (committed SVG — GitHub plays SMIL animations i
 
 Watch for the two dots: the amber one (Mode B) crosses the WebSocket wire; the green one (Mode A) goes straight from the in-process simulator to the port. From `PricingPort` onward there is only one blue path — that single path is why the UI, the behavioural tests, and the presenters can never tell the modes apart.
 
-### The Declarative Effects Server (`@rtc/ws-effects`)
+### The Declarative Effects Server (`rx-ws-effects`)
 
-The server's dispatch used to be an imperative `switch` in `wsHandler.ts`. That file is gone. Dispatch is now a small, declarative, RxJS-native **effects micro-framework** in its own package, `@rtc/ws-effects` (~220 LOC of production source, `rxjs` only, zero domain knowledge), with `@rtc/server` a thin app of 24 effects on top — each a stream transform `(in$, ctx) => out$`.
+The server's dispatch used to be an imperative `switch` in `wsHandler.ts`. That file is gone. Dispatch is now a small, declarative, RxJS-native **effects micro-framework** in its own package, `@better-software/rx-ws-effects` (about 400 lines with comments, `rxjs` only, zero domain knowledge), with `@rtc/server` a thin app of 24 effects on top — each a stream transform `(in$, ctx) => out$`.
 
-This realises the "any framework should be replaceable by changing only its package" principle from [§1.2](01-overview.md#12-architectural-principles): the transport-dispatch framework is a genuine, swappable package with the app on top of it.
+This realises the "any framework should be replaceable by changing only its package" principle from [§1.2](01-overview.md#12-architectural-principles): the transport-dispatch framework is a genuine, swappable package with the app on top of it. It began here as `packages/ws-effects`, was extracted to its own repository ([bettersoftware-io/rx-ws-effects](https://github.com/bettersoftware-io/rx-ws-effects)) on 2026-10-04 and published to npm, and the server depends on the published package since 2026-10-27.
 
 ```mermaid
 flowchart TD
@@ -160,13 +160,13 @@ flowchart LR
     L1["per inner stream<br/>stream(): catchError → EMPTY<br/>one bad subscription dies alone"]
     L2["per message<br/>rpc(): error → nack reply<br/>same correlationId"]
     L3["per effect<br/>combineEffects: catchError → EMPTY<br/>one broken effect disables only itself"]
-    L4["per connection<br/>createWsListener: takeUntil(closed$)<br/>teardown on socket close"]
+    L4["per connection<br/>createWsListener: takeUntil(closed$)<br/>an error or a throwing send closes the socket (1011)"]
     L1 --> L2 --> L3 --> L4
 ```
 
 The wire protocol survived the rewrite unchanged (same `{ type, payload, correlationId }` envelope and message names); the duplicated protocol constants were consolidated into `@rtc/shared` (`packages/shared/src/protocol/messages.ts` — the single `CLIENT_MSG`/`SERVER_MSG` source of truth for both ends). Full design: [`docs/superpowers/specs/2026-07-02-ws-effects-declarative-server-design.md`](../superpowers/specs/2026-07-02-ws-effects-declarative-server-design.md).
 
-> **Historical note.** `@rtc/server` was originally scaffolded with `@marblejs/*` + `fp-ts` dependencies (hence old "Marble.js" mentions), but they were **never imported** and were removed by the knip dead-code gate. `@rtc/ws-effects` is a from-scratch homage to the marblejs *pattern* — declarative RxJS effects — without the unmaintained dependency and its transitive vulnerable `ws`.
+> **Historical note.** `@rtc/server` was originally scaffolded with `@marblejs/*` + `fp-ts` dependencies (hence old "Marble.js" mentions), but they were **never imported** and were removed by the knip dead-code gate. `rx-ws-effects` is a from-scratch homage to the marblejs *pattern* — declarative RxJS effects — without the unmaintained dependency and its transitive vulnerable `ws`.
 
 ### Equities Over the Wire (gap closed)
 

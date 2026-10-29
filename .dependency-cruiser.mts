@@ -72,14 +72,6 @@ const config: IConfiguration = {
       to: { path: "^packages/client-react/" },
     },
     {
-      name: "ws-effects-stays-pure",
-      severity: "error",
-      comment:
-        "@rtc/ws-effects is a transport framework — it must not import any other @rtc package.",
-      from: { path: "^packages/ws-effects/src" },
-      to: { path: "^packages/", pathNot: "^packages/ws-effects/" },
-    },
-    {
       name: "agent-tools-stays-inner",
       severity: "error",
       comment:

@@ -7,8 +7,8 @@ behind the ViewModel seam, not Redux/MobX/Zustand).
 
 | | |
 |---|---|
-| **Ring** | ④ Frameworks & Drivers -- an instrumentation framework, structurally analogous to `@rtc/ws-effects` (`docs/architecture/06-package-dependencies.md` §6) |
-| **Runtime deps** | `rxjs` only -- the same single permitted exception as `@rtc/domain`/`@rtc/ws-effects`, enforced by pnpm strict mode at install time |
+| **Ring** | ④ Frameworks & Drivers -- an instrumentation framework, structurally analogous to the server's `@better-software/rx-ws-effects` (`docs/architecture/06-package-dependencies.md` §6) |
+| **Runtime deps** | `rxjs` only -- the same single permitted exception as `@rtc/domain`, enforced by pnpm strict mode at install time |
 | **Consumed by** | `@rtc/devtools-app` (the inspector SPA), `@rtc/devtools-extension` (the MV3 DevTools panel), `@rtc/web-boot` (the web clients' composition root, `startWebClient`: the hub and the composition-root decorators) and `@rtc/client-react-native` (the same decorators and its own hub; RN attaches under `__DEV__` only) |
 | **Must never import** | Any other `@rtc/*` package -- enforced by the dependency-cruiser `devtools-core-stays-pure` rule (`^packages/devtools-core/src` → every other `@rtc/*` package, see `docs/dependency-cruiser.md`). It decorates by *structural* shape (`InstrumentableMachine`, `WsAdapterLike`, anything with `.subscribe`), never by importing `@rtc/client-core-rxjs`'s or `@rtc/client-adapters`'s concrete types -- that is the whole point of a composition-root decorator. |
 

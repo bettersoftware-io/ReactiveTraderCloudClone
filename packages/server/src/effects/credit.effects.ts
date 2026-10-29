@@ -1,3 +1,10 @@
+import {
+  type Outbound,
+  out,
+  rpc,
+  stream,
+  type WsEffect,
+} from "@better-software/rx-ws-effects";
 import { concat, from, map, mergeMap, type Observable, of } from "rxjs";
 
 import type { Dealer, Instrument, RfqEvent } from "@rtc/domain";
@@ -10,13 +17,6 @@ import {
   SERVER_MSG,
   type WorkflowEvent as WorkflowEventDto,
 } from "@rtc/shared";
-import {
-  type Outbound,
-  out,
-  rpc,
-  stream,
-  type WsEffect,
-} from "@rtc/ws-effects";
 
 import type { Ctx } from "./context.js";
 import {

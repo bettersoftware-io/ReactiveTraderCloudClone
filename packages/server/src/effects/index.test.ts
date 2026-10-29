@@ -1,14 +1,14 @@
-import { of, Subject } from "rxjs";
-import { describe, expect, it, vi } from "vitest";
-
-import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import {
   combineEffects,
   createWsListener,
   type Inbound,
   type Outbound,
   type Socket,
-} from "@rtc/ws-effects";
+} from "@better-software/rx-ws-effects";
+import { of, Subject } from "rxjs";
+import { describe, expect, it, vi } from "vitest";
+
+import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
 import type {
   AgentLoop,

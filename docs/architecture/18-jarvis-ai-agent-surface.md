@@ -76,7 +76,7 @@ flowchart TD
     subgraph server["@rtc/server"]
         LOOP["Agent loop<br/>Anthropic tool runner<br/>(behind the AgentLoop port)"]
         MCPX["MCP endpoint<br/>Streamable HTTP at /mcp<br/>same process, same serviceContainer"]
-        EFF["ws-effects<br/>JARVIS_* messages"]
+        EFF["rx-ws-effects effects<br/>JARVIS_* messages"]
     end
 
     subgraph core["@rtc/client-core-rxjs + @rtc/client-adapters"]
@@ -117,8 +117,8 @@ the registry nor the domain knows either transport exists.
 The registry is *the port* of the whole surface — a framework-free catalogue of what
 an AI may do to this application:
 
-- Runtime dependency: `rxjs` only (the same constraint as `domain`, `ws-effects`,
-  `motion-core`).
+- Runtime dependency: `rxjs` only (the same constraint as `domain`; `motion-core`
+  has none at all).
 - No Anthropic SDK, no MCP SDK, no transport imports. JSON Schema (plain objects)
   describes tool inputs; the Anthropic adapter passes it through and the MCP adapter
   converts at the edge.
@@ -360,7 +360,7 @@ composition root — the same move as `WsAdapter` and every other port in this r
 `ScriptedAgentLoop` (`RTC_JARVIS_FAKE=1`) replays deterministic turns including tool
 calls and a confirm round-trip, which buys three things at once:
 
-1. **CI never calls the API** — ws-effects tests, machine tests, contract specs, and
+1. **CI never calls the API** — effect tests, machine tests, contract specs, and
    the Playwright smoke all run against the fake.
 2. **The wire choreography is testable** exactly like every other effect:
    `JARVIS_CHAT → DELTA/TOOL_EVENT/CONFIRM_REQUEST/DONE`.
@@ -391,7 +391,7 @@ flowchart TD
     DOM["@rtc/domain"]
     AGT["@rtc/agent-tools"]
     SHD["@rtc/shared"]
-    WSE["@rtc/ws-effects"]
+    WSE["@better-software/rx-ws-effects (npm)"]
     SRV["@rtc/server"]
     CC["@rtc/client-core-rxjs + @rtc/client-adapters"]
 
@@ -502,7 +502,7 @@ flowchart TD
     ENG --> C3
 
     C1 --> USE1["sim-mode JarvisPort —<br/>brain called in-process"]
-    C2 --> USE2["ws-effects jarvisChat$ /<br/>jarvisConfirm$ over the<br/>ServiceContainer simulators"]
+    C2 --> USE2["effects jarvisChat$ /<br/>jarvisConfirm$ over the<br/>ServiceContainer simulators"]
     C3 --> USE3["WsJarvisAdapter maps<br/>frames back to JarvisEvent"]
 ```
 

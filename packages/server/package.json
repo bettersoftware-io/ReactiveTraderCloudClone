@@ -20,11 +20,11 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.125.0",
+    "@better-software/rx-ws-effects": "^0.1.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@rtc/agent-tools": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/shared": "workspace:*",
-    "@rtc/ws-effects": "workspace:*",
     "rxjs": "^7.8",
     "ws": "^8.21.0"
   },

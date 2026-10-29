@@ -37,7 +37,7 @@ Two new packages, following the existing naming and layering conventions
 
 | Package | Contents | Runtime deps |
 |---|---|---|
-| `@rtc/devtools-core` | Protocol types, serializer, `DevtoolsHub`, three decorators, `DevtoolsTransport` port + `BroadcastChannelDuplex` adapter | **`rxjs` only** — the same constraint as `@rtc/domain`/`@rtc/ws-effects` |
+| `@rtc/devtools-core` | Protocol types, serializer, `DevtoolsHub`, three decorators, `DevtoolsTransport` port + `BroadcastChannelDuplex` adapter | **`rxjs` only** — the same constraint as `@rtc/domain` |
 | `@rtc/devtools-app` | The inspector UI: Vite + React 19 SPA, store-first ([§20.12](#2012-store-first-navigation-v3)) | `@rtc/devtools-core`, `react`, `react-dom` |
 
 `devtools-core` never imports `@rtc/client-core-rxjs` — it decorates by
