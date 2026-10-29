@@ -54,7 +54,7 @@ flowchart TB
         coreApi["<b>Core Contract</b><br/>@rtc/core-api · types only<br/>Presenters · MachineFactories · AppCommands · CoreFactory"]:::domain
         coreLogic["<b>Shared Core Rules</b><br/>@rtc/core-logic · no stream library<br/>pure folds · view derivations · workspace + Jarvis controllers"]:::core
         server["<b>WebSocket Server</b><br/>@rtc/server · Node.js + ws<br/>effects assembled by buildEffects(loops) · /login · /mcp<br/>Anthropic agent loop · deployed to Fly.io"]:::server
-        wsEffects["<b>WS Effects Framework</b><br/>@rtc/ws-effects · rxjs only<br/>WsEffect · stream()/rpc() · combineEffects"]:::server
+        wsEffects["<b>WS Effects Framework</b><br/>@better-software/rx-ws-effects (npm) · rxjs only<br/>WsEffect · stream()/rpc() · combineEffects"]:::server
         agentTools["<b>Jarvis Desk Tools</b><br/>@rtc/agent-tools · domain + rxjs only<br/>seven tools as JSON Schema + run()"]:::server
         domain["<b>Domain Library</b><br/>@rtc/domain · pure TS + rxjs<br/>entities · use cases · ports · simulators"]:::domain
         shared["<b>Shared Contracts</b><br/>@rtc/shared<br/>DTOs · CLIENT_MSG / SERVER_MSG"]:::domain
@@ -182,7 +182,7 @@ flowchart TB
         portFactory -->|"WS mode"| wsAdapter
     end
 
-    server["<b>WebSocket Server</b><br/>Node.js + @rtc/ws-effects"]:::server
+    server["<b>WebSocket Server</b><br/>Node.js + rx-ws-effects"]:::server
 
     fxTiles & creditRfq & equities & ops -->|"useViewModel()"| viewModel
     coreHost --> browserAdapters
@@ -393,7 +393,7 @@ The Ops/telemetry workspace is web-only today; the RN app exposes five trading t
 
 ### 2.5 Component Diagram -- WebSocket Server
 
-The imperative `wsHandler.ts` switch is **gone**. The server is now a thin app of declarative effects on top of `@rtc/ws-effects`, assembled by `buildEffects(loops)` (`packages/server/src/effects/index.ts`: `allEffects` -- FX, Credit, Ops, Equities and the ops Jarvis-usage effect -- plus the `JARVIS_*` effects). The entire connection wiring, trimmed from `packages/server/src/index.ts`:
+The imperative `wsHandler.ts` switch is **gone**. The server is now a thin app of declarative effects on top of `@better-software/rx-ws-effects`, assembled by `buildEffects(loops)` (`packages/server/src/effects/index.ts`: `allEffects` -- FX, Credit, Ops, Equities and the ops Jarvis-usage effect -- plus the `JARVIS_*` effects). The entire connection wiring, trimmed from `packages/server/src/index.ts`:
 
 ```typescript
 const services = createServices();
@@ -424,7 +424,7 @@ flowchart TB
         fxJarvis --> agent
     end
 
-    subgraph fw["@rtc/ws-effects — framework, rxjs-only"]
+    subgraph fw["@better-software/rx-ws-effects — framework from npm, rxjs-only"]
         combine["<b>combineEffects + createWsListener</b><br/>merge all effects over one shared inbound stream ·<br/>catchError → EMPTY per effect · teardown on closed$"]:::server
         sugar["<b>stream() / rpc()</b><br/>subscription fan-out · correlated ack/nack ·<br/>per-message error isolation"]:::server
         effectType["<b>WsEffect primitive</b><br/>(in$, ctx) => out$ — pure stream transform, marble-tested"]:::server

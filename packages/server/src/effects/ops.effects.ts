@@ -1,7 +1,7 @@
+import { rpc, type WsEffect } from "@better-software/rx-ws-effects";
 import { type Observable, of } from "rxjs";
 
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
-import { rpc, type WsEffect } from "@rtc/ws-effects";
 
 import type { Ctx } from "./context.js";
 import { isThroughputPayload, validated } from "./guards.js";

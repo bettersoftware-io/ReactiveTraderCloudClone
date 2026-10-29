@@ -12,7 +12,6 @@
   "references": [
     { "path": "../agent-tools" },
     { "path": "../domain" },
-    { "path": "../shared" },
-    { "path": "../ws-effects" }
+    { "path": "../shared" }
   ]
 }

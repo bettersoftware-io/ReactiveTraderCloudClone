@@ -266,14 +266,13 @@ cores never depend on each other. Any framework (React, RxJS,
 Vite, Vitest…) is meant to be replaceable by changing only its own package.
 
 <details>
-<summary>All 27 packages</summary>
+<summary>All 26 packages</summary>
 
 ```
 packages/
   # Inner layers — framework-free
   domain/              @rtc/domain              Entities, use cases, port interfaces, simulators. Only runtime dep: rxjs.
   shared/              @rtc/shared              DTOs, wire protocol, the scripted Jarvis brain. Depends on domain.
-  ws-effects/          @rtc/ws-effects          Small declarative RxJS effects framework. rxjs only.
   motion-core/         @rtc/motion-core         View-layer motion math (FLIP, easing). No dependencies at all.
   agent-tools/         @rtc/agent-tools         The Jarvis desk-tool registry (JSON Schema + handlers). Depends on domain.
 
@@ -299,7 +298,7 @@ packages/
   ui-contract/         @rtc/ui-contract         Framework-neutral UI test contract + visual goldens.
 
   # Server and tooling
-  server/              @rtc/server              Native WebSocket + ws-effects backend, plus the /mcp endpoint.
+  server/              @rtc/server              Native WebSocket + rx-ws-effects backend, plus the /mcp endpoint.
   devtools-core/       @rtc/devtools-core       Devtools event protocol + hub. rxjs only.
   devtools-app/        @rtc/devtools-app        Inspector SPA, served at /devtools/.
   devtools-extension/  @rtc/devtools-extension  MV3 Chrome DevTools extension around the inspector.

@@ -6,7 +6,7 @@
 
 ### 13.1 L0 -- The System On One Screen
 
-Twenty-seven workspace packages plus `tests`, drawn as five "buildings": three shipping client apps, the shared floors every client stands on, and the server. `@rtc/client-prototype` is omitted here too (as in [§1.3.1](01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring)) -- it is a design-comprehension island with zero `@rtc/*` edges into this graph. The view leaves *do* appear (as `leaves`: `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`) since the clients genuinely depend on them, and `@rtc/web-boot` sits in the shared floors beside the bindings (it is not a leaf: it has eight `@rtc` dependencies), and the three application cores appear as one box, since they are interchangeable implementations of one contract ([§22](22-pluggable-application-core.md#22-pluggable-application-core)). `@rtc/ui-contract`, `@rtc/core-contract` and the four devtools packages are omitted from this L0 view for the same reason as `client-prototype` -- they exist to test/instrument the graph below, not to run inside it; each gets its own L1 card.
+Twenty-six workspace packages plus `tests`, drawn as five "buildings": three shipping client apps, the shared floors every client stands on, and the server. `@rtc/client-prototype` is omitted here too (as in [§1.3.1](01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring)) -- it is a design-comprehension island with zero `@rtc/*` edges into this graph. The view leaves *do* appear (as `leaves`: `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`) since the clients genuinely depend on them, and `@rtc/web-boot` sits in the shared floors beside the bindings (it is not a leaf: it has eight `@rtc` dependencies), and the three application cores appear as one box, since they are interchangeable implementations of one contract ([§22](22-pluggable-application-core.md#22-pluggable-application-core)). `@rtc/ui-contract`, `@rtc/core-contract` and the four devtools packages are omitted from this L0 view for the same reason as `client-prototype` -- they exist to test/instrument the graph below, not to run inside it; each gets its own L1 card.
 
 ```mermaid
 flowchart TB
@@ -36,7 +36,7 @@ flowchart TB
 
     subgraph Server["Server — @rtc/server (shipping)"]
         srv["effects via buildEffects + services<br/>/login · /mcp · agent loops<br/>Node.js + ws"]:::server
-        wse["ws-effects<br/>dispatch framework"]:::server
+        wse["rx-ws-effects (npm)<br/>dispatch framework"]:::server
         agt["agent-tools<br/>seven Jarvis desk tools<br/>domain + rxjs only"]:::domain
     end
 
@@ -84,7 +84,7 @@ flowchart TB
     linkStyle default stroke:#6e7fa3,stroke-width:1.5px
 ```
 
-Two runtime modes both terminate in the application core, never in the UI (the RxJS core's port factories build the ports; whichever core is loaded consumes them): **simulator mode** runs `@rtc/domain`'s simulators in-process (dashed-free solid edge `core --> domain`, taken via `createSimulatorPorts`); **live mode** routes the same port interfaces over a `WsAdapter` to `@rtc/server`, which hosts the *identical* simulator classes behind `@rtc/ws-effects`. Full detail: [§7 Runtime Topology](07-communication-patterns.md#runtime-topology-what-runs-when).
+Two runtime modes both terminate in the application core, never in the UI (the RxJS core's port factories build the ports; whichever core is loaded consumes them): **simulator mode** runs `@rtc/domain`'s simulators in-process (dashed-free solid edge `core --> domain`, taken via `createSimulatorPorts`); **live mode** routes the same port interfaces over a `WsAdapter` to `@rtc/server`, which hosts the *identical* simulator classes behind its `rx-ws-effects` effects. Full detail: [§7 Runtime Topology](07-communication-patterns.md#runtime-topology-what-runs-when).
 
 ### 13.2 L1 -- The Package Line Map
 
@@ -97,7 +97,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **What it is** | Entities, use cases, port interfaces, and simulators -- pure TypeScript, the innermost package. |
 | **Ring** | ①② Entities & Use Cases -- the yolk |
 | **Depends on** | `rxjs` only (`packages/domain/package.json` `dependencies`) |
-| **Consumed by** | `shared`, `core-api`, `core-logic`, `core-contract`, the three cores, both bindings, `ui-contract`, the three clients, `server`, `agent-tools`, `tests` -- every workspace package except the zero-`@rtc`-dependency islands (`ws-effects`, `client-prototype`, `motion-core`, `boot-splash`, `layout-dockview`) and the four devtools packages lists `@rtc/domain` directly |
+| **Consumed by** | `shared`, `core-api`, `core-logic`, `core-contract`, the three cores, both bindings, `ui-contract`, the three clients, `server`, `agent-tools`, `tests` -- every workspace package except the zero-`@rtc`-dependency islands (`client-prototype`, `motion-core`, `boot-splash`, `layout-dockview`) and the four devtools packages lists `@rtc/domain` directly |
 | **Non-obvious** | `src/simulators/` is ring ③ (gateways), not ring ①②, even though it lives inside this package -- and they're production code, not test doubles ([§10](10-key-design-decisions.md#10-key-design-decisions)). The single-dependency constraint (`rxjs` only) is enforced by pnpm strict mode, not just convention. |
 | **README** | [`packages/domain/README.md`](../../packages/domain/README.md) |
 
@@ -262,7 +262,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 |---|---|
 | **What it is** | Framework-free, zero-dependency view-layer motion math: FLIP deltas (`flipDeltas`), rank-glide coalescing (`coalesceOrder`, `computeRankDirections`, `sameOrder`), and easing/duration constants. |
 | **Ring** | ④ Frameworks & Drivers -- a pure utility consumed directly by a UI shell, not the domain/use-case layer |
-| **Depends on** | Nothing -- no runtime `dependencies` at all (`packages/motion-core/package.json`), stricter than the `rxjs`-only exception `domain` and `ws-effects` get |
+| **Depends on** | Nothing -- no runtime `dependencies` at all (`packages/motion-core/package.json`), stricter than the `rxjs`-only exception `domain` gets |
 | **Consumed by** | `client-react` and `client-solid` (e.g. `src/ui/shell/motion/useFlipGrid.ts`, `src/ui/equities/watchlist/useRankGlide.ts`, `src/ui/shell/status/useLiveMetrics.ts`, the equities chart hooks -- the same math, two thin per-framework shells), plus `client-react-native`, `ui-contract`, and `shared` (narrowly: the scripted Jarvis brain's `speechChunks` typed-reveal pacing) |
 | **Non-obvious** | Machine-enforced purity via dependency-cruiser's `motion-core-stays-pure` rule ([§6](06-package-dependencies.md#6-package-dependencies)); see [ADR-005](../adr/ADR-005-ui-logic-placement.md) for why this animation math lives here rather than behind the ViewModel. |
 | **README** | [`packages/motion-core/README.md`](../../packages/motion-core/README.md) |
@@ -311,23 +311,12 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Non-obvious** | `src/visual/` is the piece with the highest leverage: `scenarios.ts`, `scenarioActions.ts`, `fixtures.ts`, `appData.ts`, `goldenPath.ts`, and `freezeClock.ts` are the single source of truth every visual tier-runner loops over -- adding a scenario here gives all three (react's CI-asserted `playwright` tier, solid's assert-only `playwright` tier, and react's coverage-only `vitest-browser` instrument) the test for free. `src/specs/` holds the shared `*.contract.spec.ts` files (fx/credit/equities/ops/shell), the same set run by each client; each client supplies only its own render-target "swap trio" (`react/` vs `solid/`) that the specs mount against. `goldens/` -- the committed golden PNG trees for the single asserted `playwright` tier, generated only from `client-react` renders -- sits beside `src/` at the package root; it is not compiled, not exported, and not part of the `tsconfig`/knip/biome surface. |
 | **README** | [`packages/ui-contract/README.md`](../../packages/ui-contract/README.md) |
 
-#### `@rtc/ws-effects`
-
-| | |
-|---|---|
-| **What it is** | A small declarative RxJS effects framework for dispatching WebSocket messages -- `WsEffect`, `stream()`/`rpc()`, `combineEffects`. |
-| **Ring** | ④ Frameworks & Drivers -- the dispatch framework |
-| **Depends on** | `rxjs` only (`packages/ws-effects/package.json` `dependencies`) |
-| **Consumed by** | `server` only (`packages/server/package.json` lists `@rtc/ws-effects`; no client package does) |
-| **Non-obvious** | Follows the exact same single-dependency (`rxjs`-only) constraint as `@rtc/domain`, per `CLAUDE.md`, despite living in the outermost ring -- purity isn't reserved for the domain. |
-| **README** | [`packages/ws-effects/README.md`](../../packages/ws-effects/README.md) |
-
 #### `@rtc/devtools-core`
 
 | | |
 |---|---|
 | **What it is** | The devtools event protocol, the `DevtoolsHub` collector (registry, dormancy, coalescing, ring buffer), the three composition-root decorators (`instrumentPresenters`, `instrumentMachineFactories`, `instrumentWsAdapter`), and the `BroadcastChannelDuplex` transport adapter. |
-| **Ring** | ④ Frameworks & Drivers -- a leaf instrumentation framework, structurally analogous to `ws-effects` |
+| **Ring** | ④ Frameworks & Drivers -- a leaf instrumentation framework, structurally analogous to the server's `rx-ws-effects` |
 | **Depends on** | `rxjs` only (`packages/devtools-core/package.json` `dependencies`) |
 | **Consumed by** | `devtools-app`, `devtools-extension`, `web-boot` (the web clients' composition-root decorators and hub) and `client-react-native` (the same decorators, under `__DEV__` only) |
 | **Non-obvious** | Never imports `@rtc/client-adapters` or any other `@rtc/*` package -- it decorates by *structural* shape (`InstrumentableMachine`, `WsAdapterLike`), machine-enforced by dependency-cruiser's `devtools-core-stays-pure` rule ([§6](06-package-dependencies.md#6-package-dependencies)). Dormant cost is one boolean check per tapped emission: `registerStream`/`machineCreated` only write to a registry `Map` until an inspector's `hello` flips the hub live and subscribes everything ([§20.3](20-devtools.md#203-the-dormancy-contract)). |
@@ -381,9 +370,9 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 
 | | |
 |---|---|
-| **What it is** | The WebSocket server: a thin Node.js host whose declarative effects over `@rtc/ws-effects` are assembled by `buildEffects(loops)` (`src/effects/index.ts`: FX, Credit, Ops, Equities, plus the `JARVIS_*` effects), with token auth (`src/auth/`), `/login` (`src/http/`), the scripted and Anthropic agent loops (`src/agent/`) and the `/mcp` endpoint (`src/mcp/`). |
+| **What it is** | The WebSocket server: a thin Node.js host whose declarative effects over `@better-software/rx-ws-effects` (from npm) are assembled by `buildEffects(loops)` (`src/effects/index.ts`: FX, Credit, Ops, Equities, plus the `JARVIS_*` effects), with token auth (`src/auth/`), `/login` (`src/http/`), the scripted and Anthropic agent loops (`src/agent/`) and the `/mcp` endpoint (`src/mcp/`). |
 | **Ring** | ④ host (`src/index.ts`, `node:http` + `ws`) + ③ effects/gateways (`src/effects/`, `src/agent/`, `src/mcp/`, `src/socket/`'s `toSocket`) |
-| **Depends on** | `@rtc/domain`, `@rtc/shared`, `@rtc/ws-effects`, `@rtc/agent-tools`, `@anthropic-ai/sdk`, `@modelcontextprotocol/sdk`, `rxjs`, `ws` (`packages/server/package.json` `dependencies`) |
+| **Depends on** | `@rtc/domain`, `@rtc/shared`, `@rtc/agent-tools`, `@better-software/rx-ws-effects`, `@anthropic-ai/sdk`, `@modelcontextprotocol/sdk`, `rxjs`, `ws` (`packages/server/package.json` `dependencies`) |
 | **Consumed by** | `tests` |
 | **Non-obvious** | Never imports `@rtc/client-adapters` (`grep -rln "@rtc/client-adapters" packages/server/src` returns nothing) -- server and clients share only `domain`/`shared`, enforced as a hard boundary by dependency-cruiser's `client-not-server`/`server-not-client` rules ([§6](06-package-dependencies.md#6-package-dependencies)). It also skips `domain`'s `usecases/` entirely (`grep -rn "UseCase" packages/server/src` still returns nothing) -- use cases are client-orchestration; the server drives simulators directly, and where Jarvis *does* need them it reaches them through `@rtc/agent-tools`, not directly. It is the **only** package allowed to import `@anthropic-ai/sdk` (dependency-cruiser `no-anthropic-sdk-in-inner-packages`, an allowlist over `packages/server/`), and the SDK stays confined to `src/agent/`; `@modelcontextprotocol/sdk` gets the same treatment, confined to `src/mcp/` (`no-mcp-sdk-outside-server`). |
 | **README** | [`packages/server/README.md`](../../packages/server/README.md) |
@@ -396,7 +385,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Ring** | N/A -- sits outside the rings entirely, exercising them from the outside |
 | **Depends on** | `@rtc/client-adapters`, `@rtc/client-core-rxjs`, `@rtc/client-react`, `@rtc/core-api`, `@rtc/domain`, `@rtc/server`, `@rtc/shared`, `rxjs`, `ws` (`tests/package.json` `dependencies`) |
 | **Consumed by** | Nothing -- it is the root of the dependency graph, not a dependency of anything |
-| **Non-obvious** | Deliberately excludes `@rtc/client-solid`, `@rtc/client-react-native`, `@rtc/react-bindings`, `@rtc/ws-effects`, `@rtc/client-prototype` and the alternative cores as direct dependencies -- those are exercised transitively (through `client-react`/`server`), by an environment switch (`RTC_CLIENT_PKG=@rtc/client-solid` reruns the Playwright pair against Solid; `RTC_CORE_IMPL` selects the core), or by their own package-local `test` script. |
+| **Non-obvious** | Deliberately excludes `@rtc/client-solid`, `@rtc/client-react-native`, `@rtc/react-bindings`, `@rtc/client-prototype` and the alternative cores as direct dependencies -- those are exercised transitively (through `client-react`/`server`), by an environment switch (`RTC_CLIENT_PKG=@rtc/client-solid` reruns the Playwright pair against Solid; `RTC_CORE_IMPL` selects the core), or by their own package-local `test` script. |
 | **README** | [`tests/README.md`](../../tests/README.md) |
 
 ### 13.3 L2 -- Module Maps
@@ -607,16 +596,6 @@ src/
 └── buildJarvisTools.ts        the seven desk tools over injected domain ports
 ```
 
-`@rtc/ws-effects` (flat -- no subfolders):
-```
-src/
-├── types.ts             WsEffect primitive — (in$, ctx) => out$
-├── stream.ts, rpc.ts      subscription fan-out · correlated ack/nack sugar
-├── operators.ts            out() / matchType() message helpers
-├── combineEffects.ts       merges effects over one shared inbound stream
-└── createWsListener.ts      wires a Socket to combined effects, teardown on closed$
-```
-
 `@rtc/devtools-core`:
 ```
 src/
@@ -700,7 +679,7 @@ What's shared verbatim, what's adapted per platform, and what doesn't apply -- v
 | WsAdapter + port factories (`client-adapters/src/adapters/`) | ✅ | ✅ | ✅ | — | —[^7] | —[^7] |
 | Theme (skin/mode preference + tokens) | 🔧[^1] | 🔧[^1] | 🔧[^1] | — | 🔧[^6] | 🔧[^6] |
 | Wire protocol (`shared/src/protocol/`) | ✅[^2] | ✅[^2] | ✅[^2] | ✅ | —[^7] | —[^7] |
-| ws-effects framework (`@rtc/ws-effects`) | — | — | — | ✅ | — | — |
+| ws-effects framework (`@better-software/rx-ws-effects`, npm) | — | — | — | ✅ | — | — |
 | View-layer motion math (`@rtc/motion-core`) | ✅ | ✅ | ✅ | — | — | — |
 | ViewModel bindings (`createViewModel`/`useMachine`/`useViewModel`) | ✅ | ✅ | 🔧[^3] | — | — | — |
 | UI contract + visual scenario manifest (`@rtc/ui-contract`) | 🔧[^4] | — | 🔧[^4] | — | — | — |
@@ -718,6 +697,6 @@ What's shared verbatim, what's adapted per platform, and what doesn't apply -- v
 - **Web** (`client-react`): browser platform adapters (`buildBrowserPorts`, `LocalStoragePreferencesAdapter`, `MediaQueryColorSchemeAdapter`, all in `@rtc/web-boot`), the CSS-Modules-driven HUD, Vite as the build tool.
 - **Mobile** (`client-react-native`): native platform adapters (`buildNativePorts`, `AsyncStoragePreferencesAdapter`, `AppearanceColorSchemeAdapter`), `react-native-svg`-rendered skins, Expo/`expo-router` for build and navigation.
 - **Solid web** (`client-solid`): the same browser platform adapters as `client-react` (`buildBrowserPorts`, `LocalStoragePreferencesAdapter`, `MediaQueryColorSchemeAdapter`), the same CSS Modules, Vite as the build tool -- the smallest possible delta from `client-react`, by design.
-- **Server** (`server`): the `@rtc/ws-effects` effects assembled by `buildEffects(loops)`, their `serviceContainer` services, token auth, the agent loops and `/mcp` -- the one place the domain simulators are wired to a live network socket instead of an in-process port.
+- **Server** (`server`): the `@better-software/rx-ws-effects` effects assembled by `buildEffects(loops)`, their `serviceContainer` services, token auth, the agent loops and `/mcp` -- the one place the domain simulators are wired to a live network socket instead of an in-process port.
 
 ---

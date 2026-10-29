@@ -1,15 +1,15 @@
-import { BehaviorSubject, Subject } from "rxjs";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-import type { JarvisUsage, JarvisUsageSnapshot } from "@rtc/domain";
-import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import {
   combineEffects,
   createWsListener,
   type Inbound,
   type Outbound,
   type Socket,
-} from "@rtc/ws-effects";
+} from "@better-software/rx-ws-effects";
+import { BehaviorSubject, Subject } from "rxjs";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { JarvisUsage, JarvisUsageSnapshot } from "@rtc/domain";
+import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
 import { createInMemorySpendStore } from "../services/jarvisBudget/InMemorySpendStore.js";
 import { JarvisBudgetService } from "../services/jarvisBudget/JarvisBudgetService.js";

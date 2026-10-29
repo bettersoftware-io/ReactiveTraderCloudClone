@@ -14,7 +14,7 @@ pnpm test        # vitest run in all packages
 pnpm test:e2e    # Gherkin/Playwright e2e suites under tests/ against the web clients — the Playwright suites drive a production build (RTC_E2E_SERVE=dev puts them on the dev server), the Gherkin suites the dev server
 pnpm dev         # Alias of `dev:react` — @rtc/client-react in simulator mode (no server); sign in with a committed demo account (see below)
 pnpm dev:ws      # @rtc/server only — native WS + login on ws://localhost:4000 (tsx watch)
-pnpm dev:watch   # Rebuild-watch every pure-TS library (domain, shared, ws-effects, motion-core, ui-contract, devtools-core, core-api, core-logic, core-contract, client-core-async, client-core-effect, web-boot) — run alongside a client to hot-rebuild lib edits
+pnpm dev:watch   # Rebuild-watch every pure-TS library (domain, shared, motion-core, ui-contract, devtools-core, core-api, core-logic, core-contract, client-core-async, client-core-effect, web-boot) — run alongside a client to hot-rebuild lib edits
 # Web clients — each has the same four data-source modes (bare = alias of :sim):
 pnpm dev:react           # @rtc/client-react (Vite) → http://localhost:5173 — simulator mode (no server); alias of dev:react:sim
 pnpm dev:react:ws:local  # connect to an already-running local `dev:ws` (ws://localhost:4000)

@@ -1208,6 +1208,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: 0.125.0
         version: 0.125.0(zod@4.6.7)
+      '@better-software/rx-ws-effects':
+        specifier: ^0.1.0
+        version: 0.1.0(rxjs@7.8.2)
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.1
         version: 1.32.1(supports-color@11.0.0)(zod@4.6.7)
@@ -1220,9 +1223,6 @@ importers:
       '@rtc/shared':
         specifier: workspace:*
         version: link:../shared
-      '@rtc/ws-effects':
-        specifier: workspace:*
-        version: link:../ws-effects
       rxjs:
         specifier: ^7.8
         version: 7.8.2
@@ -1417,25 +1417,6 @@ importers:
       jsdom:
         specifier: ^30.0.1
         version: 30.1.3
-      tsc-alias:
-        specifier: 1.9.9
-        version: 1.9.9
-      vitest:
-        specifier: ^5.0.5
-        version: 5.0.5(@types/node@26.6.5)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-istanbul@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(jsdom@30.1.3)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
-
-  packages/ws-effects:
-    dependencies:
-      rxjs:
-        specifier: ^7.8
-        version: 7.8.2
-    devDependencies:
-      '@vitest/coverage-v8':
-        specifier: ^5.0.5
-        version: 5.0.5(@vitest/browser@5.0.5)(vitest@5.0.5)
-      '@vitest/ui':
-        specifier: ^5.0.5
-        version: 5.0.5(vitest@5.0.5)
       tsc-alias:
         specifier: 1.9.9
         version: 1.9.9
@@ -2077,6 +2058,12 @@ packages:
   '@bcoe/v8-coverage@1.0.2':
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
+
+  '@better-software/rx-ws-effects@0.1.0':
+    resolution: {integrity: sha512-OCoIW7pVZ3jEp0yWKrusz8OKwK+VacUKptVtO5y57S1o3zpGr3UPFmAECbdwF2DOBJAViJR6wBcaGdU+R6141Q==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      rxjs: ^7.8.0
 
   '@biomejs/biome@2.5.15':
     resolution: {integrity: sha512-WZTW4slm/pdkh92K6t/3aEN++44JD1PQ7squ7RCMLI1flHGl43DVOIGXvCjHiZgBMO1V4uYxoFNtqrIA4qGuIQ==}
@@ -9549,6 +9536,10 @@ snapshots:
   '@bcoe/v8-coverage@0.2.3': {}
 
   '@bcoe/v8-coverage@1.0.2': {}
+
+  '@better-software/rx-ws-effects@0.1.0(rxjs@7.8.2)':
+    dependencies:
+      rxjs: 7.8.2
 
   '@biomejs/biome@2.5.15':
     optionalDependencies:

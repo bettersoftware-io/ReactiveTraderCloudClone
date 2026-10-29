@@ -169,8 +169,8 @@
   },
   "overrides": [
     {
-      // The four nodenext-resolution tsc-built libs import relative modules
-      // WITH the .js extension (domain/shared/ws-effects are already 100%
+      // The three nodenext-resolution tsc-built libs import relative modules
+      // WITH the .js extension (domain/shared are already 100%
       // consistent; motion-core was 46-vs-5 with the 5 all in test files).
       // This pins the convention so extensionless strays can't creep back in
       // via test files, where vitest resolves either form and nothing else
@@ -180,7 +180,6 @@
       "includes": [
         "packages/domain/**",
         "packages/shared/**",
-        "packages/ws-effects/**",
         "packages/motion-core/**"
       ],
       "linter": {

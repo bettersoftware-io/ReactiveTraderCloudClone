@@ -100,7 +100,7 @@ Worked example: `PositionsPanel` (web) / the equities `PositionsBlotter` (RN) �
 **Route** — what a brand-new `packages/<name>` must join, verified against the actual configs rather than assumed:
 
 1. `packages/<name>/package.json` — must declare a `typecheck` script and a `test` (or `test:*`) script; enforced by `scripts/check-workspace-scripts.mts` (`pnpm check:scripts`), which reads the workspace list from `pnpm-workspace.yaml`'s `packages/*` glob and requires both keys.
-2. `packages/<name>/tsconfig.json`, extending `../../tsconfig.base.json` (the pattern every existing tsc-built package follows — e.g. `packages/ws-effects/tsconfig.json`). There is no root tsconfig references list to update — only `tsconfig.base.json` and `tsconfig.eslint.json` live at the repo root.
+2. `packages/<name>/tsconfig.json`, extending `../../tsconfig.base.json` (the pattern every existing tsc-built package follows — e.g. `packages/motion-core/tsconfig.json`). There is no root tsconfig references list to update — only `tsconfig.base.json` and `tsconfig.eslint.json` live at the repo root.
 3. No `eslint.config.mts` edit needed for a standard `src/**/*.{ts,tsx}` layout: the base config globs `**/*.{ts,tsx}` repo-wide, and `tsconfig.eslint.json` already includes `packages/*/src/**/*.ts(x)`. Only a non-standard root (like `client-react-native`'s `app/` route folder, which needed its own explicit glob lines) requires an edit here.
 4. No `stylelint.config.mjs` edit needed — `lint:css` globs `packages/*/src/**/*.css` and picks up any package automatically.
 5. No Biome config edit needed — it is repo-wide by design.
@@ -112,7 +112,7 @@ Worked example: `PositionsPanel` (web) / the equities `PositionsBlotter` (RN) �
 **Change-impact checklist**
 
 - Verify in order: `pnpm install` (workspace linking) → `pnpm build` (topological) → `pnpm typecheck` → `pnpm test` → `pnpm lint:css` (if it ships CSS) → `pnpm lint:dead` (knip) → `pnpm check:scripts` → `pnpm check:deps` (dependency-cruiser) → `pnpm check:versions` (manypkg + syncpack, relevant the moment the package declares any dependency shared with another package).
-- Single-dep constraint: if the package sits in the domain/ws-effects lineage, it inherits the `rxjs`-only runtime-dependency rule — pnpm strict mode enforces it at install time, not this checklist.
+- Single-dep constraint: if the package sits in the domain lineage, it inherits the `rxjs`-only runtime-dependency rule — pnpm strict mode enforces it at install time, not this checklist.
 - Inventory: §13.2 (L1 package line map) gains a row for every package; write `packages/<name>/README.md` from the template in the Global Constraints (identity card, folder map, where to start reading, how it's used, see also).
 - CI: no matrix to extend — `ci.yml` has no per-package job list; every gate above is either a repo-wide glob or a `turbo run` that already covers the new package once step 1 is done.
 

@@ -1,4 +1,4 @@
-import type { WsEffect } from "@rtc/ws-effects";
+import type { WsEffect } from "@better-software/rx-ws-effects";
 
 import type { JarvisLoops } from "../agent/agentLoop.js";
 import { accountAdminEffects } from "./accountAdmin.effects.js";
