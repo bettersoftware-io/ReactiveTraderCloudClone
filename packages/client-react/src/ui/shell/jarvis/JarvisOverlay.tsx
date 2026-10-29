@@ -356,7 +356,7 @@ export function JarvisOverlay(): ReactElement | null {
             data-testid="jarvis-brain-readout"
             data-tone={readout.tone}
           >
-            <span>{readout.text}</span>
+            <span className={styles.brainReadoutText}>{readout.text}</span>
             {readout.meterFraction === null ? null : (
               <div className={styles.brainMeter} aria-hidden="true">
                 <div

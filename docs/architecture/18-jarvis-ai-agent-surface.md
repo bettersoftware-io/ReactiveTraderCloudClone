@@ -1546,9 +1546,10 @@ An amount is clamped at zero: the budget may overshoot by one request
 (§3.4), and that reads `$0.00 of $0.20 left today` with an empty meter, never
 a negative amount or width; a limit of zero or less shows no meter at all.
 The meter is a static bar that changes between turns with no transition
-([performance.md](../performance.md)). The readout reads in
-`--accent-primary`, like the status line above it, and an exhausted one in
-the theme's amber, `--accent-aware`. The "continuing on …" system line B3a left is now the
+([performance.md](../performance.md)). The readout sits on a
+small chip of the reply bubbles' surface (`--panel`, `--text-primary`), so it
+reads on every skin's backdrop; an exhausted one turns the chip's border and
+text the theme's amber, `--accent-aware`. The "continuing on …" system line B3a left is now the
 reason-aware switch line from the same copy, for example `Today's AI budget
 is used — switching to the scripted brain until 00:00 UTC.`
 

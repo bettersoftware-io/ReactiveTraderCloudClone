@@ -345,27 +345,36 @@
 /* The brain readout under the status line (B3b): one line of sentence-case
  * copy shown in capitals, plus a static budget meter. The fill width comes
  * from the inline custom property --meter-fill and changes only between
- * turns — no transition, no animation (docs/performance.md). The normal tone
- * reads in --accent-primary, like the status line above it, so it stays
- * legible on the light skins' dark overlay backdrop (the reply tags stay
- * --text-muted); the warning tone (an exhausted budget, which never has a
- * meter) is the app's amber, --accent-aware. */
+ * turns — no transition, no animation (docs/performance.md). The copy sits
+ * on a small chip of the reply bubbles' own surface (--panel, --text-primary),
+ * because the overlay's dim backdrop is mid-grey on the light skins and no
+ * bare text colour reads well on it in every skin. The warning tone (an
+ * exhausted budget, which never has a meter) turns the chip's border and
+ * text the app's amber, --accent-aware. */
 .brainReadout {
   flex: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  margin-top: 5px;
+  margin-top: 6px;
   font-family: var(--font-mono);
-  font-size: 8.5px;
-  letter-spacing: 0.16em;
+  font-size: 10px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--accent-primary);
 }
 
-.brainReadout[data-tone="warning"] {
+.brainReadoutText {
+  padding: 3px 10px;
+  color: var(--text-primary);
+  background: var(--panel);
+  border: 1px solid var(--border-primary);
+  border-radius: 999px;
+}
+
+.brainReadout[data-tone="warning"] .brainReadoutText {
   color: var(--accent-aware);
+  border-color: var(--accent-aware);
 }
 
 .brainMeter {

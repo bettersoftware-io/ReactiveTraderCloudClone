@@ -371,7 +371,7 @@ export function JarvisOverlay(): JSX.Element {
                   data-testid="jarvis-brain-readout"
                   data-tone={current().tone}
                 >
-                  <span>{current().text}</span>
+                  <span class={styles.brainReadoutText}>{current().text}</span>
                   <Show when={current().meterFraction !== null}>
                     <div class={styles.brainMeter} aria-hidden="true">
                       <div
