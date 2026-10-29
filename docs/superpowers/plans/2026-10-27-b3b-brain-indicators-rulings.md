@@ -46,12 +46,11 @@ These are the decisions taken while the [plan](2026-10-27-b3b-brain-indicators.m
   - Why: Safari and macOS Firefox do not focus a clicked button, so Escape reached the overlay and closed it. Ruling C also depended on listener order.
   - Cost if wrong: handler rework.
 - **Readout colours.**
-  - Decision: the warning tone uses `--accent-aware`, because `--warn` was never defined in the app. The normal tone uses `--text-secondary`, and reply tags keep `--text-muted`.
+  - Decision: the warning tone uses `--accent-aware`, because `--warn` was never defined in the app. The normal tone first moved to `--text-secondary` (then `--accent-primary`, below), and reply tags keep `--text-muted`.
   - Cost if wrong: one CSS token plus goldens.
-- **Light skins are parked to the user.**
-  - Finding: on the light skins the normal-tone readout is nearly invisible, because the overlay's backdrop is dark there.
-  - Decision: parked to the user rather than run a second fix wave, since it is a judgement made by eye.
-  - Recommendation: `--accent-primary`, matching the status line above it.
+- **Light skins: the normal-tone readout uses `--accent-primary`.**
+  - Finding: on the light skins the `--text-secondary` readout was nearly invisible, because the overlay's backdrop is dark there.
+  - Decision: parked to the user, who chose (2026-10-29) the status line's `--accent-primary`, so the readout matches the line above it in every skin.
   - Cost if wrong: one CSS token plus goldens.
 - **The Preferences row counter now counts the Reset row.**
   - Decision: the column-balance helper counts the "Reset workspace layout" button, and the Jarvis carve-out is 6.
