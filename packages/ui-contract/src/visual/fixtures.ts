@@ -35,6 +35,8 @@ import {
   type Instrument,
   JARVIS_BRAINS,
   JARVIS_GREETING,
+  type JarvisBrain,
+  type JarvisBudgetView,
   type JarvisUsage,
   type LogEvent,
   listDemoAccounts,
@@ -2316,6 +2318,43 @@ const jarvisGreetingEntry: JarvisEntry = {
   done: true,
 };
 
+// The next 00:00 UTC, so the readout reads "back at 00:00 UTC".
+const JARVIS_RESETS_AT_MS = Date.UTC(2026, 9, 28);
+
+// Live Haiku on the house key: $0.06 spent of a $0.20 daily limit.
+const jarvisBudgetHouseLive: JarvisBudgetView = {
+  keyKind: "house",
+  spentUsd: 0.06,
+  limitUsd: 0.2,
+  exhausted: null,
+  resetsAtMs: JARVIS_RESETS_AT_MS,
+};
+
+// A live transcript: the greeting and two completed turns, each reply tagged
+// with the brain the state runs (no switch line — nothing was gated). Backs
+// every live overlay fixture, so a reply tag never contradicts the readout.
+function jarvisLiveEntries(brain: JarvisBrain): readonly JarvisEntry[] {
+  return [
+    jarvisGreetingEntry,
+    { id: 1, role: "user", text: "Where is EURUSD?", done: true },
+    {
+      id: 2,
+      role: "jarvis",
+      text: "EURUSD is quoting 1.09213 / 1.09227, up on the session.",
+      done: true,
+      brain,
+    },
+    { id: 3, role: "user", text: "And GBPUSD?", done: true },
+    {
+      id: 4,
+      role: "jarvis",
+      text: "GBPUSD is quoting 1.27410 / 1.27426.",
+      done: true,
+      brain,
+    },
+  ];
+}
+
 // jarvis/orb-idle: closed, no unread badge, idle phase — the orb's neutral
 // resting arm (no attention pulse, no unread pill).
 const jarvisStateIdle: JarvisState = {
@@ -2327,12 +2366,15 @@ const jarvisStateIdle: JarvisState = {
   entries: [jarvisGreetingEntry],
   pendingConfirmation: null,
   available: true,
-  // Every selectable brain offered, resolving to the client default — none
-  // of these three fixtures render the (not-yet-built) brain picker UI, so
-  // any consistent, offered value keeps the goldens byte-identical.
+  // Every selectable brain offered, resolving to the client default (Haiku)
+  // on a live house-key budget — the same live values every overlay fixture
+  // below carries, so the status chip and an overlay's readout, reply tags
+  // and pill all read live Haiku.
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
   gate: null,
+  budget: jarvisBudgetHouseLive,
+  demo: false,
   // 1, not 0: these fixtures render the overlay open, so the goldens must
   // show the seed-1 chip set rather than the machine's true closed-session
   // default (0) — see JarvisState.openCount's doc.
@@ -2340,35 +2382,13 @@ const jarvisStateIdle: JarvisState = {
 };
 fixtures["jarvis-idle"] = makeAppData({ jarvis: jarvisStateIdle });
 
-// jarvis/overlay-chat: open, one completed user/jarvis turn appended after
-// the greeting — all entries `done: true` (no in-flight streaming caret).
-const jarvisChatUserEntry: JarvisEntry = {
-  id: 1,
-  role: "user",
-  text: "Where is EURUSD?",
-  done: true,
-};
-
-const jarvisChatReplyEntry: JarvisEntry = {
-  id: 2,
-  role: "jarvis",
-  text: "EURUSD is quoting 1.09213 / 1.09227, up on the session.",
-  done: true,
-};
-
+// jarvis/overlay-chat: open, the live transcript (two completed turns, both
+// replies tagged with the default brain) — all entries `done: true` (no
+// in-flight streaming caret).
 const jarvisStateChat: JarvisState = {
+  ...jarvisStateIdle,
   open: true,
-  skin: DEFAULT_JARVIS_SKIN,
-  unread: 0,
-  unreadNarration: false,
-  phase: "idle",
-  entries: [jarvisGreetingEntry, jarvisChatUserEntry, jarvisChatReplyEntry],
-  pendingConfirmation: null,
-  available: true,
-  brains: JARVIS_BRAINS,
-  effectiveBrain: DEFAULT_JARVIS_BRAIN,
-  gate: null,
-  openCount: 1,
+  entries: jarvisLiveEntries(DEFAULT_JARVIS_BRAIN),
 };
 fixtures["jarvis-chat"] = makeAppData({ jarvis: jarvisStateChat });
 
@@ -2399,20 +2419,133 @@ const jarvisPendingConfirmation: JarvisConfirmation = {
 };
 
 const jarvisStateConfirm: JarvisState = {
-  open: true,
-  skin: DEFAULT_JARVIS_SKIN,
-  unread: 0,
-  unreadNarration: false,
-  phase: "idle",
-  entries: [jarvisGreetingEntry],
+  ...jarvisStateChat,
   pendingConfirmation: jarvisPendingConfirmation,
-  available: true,
-  brains: JARVIS_BRAINS,
-  effectiveBrain: DEFAULT_JARVIS_BRAIN,
-  gate: null,
-  openCount: 1,
 };
 fixtures["jarvis-confirm"] = makeAppData({ jarvis: jarvisStateConfirm });
+
+// ── B3b brain indicators (jarvis/indicators-*) ─────────────────────────────
+// Live states (house-live, no-limit, demo, the switch-off and pill states)
+// render the live transcript tagged with the brain they run. Exhausted states
+// (spent, house-spent, unavailable) render a transcript that tells the
+// story: a Haiku reply, the switch line with the matching reason copy (as
+// the controller's formatSwitchLine writes it), then a Scripted reply. The
+// goldens otherwise differ only by the readout, the meter, the tags and the
+// pill.
+const JARVIS_SWITCH_LINES: Readonly<
+  Record<NonNullable<JarvisBudgetView["exhausted"]>, string>
+> = {
+  user: "Today's AI budget is used \u2014 switching to the scripted brain until 00:00 UTC.",
+  forced:
+    "Today's AI budget is used \u2014 switching to the scripted brain until 00:00 UTC.",
+  house:
+    "The house AI budget is used \u2014 switching to the scripted brain until 00:00 UTC.",
+  unavailable:
+    "The AI budget is unavailable \u2014 switching to the scripted brain.",
+};
+
+function jarvisExhaustedEntries(
+  exhausted: NonNullable<JarvisBudgetView["exhausted"]>,
+): readonly JarvisEntry[] {
+  return [
+    jarvisGreetingEntry,
+    { id: 1, role: "user", text: "Where is EURUSD?", done: true },
+    {
+      id: 2,
+      role: "jarvis",
+      text: "EURUSD is quoting 1.09213 / 1.09227, up on the session.",
+      done: true,
+      brain: "claude-haiku-4-5",
+    },
+    {
+      id: 3,
+      role: "jarvis",
+      text: JARVIS_SWITCH_LINES[exhausted],
+      done: true,
+      origin: "system",
+    },
+    { id: 4, role: "user", text: "And GBPUSD?", done: true },
+    {
+      id: 5,
+      role: "jarvis",
+      text: "GBPUSD is quoting 1.27410 / 1.27426.",
+      done: true,
+      brain: "scripted",
+    },
+  ];
+}
+
+function jarvisStateScripted(
+  exhausted: NonNullable<JarvisBudgetView["exhausted"]>,
+  spentUsd: number,
+): JarvisState {
+  return {
+    ...jarvisStateChat,
+    entries: jarvisExhaustedEntries(exhausted),
+    brains: ["scripted"],
+    effectiveBrain: "scripted",
+    gate: {
+      level: "hard",
+      resetsAtMs: JARVIS_RESETS_AT_MS,
+      gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
+    },
+    budget: {
+      keyKind: "house",
+      spentUsd,
+      limitUsd: 0.2,
+      exhausted,
+      resetsAtMs: JARVIS_RESETS_AT_MS,
+    },
+  };
+}
+
+fixtures["jarvis-indicators-house-live"] = makeAppData({
+  jarvis: jarvisStateChat,
+});
+fixtures["jarvis-indicators-no-limit"] = makeAppData({
+  jarvis: {
+    ...jarvisStateChat,
+    entries: jarvisLiveEntries("claude-opus-5"),
+    effectiveBrain: "claude-opus-5",
+    budget: { ...jarvisBudgetHouseLive, spentUsd: 1.37, limitUsd: null },
+  },
+});
+fixtures["jarvis-indicators-spent"] = makeAppData({
+  jarvis: jarvisStateScripted("user", 0.21),
+});
+fixtures["jarvis-indicators-house-spent"] = makeAppData({
+  jarvis: jarvisStateScripted("house", 0.06),
+});
+fixtures["jarvis-indicators-unavailable"] = makeAppData({
+  jarvis: jarvisStateScripted("unavailable", 0),
+});
+fixtures["jarvis-indicators-demo"] = makeAppData({
+  jarvis: {
+    ...jarvisStateChat,
+    entries: jarvisLiveEntries("scripted"),
+    effectiveBrain: "scripted",
+    budget: null,
+    demo: true,
+  },
+});
+fixtures["jarvis-indicators-all-off"] = makeAppData({
+  jarvis: jarvisStateChat,
+  jarvisIndicators: { readout: false, replyTags: false, brainPill: false },
+});
+// Spec §4.5 "each switch off": the pill-off state is every default fixture;
+// these two turn the readout and the reply tags off one at a time.
+fixtures["jarvis-indicators-readout-off"] = makeAppData({
+  jarvis: jarvisStateChat,
+  jarvisIndicators: { readout: false, replyTags: true, brainPill: false },
+});
+fixtures["jarvis-indicators-tags-off"] = makeAppData({
+  jarvis: jarvisStateChat,
+  jarvisIndicators: { readout: true, replyTags: false, brainPill: false },
+});
+fixtures["jarvis-indicators-pill"] = makeAppData({
+  jarvis: jarvisStateChat,
+  jarvisIndicators: { readout: true, replyTags: true, brainPill: true },
+});
 
 // ── Task 10 (Phase 3, brain picker): status-chip + usage-card fixtures ────
 // jarvis/status-chip-haiku: the StatusBar's footer chip with the default

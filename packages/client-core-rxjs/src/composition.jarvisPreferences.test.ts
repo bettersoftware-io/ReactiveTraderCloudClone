@@ -63,6 +63,27 @@ describe("jarvisPreferences presenter", () => {
 
     expect(readOnce(app.presenters.jarvisPreferences.narrator$)).toBe("off");
   });
+
+  it("writes the indicators preference through the port", () => {
+    const prefs = new PreferencesSimulator({});
+    const app = appWithPrefs(prefs);
+    const next = { readout: false, replyTags: true, brainPill: true };
+
+    app.presenters.jarvisPreferences.setIndicators(next);
+
+    expect(readOnce(prefs.jarvisIndicators$())).toEqual(next);
+  });
+
+  it("replays the current indicators value to a late subscriber", () => {
+    const seeded = { readout: true, replyTags: false, brainPill: true };
+    const app = appWithPrefs(
+      new PreferencesSimulator({ jarvisIndicators: seeded }),
+    );
+
+    expect(readOnce(app.presenters.jarvisPreferences.indicators$)).toEqual(
+      seeded,
+    );
+  });
 });
 
 function appWithPrefs(preferences: PreferencesSimulator): App {

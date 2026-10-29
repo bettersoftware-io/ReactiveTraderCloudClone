@@ -412,6 +412,23 @@ change (the availability frame carries the budget). The order matters:
    defaults. The retired `RTC_JARVIS_BUDGET_USD` and
    `RTC_JARVIS_BUDGET_SOFT_RATIO` can be unset.
 
+## Rolling out B3b
+
+B3b adds the Jarvis brain indicators: the server stamps each turn with a
+`jarvis.brain` frame, and both web clients read it and the budget to draw the
+readout, reply tags and optional brain pill. There is **no migration** and no
+new setting.
+
+1. **Deploy the server and both web clients** (`deploy.yml`), in any order.
+   A client still on an old bundle ignores the new frame (unknown types are
+   routed by type and dropped), and a new client on an old server gets no
+   `jarvis.brain` frame and tags each reply with the brain it asked for.
+2. **Verify.** Open Jarvis signed in as a member: the header readout shows the
+   brain, the house key and the remaining budget, and each reply carries a
+   brain tag. With `RTC_JARVIS_FORCE_GATE=exhausted` on a test server the
+   readout reads the exhausted copy instead. The demo login reads
+   `Scripted · demo`.
+
 ## Deploying
 
 Run the **Deploy** workflow manually — Actions tab → "Deploy" → Run workflow,

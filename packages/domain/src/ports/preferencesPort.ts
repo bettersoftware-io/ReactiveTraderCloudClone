@@ -9,6 +9,7 @@ import type {
   EqWatchlistSort,
   JarvisBrain,
   JarvisEffort,
+  JarvisIndicators,
   JarvisNarratorPreference,
   JarvisSkin,
   LayoutEngine,
@@ -131,4 +132,10 @@ export interface PreferencesPort {
    * may dispatch unsolicited `narrate()` turns; `"off"` fully silences it. */
   jarvisNarrator$(): Observable<JarvisNarratorPreference>;
   setJarvisNarrator(preference: JarvisNarratorPreference): void;
+  /** Replay-current Jarvis indicators stream; emits synchronously on
+   * subscribe. Which of the header budget readout, the per-reply brain tags
+   * and the input-bar brain pill are shown. Independent of every other Jarvis
+   * preference. */
+  jarvisIndicators$(): Observable<JarvisIndicators>;
+  setJarvisIndicators(next: JarvisIndicators): void;
 }

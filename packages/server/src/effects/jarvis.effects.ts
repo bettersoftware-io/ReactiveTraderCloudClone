@@ -8,6 +8,7 @@ import {
 } from "@better-software/rx-ws-effects";
 import {
   catchError,
+  concat,
   concatMap,
   defer,
   distinctUntilChanged,
@@ -60,6 +61,7 @@ import type { Ctx } from "./context.js";
  * minus its `type` discriminant plus a correlating `turnId`, so only the
  * message type itself needs a lookup. */
 const WIRE_TYPE_BY_EVENT: Record<JarvisEvent["type"], string> = {
+  brain: SERVER_MSG.JARVIS_BRAIN,
   delta: SERVER_MSG.JARVIS_DELTA,
   toolEvent: SERVER_MSG.JARVIS_TOOL_EVENT,
   confirmRequest: SERVER_MSG.JARVIS_CONFIRM_REQUEST,
@@ -492,6 +494,16 @@ export function jarvisEffects(loops: JarvisLoops | null): WsEffect<Ctx>[] {
       return offer.defaultBrain;
     }
 
+    /** Opens a turn's event stream with the brain that actually runs it, so
+     * the client can tag the reply with it (spec §4.2) — the server may have
+     * resolved a different brain than the one the client asked for. */
+    function stampWithBrain(
+      brain: JarvisBrain,
+      events$: Observable<JarvisEvent>,
+    ): Observable<JarvisEvent> {
+      return concat(of<JarvisEvent>({ type: "brain", brain }), events$);
+    }
+
     function runTurnFor(
       brain: JarvisBrain,
       payload: JarvisChatPayload,
@@ -508,7 +520,10 @@ export function jarvisEffects(loops: JarvisLoops | null): WsEffect<Ctx>[] {
       const history = payload.history ?? [];
 
       if (brain === "scripted") {
-        return getScriptedSession().runTurn(payload.text, history);
+        return stampWithBrain(
+          "scripted",
+          getScriptedSession().runTurn(payload.text, history),
+        );
       }
 
       const session = getAnthropicSession();
@@ -523,14 +538,20 @@ export function jarvisEffects(loops: JarvisLoops | null): WsEffect<Ctx>[] {
         console.error(
           `jarvis.chat: resolved brain "${brain}" has no live anthropic session; falling back to scripted`,
         );
-        return getScriptedSession().runTurn(payload.text, history);
+        return stampWithBrain(
+          "scripted",
+          getScriptedSession().runTurn(payload.text, history),
+        );
       }
 
-      return session.runTurn(payload.text, history, {
+      return stampWithBrain(
         brain,
-        effort: payload.effort,
-        meter,
-      });
+        session.runTurn(payload.text, history, {
+          brain,
+          effort: payload.effort,
+          meter,
+        }),
+      );
     }
 
     /** Routes a parsed turn and runs it. A connection with no caller, and a

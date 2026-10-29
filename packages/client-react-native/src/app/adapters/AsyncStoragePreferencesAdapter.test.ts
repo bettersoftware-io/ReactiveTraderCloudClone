@@ -10,6 +10,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_INDICATORS,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_VIEW_MODE,
@@ -475,6 +476,42 @@ test("hydrate() seeds a stored jarvisNarrator on the first emission", async () =
   store.set("rt-jarvis-narrator", "off");
   const prefs = await AsyncStoragePreferencesAdapter.hydrate();
   expect(await firstValueFrom(prefs.jarvisNarrator$())).toBe("off");
+});
+
+test("emits the default jarvisIndicators synchronously", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  expect(await firstValueFrom(prefs.jarvisIndicators$())).toEqual(
+    DEFAULT_JARVIS_INDICATORS,
+  );
+});
+
+test("setJarvisIndicators writes JSON through to AsyncStorage and emits", async () => {
+  const next = { readout: false, replyTags: true, brainPill: true };
+  const prefs = new AsyncStoragePreferencesAdapter();
+  prefs.setJarvisIndicators(next);
+  expect(await firstValueFrom(prefs.jarvisIndicators$())).toEqual(next);
+  expect(JSON.parse(store.get("rt-jarvis-indicators") ?? "")).toEqual(next);
+  expect(store.has("rt-jarvis-narrator")).toBe(false);
+});
+
+test("hydrate() seeds a stored jarvisIndicators, keeping valid fields of a partial one", async () => {
+  store.set(
+    "rt-jarvis-indicators",
+    JSON.stringify({ readout: false, brainPill: "yes" }),
+  );
+  const prefs = await AsyncStoragePreferencesAdapter.hydrate();
+  expect(await firstValueFrom(prefs.jarvisIndicators$())).toEqual({
+    ...DEFAULT_JARVIS_INDICATORS,
+    readout: false,
+  });
+});
+
+test("falls back to the default jarvisIndicators when the stored value is garbled", async () => {
+  store.set("rt-jarvis-indicators", "{not json");
+  const prefs = await AsyncStoragePreferencesAdapter.hydrate();
+  expect(await firstValueFrom(prefs.jarvisIndicators$())).toEqual(
+    DEFAULT_JARVIS_INDICATORS,
+  );
 });
 
 test("emits the default login-wait variant synchronously on construction", async () => {

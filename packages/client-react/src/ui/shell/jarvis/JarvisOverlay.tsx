@@ -1,5 +1,6 @@
 import {
   type ChangeEvent,
+  type CSSProperties,
   type ReactElement,
   type KeyboardEvent as ReactKeyboardEvent,
   useEffect,
@@ -8,10 +9,16 @@ import {
   useState,
 } from "react";
 
-import { JARVIS_GUIDE_CATALOG, sampleGuideChips } from "@rtc/core-logic";
+import {
+  describeBrainReadout,
+  describeReplyTag,
+  JARVIS_GUIDE_CATALOG,
+  sampleGuideChips,
+} from "@rtc/core-logic";
 import { JARVIS_SKINS, type JarvisSkin } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { JarvisBrainPill } from "./JarvisBrainPill";
 import { JarvisConfirmCard } from "./JarvisConfirmCard";
 import { useJarvisHotkey } from "./useJarvisHotkey";
 
@@ -35,7 +42,7 @@ import styles from "./JarvisOverlay.module.css";
  * early return, per the dumb-UI hooks rule.
  */
 export function JarvisOverlay(): ReactElement | null {
-  const { useJarvis, useJarvisDemo } = useViewModel();
+  const { useJarvis, useJarvisDemo, useJarvisPreferences } = useViewModel();
   const {
     state,
     close,
@@ -46,6 +53,7 @@ export function JarvisOverlay(): ReactElement | null {
     setSkin,
   } = useJarvis();
   const { state: demoState, startDemo, stopDemo } = useJarvisDemo();
+  const { indicators } = useJarvisPreferences();
   const [inputValue, setInputValue] = useState("");
   const [guideOpen, setGuideOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
@@ -76,7 +84,8 @@ export function JarvisOverlay(): ReactElement | null {
     }
 
     function closeOnEscape(event: KeyboardEvent): void {
-      if (event.key !== "Escape") {
+      // A defaultPrevented Escape was already spent closing the brain menu.
+      if (event.key !== "Escape" || event.defaultPrevented) {
         return;
       }
 
@@ -126,6 +135,8 @@ export function JarvisOverlay(): ReactElement | null {
     : speaking
       ? "● SPEAKING"
       : "◈ LISTENING";
+
+  const readout = indicators.readout ? describeBrainReadout(state) : null;
 
   const chips = sampleGuideChips(JARVIS_GUIDE_CATALOG, state.openCount);
 
@@ -339,6 +350,24 @@ export function JarvisOverlay(): ReactElement | null {
 
         <div className={styles.wordmark}>J.A.R.V.I.S</div>
         <div className={styles.status}>{status}</div>
+        {readout ? (
+          <div
+            className={styles.brainReadout}
+            data-testid="jarvis-brain-readout"
+            data-tone={readout.tone}
+          >
+            <span className={styles.brainReadoutText}>{readout.text}</span>
+            {readout.meterFraction === null ? null : (
+              <div className={styles.brainMeter} aria-hidden="true">
+                <div
+                  className={styles.brainMeterFill}
+                  data-testid="jarvis-brain-meter"
+                  style={meterFillStyle(readout.meterFraction)}
+                />
+              </div>
+            )}
+          </div>
+        ) : null}
 
         {/* Voice waveform — 26 bars, `transform: scaleY()` only, each with its
             own literal duration/delay pair in the stylesheet (never a var()
@@ -387,6 +416,14 @@ export function JarvisOverlay(): ReactElement | null {
                     <span className={styles.caret} aria-hidden="true" />
                   ) : null}
                 </span>
+                {indicators.replyTags && entry.brain !== undefined ? (
+                  <span
+                    data-testid="jarvis-entry-brain"
+                    className={styles.replyTag}
+                  >
+                    {describeReplyTag(entry.brain)}
+                  </span>
+                ) : null}
               </div>
             );
           })}
@@ -505,6 +542,7 @@ export function JarvisOverlay(): ReactElement | null {
             onChange={changeDraft}
             onKeyDown={sendDraftOnEnter}
           />
+          {indicators.brainPill ? <JarvisBrainPill /> : null}
           <button
             type="button"
             data-testid="jarvis-send"
@@ -599,3 +637,9 @@ const SKIN_MARK: Record<JarvisSkin, string> = {
 const WAVE_BARS: readonly number[] = Array.from({ length: 26 }, (_, i) => {
   return i;
 });
+
+/** The meter fill's width as an inline custom property (the stylesheet reads
+ * `var(--meter-fill)`), so the one runtime value stays out of a style literal. */
+function meterFillStyle(fraction: number): CSSProperties {
+  return { "--meter-fill": `${fraction * 100}%` } as CSSProperties;
+}

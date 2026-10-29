@@ -536,6 +536,22 @@ const scenarioActions: Record<string, ScenarioAction> = {
     waitForText: "RUN FULL DEMO · HANDS-FREE",
   },
 
+  "jarvis/indicators-house-live": { fullPage: true },
+  "jarvis/indicators-no-limit": { fullPage: true },
+  "jarvis/indicators-spent": { fullPage: true },
+  "jarvis/indicators-house-spent": { fullPage: true },
+  "jarvis/indicators-unavailable": { fullPage: true },
+  "jarvis/indicators-demo": { fullPage: true },
+  "jarvis/indicators-all-off": { fullPage: true },
+  "jarvis/indicators-readout-off": { fullPage: true },
+  "jarvis/indicators-tags-off": { fullPage: true },
+  "jarvis/indicators-pill": { fullPage: true },
+  "jarvis/indicators-pill-menu": {
+    fullPage: true,
+    click: "jarvis-brain-pill",
+    waitForText: "Claude Opus 5",
+  },
+
   // Task 10 (generative-UI round 1): JarvisPanelLayer is `position: fixed`
   // (top-right cascade, same as the overlay above), so it needs the same
   // full-page treatment. Each waitForText targets a string that only exists

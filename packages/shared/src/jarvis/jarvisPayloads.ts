@@ -9,7 +9,7 @@ import type {
 /**
  * Jarvis chat wire vocabulary.
  *
- * Wire rule: each turn-scoped `SERVER_MSG.JARVIS_*` payload (delta,
+ * Wire rule: each turn-scoped `SERVER_MSG.JARVIS_*` payload (brain, delta,
  * toolEvent, confirmRequest, panel, command, done, error) IS the matching
  * `JarvisEvent` variant minus its `type` discriminant, PLUS a
  * `readonly turnId: string` that correlates every server event back to the

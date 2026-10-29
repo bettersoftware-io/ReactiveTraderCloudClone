@@ -76,6 +76,8 @@ export function createAvailability(
     brains: ["scripted", "claude-haiku-4-5"],
     defaultBrain: "scripted",
     gate: null,
+    budget: null,
+    demo: false,
     ...overrides,
   };
 }

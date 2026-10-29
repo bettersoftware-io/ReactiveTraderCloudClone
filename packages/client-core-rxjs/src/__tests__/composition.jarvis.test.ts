@@ -315,7 +315,14 @@ describe("composition — jarvis wiring", () => {
 });
 
 function createUnavailable(): JarvisAvailability {
-  return { available: false, brains: [], defaultBrain: "scripted", gate: null };
+  return {
+    available: false,
+    brains: [],
+    defaultBrain: "scripted",
+    gate: null,
+    budget: null,
+    demo: false,
+  };
 }
 
 /** Spawns a live desk panel whose id collides with the static "fx-rates"

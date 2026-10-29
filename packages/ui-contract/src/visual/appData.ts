@@ -40,6 +40,7 @@ import {
   type EquityQuote,
   type EqWatchlistSort,
   type Instrument,
+  type JarvisIndicators,
   type JarvisUsage,
   type LayoutEngine,
   type LogEvent,
@@ -229,6 +230,10 @@ export interface AppData {
    * placeholder) — routed alongside `jarvis` above so a fixture that seeds
    * this actually reaches the card instead of silently capturing empty. */
   jarvisUsage?: JarvisUsage | null;
+  /** Stored Jarvis indicator switches (useJarvisPreferences().indicators);
+   * defaults to DEFAULT_JARVIS_INDICATORS (readout and reply tags on, brain
+   * pill off). */
+  jarvisIndicators?: JarvisIndicators;
   /** Generative-UI desk panels J.A.R.V.I.S. has spawned (useJarvisPanels;
    * `JarvisPanelLayer`, Task 10 of the generative-UI round) — defaults to
    * none (the layer renders null). Each entry mirrors `JarvisPanelVm`'s

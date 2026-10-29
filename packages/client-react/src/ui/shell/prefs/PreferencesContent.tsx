@@ -11,6 +11,7 @@ import {
   JARVIS_NARRATOR_PREFERENCES,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisIndicators,
   type JarvisNarratorPreference,
   type LayoutEngine,
   type LoginWaitDelay,
@@ -32,11 +33,13 @@ import styles from "./PreferencesContent.module.css";
  * lives in `ModalShell`; this component renders only the grid.
  *
  * The columns are loosely balanced by ROW COUNT — column 1 (DISPLAY/MOTION)
- * holds 15 rows, column 2 (TRADING/NOTIFICATIONS/DATA & PRIVACY/JARVIS) 17
- * (re-measured directly against this file's rendered rows after two rounds
- * landed concurrently: the "Layout engine" segment in column 1's MOTION and
- * the "Reset workspace layout" action in column 2's DATA & PRIVACY; the
- * un-counted Brain-row gate hint is conditional decoration, not a row).
+ * holds 15 rows, column 2 (TRADING/NOTIFICATIONS/DATA & PRIVACY/JARVIS) 20,
+ * re-measured directly against this file's rendered rows. The latest rows are
+ * the three Jarvis indicator switches at the foot of column 2; before them,
+ * two rounds landed concurrently: the "Layout engine" segment in column 1's
+ * MOTION and the "Reset workspace layout" action in column 2's DATA &
+ * PRIVACY. The un-counted Brain-row gate hint is conditional decoration, not
+ * a row.
  * MOTION exists because DISPLAY had grown to hold every movement-related
  * control and left the grid lopsided 15/9 — splitting "how it looks" from
  * "how it moves" rebalanced it at the time. The JARVIS section (added later)
@@ -45,15 +48,15 @@ import styles from "./PreferencesContent.module.css";
  * again since; treat the counts above as a snapshot, not an invariant to
  * re-defend on every future row.
  *
- * THIRTEEN rows are wired to real ports — Animated background
+ * SIXTEEN rows are wired to real ports — Animated background
  * (`useAnimatedBackground`), Power saver (`usePowerSaver`, a 3-state
  * Off/Calm/Freeze segment), Ambient style (`useAmbientStyle`), Chart renderer
  * (`useChartSubstrate`), Layout engine (`useLayoutEngine`), Application core
  * (`useCoreSelection`; the row is absent entirely when the host offers no
  * selection — see that hook's own doc), Always play boot animation
  * (`useForceBootAnimation`), the two login-wait rows
- * (`useLoginWaitPreferences`), the three Jarvis rows (`useJarvisPreferences`
- * for the stored brain/effort/narrator, `useJarvis` read-only for which
+ * (`useLoginWaitPreferences`), the three Jarvis rows plus the three indicator switches
+ * (`useJarvisPreferences` for the stored brain/effort/narrator/indicators, `useJarvis` read-only for which
  * brains the server is currently offering), and Reset workspace layout
  * (`useWorkspaceReset`); every other row is decorative (see the comment on
  * the catalogue below). Dumb component: consumes `useViewModel()`
@@ -109,6 +112,8 @@ export function PreferencesContent(): ReactElement {
     setEffort: setJarvisEffort,
     narrator: jarvisNarrator,
     setNarrator: setJarvisNarrator,
+    indicators: jarvisIndicators,
+    setIndicators: setJarvisIndicators,
   } = useJarvisPreferences();
 
   // The active usage-budget gate (null when none is active). A gated brain
@@ -204,6 +209,15 @@ export function PreferencesContent(): ReactElement {
 
   function changeJarvisNarrator(value: string): void {
     setJarvisNarrator(value as JarvisNarratorPreference);
+  }
+
+  function toggleJarvisIndicator(field: keyof JarvisIndicators) {
+    return () => {
+      setJarvisIndicators({
+        ...jarvisIndicators,
+        [field]: !jarvisIndicators[field],
+      });
+    };
   }
 
   return (
@@ -385,6 +399,27 @@ export function PreferencesContent(): ReactElement {
           value={jarvisNarrator}
           onChange={changeJarvisNarrator}
           testid="pref-segment-jarvisNarrator"
+        />
+        <PrefToggle
+          label="Brain readout"
+          description="Show the active brain and what is left of today's AI budget under the status line."
+          on={jarvisIndicators.readout}
+          onToggle={toggleJarvisIndicator("readout")}
+          testid="pref-toggle-jarvisReadout"
+        />
+        <PrefToggle
+          label="Reply tags"
+          description="Tag each reply with the brain that wrote it."
+          on={jarvisIndicators.replyTags}
+          onToggle={toggleJarvisIndicator("replyTags")}
+          testid="pref-toggle-jarvisReplyTags"
+        />
+        <PrefToggle
+          label="Brain pill"
+          description="Show the active brain beside the input, with a menu to switch it."
+          on={jarvisIndicators.brainPill}
+          onToggle={toggleJarvisIndicator("brainPill")}
+          testid="pref-toggle-jarvisBrainPill"
         />
       </div>
     </div>

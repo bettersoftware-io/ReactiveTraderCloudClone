@@ -357,6 +357,15 @@ export const JARVIS_BRAIN_LABELS: Record<JarvisBrain, string> = {
   "claude-opus-5": "Opus 5",
 };
 
+/** Full display names, for sentences ("Claude Haiku 4.5 · house key"); the
+ * short form in `JARVIS_BRAIN_LABELS` serves the chip and the pill. */
+export const JARVIS_BRAIN_NAMES: Readonly<Record<JarvisBrain, string>> = {
+  scripted: "Scripted",
+  "claude-haiku-4-5": "Claude Haiku 4.5",
+  "claude-sonnet-5": "Claude Sonnet 5",
+  "claude-opus-5": "Claude Opus 5",
+};
+
 /** Whether the app-driving proactive narrator (`NarratorMachine`) is allowed
  * to dispatch unsolicited `narrate()` turns into the Jarvis transcript.
  * `"on"` is the default — the narrator's whole point is surfacing an
@@ -377,4 +386,60 @@ export function isJarvisNarratorPreference(
   value: unknown,
 ): value is JarvisNarratorPreference {
   return (JARVIS_NARRATOR_PREFERENCES as readonly unknown[]).includes(value);
+}
+
+/** The three Jarvis indicator switches (spec B3b §4.4), kept as ONE record so
+ * a single stored value carries them: `readout` is the brain and budget line
+ * in the overlay's header, under the status line; `replyTags` the brain tag on
+ * each reply; `brainPill` the brain chip in the input bar. */
+export interface JarvisIndicators {
+  readonly readout: boolean;
+  readonly replyTags: boolean;
+  readonly brainPill: boolean;
+}
+
+/** Readout and reply tags on, brain pill off. */
+export const DEFAULT_JARVIS_INDICATORS: JarvisIndicators = {
+  readout: true,
+  replyTags: true,
+  brainPill: false,
+};
+
+/** Decodes a stored (or otherwise untrusted) value into `JarvisIndicators`,
+ * field by field: each boolean field that is present is taken, every other
+ * field falls back to its default. A garbled, partial or future-version value
+ * therefore keeps whatever is valid in it and never throws. */
+export function readJarvisIndicators(stored: unknown): JarvisIndicators {
+  if (typeof stored !== "object" || stored === null) {
+    return DEFAULT_JARVIS_INDICATORS;
+  }
+
+  const candidate = stored as Partial<Record<keyof JarvisIndicators, unknown>>;
+
+  return {
+    readout:
+      typeof candidate.readout === "boolean"
+        ? candidate.readout
+        : DEFAULT_JARVIS_INDICATORS.readout,
+    replyTags:
+      typeof candidate.replyTags === "boolean"
+        ? candidate.replyTags
+        : DEFAULT_JARVIS_INDICATORS.replyTags,
+    brainPill:
+      typeof candidate.brainPill === "boolean"
+        ? candidate.brainPill
+        : DEFAULT_JARVIS_INDICATORS.brainPill,
+  };
+}
+
+/** Field-wise equality, for `distinctUntilChanged` on the preference stream. */
+export function jarvisIndicatorsEqual(
+  a: JarvisIndicators,
+  b: JarvisIndicators,
+): boolean {
+  return (
+    a.readout === b.readout &&
+    a.replyTags === b.replyTags &&
+    a.brainPill === b.brainPill
+  );
 }

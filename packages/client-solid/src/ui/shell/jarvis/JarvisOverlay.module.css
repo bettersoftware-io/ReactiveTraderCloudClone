@@ -342,6 +342,53 @@
   color: var(--accent-primary);
 }
 
+/* The brain readout under the status line (B3b): one line of sentence-case
+ * copy shown in capitals, plus a static budget meter. The fill width comes
+ * from the inline custom property --meter-fill and changes only between
+ * turns — no transition, no animation (docs/performance.md). The copy sits
+ * on a small chip of the reply bubbles' own surface (--panel, --text-primary),
+ * because the overlay's dim backdrop is mid-grey on the light skins and no
+ * bare text colour reads well on it in every skin. The warning tone (an
+ * exhausted budget, which never has a meter) turns the chip's border and
+ * text the app's amber, --accent-aware. */
+.brainReadout {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.brainReadoutText {
+  padding: 3px 10px;
+  color: var(--text-primary);
+  background: var(--panel);
+  border: 1px solid var(--border-primary);
+  border-radius: 999px;
+}
+
+.brainReadout[data-tone="warning"] .brainReadoutText {
+  color: var(--accent-aware);
+  border-color: var(--accent-aware);
+}
+
+.brainMeter {
+  width: 120px;
+  height: 2px;
+  background: var(--border-primary);
+}
+
+.brainMeterFill {
+  width: var(--meter-fill);
+  height: 100%;
+  background: var(--accent-primary);
+}
+
 /* ------------------------------------------------------------ waveform --- */
 
 .waveform {
@@ -579,6 +626,14 @@
 .entry[data-origin="narrator"] .entryText {
   border: 1px solid var(--accent-2);
   border-left: 2px solid var(--accent-2);
+}
+
+.replyTag {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .narratorBadge {

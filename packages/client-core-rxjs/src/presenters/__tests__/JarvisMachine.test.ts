@@ -52,6 +52,8 @@ describe("createJarvisMachine", () => {
         brains: ["scripted"],
         effectiveBrain: "scripted",
         gate: null,
+        budget: null,
+        demo: true,
         openCount: 0,
       });
       sub.unsubscribe();
@@ -93,7 +95,13 @@ describe("createJarvisMachine", () => {
     expect(last?.entries).toEqual([
       { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
       { id: 1, role: "user", text: "quote EURUSD", done: true },
-      { id: 2, role: "jarvis", text: "EURUSD is up", done: true },
+      {
+        id: 2,
+        role: "jarvis",
+        text: "EURUSD is up",
+        done: true,
+        brain: "scripted",
+      },
     ]);
   });
 
@@ -126,6 +134,7 @@ describe("createJarvisMachine", () => {
       text: "",
       done: true,
       tool: { name: "quote", status: "done" },
+      brain: "scripted",
     });
   });
 
@@ -166,7 +175,13 @@ describe("createJarvisMachine", () => {
     expect(last?.entries).toEqual([
       { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
       { id: 1, role: "user", text: "show me gbp volatility", done: true },
-      { id: 2, role: "jarvis", text: "EURUSD is up", done: true },
+      {
+        id: 2,
+        role: "jarvis",
+        text: "EURUSD is up",
+        done: true,
+        brain: "scripted",
+      },
     ]);
     expect(last?.pendingConfirmation).toBeNull();
     expect(last?.phase).toBe("idle");
@@ -199,6 +214,7 @@ describe("createJarvisMachine", () => {
       role: "jarvis",
       text: "quote service unavailable",
       done: true,
+      brain: "scripted",
     });
   });
 
@@ -234,6 +250,7 @@ describe("createJarvisMachine", () => {
       role: "jarvis",
       text: "snapshot timed out",
       done: true,
+      brain: "scripted",
     });
   });
 
@@ -610,6 +627,8 @@ describe("createJarvisMachine", () => {
               brains: ["scripted", "claude-haiku-4-5"],
               defaultBrain: "scripted",
               gate: null,
+              budget: null,
+              demo: false,
             }),
             preferredBrain$: of<JarvisBrain>("claude-haiku-4-5"),
             effort$: of<JarvisEffort>("medium"),
@@ -644,6 +663,8 @@ describe("createJarvisMachine", () => {
               brains: ["scripted", "claude-haiku-4-5"],
               defaultBrain: "scripted",
               gate: null,
+              budget: null,
+              demo: false,
             }),
             preferredBrain$: of<JarvisBrain>("claude-haiku-4-5"),
             effort$: of<JarvisEffort>("medium"),
@@ -708,6 +729,8 @@ describe("createJarvisMachine", () => {
                 brains: [],
                 defaultBrain: "scripted",
                 gate: null,
+                budget: null,
+                demo: false,
               },
             }),
             ...createBaseBrainDeps(),
@@ -781,6 +804,8 @@ describe("createJarvisMachine", () => {
               brains: ["scripted", "claude-haiku-4-5"],
               defaultBrain: "scripted",
               gate: null,
+              budget: null,
+              demo: false,
             }),
             preferredBrain$: of<JarvisBrain>("claude-haiku-4-5"),
             effort$: of<JarvisEffort>("medium"),
@@ -829,6 +854,8 @@ describe("createJarvisMachine", () => {
               brains: ["scripted", "claude-opus-5"],
               defaultBrain: "scripted",
               gate: null,
+              budget: null,
+              demo: false,
             }),
             // Relative to ITS OWN subscribe at machine-construction time
             // (frame 0, not turn 1's frame-1 ask() subscribe): "scripted"
@@ -979,12 +1006,16 @@ describe("createJarvisMachine", () => {
               brains: [],
               defaultBrain: "scripted",
               gate: null,
+              budget: null,
+              demo: false,
             },
             t: {
               available: true,
               brains: ["scripted"],
               defaultBrain: "scripted",
               gate: null,
+              budget: null,
+              demo: false,
             },
           }),
           ...createBaseBrainDeps(),
@@ -1019,6 +1050,8 @@ describe("createJarvisMachine", () => {
                 brains: [],
                 defaultBrain: "scripted",
                 gate: null,
+                budget: null,
+                demo: false,
               },
             }),
             ...createBaseBrainDeps(),
@@ -1076,6 +1109,8 @@ describe("createJarvisMachine", () => {
                   brains: [],
                   defaultBrain: "scripted",
                   gate: null,
+                  budget: null,
+                  demo: false,
                 },
               },
             ),
@@ -1109,6 +1144,7 @@ describe("createJarvisMachine", () => {
         role: "jarvis",
         text: "EURUSD",
         done: false,
+        brain: "scripted",
       });
 
       // The in-flight turn folds its remaining delta and done exactly as if
@@ -1119,7 +1155,13 @@ describe("createJarvisMachine", () => {
       expect(last?.entries).toEqual([
         { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
         { id: 1, role: "user", text: "first", done: true },
-        { id: 2, role: "jarvis", text: "EURUSD is up", done: true },
+        {
+          id: 2,
+          role: "jarvis",
+          text: "EURUSD is up",
+          done: true,
+          brain: "scripted",
+        },
       ]);
 
       // "second" never reached port.ask(): the unavailable gate suppressed
@@ -1142,6 +1184,8 @@ describe("createJarvisMachine", () => {
             brains: ["scripted", "claude-sonnet-5"],
             defaultBrain: "scripted",
             gate: null,
+            budget: null,
+            demo: false,
           }),
           preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
           effort$: of<JarvisEffort>("high"),
@@ -1170,6 +1214,8 @@ describe("createJarvisMachine", () => {
             brains: ["scripted"],
             defaultBrain: "scripted",
             gate: null,
+            budget: null,
+            demo: false,
           }),
           preferredBrain$: of<JarvisBrain>("claude-opus-5"),
           effort$: of<JarvisEffort>("medium"),
@@ -1197,6 +1243,8 @@ describe("createJarvisMachine", () => {
             brains: [],
             defaultBrain: "claude-haiku-4-5",
             gate: null,
+            budget: null,
+            demo: false,
           }),
           preferredBrain$: of<JarvisBrain>("claude-opus-5"),
           effort$: of<JarvisEffort>("medium"),
@@ -1269,12 +1317,16 @@ describe("createJarvisMachine", () => {
               brains: ["scripted"],
               defaultBrain: "scripted",
               gate: null,
+              budget: null,
+              demo: false,
             },
             b: {
               available: true,
               brains: ["scripted", "claude-opus-5"],
               defaultBrain: "scripted",
               gate: null,
+              budget: null,
+              demo: false,
             },
           }),
           preferredBrain$: of<JarvisBrain>("claude-opus-5"),
@@ -1317,6 +1369,8 @@ describe("createJarvisMachine", () => {
               brains: ["scripted", "claude-sonnet-5"],
               defaultBrain: "scripted",
               gate: null,
+              budget: null,
+              demo: false,
             }),
             preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
             effort$: of<JarvisEffort>("high"),
@@ -1351,6 +1405,8 @@ describe("createJarvisMachine", () => {
               brains: ["scripted", "claude-opus-5"],
               defaultBrain: "scripted",
               gate: null,
+              budget: null,
+              demo: false,
             }),
             preferredBrain$: ts.createColdObservable<JarvisBrain>("a-b", {
               a: "scripted",
@@ -1407,6 +1463,8 @@ describe("createJarvisMachine", () => {
               brains: ["scripted", "claude-opus-5"],
               defaultBrain: "scripted",
               gate: null,
+              budget: null,
+              demo: false,
             }),
             // Relative to ITS OWN subscribe at machine-construction time
             // (frame 0, not turn 1's frame-1 ask() subscribe): "scripted"
@@ -1527,6 +1585,8 @@ describe("createJarvisMachine", () => {
               brains: ["scripted", "claude-sonnet-5"],
               defaultBrain: "scripted",
               gate: null,
+              budget: null,
+              demo: false,
             }),
             preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
             effort$: of<JarvisEffort>("high"),
@@ -1566,6 +1626,8 @@ describe("createJarvisMachine", () => {
                 brains: [],
                 defaultBrain: "scripted",
                 gate: null,
+                budget: null,
+                demo: false,
               },
             }),
             ...createBaseBrainDeps(),
@@ -1921,6 +1983,8 @@ describe("createJarvisMachine", () => {
                   ],
                   defaultBrain: "scripted",
                   gate: null,
+                  budget: null,
+                  demo: false,
                 },
                 b: {
                   available: true,
@@ -1931,6 +1995,8 @@ describe("createJarvisMachine", () => {
                     resetsAtMs,
                     gated: ["claude-sonnet-5", "claude-opus-5"],
                   },
+                  budget: null,
+                  demo: false,
                 },
               },
             ),
@@ -1959,7 +2025,7 @@ describe("createJarvisMachine", () => {
       expect(last?.entries.at(-1)).toEqual({
         id: 3,
         role: "jarvis",
-        text: `Usage budget reached — continuing on Haiku 4.5 until ${formatGateResetTime(resetsAtMs)}.`,
+        text: "Today's AI budget is used — switching to the Haiku 4.5 brain until 00:00 UTC.",
         done: true,
         origin: "system",
       });
@@ -1989,6 +2055,8 @@ describe("createJarvisMachine", () => {
                   ],
                   defaultBrain: "scripted",
                   gate: null,
+                  budget: null,
+                  demo: false,
                 },
                 b: {
                   available: true,
@@ -1999,6 +2067,8 @@ describe("createJarvisMachine", () => {
                     resetsAtMs,
                     gated: ["claude-sonnet-5", "claude-opus-5"],
                   },
+                  budget: null,
+                  demo: false,
                 },
               },
             ),
@@ -2048,6 +2118,8 @@ describe("createJarvisMachine", () => {
               ],
               defaultBrain: "scripted",
               gate: null,
+              budget: null,
+              demo: false,
             },
             b: {
               available: true,
@@ -2058,6 +2130,8 @@ describe("createJarvisMachine", () => {
                 resetsAtMs,
                 gated: ["claude-sonnet-5", "claude-opus-5"],
               },
+              budget: null,
+              demo: false,
             },
           }),
           preferredBrain$: of<JarvisBrain>("claude-opus-5"),
@@ -2103,6 +2177,8 @@ describe("createJarvisMachine", () => {
                   ],
                   defaultBrain: "scripted",
                   gate: null,
+                  budget: null,
+                  demo: false,
                 },
                 b: {
                   available: true,
@@ -2117,6 +2193,8 @@ describe("createJarvisMachine", () => {
                       "claude-opus-5",
                     ],
                   },
+                  budget: null,
+                  demo: false,
                 },
               },
             ),
@@ -2134,7 +2212,7 @@ describe("createJarvisMachine", () => {
       const last = states.at(-1);
       expect(last?.effectiveBrain).toBe("scripted");
       expect(last?.entries.at(-1)?.text).toBe(
-        `Usage budget reached — continuing on scripted until ${formatGateResetTime(resetsAtMs)}.`,
+        "Today's AI budget is used — switching to the scripted brain until 00:00 UTC.",
       );
       expect(last?.entries.at(-1)?.origin).toBe("system");
     });
@@ -2172,12 +2250,16 @@ describe("createJarvisMachine", () => {
                   ],
                   defaultBrain: "scripted",
                   gate: null,
+                  budget: null,
+                  demo: false,
                 },
                 b: {
                   available: true,
                   brains: ["scripted", "claude-haiku-4-5"],
                   defaultBrain: "claude-haiku-4-5",
                   gate,
+                  budget: null,
+                  demo: false,
                 },
                 c: {
                   available: true,
@@ -2189,6 +2271,8 @@ describe("createJarvisMachine", () => {
                   ],
                   defaultBrain: "scripted",
                   gate: null,
+                  budget: null,
+                  demo: false,
                 },
               },
             ),
@@ -2238,6 +2322,8 @@ describe("createJarvisMachine", () => {
                   ],
                   defaultBrain: "scripted",
                   gate: null,
+                  budget: null,
+                  demo: false,
                 },
                 b: {
                   available: true,
@@ -2252,6 +2338,8 @@ describe("createJarvisMachine", () => {
                       "claude-opus-5",
                     ],
                   },
+                  budget: null,
+                  demo: false,
                 },
               },
             ),
@@ -2267,7 +2355,7 @@ describe("createJarvisMachine", () => {
       );
 
       expect(states.at(-1)?.entries.at(-1)?.text).toBe(
-        "Usage budget reached — continuing on scripted.",
+        "Today's AI budget is used — switching to the scripted brain.",
       );
     });
 
@@ -2310,6 +2398,8 @@ describe("createJarvisMachine", () => {
                   ],
                   defaultBrain: "scripted",
                   gate: null,
+                  budget: null,
+                  demo: false,
                 },
                 g: {
                   available: true,
@@ -2320,6 +2410,8 @@ describe("createJarvisMachine", () => {
                     resetsAtMs,
                     gated: ["claude-sonnet-5", "claude-opus-5"],
                   },
+                  budget: null,
+                  demo: false,
                 },
               },
             ),
@@ -2347,6 +2439,7 @@ describe("createJarvisMachine", () => {
         role: "jarvis",
         text: "EURUSD",
         done: true,
+        brain: "claude-opus-5",
       });
 
       // The system line (id 3, appended mid-turn) stayed a separate, clean
@@ -2356,7 +2449,7 @@ describe("createJarvisMachine", () => {
           return e.origin === "system";
         })?.text,
       ).toBe(
-        `Usage budget reached — continuing on Haiku 4.5 until ${formatGateResetTime(resetsAtMs)}.`,
+        "Today's AI budget is used — switching to the Haiku 4.5 brain until 00:00 UTC.",
       );
 
       // Append order: greeting, user, jarvis reply, system line — the
@@ -2409,6 +2502,7 @@ describe("createJarvisMachine", () => {
         role: "jarvis",
         text: "EURUSD",
         done: true,
+        brain: "scripted",
       });
 
       expect(
@@ -2450,6 +2544,8 @@ describe("createJarvisMachine", () => {
                   ],
                   defaultBrain: "scripted",
                   gate: null,
+                  budget: null,
+                  demo: false,
                 },
                 b: {
                   available: true,
@@ -2460,6 +2556,8 @@ describe("createJarvisMachine", () => {
                     resetsAtMs: t1,
                     gated: ["claude-sonnet-5", "claude-opus-5"],
                   },
+                  budget: null,
+                  demo: false,
                 },
                 c: {
                   available: true,
@@ -2470,6 +2568,8 @@ describe("createJarvisMachine", () => {
                     resetsAtMs: t2,
                     gated: ["claude-sonnet-5", "claude-opus-5"],
                   },
+                  budget: null,
+                  demo: false,
                 },
               },
             ),

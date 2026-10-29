@@ -21,12 +21,18 @@ import { JarvisOverlay } from "@ui-contract/components";
 import { cleanupMounted, createWorld, mountWith } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
+import type { JarvisAvailability } from "@rtc/core-api";
 import {
-  formatGateResetTime,
+  describeBrainPill,
   JARVIS_GUIDE_CATALOG,
   sampleGuideChips,
 } from "@rtc/core-logic";
-import { Direction } from "@rtc/domain";
+import {
+  DEFAULT_JARVIS_INDICATORS,
+  Direction,
+  JARVIS_BRAINS,
+  type JarvisBudgetView,
+} from "@rtc/domain";
 
 afterEach(() => {
   cleanupMounted();
@@ -323,6 +329,8 @@ describe("JarvisOverlay", () => {
         brains: [],
         defaultBrain: "scripted",
         gate: null,
+        budget: null,
+        demo: false,
       },
     });
     const overlay = mountWith(world, JarvisOverlay);
@@ -360,6 +368,8 @@ describe("JarvisOverlay", () => {
         resetsAtMs,
         gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
       },
+      budget: null,
+      demo: false,
     });
 
     const entries = overlay.entries();
@@ -369,7 +379,7 @@ describe("JarvisOverlay", () => {
     expect(last?.done).toBe(true);
     expect(last?.origin).toBe("system");
     expect(last?.text).toBe(
-      `Usage budget reached — continuing on scripted until ${formatGateResetTime(resetsAtMs)}.`,
+      "Today's AI budget is used — switching to the scripted brain until 22:13 UTC.",
     );
   });
 });
@@ -558,6 +568,332 @@ describe("auto-scroll on reopen", () => {
   });
 });
 
+describe("brain readout", () => {
+  it("reads the live brain, the budget left and a meter at the fraction left", async () => {
+    const world = createWorld({
+      jarvisAvailability: liveAvailability({
+        keyKind: "house",
+        spentUsd: 0.06,
+        limitUsd: 0.2,
+        exhausted: null,
+        resetsAtMs: 0,
+      }),
+    });
+    const overlay = mountWith(world, JarvisOverlay);
+    await overlay.pressHotkey();
+
+    expect(overlay.readoutText()).toBe(
+      "Claude Haiku 4.5 · house key · $0.14 of $0.20 left today",
+    );
+    expect(overlay.readoutTone()).toBe("normal");
+    expect(overlay.readoutMeterFraction()).toBeCloseTo(0.7, 6);
+  });
+
+  it("has no meter when there is no personal limit", async () => {
+    const world = createWorld({
+      jarvisAvailability: liveAvailability(null),
+    });
+    const overlay = mountWith(world, JarvisOverlay);
+    await overlay.pressHotkey();
+
+    expect(overlay.readoutText()).toBe("Claude Haiku 4.5 · house key");
+    expect(overlay.readoutMeterFraction()).toBeNull();
+  });
+
+  it("is a warning once the user's budget is exhausted", async () => {
+    const world = createWorld({
+      jarvisAvailability: {
+        available: true,
+        brains: ["scripted"],
+        defaultBrain: "scripted",
+        gate: {
+          level: "hard",
+          resetsAtMs: 1_754_000_000_000,
+          gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
+        },
+        budget: {
+          keyKind: "house",
+          spentUsd: 0.21,
+          limitUsd: 0.2,
+          exhausted: "user",
+          resetsAtMs: 1_754_000_000_000,
+        },
+        demo: false,
+      },
+    });
+    const overlay = mountWith(world, JarvisOverlay);
+    await overlay.pressHotkey();
+
+    expect(overlay.readoutTone()).toBe("warning");
+    expect(overlay.readoutText()).toBe(
+      "Scripted · today's AI budget used · back at 22:13 UTC",
+    );
+    expect(overlay.readoutMeterFraction()).toBeNull();
+  });
+
+  it("is not rendered when the readout indicator is off", async () => {
+    const world = createWorld({
+      jarvisIndicators: { ...DEFAULT_JARVIS_INDICATORS, readout: false },
+    });
+    const overlay = mountWith(world, JarvisOverlay);
+    await overlay.pressHotkey();
+
+    expect(overlay.readoutText()).toBeNull();
+  });
+});
+
+describe("reply tags", () => {
+  it("tags a reply with the brain the server ran", async () => {
+    const world = createWorld();
+    const overlay = mountWith(world, JarvisOverlay);
+    await overlay.pressHotkey();
+
+    await overlay.send("Where is EURUSD?");
+    overlay.emitEvents([
+      { type: "brain", brain: "scripted" },
+      { type: "delta", text: "Offline, sir." },
+      { type: "done" },
+    ]);
+
+    const reply = overlay.lastEntry();
+    expect(reply?.tag).toBe("Scripted");
+    expect(reply?.text).toBe("Offline, sir.");
+  });
+
+  it("tags a reply with the brain asked for when the server sends none", async () => {
+    const world = createWorld();
+    const overlay = mountWith(world, JarvisOverlay);
+    await overlay.pressHotkey();
+
+    await overlay.send("Where is EURUSD?");
+    overlay.emitEvents([{ type: "done" }]);
+
+    expect(overlay.lastEntry()?.tag).toBe("Claude Haiku 4.5");
+  });
+
+  it("never tags user entries, the greeting or system lines", async () => {
+    const world = createWorld();
+    const overlay = mountWith(world, JarvisOverlay);
+    await overlay.pressHotkey();
+
+    await overlay.send("Where is EURUSD?");
+    overlay.emitEvents([{ type: "done" }]);
+    overlay.setJarvisAvailability({
+      available: true,
+      brains: ["scripted"],
+      defaultBrain: "scripted",
+      gate: {
+        level: "hard",
+        resetsAtMs: 1_754_000_000_000,
+        gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
+      },
+      budget: null,
+      demo: false,
+    });
+
+    const entries = overlay.entries();
+    expect(entries).toHaveLength(4);
+    expect(
+      entries.map((entry) => {
+        return entry.tag;
+      }),
+    ).toEqual([undefined, undefined, "Claude Haiku 4.5", undefined]);
+    expect(entries[3]?.origin).toBe("system");
+  });
+
+  it("shows no tags when the reply-tags indicator is off", async () => {
+    const world = createWorld({
+      jarvisIndicators: { ...DEFAULT_JARVIS_INDICATORS, replyTags: false },
+    });
+    const overlay = mountWith(world, JarvisOverlay);
+    await overlay.pressHotkey();
+
+    await overlay.send("Where is EURUSD?");
+    overlay.emitEvents([{ type: "done" }]);
+
+    expect(
+      overlay.entries().every((entry) => {
+        return entry.tag === undefined;
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("brain pill", () => {
+  it("is absent by default", async () => {
+    const overlay = mountWith(createWorld(), JarvisOverlay);
+    await overlay.pressHotkey();
+
+    expect(overlay.hasBrainPill()).toBe(false);
+  });
+
+  it("reads the Task 4 pill string, without the caret, when the indicator is on", async () => {
+    const budget: JarvisBudgetView = {
+      keyKind: "house",
+      spentUsd: 0.06,
+      limitUsd: 0.2,
+      exhausted: null,
+      resetsAtMs: 0,
+    };
+    const availability = liveAvailability(budget);
+    const overlay = mountWith(
+      createWorld({
+        jarvisAvailability: availability,
+        jarvisIndicators: PILL_ON,
+      }),
+      JarvisOverlay,
+    );
+    await overlay.pressHotkey();
+
+    expect(overlay.brainPillText()).toBe(
+      describeBrainPill({
+        available: true,
+        effectiveBrain: "claude-haiku-4-5",
+        budget,
+        demo: false,
+      }),
+    );
+    expect(overlay.brainPillText()).toBe("Haiku 4.5 · $0.14");
+  });
+
+  it("opens a menu of the offered brains with the gated ones disabled", async () => {
+    const overlay = mountWith(
+      createWorld({
+        jarvisAvailability: {
+          available: true,
+          brains: ["scripted", "claude-haiku-4-5", "claude-sonnet-5"],
+          defaultBrain: "claude-haiku-4-5",
+          gate: {
+            level: "soft",
+            resetsAtMs: 1_754_000_000_000,
+            gated: ["claude-sonnet-5"],
+          },
+          budget: null,
+          demo: false,
+        },
+        jarvisIndicators: PILL_ON,
+      }),
+      JarvisOverlay,
+    );
+    await overlay.pressHotkey();
+    expect(overlay.isBrainMenuOpen()).toBe(false);
+    expect(overlay.isBrainMenuExpanded()).toBe(false);
+
+    await overlay.clickBrainPill();
+
+    expect(overlay.isBrainMenuOpen()).toBe(true);
+    expect(overlay.isBrainMenuExpanded()).toBe(true);
+    expect(overlay.brainOptionViews()).toEqual([
+      { brain: "scripted", checked: false, disabled: false },
+      { brain: "claude-haiku-4-5", checked: true, disabled: false },
+      { brain: "claude-sonnet-5", checked: false, disabled: true },
+    ]);
+  });
+
+  it("records the chosen brain, closes the menu and returns focus to the pill", async () => {
+    const world = createWorld({
+      jarvisAvailability: liveAvailability(null),
+      jarvisIndicators: PILL_ON,
+    });
+    const overlay = mountWith(world, JarvisOverlay);
+    await overlay.pressHotkey();
+    await overlay.clickBrainPill();
+
+    await overlay.chooseBrain("claude-sonnet-5");
+
+    expect(overlay.jarvisBrainSets()).toEqual(["claude-sonnet-5"]);
+    expect(overlay.isBrainMenuOpen()).toBe(false);
+    expect(overlay.isBrainPillFocused()).toBe(true);
+    expect(overlay.isOpen()).toBe(true);
+  });
+
+  it("closes only the menu on the first Escape and the overlay on the second", async () => {
+    const overlay = mountWith(
+      createWorld({
+        jarvisAvailability: liveAvailability(null),
+        jarvisIndicators: PILL_ON,
+      }),
+      JarvisOverlay,
+    );
+    await overlay.pressHotkey();
+    await overlay.clickBrainPill();
+
+    await overlay.pressEscape();
+
+    expect(overlay.isBrainMenuOpen()).toBe(false);
+    expect(overlay.isOpen()).toBe(true);
+    expect(overlay.isBrainPillFocused()).toBe(true);
+
+    await overlay.pressEscape();
+
+    expect(overlay.isOpen()).toBe(false);
+  });
+
+  it("moves focus to the checked brain when the menu opens", async () => {
+    const overlay = mountWith(
+      createWorld({
+        jarvisAvailability: liveAvailability(null),
+        jarvisIndicators: PILL_ON,
+      }),
+      JarvisOverlay,
+    );
+    await overlay.pressHotkey();
+
+    await overlay.clickBrainPill();
+
+    expect(overlay.focusedBrainOption()).toBe("claude-haiku-4-5");
+  });
+
+  it("closes only the menu on Escape while focus is in the input", async () => {
+    const overlay = mountWith(
+      createWorld({
+        jarvisAvailability: liveAvailability(null),
+        jarvisIndicators: PILL_ON,
+      }),
+      JarvisOverlay,
+    );
+    await overlay.pressHotkey();
+    await overlay.clickBrainPill();
+    await overlay.clickInput();
+    expect(overlay.isBrainMenuOpen()).toBe(true);
+
+    await overlay.pressEscape();
+
+    expect(overlay.isBrainMenuOpen()).toBe(false);
+    expect(overlay.isOpen()).toBe(true);
+    expect(overlay.isBrainPillFocused()).toBe(true);
+
+    await overlay.pressEscape();
+
+    expect(overlay.isOpen()).toBe(false);
+  });
+
+  it("closes only the menu on Escape while nothing is focused", async () => {
+    const overlay = mountWith(
+      createWorld({
+        jarvisAvailability: liveAvailability(null),
+        jarvisIndicators: PILL_ON,
+      }),
+      JarvisOverlay,
+    );
+    await overlay.pressHotkey();
+    await overlay.clickBrainPill();
+    overlay.blurToBody();
+    expect(overlay.isBrainMenuOpen()).toBe(true);
+
+    await overlay.pressEscape();
+
+    expect(overlay.isBrainMenuOpen()).toBe(false);
+    expect(overlay.isOpen()).toBe(true);
+
+    await overlay.pressEscape();
+
+    expect(overlay.isOpen()).toBe(false);
+  });
+
+  const PILL_ON = { ...DEFAULT_JARVIS_INDICATORS, brainPill: true };
+});
+
 /** {@link probeScrollTop}'s return: a live read of the last clamped
  * `scrollTop` write, plus the teardown that restores the original
  * `Element.prototype` descriptors. */
@@ -641,5 +977,16 @@ function probeScrollTop(
         Object.defineProperty(proto, "scrollTop", originalScrollTop);
       }
     },
+  };
+}
+
+function liveAvailability(budget: JarvisBudgetView | null): JarvisAvailability {
+  return {
+    available: true,
+    brains: JARVIS_BRAINS,
+    defaultBrain: "claude-haiku-4-5",
+    gate: null,
+    budget,
+    demo: false,
   };
 }

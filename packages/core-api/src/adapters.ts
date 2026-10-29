@@ -2,6 +2,7 @@ import type {
   ConnectionEvent,
   JarvisAvailabilityGate,
   JarvisBrain,
+  JarvisBudgetView,
   JarvisEffort,
   JarvisEvent,
   JarvisHistoryEntry,
@@ -126,6 +127,13 @@ export interface JarvisAvailability {
    * rest of the frame still applies). Required rather than optional so tsc
    * flags every construction site across the codebase. */
   readonly gate: JarvisAvailabilityGate | null;
+  /** The caller's budget for today, or `null` when the server sent none (a
+   * pre-B3a server, or no signed-in caller). Required so tsc flags every
+   * construction site. */
+  readonly budget: JarvisBudgetView | null;
+  /** `true` only for the in-browser scripted brain (the demo login and every
+   * simulator mode); a live server never sets it. */
+  readonly demo: boolean;
 }
 
 /**

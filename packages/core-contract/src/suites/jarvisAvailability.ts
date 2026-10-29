@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { JARVIS_BRAIN_LABELS, JARVIS_GREETING } from "@rtc/domain";
+import { JARVIS_GREETING, type JarvisBudgetView } from "@rtc/domain";
 
 import type { MakeHarness } from "#/harness/harness";
 import { settle } from "#/harness/settle";
 import {
   completeTurn,
   createAvailability,
+  lastEntry,
   readJarvis,
   sendTurn,
 } from "#/suites/jarvisKit";
@@ -67,7 +68,7 @@ export function describeJarvisAvailabilityCases(
           {
             id: state.entries.at(-1)?.id,
             role: "jarvis",
-            text: `Usage budget reached — continuing on ${JARVIS_BRAIN_LABELS.scripted}.`,
+            text: "Today's AI budget is used — switching to the scripted brain.",
             done: true,
             origin: "system",
           },
@@ -76,6 +77,104 @@ export function describeJarvisAvailabilityCases(
         await h.teardown();
       }
     });
+
+    it("the budget on an availability reaches state.budget as the same object; a later null clears it", async () => {
+      const budget: JarvisBudgetView = {
+        keyKind: "house",
+        spentUsd: 0.06,
+        limitUsd: 0.2,
+        exhausted: null,
+        resetsAtMs: Date.UTC(2026, 9, 28),
+      };
+
+      const h = makeHarness({
+        jarvisAvailability: createAvailability({ budget }),
+      });
+
+      try {
+        expect((await readJarvis(h)).budget).toBe(budget);
+        h.driver.pushJarvisAvailability(createAvailability({ budget: null }));
+        await settle();
+        expect((await readJarvis(h)).budget).toBe(null);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("the simulator's availability is the demo: demo is true and there is no budget", async () => {
+      const h = makeHarness();
+
+      try {
+        const state = await readJarvis(h);
+        expect(state.demo).toBe(true);
+        expect(state.budget).toBe(null);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("a live availability is not the demo, and the flag follows each availability", async () => {
+      const h = makeHarness({ jarvisAvailability: createAvailability() });
+
+      try {
+        expect((await readJarvis(h)).demo).toBe(false);
+        h.driver.pushJarvisAvailability(createAvailability({ demo: true }));
+        await settle();
+        expect((await readJarvis(h)).demo).toBe(true);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it.each([
+      [
+        "user",
+        Date.UTC(2026, 9, 28),
+        "Today's AI budget is used — switching to the scripted brain until 00:00 UTC.",
+      ],
+      [
+        "house",
+        Date.UTC(2026, 9, 28),
+        "The house AI budget is used — switching to the scripted brain until 00:00 UTC.",
+      ],
+      [
+        "unavailable",
+        0,
+        "The AI budget is unavailable — switching to the scripted brain.",
+      ],
+    ] as const)(
+      "the switch line for a gate with budget.exhausted %s reads its own reason",
+      async (exhausted, resetsAtMs, line) => {
+        const h = makeHarness({ jarvisAvailability: createAvailability() });
+
+        try {
+          h.app.presenters.jarvisPreferences.setBrain("claude-haiku-4-5");
+          await settle();
+          await sendTurn(h, "q");
+          h.driver.pushJarvisAvailability(
+            createAvailability({
+              brains: ["scripted"],
+              gate: {
+                level: "hard",
+                resetsAtMs,
+                gated: ["claude-haiku-4-5"],
+              },
+              budget: {
+                keyKind: "house",
+                spentUsd: 0.2,
+                limitUsd: 0.2,
+                exhausted,
+                resetsAtMs,
+              },
+            }),
+          );
+          await settle();
+          expect((await lastEntry(h)).text).toBe(line);
+        } finally {
+          await h.teardown();
+        }
+      },
+    );
 
     it("a gate that leaves this session's brain alone appends nothing", async () => {
       const h = makeHarness({ jarvisAvailability: createAvailability() });

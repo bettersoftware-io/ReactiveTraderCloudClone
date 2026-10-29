@@ -15,6 +15,16 @@ export interface JarvisEntryView {
   readonly text: string;
   readonly done: boolean;
   readonly origin: string | undefined;
+  /** The reply's brain tag (`jarvis-entry-brain`) text, or `undefined` when
+   * the entry carries none. Excluded from {@link JarvisEntryView.text}. */
+  readonly tag: string | undefined;
+}
+
+/** One brain-menu item as rendered. */
+export interface BrainOptionView {
+  readonly brain: string;
+  readonly checked: boolean;
+  readonly disabled: boolean;
 }
 
 /**
@@ -67,13 +77,172 @@ export class JarvisOverlayPage extends MountedComponent<Record<string, never>> {
     return within(overlay)
       .queryAllByTestId("jarvis-entry")
       .map((el): JarvisEntryView => {
+        const tag = within(el).queryByTestId("jarvis-entry-brain");
+        const tagText = tag?.textContent ?? "";
+        const fullText = el.textContent ?? "";
+
         return {
           role: el.getAttribute("data-role") ?? "",
-          text: el.textContent ?? "",
+          text: fullText.slice(0, fullText.length - tagText.length),
+          tag: tag ? tagText : undefined,
           done: el.getAttribute("data-done") === "true",
           origin: el.getAttribute("data-origin") ?? undefined,
         };
       });
+  }
+
+  private readout(): HTMLElement | null {
+    return within(this.requireOverlay()).queryByTestId("jarvis-brain-readout");
+  }
+
+  /** The brain readout's visible (sentence-case) text, or `null` when the
+   * readout is not rendered. */
+  readoutText(): string | null {
+    return this.readout()?.textContent?.trim() ?? null;
+  }
+
+  /** The readout's `data-tone` ("normal" | "warning"), or `null` when absent. */
+  readoutTone(): string | null {
+    return this.readout()?.getAttribute("data-tone") ?? null;
+  }
+
+  /** The meter's fill as a fraction in `[0, 1]`, read off its inline `--meter-fill`
+   * percentage; `null` when there is no meter. Compare approximately. */
+  readoutMeterFraction(): number | null {
+    const readout = this.readout();
+    const fill = readout
+      ? within(readout).queryByTestId("jarvis-brain-meter")
+      : null;
+
+    const percent = fill
+      ? (fill as HTMLElement).style.getPropertyValue("--meter-fill")
+      : "";
+    return percent === "" ? null : Number.parseFloat(percent) / 100;
+  }
+
+  private pill(): HTMLElement | null {
+    return within(this.requireOverlay()).queryByTestId("jarvis-brain-pill");
+  }
+
+  private requirePill(): HTMLElement {
+    const el = this.pill();
+
+    if (!el) {
+      throw new Error("the brain pill is not rendered");
+    }
+
+    return el;
+  }
+
+  /** True while the input-bar brain pill is rendered. */
+  hasBrainPill(): boolean {
+    return this.pill() !== null;
+  }
+
+  /** The pill's visible text with its aria-hidden caret excluded, or `null`
+   * when the pill is not rendered. */
+  brainPillText(): string | null {
+    const pill = this.pill();
+
+    if (!pill) {
+      return null;
+    }
+
+    const caret = pill.querySelector('[aria-hidden="true"]');
+    const full = pill.textContent ?? "";
+    const caretText = caret?.textContent ?? "";
+    return full.slice(0, full.length - caretText.length).trim();
+  }
+
+  /** Click the pill (opens or closes its menu). */
+  async clickBrainPill(): Promise<void> {
+    await this.user.click(this.requirePill());
+  }
+
+  /** The pill's `aria-expanded`. */
+  isBrainMenuExpanded(): boolean {
+    return this.requirePill().getAttribute("aria-expanded") === "true";
+  }
+
+  /** True while the pill is the focused element. */
+  isBrainPillFocused(): boolean {
+    return document.activeElement === this.pill();
+  }
+
+  /** The brain of the focused menu item, or `null` when focus is not on a
+   * menu item. */
+  focusedBrainOption(): string | null {
+    const active = document.activeElement;
+
+    if (!(active instanceof HTMLElement)) {
+      return null;
+    }
+
+    if (active.getAttribute("role") !== "menuitemradio") {
+      return null;
+    }
+
+    return (active.getAttribute("data-testid") ?? "").replace(
+      "jarvis-brain-option-",
+      "",
+    );
+  }
+
+  /** Click into the chat input — moves focus off the pill and its menu the
+   * way a real click does (the menu has no outside-click dismissal). */
+  async clickInput(): Promise<void> {
+    await this.user.click(
+      within(this.requireOverlay()).getByTestId("jarvis-input"),
+    );
+  }
+
+  /** Drop focus to `document.body` — what Safari and macOS Firefox leave
+   * behind after a mouse click on a button, which they do not focus. */
+  blurToBody(): void {
+    const active = document.activeElement;
+
+    if (active instanceof HTMLElement) {
+      active.blur();
+    }
+  }
+
+  /** True while the pill's menu is rendered. */
+  isBrainMenuOpen(): boolean {
+    return (
+      within(this.requireOverlay()).queryByTestId("jarvis-brain-menu") !== null
+    );
+  }
+
+  private brainOptions(): HTMLButtonElement[] {
+    const menu = within(this.requireOverlay()).getByTestId("jarvis-brain-menu");
+    return within(menu).getAllByRole("menuitemradio") as HTMLButtonElement[];
+  }
+
+  /** Each menu item as `{ brain, checked, disabled }`, in render order. The
+   * brain is read off the item's `jarvis-brain-option-<brain>` test id. */
+  brainOptionViews(): BrainOptionView[] {
+    return this.brainOptions().map((el): BrainOptionView => {
+      return {
+        brain: (el.getAttribute("data-testid") ?? "").replace(
+          "jarvis-brain-option-",
+          "",
+        ),
+        checked: el.getAttribute("aria-checked") === "true",
+        disabled: el.disabled,
+      };
+    });
+  }
+
+  /** Click the menu item for `brain`. */
+  async chooseBrain(brain: string): Promise<void> {
+    await this.user.click(
+      within(this.requireOverlay()).getByTestId(`jarvis-brain-option-${brain}`),
+    );
+  }
+
+  /** Each brain written through useJarvisPreferences().setBrain, in order. */
+  jarvisBrainSets(): string[] {
+    return this.commandLog().jarvisBrainSets;
   }
 
   /** The most recently rendered entry, or null when there are none. */

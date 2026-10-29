@@ -5,6 +5,7 @@ export { LocalStorageDataSourceStore } from "#/adapters/LocalStorageDataSourceSt
 export { LocalStorageDockLayoutStore } from "#/adapters/LocalStorageDockLayoutStore";
 export { LocalStorageLayoutPresetStore } from "#/adapters/LocalStorageLayoutPresetStore";
 export {
+  JARVIS_INDICATORS_STORAGE_KEY,
   JARVIS_NARRATOR_STORAGE_KEY,
   LocalStoragePreferencesAdapter,
 } from "#/adapters/LocalStoragePreferencesAdapter";

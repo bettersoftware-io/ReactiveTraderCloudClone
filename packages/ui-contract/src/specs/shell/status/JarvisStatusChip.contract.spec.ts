@@ -25,6 +25,8 @@ describe("JarvisStatusChip", () => {
         brains: [],
         defaultBrain: "scripted",
         gate: null,
+        budget: null,
+        demo: false,
       },
     });
     expect(page.jarvisChipPresent()).toBe(false);
@@ -37,6 +39,8 @@ describe("JarvisStatusChip", () => {
         brains: ["scripted", "claude-opus-5"],
         defaultBrain: "scripted",
         gate: null,
+        budget: null,
+        demo: false,
       },
       jarvisBrain: "claude-opus-5",
     });
@@ -52,6 +56,8 @@ describe("JarvisStatusChip", () => {
         brains: ["scripted"],
         defaultBrain: "scripted",
         gate: null,
+        budget: null,
+        demo: false,
       },
       jarvisBrain: "scripted",
     });
@@ -66,6 +72,8 @@ describe("JarvisStatusChip", () => {
         brains: ["scripted"],
         defaultBrain: "scripted",
         gate: null,
+        budget: null,
+        demo: false,
       },
       // Preferred, but NOT among the offered brains above.
       jarvisBrain: "claude-opus-5",
@@ -81,6 +89,8 @@ describe("JarvisStatusChip", () => {
         brains: ["scripted"],
         defaultBrain: "scripted",
         gate: null,
+        budget: null,
+        demo: false,
       },
     });
     // Explicit attribute-absence assertion, not just textContent — the chip
@@ -99,6 +109,8 @@ describe("JarvisStatusChip", () => {
           resetsAtMs: 1_754_000_000_000,
           gated: ["claude-sonnet-5", "claude-opus-5"],
         },
+        budget: null,
+        demo: false,
       },
     });
     expect(page.jarvisChipGateLevel()).toBe("soft");
@@ -116,6 +128,8 @@ describe("JarvisStatusChip", () => {
           resetsAtMs: 1_754_000_000_000,
           gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
         },
+        budget: null,
+        demo: false,
       },
     });
     expect(page.jarvisChipGateLevel()).toBe("hard");

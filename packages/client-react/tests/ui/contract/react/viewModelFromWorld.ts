@@ -97,6 +97,7 @@ import {
   type ExecuteTradeResult,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisIndicators,
   type JarvisNarratorPreference,
   type JarvisSkin,
   type LayoutEngine,
@@ -1820,6 +1821,11 @@ export function reactViewModel(world: World): ViewModel {
         setNarrator: (preference: JarvisNarratorPreference) => {
           world.commands.jarvisNarratorSets.push(preference);
           world.jarvisNarrator.next(preference);
+        },
+        indicators: useSubject(world.jarvisIndicators),
+        setIndicators: (next: JarvisIndicators) => {
+          world.commands.jarvisIndicatorsSets.push(next);
+          world.jarvisIndicators.next(next);
         },
       };
     },

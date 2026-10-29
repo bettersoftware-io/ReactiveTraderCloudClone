@@ -5,6 +5,7 @@ import type {
 import type {
   JarvisBrain,
   JarvisEffort,
+  JarvisIndicators,
   JarvisNarratorPreference,
   LoginWaitDelay,
   LoginWaitStyle,
@@ -43,6 +44,7 @@ export function createJarvisPreferencesPresenter(
     brain$: mirrorPortAsIs(host, preferences.jarvisBrain$()),
     effort$: mirrorPortAsIs(host, preferences.jarvisEffort$()),
     narrator$: mirrorPortAsIs(host, preferences.jarvisNarrator$()),
+    indicators$: mirrorPortAsIs(host, preferences.jarvisIndicators$()),
     setBrain: (brain: JarvisBrain) => {
       preferences.setJarvisBrain(brain);
     },
@@ -51,6 +53,9 @@ export function createJarvisPreferencesPresenter(
     },
     setNarrator: (preference: JarvisNarratorPreference) => {
       preferences.setJarvisNarrator(preference);
+    },
+    setIndicators: (next: JarvisIndicators) => {
+      preferences.setJarvisIndicators(next);
     },
   };
 }

@@ -5,6 +5,7 @@ import {
   DEFAULT_AMBIENT_STYLE,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_JARVIS_INDICATORS,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_POWER_SAVER_LEVEL,
   DEFAULT_THEME_MODE,
@@ -14,10 +15,12 @@ import {
   isJarvisNarratorPreference,
   isPowerSaverLevel,
   JARVIS_NARRATOR_PREFERENCES,
+  jarvisIndicatorsEqual,
   nextEqWatchlistSort,
   nextPowerSaverLevel,
   nextThemeModePreference,
   POWER_SAVER_LEVELS,
+  readJarvisIndicators,
   resolveThemeMode,
   THEME_MODE_PREFERENCES,
   THEME_MODES,
@@ -156,5 +159,53 @@ describe("jarvis narrator preference", () => {
     expect(isJarvisNarratorPreference("")).toBe(false);
     expect(isJarvisNarratorPreference("On")).toBe(false);
     expect(isJarvisNarratorPreference("true")).toBe(false);
+  });
+});
+
+describe("jarvis indicators preference", () => {
+  it("defaults to the readout and reply tags on, the brain pill off", () => {
+    expect(DEFAULT_JARVIS_INDICATORS).toEqual({
+      readout: true,
+      replyTags: true,
+      brainPill: false,
+    });
+  });
+
+  it.each([
+    ["undefined", undefined, DEFAULT_JARVIS_INDICATORS],
+    ["null", null, DEFAULT_JARVIS_INDICATORS],
+    ["a string", "garbage", DEFAULT_JARVIS_INDICATORS],
+    [
+      "a partial record",
+      { readout: false },
+      { readout: false, replyTags: true, brainPill: false },
+    ],
+    [
+      "a record with an invalid field and an extra one",
+      { readout: "no", brainPill: true, extra: 1 },
+      { readout: true, replyTags: true, brainPill: true },
+    ],
+    [
+      "the full record",
+      { readout: false, replyTags: false, brainPill: true },
+      { readout: false, replyTags: false, brainPill: true },
+    ],
+  ])("readJarvisIndicators reads %s", (_name, stored, expected) => {
+    expect(readJarvisIndicators(stored)).toEqual(expected);
+  });
+
+  it("jarvisIndicatorsEqual compares every field", () => {
+    const base = { readout: true, replyTags: true, brainPill: false };
+
+    expect(jarvisIndicatorsEqual(base, { ...base })).toBe(true);
+    expect(jarvisIndicatorsEqual(base, { ...base, readout: false })).toBe(
+      false,
+    );
+    expect(jarvisIndicatorsEqual(base, { ...base, replyTags: false })).toBe(
+      false,
+    );
+    expect(jarvisIndicatorsEqual(base, { ...base, brainPill: true })).toBe(
+      false,
+    );
   });
 });

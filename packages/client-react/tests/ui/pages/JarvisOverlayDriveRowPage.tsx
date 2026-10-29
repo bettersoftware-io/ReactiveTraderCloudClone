@@ -43,6 +43,9 @@ export function jarvisOverlayDriveRowPage(): JarvisOverlayDriveRowPage {
               pendingConfirmation: null,
               available: true,
               openCount: 0,
+              effectiveBrain: "scripted",
+              budget: null,
+              demo: false,
             },
             close: () => {},
             toggle: () => {},
@@ -50,6 +53,11 @@ export function jarvisOverlayDriveRowPage(): JarvisOverlayDriveRowPage {
             approveConfirmation: () => {},
             declineConfirmation: () => {},
             setSkin: () => {},
+          };
+        },
+        useJarvisPreferences: () => {
+          return {
+            indicators: { readout: true, replyTags: true, brainPill: false },
           };
         },
         useJarvisDemo: () => {

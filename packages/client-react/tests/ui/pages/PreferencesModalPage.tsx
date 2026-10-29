@@ -102,6 +102,7 @@ export function preferencesModalPage(): PreferencesModalPage {
             setBrain: setJarvisBrain,
             effort: jarvisEffort,
             setEffort: setJarvisEffort,
+            indicators: { readout: true, replyTags: true, brainPill: false },
           };
         },
         // Not exercised here (no test in this file clicks RESET) — but the

@@ -1085,8 +1085,9 @@ const baseScenarios: Record<string, Scenario> = {
   // --- Phase 1: J.A.R.V.I.S orb + overlay scenarios ---
   // Orb: idle resting arm (closed, no unread) + the attention pulse (a
   // pending confirmation, reusing the same fixture the overlay-confirm
-  // scenario below mounts). Overlay: a completed chat turn and the pending-
-  // confirmation card, both static (no mid-stream entry, no live countdown).
+  // scenario below mounts). Overlay: a completed live chat (two turns, both
+  // replies tagged Haiku) and the pending-confirmation card, both static (no
+  // mid-stream entry, no live countdown).
   "jarvis/orb-idle": { componentKey: "JarvisOrb", fixtureKey: "jarvis-idle" },
   "jarvis/orb-attention": {
     componentKey: "JarvisOrb",
@@ -1107,12 +1108,57 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "JarvisOverlay",
     fixtureKey: "jarvis-confirm",
   },
-  // Demo guide panel (Tasks 6/7): reuses the jarvis-chat fixture (open, one
-  // completed turn) — the guide overlays it, so no dedicated fixture is
+  // Demo guide panel (Tasks 6/7): reuses the jarvis-chat fixture (open, two
+  // completed turns) — the guide overlays it, so no dedicated fixture is
   // needed (openCount: 1 already lands as part of that fixture).
   "jarvis/overlay-guide": {
     componentKey: "JarvisOverlay",
     fixtureKey: "jarvis-chat",
+  },
+  // B3b brain indicators: readout + meter, reply tags, input-bar pill.
+  "jarvis/indicators-house-live": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-house-live",
+  },
+  "jarvis/indicators-no-limit": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-no-limit",
+  },
+  "jarvis/indicators-spent": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-spent",
+  },
+  "jarvis/indicators-house-spent": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-house-spent",
+  },
+  "jarvis/indicators-unavailable": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-unavailable",
+  },
+  "jarvis/indicators-demo": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-demo",
+  },
+  "jarvis/indicators-all-off": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-all-off",
+  },
+  "jarvis/indicators-readout-off": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-readout-off",
+  },
+  "jarvis/indicators-tags-off": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-tags-off",
+  },
+  "jarvis/indicators-pill": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-pill",
+  },
+  "jarvis/indicators-pill-menu": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-pill",
   },
   // Task 10 (Phase 3, brain picker): the footer status chip, reused off the
   // full StatusBar component (there's no standalone chip token) — the

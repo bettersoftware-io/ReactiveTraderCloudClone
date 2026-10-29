@@ -13,6 +13,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_FORCE_BOOT_ANIMATION,
   DEFAULT_JARVIS_BRAIN,
+  DEFAULT_JARVIS_INDICATORS,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
@@ -66,6 +67,8 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
   // No fixture exercises a budget gate (Task 6/8 scenarios add that
   // separately) — every existing golden stays pixel-identical.
   gate: null,
+  budget: null,
+  demo: false,
   // Matches INITIAL's own 0 (never-opened session) — mirrors the react
   // driver's DEFAULT_JARVIS_STATE_FOR_FIXTURES exactly.
   openCount: 0,
@@ -719,6 +722,8 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         setEffort: noop,
         narrator: at("on"),
         setNarrator: noop,
+        indicators: at(data.jarvisIndicators ?? DEFAULT_JARVIS_INDICATORS),
+        setIndicators: noop,
       };
     },
     // Jarvis token-usage/cost telemetry (Task 10) — data-driven off

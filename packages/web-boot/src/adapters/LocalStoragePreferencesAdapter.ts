@@ -18,6 +18,7 @@ import {
   DEFAULT_FORCE_BOOT_ANIMATION,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_INDICATORS,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LAYOUT_ENGINE,
@@ -38,8 +39,10 @@ import {
   JARVIS_SKINS,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisIndicators,
   type JarvisNarratorPreference,
   type JarvisSkin,
+  jarvisIndicatorsEqual,
   LAYOUT_ENGINES,
   type LayoutEngine,
   LOGIN_WAIT_DELAYS,
@@ -50,6 +53,7 @@ import {
   type LoginWaitVariant,
   type PowerSaverLevel,
   type PreferencesPort,
+  readJarvisIndicators,
   THEME_SKINS,
   type ThemeModePreference,
   type ThemeSkin,
@@ -77,6 +81,7 @@ export const JARVIS_SKIN_STORAGE_KEY = "rtc-jarvis-skin";
 export const JARVIS_BRAIN_STORAGE_KEY = "rt-jarvis-brain";
 export const JARVIS_EFFORT_STORAGE_KEY = "rt-jarvis-effort";
 export const JARVIS_NARRATOR_STORAGE_KEY = "rt-jarvis-narrator";
+export const JARVIS_INDICATORS_STORAGE_KEY = "rt-jarvis-indicators";
 
 function isThemeModePreference(
   value: string | null,
@@ -235,6 +240,23 @@ function readPowerSaverLevel(key: string): PowerSaverLevel {
   return DEFAULT_POWER_SAVER_LEVEL;
 }
 
+/** Reads the Jarvis indicators record, stored as one JSON string. A missing,
+ * unparseable or unreadable value gives the defaults; a parseable one is
+ * decoded field by field by `readJarvisIndicators`. */
+function readJarvisIndicatorsStored(key: string): JarvisIndicators {
+  try {
+    const stored = localStorage.getItem(key);
+
+    if (stored !== null) {
+      return readJarvisIndicators(JSON.parse(stored));
+    }
+  } catch {
+    // unavailable storage or malformed JSON — fall through to the defaults
+  }
+
+  return DEFAULT_JARVIS_INDICATORS;
+}
+
 function writeStored(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);
@@ -294,6 +316,8 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   private readonly jarvisEffortSubject: BehaviorSubject<JarvisEffort>;
 
   private readonly jarvisNarratorSubject: BehaviorSubject<JarvisNarratorPreference>;
+
+  private readonly jarvisIndicatorsSubject: BehaviorSubject<JarvisIndicators>;
 
   constructor() {
     this.themeMode = new BehaviorSubject<ThemeModePreference>(
@@ -406,6 +430,9 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
         isJarvisNarratorPreference,
         DEFAULT_JARVIS_NARRATOR,
       ),
+    );
+    this.jarvisIndicatorsSubject = new BehaviorSubject<JarvisIndicators>(
+      readJarvisIndicatorsStored(JARVIS_INDICATORS_STORAGE_KEY),
     );
   }
 
@@ -596,5 +623,16 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   setJarvisNarrator(preference: JarvisNarratorPreference): void {
     writeStored(JARVIS_NARRATOR_STORAGE_KEY, preference);
     this.jarvisNarratorSubject.next(preference);
+  }
+
+  jarvisIndicators$(): Observable<JarvisIndicators> {
+    return this.jarvisIndicatorsSubject.pipe(
+      distinctUntilChanged(jarvisIndicatorsEqual),
+    );
+  }
+
+  setJarvisIndicators(next: JarvisIndicators): void {
+    writeStored(JARVIS_INDICATORS_STORAGE_KEY, JSON.stringify(next));
+    this.jarvisIndicatorsSubject.next(next);
   }
 }
