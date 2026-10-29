@@ -1547,8 +1547,8 @@ An amount is clamped at zero: the budget may overshoot by one request
 a negative amount or width; a limit of zero or less shows no meter at all.
 The meter is a static bar that changes between turns with no transition
 ([performance.md](../performance.md)). The readout reads in
-`--text-secondary`, and an exhausted one in the theme's amber,
-`--accent-aware`. The "continuing on …" system line B3a left is now the
+`--accent-primary`, like the status line above it, and an exhausted one in
+the theme's amber, `--accent-aware`. The "continuing on …" system line B3a left is now the
 reason-aware switch line from the same copy, for example `Today's AI budget
 is used — switching to the scripted brain until 00:00 UTC.`
 
