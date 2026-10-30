@@ -1,7 +1,9 @@
 import { Cause, Effect, type Fiber, Scope } from "effect";
 
 import type {
+  AnalyticsPresenter,
   AppPorts,
+  BlotterPresenter,
   Stream as CoreStream,
   DockLayoutStore,
   JarvisPanelsPresenter,
@@ -94,6 +96,11 @@ export interface NativeWorkspaceDeps {
   readonly jarvisEvents$: CoreStream<JarvisEvent>;
   /** This core's own active-tab machine — docking attributes to it. */
   readonly workspaceNav: Machine<WorkspaceNavState, WorkspaceNavIntents>;
+  /** The retained blotter and analytics streams a desk panel reads — never
+   * the ports: every port subscription is a subscribe frame the server
+   * answers with a fresh stream, and a fresh one starts empty. */
+  readonly blotter: BlotterPresenter;
+  readonly analytics: AnalyticsPresenter;
 }
 
 /** The workspace on the Effect core: the SHARED dock rules
@@ -135,8 +142,16 @@ export function createNativeWorkspace(
   const panelStreamDeps: PanelStreamDeps = {
     referenceData: ports.referenceData,
     pricing: ports.pricing,
-    blotter: ports.blotter,
-    analytics: ports.analytics,
+    blotter: {
+      getTradeStream: () => {
+        return deps.blotter.trades$;
+      },
+    },
+    analytics: {
+      getAnalytics: () => {
+        return deps.analytics.position$;
+      },
+    },
   };
   const panelsMachine = createJarvisPanelsMachine(host, deps.jarvisEvents$);
   const jarvisPanels = createJarvisPanelsPresenter(

@@ -1,5 +1,7 @@
 import type {
+  AnalyticsPresenter,
   AppPorts,
+  BlotterPresenter,
   EqWorkspaceIntents,
   EqWorkspaceState,
   JarvisDemoMachineHandle,
@@ -51,6 +53,8 @@ export interface JarvisFamilyDeps {
   readonly jarvisPreferences: JarvisPreferencesPresenter;
   readonly pairs$: Stream<readonly CurrencyPair[]>;
   readonly priceFor: (pair: CurrencyPair) => Stream<Price>;
+  readonly blotter: BlotterPresenter;
+  readonly analytics: AnalyticsPresenter;
 }
 
 export interface JarvisFamily {
@@ -93,6 +97,8 @@ export function createJarvisFamily(
       ports,
       jarvisEvents$: jarvis.events$,
       workspaceNav: deps.workspaceNav,
+      blotter: deps.blotter,
+      analytics: deps.analytics,
     },
     lifetime,
   );
