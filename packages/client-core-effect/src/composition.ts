@@ -68,6 +68,8 @@ export function composeApp(ports: AppPorts): ComposedApp {
     priceFor: (pair: CurrencyPair) => {
       return presenters.priceStream.price$(pair);
     },
+    blotter: presenters.blotter,
+    analytics: presenters.analytics,
   });
   gateTransportOnAuth(host, ports.transport, presenters.auth.state$);
 

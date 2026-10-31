@@ -1,5 +1,7 @@
 import type {
+  AnalyticsPresenter,
   AppPorts,
+  BlotterPresenter,
   Stream as CoreStream,
   EqWorkspaceIntents,
   EqWorkspaceState,
@@ -51,6 +53,8 @@ export interface JarvisFamilyDeps {
   readonly jarvisPreferences: JarvisPreferencesPresenter;
   readonly pairs$: CoreStream<readonly CurrencyPair[]>;
   readonly priceFor: (pair: CurrencyPair) => CoreStream<Price>;
+  readonly blotter: BlotterPresenter;
+  readonly analytics: AnalyticsPresenter;
 }
 
 export interface JarvisFamily {
@@ -89,6 +93,8 @@ export function createJarvisFamily(
     ports,
     jarvisEvents$: jarvis.handle.events$,
     workspaceNav: deps.workspaceNav,
+    blotter: deps.blotter,
+    analytics: deps.analytics,
   });
 
   function powerSaverLevelNow(): PowerSaverLevel {

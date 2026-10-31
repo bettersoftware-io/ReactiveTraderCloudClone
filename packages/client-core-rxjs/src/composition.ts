@@ -42,6 +42,7 @@ import {
   InMemoryLayoutPresetStore,
   LAYOUT_PANEL_IDS,
   modelFacingHistory,
+  type PanelStreamDeps,
 } from "@rtc/core-logic";
 import type {
   AccessLevel,
@@ -364,12 +365,33 @@ export function createApp(givenPorts: AppPorts): App {
   // deliberately carries an interpreted `data$` instead of the raw spec.
   const jarvisPanelsMachine = createJarvisPanelsMachine(jarvisEvents$);
 
-  const jarvisPanels = new JarvisPanelsPresenter(jarvisPanelsMachine, {
+  // A blotter or analytics desk panel reads the presenters' retained streams,
+  // not the ports: every port subscription is a subscribe frame the server
+  // answers with a fresh stream, so a panel per port subscription stacked
+  // server streams for the life of the connection — and started empty until
+  // the next trade instead of with the trades already on screen.
+  const blotterPresenter = new BlotterPresenter(ports.blotter, disposed$);
+  const analyticsPresenter = new AnalyticsPresenter(ports.analytics, disposed$);
+
+  const panelStreamDeps: PanelStreamDeps = {
     referenceData: ports.referenceData,
     pricing: ports.pricing,
-    blotter: ports.blotter,
-    analytics: ports.analytics,
-  });
+    blotter: {
+      getTradeStream: () => {
+        return blotterPresenter.trades$;
+      },
+    },
+    analytics: {
+      getAnalytics: () => {
+        return analyticsPresenter.position$;
+      },
+    },
+  };
+
+  const jarvisPanels = new JarvisPanelsPresenter(
+    jarvisPanelsMachine,
+    panelStreamDeps,
+  );
 
   // Session-lifetime mirror of the panels fold, so the dock bridges and the
   // persistence writer can read "what is docked right now" synchronously
@@ -813,8 +835,8 @@ export function createApp(givenPorts: AppPorts): App {
     priceStream,
     priceHistory: new PriceHistoryPresenter(ports.pricing, powerSaver.isCalm$),
     execution,
-    blotter: new BlotterPresenter(ports.blotter, disposed$),
-    analytics: new AnalyticsPresenter(ports.analytics, disposed$),
+    blotter: blotterPresenter,
+    analytics: analyticsPresenter,
     rfqs,
     currencyPairs,
     instruments: new InstrumentsPresenter(ports.instruments, disposed$),

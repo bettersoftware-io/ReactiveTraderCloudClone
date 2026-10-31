@@ -290,6 +290,8 @@ export function createApp(givenPorts: AppPorts): App {
       priceFor: (pair: CurrencyPair) => {
         return native.priceStream.price$(pair);
       },
+      blotter: native.blotter,
+      analytics: native.analytics,
     },
     lifetime.signal,
   );

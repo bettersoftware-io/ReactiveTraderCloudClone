@@ -623,8 +623,8 @@ function describeSdkErrorForLogging(error: unknown): string {
  * is trimmed from the front (oldest first) rather than rejected outright —
  * then drops any now-leading `"assistant"` entries: the Messages API
  * requires `messages[0].role === "user"`, and either the trim boundary
- * above OR the wire layer's OWN 20-entry cap (`JARVIS_WIRE_HISTORY_MAX_ENTRIES`
- * in `jarvis.effects.ts`, applied before this ever runs — e.g. a reconnect
+ * above OR the wire layer's OWN 20-entry cap (`JARVIS_HISTORY_MAX_ENTRIES`,
+ * enforced in `jarvis.effects.ts`, applied before this ever runs — e.g. a reconnect
  * mid-conversation truncating to a window that happens to start on a
  * "jarvis" reply) can leave an assistant-first array. Left unguarded that's
  * a PERMANENT session brick: the resulting 400 is caught as a generic

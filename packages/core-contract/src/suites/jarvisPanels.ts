@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { MAX_DOCKED_PANELS, MAX_LIVE_PANELS } from "@rtc/domain";
+import {
+  MAX_DOCKED_PANELS,
+  MAX_LIVE_PANELS,
+  type PanelSpecV1,
+  type PositionUpdates,
+} from "@rtc/domain";
 
 import { collect } from "#/harness/collect";
-import { createTick } from "#/harness/fixtures";
+import { createTick, createTrade } from "#/harness/fixtures";
 import type { MakeHarness } from "#/harness/harness";
 import { settle } from "#/harness/settle";
 import {
@@ -16,6 +21,26 @@ import {
   replyToTurn,
   spawnPanels,
 } from "#/suites/workspaceKit";
+
+const BLOTTER_SPEC: PanelSpecV1 = {
+  v: 1,
+  title: "Recent trades",
+  source: { kind: "blotter" },
+  transforms: [],
+  viz: { kind: "table" },
+};
+
+const RETAINED_POSITIONS: PositionUpdates = {
+  currentPositions: [
+    {
+      symbol: "GBPJPY",
+      basePnl: 1,
+      baseTradedAmount: 1,
+      counterTradedAmount: 1,
+    },
+  ],
+  history: [],
+};
 
 /** `presenters.jarvisPanels` — the Jarvis desk-panel roster, folded from the
  * `panel` events of Jarvis's own turns, and each live panel's data. */
@@ -172,6 +197,56 @@ export function describeJarvisPanelsContract(
         c.unsubscribe();
         expect(frame).toMatchObject({ kind: "line" });
         expect(JSON.stringify(frame)).toContain("1.1");
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    // Every port subscription is a subscribe frame on the wire, and the
+    // server starts a fresh stream per blotter/analytics subscribe, so a panel
+    // that re-opened the port added a server stream per panel for the rest of
+    // the connection. A panel reads the app's own retained stream instead —
+    // which also gives it the current trades at once, where a fresh port
+    // subscription waited for the next trade.
+    it("a blotter panel reads the retained trades: no second port call, and the trades shown before it opened", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("blotter.getTradeStream");
+
+      try {
+        const view = collect(h.app.presenters.blotter.trades$);
+        await settle();
+        h.driver.emitTrades([createTrade({ tradeName: "Retained" })]);
+        await settle();
+
+        await replyToTurn(h, [createPanelEvent("trades", BLOTTER_SPEC)]);
+        const frame = await readLatest(
+          h.app.presenters.jarvisPanels.panelData$("trades"),
+        );
+        view.unsubscribe();
+        expect(JSON.stringify(frame)).toContain("Retained");
+        expect(h.driver.portCalls("blotter.getTradeStream")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("an analytics panel reads the retained positions: no second port call, and the positions shown before it opened", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("analytics.getAnalytics");
+
+      try {
+        const view = collect(h.app.presenters.analytics.position$);
+        await settle();
+        h.driver.emitPosition(RETAINED_POSITIONS);
+        await settle();
+
+        await replyToTurn(h, [createPanelEvent("book", PANEL_SPEC)]);
+        const frame = await readLatest(
+          h.app.presenters.jarvisPanels.panelData$("book"),
+        );
+        view.unsubscribe();
+        expect(JSON.stringify(frame)).toContain("GBPJPY");
+        expect(h.driver.portCalls("analytics.getAnalytics")).toBe(before);
       } finally {
         await h.teardown();
       }

@@ -41,3 +41,20 @@ export const DEMO_STEP_BEAT_MS: number = 1200;
  * step's send; 30 s is well above any real scripted turn and short enough
  * that a stuck demo heals inside one viewing. */
 export const DEMO_STEP_TIMEOUT_MS: number = 30_000;
+
+/** The longest message a person can send Jarvis, in UTF-16 code units
+ * (`String.length`). The server rejects a longer `jarvis.chat` text outright,
+ * so the clients' input stops at this length rather than let a pasted essay
+ * come back as an unexplained error. */
+export const JARVIS_MESSAGE_MAX_CHARS: number = 4_000;
+
+/** The longest prior-turn text a `jarvis.chat` frame may replay. The server
+ * rejects the whole frame when ONE history entry is longer, so the client
+ * shortens a long entry before sending it — otherwise a single long Jarvis
+ * reply would fail every later turn of the session. */
+export const JARVIS_HISTORY_ENTRY_MAX_CHARS: number = 2_000;
+
+/** How many prior turns a `jarvis.chat` frame replays, newest kept. The
+ * client sends no more; the server keeps the newest this many of whatever
+ * arrives. */
+export const JARVIS_HISTORY_MAX_ENTRIES: number = 20;

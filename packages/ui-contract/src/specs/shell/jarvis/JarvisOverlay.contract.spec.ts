@@ -31,6 +31,7 @@ import {
   DEFAULT_JARVIS_INDICATORS,
   Direction,
   JARVIS_BRAINS,
+  JARVIS_MESSAGE_MAX_CHARS,
   type JarvisBudgetView,
 } from "@rtc/domain";
 
@@ -105,6 +106,16 @@ describe("JarvisOverlay", () => {
     await overlay.typeInput("   ");
     await overlay.clickSend();
     expect(overlay.entries()).toHaveLength(1);
+  });
+
+  // The server rejects a longer message outright, so a pasted essay came back
+  // as an unexplained error; the input stops at the server's cap instead.
+  it("the input stops at JARVIS_MESSAGE_MAX_CHARS, the longest message the server accepts", async () => {
+    const world = createWorld();
+    const overlay = mountWith(world, JarvisOverlay);
+    await overlay.pressHotkey();
+
+    expect(overlay.inputMaxLength()).toBe(JARVIS_MESSAGE_MAX_CHARS);
   });
 
   it("pressing Enter in the input also sends (not just clicking SEND)", async () => {
