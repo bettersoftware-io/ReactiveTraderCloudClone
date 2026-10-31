@@ -20,6 +20,8 @@ import {
   DEFAULT_JARVIS_BRAIN,
   isJarvisBrain,
   JARVIS_BRAINS,
+  JARVIS_HISTORY_ENTRY_MAX_CHARS,
+  JARVIS_HISTORY_MAX_ENTRIES,
   type JarvisAvailabilityGate,
   type JarvisBrain,
   type JarvisBudgetView,
@@ -59,11 +61,32 @@ export const JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS = 30_000;
  * `jarvis.effects.ts`), so it never has a thinking phase to wait out. */
 export const JARVIS_AVAILABILITY_TIMEOUT_MS = 10_000;
 
-/** Caps what `ask()` sends as `JarvisChatPayload.history` — belt-and-suspenders
- * with the server's own truncation (`JARVIS_WIRE_HISTORY_MAX_ENTRIES` in
- * `jarvis.effects.ts`, also 20): keeping the outbound frame itself small
- * doesn't rely on the server being the only thing enforcing the wire cap. */
-const JARVIS_HISTORY_SEND_MAX_ENTRIES = 20;
+/** Stands in for the middle of a shortened history entry, so the model reads
+ * a gap as a gap rather than as two sentences that follow on. */
+const HISTORY_SHORTENED_MARKER = "\n\n[… shortened …]\n\n";
+
+/**
+ * Fits one history entry's text into `JARVIS_HISTORY_ENTRY_MAX_CHARS`. Only
+ * called for a text that is over it — in practice a long Jarvis reply (a
+ * table, a full blotter read-out). The server rejects the whole `jarvis.chat`
+ * frame when any entry is longer, so without this one long reply fails every
+ * later turn of the session.
+ *
+ * What survives is what the model sees of that reply on every later turn, so
+ * both ends do: the start is usually the direct answer, the end any closing
+ * question the person's next message replies to.
+ *
+ * A cut can land inside a surrogate pair, and a lone surrogate can get the
+ * model request rejected, so a half-cut character is dropped from either side.
+ */
+function shortenHistoryText(text: string): string {
+  const room = JARVIS_HISTORY_ENTRY_MAX_CHARS - HISTORY_SHORTENED_MARKER.length;
+  const tailLength = Math.floor(room / 2);
+  const head = text.slice(0, room - tailLength).replace(/[\uD800-\uDBFF]$/, "");
+  const tail = text.slice(-tailLength).replace(/^[\uDC00-\uDFFF]/, "");
+
+  return `${head}${HISTORY_SHORTENED_MARKER}${tail}`;
+}
 
 const JARVIS_OFFLINE_EVENT: JarvisEvent = {
   type: "error",
@@ -276,8 +299,11 @@ function attachJarvisTurnListeners(
   ];
 }
 
-/** Builds the `JarvisChatPayload`, capping `history` at
- * `JARVIS_HISTORY_SEND_MAX_ENTRIES` and omitting the field entirely when
+/** Builds the `JarvisChatPayload`, capping `history` at the newest
+ * `JARVIS_HISTORY_MAX_ENTRIES` (the server's cap too — keeping the outbound
+ * frame small doesn't rely on the server being the only thing enforcing it),
+ * shortening any entry over `JARVIS_HISTORY_ENTRY_MAX_CHARS` (which the
+ * server would reject the frame for), and omitting the field entirely when
  * there's nothing to replay (keeps the common no-history frame shape the
  * same as before turnId/history existed). `options`, when supplied, adds
  * `brain`/`effort` to the frame — likewise omitted entirely rather than set
@@ -288,7 +314,13 @@ function buildChatPayload(
   history: readonly JarvisHistoryEntry[],
   options?: JarvisAskOptions,
 ): JarvisChatPayload {
-  const capped = history.slice(-JARVIS_HISTORY_SEND_MAX_ENTRIES);
+  const capped = history
+    .slice(-JARVIS_HISTORY_MAX_ENTRIES)
+    .map((entry): JarvisHistoryEntry => {
+      return entry.text.length > JARVIS_HISTORY_ENTRY_MAX_CHARS
+        ? { role: entry.role, text: shortenHistoryText(entry.text) }
+        : entry;
+    });
   return {
     text,
     turnId,

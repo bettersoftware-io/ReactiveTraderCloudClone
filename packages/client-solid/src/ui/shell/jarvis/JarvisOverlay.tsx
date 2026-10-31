@@ -19,7 +19,11 @@ import {
   type JarvisGuideSection,
   sampleGuideChips,
 } from "@rtc/core-logic";
-import { JARVIS_SKINS, type JarvisSkin } from "@rtc/domain";
+import {
+  JARVIS_MESSAGE_MAX_CHARS,
+  JARVIS_SKINS,
+  type JarvisSkin,
+} from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { JarvisBrainPill } from "./JarvisBrainPill";
@@ -575,6 +579,7 @@ export function JarvisOverlay(): JSX.Element {
               class={styles.input}
               placeholder="Ask J.A.R.V.I.S — markets · trades · execution…"
               value={inputValue()}
+              maxLength={JARVIS_MESSAGE_MAX_CHARS}
               disabled={speaking()}
               onInput={updateDraft}
               onChange={updateDraft}

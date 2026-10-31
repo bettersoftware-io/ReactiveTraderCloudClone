@@ -25,6 +25,9 @@ import {
 import {
   isJarvisBrain,
   isJarvisEffort,
+  JARVIS_HISTORY_ENTRY_MAX_CHARS,
+  JARVIS_HISTORY_MAX_ENTRIES,
+  JARVIS_MESSAGE_MAX_CHARS,
   type JarvisBrain,
   type JarvisBudgetView,
   type JarvisEvent,
@@ -71,15 +74,13 @@ const WIRE_TYPE_BY_EVENT: Record<JarvisEvent["type"], string> = {
   error: SERVER_MSG.JARVIS_ERROR,
 };
 
-/** `JarvisChatPayload.history` caps — the trust boundary for wire-supplied
- * history sits here, at the parse seam, before it ever reaches an
- * `AgentSession` (and, from Task 6, an Anthropic request's token cost).
- * Deliberately local to this module rather than imported from server config:
- * these are wire-payload bounds, not runtime tuning. */
-const JARVIS_WIRE_HISTORY_MAX_ENTRIES = 20;
-const JARVIS_WIRE_HISTORY_MAX_TEXT = 2_000;
-/** S6 — the message itself was the one uncapped string on this frame. */
-const JARVIS_WIRE_TEXT_MAX = 4_000;
+/* The `JarvisChatPayload` caps (`JARVIS_MESSAGE_MAX_CHARS` — S6, the message
+ * itself was the one uncapped string on this frame — plus
+ * `JARVIS_HISTORY_ENTRY_MAX_CHARS` and `JARVIS_HISTORY_MAX_ENTRIES`) come
+ * from `@rtc/domain`, so the clients shorten to exactly what is enforced
+ * here. The trust boundary for wire-supplied history still sits here, at the
+ * parse seam, before it ever reaches an `AgentSession` and an Anthropic
+ * request's token cost. They are wire-payload bounds, not runtime tuning. */
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -90,19 +91,19 @@ function isHistoryEntry(value: unknown): value is JarvisHistoryEntry {
     isRecord(value) &&
     (value.role === "user" || value.role === "jarvis") &&
     typeof value.text === "string" &&
-    value.text.length <= JARVIS_WIRE_HISTORY_MAX_TEXT
+    value.text.length <= JARVIS_HISTORY_ENTRY_MAX_CHARS
   );
 }
 
-/** Keeps only the most recent `JARVIS_WIRE_HISTORY_MAX_ENTRIES` entries —
+/** Keeps only the most recent `JARVIS_HISTORY_MAX_ENTRIES` entries —
  * the tail, not the head, because the newest turns are the ones still
  * relevant to the model; an over-long history silently drops its oldest
  * context instead of being rejected outright. */
 function truncateHistory(
   history: readonly JarvisHistoryEntry[],
 ): readonly JarvisHistoryEntry[] {
-  return history.length > JARVIS_WIRE_HISTORY_MAX_ENTRIES
-    ? history.slice(-JARVIS_WIRE_HISTORY_MAX_ENTRIES)
+  return history.length > JARVIS_HISTORY_MAX_ENTRIES
+    ? history.slice(-JARVIS_HISTORY_MAX_ENTRIES)
     : history;
 }
 
@@ -148,7 +149,7 @@ function parseChatPayload(payload: unknown): JarvisChatPayload | undefined {
     return undefined;
   }
 
-  if (text.length > JARVIS_WIRE_TEXT_MAX) {
+  if (text.length > JARVIS_MESSAGE_MAX_CHARS) {
     return undefined;
   }
 

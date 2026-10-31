@@ -126,7 +126,8 @@ Every per-caller bound lives in `src/config/limits.ts` (hardening spec §2.2 /
 | What | Constant | Default |
 |---|---|---|
 | Largest WebSocket frame, in bytes (`ws` closes that socket with 1009) — sized for a full Jarvis turn in a 3-byte script | `WS_MAX_PAYLOAD_BYTES` | 256 KiB |
-| `jarvis.chat` message text | `JARVIS_WIRE_TEXT_MAX` (local to `src/effects/jarvis.effects.ts`, beside the history caps) | 4 000 chars |
+| `jarvis.chat` message text (the clients' input stops here too) | `JARVIS_MESSAGE_MAX_CHARS` (`@rtc/domain`, enforced in `src/effects/jarvis.effects.ts`) | 4 000 chars |
+| `jarvis.chat` history: entries, and characters per entry (the client shortens a longer entry before sending) | `JARVIS_HISTORY_MAX_ENTRIES`, `JARVIS_HISTORY_ENTRY_MAX_CHARS` (`@rtc/domain`) | 20, 2 000 chars |
 | Live `stream()` inner streams per effect per connection | rx-ws-effects `StreamOptions.maxActive` | 64 |
 | Distinct `keyedStream()` keys per effect per connection | rx-ws-effects `KeyedStreamOptions.maxKeys` | 128 |
 | `rpc()` requests waiting on their handler per effect per connection (one over is nacked) | rx-ws-effects `RpcOptions.maxActive` | 64 |

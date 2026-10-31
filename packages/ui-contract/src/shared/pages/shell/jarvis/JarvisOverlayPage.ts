@@ -342,6 +342,12 @@ export class JarvisOverlayPage extends MountedComponent<Record<string, never>> {
     await this.clickSend();
   }
 
+  /** The chat input's `maxLength` — `-1` when it sets none. */
+  inputMaxLength(): number {
+    const input = within(this.requireOverlay()).getByTestId("jarvis-input");
+    return (input as HTMLInputElement).maxLength;
+  }
+
   /** Type `text` into the input WITHOUT submitting. */
   async typeInput(text: string): Promise<void> {
     const input = within(this.requireOverlay()).getByTestId("jarvis-input");

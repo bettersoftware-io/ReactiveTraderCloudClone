@@ -7,6 +7,7 @@ import {
   Direction,
   type DriveBatchV1,
   JARVIS_BRAINS,
+  JARVIS_HISTORY_ENTRY_MAX_CHARS,
   type JarvisEvent,
   type JarvisHistoryEntry,
   type PanelSpecV1,
@@ -332,6 +333,72 @@ describe("WsJarvisAdapter (wire-mode JarvisPort)", () => {
     expect(payload.turnId).toBe(turnId);
     expect(payload.history).toEqual(entries.slice(-20));
     expect(payload.history).toHaveLength(20);
+  });
+
+  // The server rejects the WHOLE frame when one history entry is over
+  // JARVIS_HISTORY_ENTRY_MAX_CHARS, so one long Jarvis reply would fail every
+  // later turn of the session; the adapter shortens it before sending.
+  it("(i) history: an entry over JARVIS_HISTORY_ENTRY_MAX_CHARS is shortened to fit; shorter entries go unchanged", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const long = `${"opening line. ".repeat(200)}${"closing line. ".repeat(200)}`;
+    const atCap = "x".repeat(JARVIS_HISTORY_ENTRY_MAX_CHARS);
+    const entries: readonly JarvisHistoryEntry[] = [
+      { role: "user", text: "show me everything" },
+      { role: "jarvis", text: long },
+      { role: "user", text: atCap },
+    ];
+    adapter.setHistorySource(() => {
+      return entries;
+    });
+
+    adapter.ask("and now?").subscribe();
+
+    const payload = ws.sentMessages()[0]?.payload as ChatFramePayload;
+    const sent = payload.history ?? [];
+    expect(long.length).toBeGreaterThan(JARVIS_HISTORY_ENTRY_MAX_CHARS);
+    expect(sent).toHaveLength(3);
+    expect(sent[0]).toEqual(entries[0]);
+    expect(sent[2]).toEqual(entries[2]);
+    expect(sent[1]?.role).toBe("jarvis");
+    expect(sent[1]?.text.length).toBeLessThanOrEqual(
+      JARVIS_HISTORY_ENTRY_MAX_CHARS,
+    );
+    // Both ends survive: the direct answer and any closing question.
+    expect(sent[1]?.text.startsWith("opening line.")).toBe(true);
+    expect(sent[1]?.text.endsWith("closing line. ")).toBe(true);
+    expect(sent[1]?.text).toContain("shortened");
+  });
+
+  // A lone surrogate can get the model request rejected, which would bring
+  // back the session-long failure the shortening exists to prevent. The
+  // padding moves the emoji across each cut.
+  it.each([
+    { before: "", after: "" },
+    { before: "a", after: "" },
+    { before: "", after: "b" },
+    { before: "a", after: "b" },
+  ])("(i) history: shortening never splits a character (padding %o)", ({
+    before,
+    after,
+  }) => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const text = `${before}${"😀".repeat(1_500)}${after}`;
+    adapter.setHistorySource(() => {
+      return [{ role: "jarvis", text }];
+    });
+
+    adapter.ask("and now?").subscribe();
+
+    const payload = ws.sentMessages()[0]?.payload as ChatFramePayload;
+    const sent = payload.history?.[0]?.text ?? "";
+    expect(sent).toContain("shortened");
+    expect(sent.length).toBeLessThanOrEqual(JARVIS_HISTORY_ENTRY_MAX_CHARS);
+    // encodeURIComponent throws URIError on a lone surrogate.
+    expect(() => {
+      return encodeURIComponent(sent);
+    }).not.toThrow();
   });
 
   it("(i) history: no history field is sent when the source is left at its default (())=>[])", () => {
