@@ -42,6 +42,7 @@ import {
   InMemoryLayoutPresetStore,
   LAYOUT_PANEL_IDS,
   modelFacingHistory,
+  type PanelStreamDeps,
 } from "@rtc/core-logic";
 import type {
   AccessLevel,
@@ -370,12 +371,9 @@ export function createApp(givenPorts: AppPorts): App {
   // server streams for the life of the connection — and started empty until
   // the next trade instead of with the trades already on screen.
   const blotterPresenter = new BlotterPresenter(ports.blotter, disposed$);
-  const analyticsPresenter = new AnalyticsPresenter(
-    ports.analytics,
-    disposed$,
-  );
+  const analyticsPresenter = new AnalyticsPresenter(ports.analytics, disposed$);
 
-  const jarvisPanels = new JarvisPanelsPresenter(jarvisPanelsMachine, {
+  const panelStreamDeps: PanelStreamDeps = {
     referenceData: ports.referenceData,
     pricing: ports.pricing,
     blotter: {
@@ -388,7 +386,12 @@ export function createApp(givenPorts: AppPorts): App {
         return analyticsPresenter.position$;
       },
     },
-  });
+  };
+
+  const jarvisPanels = new JarvisPanelsPresenter(
+    jarvisPanelsMachine,
+    panelStreamDeps,
+  );
 
   // Session-lifetime mirror of the panels fold, so the dock bridges and the
   // persistence writer can read "what is docked right now" synchronously

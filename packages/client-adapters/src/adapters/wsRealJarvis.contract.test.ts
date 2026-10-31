@@ -378,28 +378,28 @@ describe("WsJarvisAdapter (wire-mode JarvisPort)", () => {
     { before: "a", after: "" },
     { before: "", after: "b" },
     { before: "a", after: "b" },
-  ])("(i) history: shortening never splits a character (padding %o)", ({
-    before,
-    after,
-  }) => {
-    const ws = new FakeWsAdapter();
-    const adapter = new WsJarvisAdapter(ws);
-    const text = `${before}${"😀".repeat(1_500)}${after}`;
-    adapter.setHistorySource(() => {
-      return [{ role: "jarvis", text }];
-    });
+  ])(
+    "(i) history: shortening never splits a character (padding %o)",
+    ({ before, after }) => {
+      const ws = new FakeWsAdapter();
+      const adapter = new WsJarvisAdapter(ws);
+      const text = `${before}${"😀".repeat(1_500)}${after}`;
+      adapter.setHistorySource(() => {
+        return [{ role: "jarvis", text }];
+      });
 
-    adapter.ask("and now?").subscribe();
+      adapter.ask("and now?").subscribe();
 
-    const payload = ws.sentMessages()[0]?.payload as ChatFramePayload;
-    const sent = payload.history?.[0]?.text ?? "";
-    expect(sent).toContain("shortened");
-    expect(sent.length).toBeLessThanOrEqual(JARVIS_HISTORY_ENTRY_MAX_CHARS);
-    // encodeURIComponent throws URIError on a lone surrogate.
-    expect(() => {
-      return encodeURIComponent(sent);
-    }).not.toThrow();
-  });
+      const payload = ws.sentMessages()[0]?.payload as ChatFramePayload;
+      const sent = payload.history?.[0]?.text ?? "";
+      expect(sent).toContain("shortened");
+      expect(sent.length).toBeLessThanOrEqual(JARVIS_HISTORY_ENTRY_MAX_CHARS);
+      // encodeURIComponent throws URIError on a lone surrogate.
+      expect(() => {
+        return encodeURIComponent(sent);
+      }).not.toThrow();
+    },
+  );
 
   it("(i) history: no history field is sent when the source is left at its default (())=>[])", () => {
     const ws = new FakeWsAdapter();
