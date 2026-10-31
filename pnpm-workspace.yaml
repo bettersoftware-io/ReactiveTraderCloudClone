@@ -30,17 +30,6 @@ minimumReleaseAge: 1440
 # <2.1.3; the 5.x fix stays 5.0.8) — the exact drop condition the old comment
 # recorded. All three majors are now forced to their patched tips in
 # `overrides` below, and the suppression is gone.
-# TEMPORARY suppression (added 2026-10-02): HIGH GHSA-86w9-cpqp-85rv (node-forge
-# RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm
-# elements) reports `node-forge <= 1.4.0` with NO patched version — 1.4.0 IS the
-# latest release on npm (published 2026-03-24), so there is nothing to override
-# to. The advisory dates from 2026-09-03 but was re-scoped on 2026-10-01, which
-# is when it began redding CI gate 25 (`pnpm audit --prod`) on every branch.
-# Reach: client-react-native > expo > @expo/cli (the Expo dev/build CLI — its
-# dev-server TLS tooling), never a browser bundle and not the RN app's runtime.
-# DROP CONDITION: when node-forge publishes a patched release (> 1.4.0), delete
-# this entry and add a range-scoped `"node-forge@<=1.4.0": ^<patched>` to
-# `overrides` below like every other advisory fix.
 # GHSA-vfj7-8cjw-p6xm (braces stack-exhaustion DoS, CVE-2026-93687, reported
 # `braces <= 3.0.3` with no patched release) was suppressed here from
 # 2026-10-03. GitHub WITHDREW the advisory on 2026-10-23, so `pnpm audit` no
@@ -60,10 +49,12 @@ minimumReleaseAge: 1440
 # publishes a patched 3.x, delete this entry (the `"zod@4"` override stays).
 auditConfig:
   ignoreGhsas:
-    - GHSA-86w9-cpqp-85rv
     - GHSA-mrhx-c7xc-m3w5
 
 overrides:
+  # node-forge 1.4.1 (2026-10-27) patched the HIGH advisories that had reached
+  # client-react-native > expo > @expo/cli, GHSA-86w9-cpqp-85rv among them.
+  "node-forge@<=1.4.0": ^1.4.2
   # Force the transitive brace-expansion 1.x line (arrives via minimatch/glob
   # in dozens of prod-reachable paths, e.g. client-react-native > react-native
   # > @react-native/jest-preset > … > test-exclude > minimatch) up from the
