@@ -21,15 +21,23 @@ import {
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
   type DriveBatchV1,
+  type JarvisBrain,
   type JarvisEvent,
   type JarvisHistoryEntry,
-  type JarvisHouseBrain,
+  type JarvisLiveBrain,
+  ownModelOf,
   type PanelSpecV1,
 } from "@rtc/domain";
 
 import type { TurnMeter } from "../services/jarvisBudget/JarvisBudgetService.js";
 import type { JarvisTokenUsage } from "../services/UsageMeter.js";
-import type { AgentSession, JarvisTurnOptions } from "./agentLoop.js";
+import {
+  type AgentSession,
+  describeRefusedKey,
+  describeSdkErrorForLogging,
+  hasNumericStatus,
+  type JarvisTurnOptions,
+} from "./agentLoop.js";
 import { buildDriveAppTool } from "./driveAppTool.js";
 import { JARVIS_SYSTEM_PROMPT } from "./jarvisPersona.js";
 import {
@@ -278,6 +286,10 @@ function toolNameOrder(
   return 0;
 }
 
+/** What a provider answers for a key it will not serve: unauthorized, out of
+ * credit, forbidden. A 429 is not one of them: the key may be fine. */
+const KEY_REFUSAL_STATUSES: ReadonlySet<number> = new Set([401, 402, 403]);
+
 /** Whether the tool runner follows this reply with another request: it runs
  * the tools a `tool_use` asked for and sends their results, and it resumes a
  * `pause_turn` once the paused content is pushed back. */
@@ -335,7 +347,10 @@ interface RequestLedger {
 
 interface RequestLedgerDeps {
   readonly meter: TurnMeter | undefined;
-  readonly model: JarvisHouseBrain;
+  /** What each request is booked under; an own brain keeps its own price. */
+  readonly brain: JarvisBrain;
+  /** The brain thinks before it replies: see `estimateAbortedOutputTokens`. */
+  readonly thinks: boolean;
   /** The turn's signal: aborted means the person cancelled the turn. */
   readonly signal: AbortSignal;
   /** The messages the open request sent. */
@@ -343,11 +358,11 @@ interface RequestLedgerDeps {
 }
 
 function createRequestLedger(deps: RequestLedgerDeps): RequestLedger {
-  const { meter, model, signal, readRequestMessages } = deps;
+  const { meter, brain, thinks, signal, readRequestMessages } = deps;
 
-  // `model !== "scripted"` only narrows the type: `DEFAULT_JARVIS_BRAIN` is
+  // `brain !== "scripted"` only narrows the type: `DEFAULT_JARVIS_BRAIN` is
   // typed as any brain, but a scripted turn never reaches this session.
-  if (meter === undefined || model === "scripted") {
+  if (meter === undefined || brain === "scripted") {
     return {
       beginRequest: (): boolean => {
         return true;
@@ -360,9 +375,7 @@ function createRequestLedger(deps: RequestLedgerDeps): RequestLedger {
   }
 
   const liveMeter: TurnMeter = meter;
-  const liveModel: Exclude<JarvisHouseBrain, "scripted"> = model;
-  // A brain that thinks before it replies: see `estimateAbortedOutputTokens`.
-  const thinks = JARVIS_EFFORT_CAPABLE_BRAINS.has(model);
+  const liveBrain: JarvisLiveBrain = brain;
   // A request has been reserved and not yet booked or released.
   let open = false;
   // The open request went out (see `markRequestSent`).
@@ -378,7 +391,7 @@ function createRequestLedger(deps: RequestLedgerDeps): RequestLedger {
   function book(usage: JarvisTokenUsage): void {
     open = false;
     accrued = null;
-    recordSafely(liveMeter, liveModel, usage);
+    recordSafely(liveMeter, liveBrain, usage);
   }
 
   function release(): void {
@@ -417,7 +430,7 @@ function createRequestLedger(deps: RequestLedgerDeps): RequestLedger {
         return false;
       }
 
-      liveMeter.beginRequest(liveModel, REQUEST_CEILING);
+      liveMeter.beginRequest(liveBrain, REQUEST_CEILING);
       open = true;
       sent = false;
       accrued = null;
@@ -566,11 +579,11 @@ function streamedLengthOf(delta: BetaRawContentBlockDelta): number {
  */
 function recordSafely(
   meter: TurnMeter,
-  model: Exclude<JarvisHouseBrain, "scripted">,
+  brain: JarvisLiveBrain,
   usage: JarvisTokenUsage,
 ): void {
   try {
-    meter.record(model, usage);
+    meter.record(brain, usage);
   } catch (usageError) {
     console.error(
       "AnthropicAgentSession: meter.record threw —",
@@ -584,36 +597,6 @@ function mapHistoryEntry(entry: JarvisHistoryEntry): BetaMessageParam {
     role: entry.role === "jarvis" ? "assistant" : "user",
     content: entry.text,
   };
-}
-
-interface StatusCarrier {
-  readonly status: unknown;
-}
-
-interface NumericStatusCarrier {
-  readonly status: number;
-}
-
-function hasNumericStatus(value: unknown): value is NumericStatusCarrier {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "status" in value &&
-    typeof (value as StatusCarrier).status === "number"
-  );
-}
-
-/** Server-log-only summary of a thrown SDK/network error: the constructor
- * name (duck-typed, not an `instanceof` check against a specific SDK error
- * class — every failure mode here, including a plain network `TypeError`,
- * should still produce SOMETHING useful) plus an HTTP status if the thrown
- * value carries one (the SDK's own `APIError` does). Never reads
- * `error.message` — that can quote request content — and never anything
- * key-shaped. */
-function describeSdkErrorForLogging(error: unknown): string {
-  const name = error instanceof Error ? error.constructor.name : typeof error;
-
-  return hasNumericStatus(error) ? `${name} (status ${error.status})` : name;
 }
 
 /**
@@ -913,15 +896,19 @@ export class AnthropicAgentSession implements AgentSession {
     // `options?.brain` is resolved+validated upstream (see `JarvisTurnOptions`'
     // doc comment) — this is the one place that turns "no explicit pick" into
     // the actual default, so every call site below (the request params AND
-    // the usage tap) shares one resolved model rather than each re-deriving
-    // it and risking drift.
-    const model = options?.brain ?? DEFAULT_JARVIS_BRAIN;
+    // the usage tap) shares one resolved brain rather than each re-deriving
+    // it and risking drift. The provider hears the model id; the meter hears
+    // the brain, which on an own key is a different string.
+    const brain: JarvisBrain = options?.brain ?? DEFAULT_JARVIS_BRAIN;
+    const model = ownModelOf(brain)?.modelId ?? brain;
+    const takesEffort = JARVIS_EFFORT_CAPABLE_BRAINS.has(model);
     // Set once the runner exists; the ledger reads its current conversation
     // to estimate a request cancelled before it reported its usage.
     let runner: AnthropicRunner | undefined;
     const requests = createRequestLedger({
       meter: options?.meter,
-      model,
+      brain,
+      thinks: takesEffort,
       signal,
       readRequestMessages: (): readonly BetaMessageParam[] => {
         return runner?.params?.messages ?? messages;
@@ -948,7 +935,7 @@ export class AnthropicAgentSession implements AgentSession {
       // budget thinking and deliver nothing but the `max_tokens` truncation
       // notice. `"medium"` is a deliberate cost/quality tradeoff for a
       // terse, 2–4-sentence desk-assistant persona.
-      ...(JARVIS_EFFORT_CAPABLE_BRAINS.has(model)
+      ...(takesEffort
         ? {
             output_config: {
               effort: options?.effort ?? DEFAULT_JARVIS_EFFORT,
@@ -1103,6 +1090,24 @@ export class AnthropicAgentSession implements AgentSession {
         "AnthropicAgentSession: turn failed —",
         describeSdkErrorForLogging(error),
       );
+
+      // On a person's own key the provider's refusal is theirs to act on
+      // (D13): the turn says so, and the key reads refused from here on. It
+      // never falls back to another key.
+      if (
+        options?.keyFailure !== undefined &&
+        hasNumericStatus(error) &&
+        KEY_REFUSAL_STATUSES.has(error.status)
+      ) {
+        push({
+          type: "error",
+          message: describeRefusedKey(options.keyFailure.providerName),
+        });
+        options.keyFailure.refused();
+
+        return { kind: "errored" };
+      }
+
       push({ type: "error", message: DESK_LINK_FALTERED_MESSAGE });
 
       return { kind: "errored" };

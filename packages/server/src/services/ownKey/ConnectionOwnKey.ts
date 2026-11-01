@@ -104,9 +104,22 @@ export class ConnectionOwnKey {
     };
   }
 
-  /** Resolves once no check is in flight; a turn waits on this. */
-  settled(): Promise<void> {
-    return this.#inFlight;
+  /** Moves on whenever another key takes over or the key goes, and stays put
+   * for a new cap on the same key. A session built on the key is good for
+   * one value of this. */
+  get keyGeneration(): number {
+    return this.#generation;
+  }
+
+  /** Resolves once no check is in flight, a check started during the wait
+   * included; a turn waits on this. */
+  async settled(): Promise<void> {
+    let awaited: Promise<void>;
+
+    do {
+      awaited = this.#inFlight;
+      await awaited;
+    } while (awaited !== this.#inFlight);
   }
 
   /** Only the session factory calls this. Null unless the key is accepted. */

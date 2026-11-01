@@ -1,5 +1,3 @@
-import type { JarvisBrain } from "@rtc/domain";
-
 /**
  * Cost-hygiene knobs for the Anthropic-backed Jarvis loop (Task 6+). Every
  * live turn is a real, metered API call — unlike the scripted
@@ -53,9 +51,10 @@ export const JARVIS_PROMPT_PREFIX_TOKENS = 2_100;
  * default effort value has exactly one source of truth, `@rtc/domain`'s
  * `DEFAULT_JARVIS_EFFORT` (the same constant the preferences UI defaults
  * to), imported directly at its one consumption site rather than re-pinned
- * here under a second name.
+ * here under a second name. Holds model ids, so an own brain is checked by
+ * the model it runs on.
  */
-export const JARVIS_EFFORT_CAPABLE_BRAINS: ReadonlySet<JarvisBrain> = new Set([
+export const JARVIS_EFFORT_CAPABLE_BRAINS: ReadonlySet<string> = new Set([
   "claude-sonnet-5",
   "claude-opus-5",
 ]);

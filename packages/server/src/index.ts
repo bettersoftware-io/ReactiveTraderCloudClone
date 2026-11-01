@@ -11,7 +11,7 @@ import {
   type ConfirmGate,
   type JarvisToolDefinition,
 } from "@rtc/agent-tools";
-import { KNOWN_CURRENCY_PAIRS } from "@rtc/domain";
+import { type JarvisProvider, KNOWN_CURRENCY_PAIRS } from "@rtc/domain";
 import { SESSION_ENDED_CLOSE_CODE } from "@rtc/shared";
 
 import { createAccountService } from "./accounts/AccountService.js";
@@ -29,6 +29,7 @@ import { createSessionRegistry } from "./accounts/sessionRegistry.js";
 import { startUnconfirmedPurge } from "./accounts/unconfirmedPurge.js";
 import { AnthropicAgentLoop } from "./agent/AnthropicAgentLoop.js";
 import { type AgentLoop, createJarvisLoops } from "./agent/agentLoop.js";
+import { ScriptedAgentLoop } from "./agent/ScriptedAgentLoop.js";
 import { AuthService, parseAuthUsers } from "./auth/AuthService.js";
 import { createBanList } from "./auth/banList.js";
 import {
@@ -95,6 +96,10 @@ import { createConnectionLog } from "./observability/connectionLog.js";
 import { scopeServicesToConnection } from "./services/connectionScope.js";
 import { createTierLookup } from "./services/jarvisBudget/jarvisTier.js";
 import {
+  fakeVerifyOwnKey,
+  verifyOwnKey,
+} from "./services/ownKey/verifyOwnKey.js";
+import {
   createServices,
   type ServiceContainer,
 } from "./services/serviceContainer.js";
@@ -123,21 +128,17 @@ function buildJarvisToolsFor(
   });
 }
 
-/** The seam `createJarvisLoops` warns and falls through without: builds the
- * real `AnthropicAgentLoop`, wiring each session's own `buildJarvisTools`
- * call (see `AnthropicAgentLoopOptions.buildTools`'s doc comment for why that
- * must happen per session, not once here). Token usage reaches the budget
- * and the ops usage dock through each turn's meter (`jarvis.effects.ts`).
- * `createJarvisLoops` only invokes this when `env.ANTHROPIC_API_KEY` is
- * already known truthy, hence the `?? ""` fallback below is unreachable in
- * practice, not a silent-empty-key path. Satisfies `AnthropicLoopBuilder`
- * structurally — no explicit annotation needed on a function declaration. */
-function buildAnthropicLoop(
-  env: NodeJS.ProcessEnv,
+/** A real `AnthropicAgentLoop` on one key, wiring each session's own
+ * `buildJarvisTools` call (see `AnthropicAgentLoopOptions.buildTools`'s doc
+ * comment for why that must happen per session, not once here). Token usage
+ * reaches the budget and the ops usage dock through each turn's meter
+ * (`jarvis.effects.ts`). */
+function buildAnthropicLoopOn(
+  apiKey: string,
   services: ServiceContainer,
 ): AgentLoop {
   return new AnthropicAgentLoop({
-    apiKey: env.ANTHROPIC_API_KEY ?? "",
+    apiKey,
     buildTools: (confirmTrade: ConfirmGate) => {
       return buildJarvisToolsFor(services, confirmTrade);
     },
@@ -151,6 +152,19 @@ function buildAnthropicLoop(
       return pair.symbol;
     }),
   });
+}
+
+/** The seam `createJarvisLoops` warns and falls through without: the house
+ * key's loop. `createJarvisLoops` only invokes this when
+ * `env.ANTHROPIC_API_KEY` is already known truthy, hence the `?? ""` fallback
+ * below is unreachable in practice, not a silent-empty-key path. Satisfies
+ * `AnthropicLoopBuilder` structurally — no explicit annotation needed on a
+ * function declaration. */
+function buildAnthropicLoop(
+  env: NodeJS.ProcessEnv,
+  services: ServiceContainer,
+): AgentLoop {
+  return buildAnthropicLoopOn(env.ANTHROPIC_API_KEY ?? "", services);
 }
 
 const auth = new AuthService({
@@ -208,9 +222,14 @@ const spendStore = createSpendStore(accountsMode, {
   timeoutMs: ACCOUNT_DIRECTORY_TIMEOUT_MS,
 });
 
+// `RTC_JARVIS_FAKE=1` keeps own keys off the network too: `fake-good…` is
+// accepted with no provider call, and an accepted key runs scripted.
+const jarvisFake: boolean = process.env.RTC_JARVIS_FAKE === "1";
+
 const services = createServices(process.env, {
   spendStore,
   jarvisTier: createTierLookup(accountDirectory),
+  verifyOwnKey: jarvisFake ? fakeVerifyOwnKey : verifyOwnKey,
 });
 
 const jarvisLoops = createJarvisLoops(
@@ -219,9 +238,19 @@ const jarvisLoops = createJarvisLoops(
   buildAnthropicLoop,
 );
 
+/** One accepted own key's loop, built per connection: the client it owns
+ * holds the person's key, so it is never shared (D16). The closed provider
+ * set at the `jarvis.key` seam is Anthropic alone until the OpenAI-compatible
+ * loop lands. */
+function buildOwnKeyLoop(_provider: JarvisProvider, key: string): AgentLoop {
+  return jarvisFake
+    ? new ScriptedAgentLoop(services)
+    : buildAnthropicLoopOn(key, services);
+}
+
 // One merged effect for the process; a listener is built PER CONNECTION
 // below so each socket gets its own connection-scoped services (S10).
-const effect = combineEffects(...buildEffects(jarvisLoops));
+const effect = combineEffects(...buildEffects(jarvisLoops, buildOwnKeyLoop));
 
 const accountStatus = createAccountStatusCache({
   directory: accountDirectory,

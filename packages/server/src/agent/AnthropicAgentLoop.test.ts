@@ -397,6 +397,169 @@ describe("AnthropicAgentLoop", () => {
     ]);
   });
 
+  it("an own brain sends its model id and is booked under the brain", async () => {
+    const stream = createFakeStream([textDeltaEvent(0, "ok")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "ok" }],
+      usage: { input_tokens: 10, output_tokens: 5 },
+    });
+    const { factory, calls } = scriptedRunner([stream]);
+    const meter = createMeterSpy();
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: factory,
+    });
+
+    await runTurnCollecting(loop.createSession(), "hi", [], undefined, {
+      brain: "own:anthropic:claude-sonnet-5",
+      meter,
+    });
+
+    expect(calls[0]?.params.model).toBe("claude-sonnet-5");
+    expect(meter.beginRequest.mock.calls[0]?.[0]).toBe(
+      "own:anthropic:claude-sonnet-5",
+    );
+    expect(meter.record.mock.calls[0]?.[0]).toBe(
+      "own:anthropic:claude-sonnet-5",
+    );
+  });
+
+  it("the effort check reads an own brain's model id", async () => {
+    const stream = createFakeStream([textDeltaEvent(0, "ok")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "ok" }],
+    });
+    const { factory, calls } = scriptedRunner([stream]);
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: factory,
+    });
+
+    await runTurnCollecting(loop.createSession(), "hi", [], undefined, {
+      brain: "own:anthropic:claude-opus-5",
+      effort: "high",
+    });
+    await runTurnCollecting(loop.createSession(), "hi", [], undefined, {
+      brain: "own:anthropic:claude-haiku-4-5",
+      effort: "high",
+    });
+
+    expect(calls[0]?.params.output_config).toEqual({ effort: "high" });
+    expect(calls[1]?.params.output_config).toBeUndefined();
+  });
+
+  it("a cancelled own turn on a thinking brain books the whole output ceiling", async () => {
+    const meter = createMeterSpy();
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: createAbortableRunnerFactory([
+        createMessageStartEvent({
+          input_tokens: 100,
+          output_tokens: 1,
+          cache_read_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+        }),
+        textDeltaEvent(0, LAST_STREAMED_TEXT),
+      ]),
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(
+      session,
+      "hi",
+      [],
+      cancelOnLastStreamedText(session),
+      { brain: "own:anthropic:claude-opus-5", meter },
+    );
+
+    expect(meter.record.mock.calls[0]?.[1].outputTokens).toBe(
+      REQUEST_CEILING.outputTokens,
+    );
+  });
+
+  it.each([401, 402, 403])(
+    "a %i on an own key fails the turn naming the provider and reports the refusal",
+    async (status) => {
+      const refused = vi.fn();
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const loop = new AnthropicAgentLoop({
+        apiKey: "test-key",
+        knownSymbols: [],
+        buildTools: createToolsFixture(),
+        runnerFactory: failingRunner(status, "the provider's own words"),
+      });
+
+      const events = await runTurnCollecting(
+        loop.createSession(),
+        "hi",
+        [],
+        undefined,
+        {
+          brain: "own:anthropic:claude-haiku-4-5",
+          keyFailure: { providerName: "Anthropic", refused },
+        },
+      );
+
+      expect(events).toEqual([
+        { type: "error", message: "Anthropic refused your key." },
+      ]);
+      expect(refused).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(error.mock.calls)).not.toContain("own words");
+      error.mockRestore();
+    },
+  );
+
+  it("a 429 on an own key stays the sanitized copy and refuses nothing", async () => {
+    const refused = vi.fn();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: failingRunner(429, "slow down"),
+    });
+
+    const events = await runTurnCollecting(
+      loop.createSession(),
+      "hi",
+      [],
+      undefined,
+      {
+        brain: "own:anthropic:claude-haiku-4-5",
+        keyFailure: { providerName: "Anthropic", refused },
+      },
+    );
+
+    expect(events).toEqual([
+      { type: "error", message: DESK_LINK_FALTERED_MESSAGE },
+    ]);
+    expect(refused).not.toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  it("a 401 on the house key names no provider: the house key is the operator's to fix", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: failingRunner(401, "bad key"),
+    });
+
+    const events = await runTurnCollecting(loop.createSession(), "hi");
+
+    expect(events).toEqual([
+      { type: "error", message: DESK_LINK_FALTERED_MESSAGE },
+    ]);
+    error.mockRestore();
+  });
+
   it("(f) breaching the per-session turn cap short-circuits with no runnerFactory invocation", async () => {
     const stream = createFakeStream([textDeltaEvent(0, "hi")], {
       stop_reason: "end_turn",
@@ -2331,6 +2494,20 @@ function scriptedRunner(
 function throwingRunner(): AnthropicRunnerFactory {
   return () => {
     throw new Error("network exploded — must never reach the client");
+  };
+}
+
+/** A runner that fails like the SDK does on an HTTP error status. */
+function failingRunner(
+  status: number,
+  message: string,
+): AnthropicRunnerFactory {
+  class APIError extends Error {
+    readonly status = status;
+  }
+
+  return () => {
+    throw new APIError(message);
   };
 }
 

@@ -34,19 +34,24 @@ afterEach(() => {
 });
 
 describe("createJarvisLoops", () => {
-  it("returns null when neither RTC_JARVIS_FAKE nor ANTHROPIC_API_KEY is set", () => {
+  it("returns the scripted shape when neither RTC_JARVIS_FAKE nor ANTHROPIC_API_KEY is set: own keys need Jarvis up (D16)", () => {
     const services = createServices();
 
-    expect(createJarvisLoops({}, services)).toBeNull();
+    const loops = createJarvisLoops({}, services);
+
+    expect(loops.anthropic).toBeNull();
+    expect(loops.brains).toEqual(["scripted"]);
+    expect(loops.defaultBrain).toBe("scripted");
   });
 
-  it("returns null and warns once when ANTHROPIC_API_KEY is set but no builder is wired", () => {
+  it("returns the scripted shape and warns once when ANTHROPIC_API_KEY is set but no builder is wired", () => {
     const services = createServices();
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const loops = createJarvisLoops({ ANTHROPIC_API_KEY: "sk-test" }, services);
 
-    expect(loops).toBeNull();
+    expect(loops.anthropic).toBeNull();
+    expect(loops.brains).toEqual(["scripted"]);
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledWith(
       "ANTHROPIC_API_KEY set but the Anthropic loop is not wired",
@@ -64,11 +69,10 @@ describe("createJarvisLoops", () => {
       buildAnthropicLoop,
     );
 
-    expect(loops).not.toBeNull();
     expect(buildAnthropicLoop).not.toHaveBeenCalled();
-    expect(loops?.anthropic).toBeNull();
-    expect(loops?.brains).toEqual(["scripted"]);
-    expect(loops?.defaultBrain).toBe("scripted");
+    expect(loops.anthropic).toBeNull();
+    expect(loops.brains).toEqual(["scripted"]);
+    expect(loops.defaultBrain).toBe("scripted");
   });
 
   it("ANTHROPIC_API_KEY alone (no RTC_JARVIS_FAKE) invokes the injected builder and returns the dual-loop shape", () => {
@@ -86,21 +90,15 @@ describe("createJarvisLoops", () => {
       { ANTHROPIC_API_KEY: "sk-test" },
       services,
     );
-    expect(loops?.anthropic).toBe(fakeLoop);
-    expect(loops?.scripted).toBeDefined();
-    expect(loops?.brains).toEqual(JARVIS_BRAINS);
-    expect(loops?.defaultBrain).toBe(DEFAULT_JARVIS_BRAIN);
+    expect(loops.anthropic).toBe(fakeLoop);
+    expect(loops.scripted).toBeDefined();
+    expect(loops.brains).toEqual(JARVIS_BRAINS);
+    expect(loops.defaultBrain).toBe(DEFAULT_JARVIS_BRAIN);
   });
 
   it("returns a scripted loop when RTC_JARVIS_FAKE=1, streaming the paced help reply then completing", async () => {
     const services = createServices();
     const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
-
-    expect(loops).not.toBeNull();
-
-    if (!loops) {
-      throw new Error("expected a non-null JarvisLoops");
-    }
 
     const session = loops.scripted.createSession();
     const events: JarvisEvent[] = [];
@@ -128,10 +126,6 @@ describe("createJarvisLoops", () => {
   it("a trade turn's confirmRequest, once resolved true, executes through the container and grows the blotter's trade stream", async () => {
     const services: ServiceContainer = createServices();
     const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
-
-    if (!loops) {
-      throw new Error("expected a non-null JarvisLoops");
-    }
 
     const session = loops.scripted.createSession();
     const tradeCounts: number[] = [];
@@ -176,10 +170,6 @@ describe("createJarvisLoops", () => {
   it("a confirmation issued by one session cannot be resolved via a different session from the same loop (P2 cross-socket-forgery guard)", async () => {
     const services: ServiceContainer = createServices();
     const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
-
-    if (!loops) {
-      throw new Error("expected a non-null JarvisLoops");
-    }
 
     const sessionA = loops.scripted.createSession();
     const sessionB = loops.scripted.createSession();
@@ -229,10 +219,6 @@ describe("createJarvisLoops", () => {
   it("cancelTurn makes a late resolveConfirmation a no-op and does not execute", async () => {
     const services: ServiceContainer = createServices();
     const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
-
-    if (!loops) {
-      throw new Error("expected a non-null JarvisLoops");
-    }
 
     const session = loops.scripted.createSession();
     const tradeCounts: number[] = [];

@@ -692,7 +692,8 @@ function ownerSpentUsd(copy: OwnerCopy): number {
   return copy.confirmedUsd + copy.pendingUsd + copy.unrecordedUsd;
 }
 
-function spendOwnerOf(caller: Caller): SpendOwner {
+/** A caller's stable id: the same on every connection and across restarts. */
+export function spendOwnerOf(caller: Caller): SpendOwner {
   return caller.accountId !== null
     ? `account:${caller.accountId}`
     : `roster:${caller.username}`;
