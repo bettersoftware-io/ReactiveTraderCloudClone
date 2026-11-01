@@ -8,7 +8,11 @@
  * `ThemeMode` (light/dark recolouring).
  */
 
-import { JARVIS_OWN_MODELS, ownModelOf } from "../jarvis/jarvisOwnModels.js";
+import {
+  isJarvisOwnBrain,
+  JARVIS_OWN_MODELS,
+  ownModelOf,
+} from "../jarvis/jarvisOwnModels.js";
 
 export type ThemeMode = "dark" | "light";
 /**
@@ -348,6 +352,18 @@ export function isJarvisBrain(value: unknown): value is JarvisBrain {
       return model.brain === value;
     })
   );
+}
+
+/** Reads a stored brain string. A listed brain is kept; an own-key brain
+ * whose model left the curated list reads as `"scripted"` (a person who chose
+ * their own key must never land on a house brain that spends the house's
+ * money); anything else is not a brain and reads as the default. */
+export function parseStoredJarvisBrain(value: unknown): JarvisBrain {
+  if (isJarvisBrain(value)) {
+    return value;
+  }
+
+  return isJarvisOwnBrain(value) ? "scripted" : DEFAULT_JARVIS_BRAIN;
 }
 
 /** The thinking-effort budget passed to a live Claude brain (Anthropic's

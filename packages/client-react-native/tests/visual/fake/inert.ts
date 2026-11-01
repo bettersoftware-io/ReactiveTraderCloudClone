@@ -201,6 +201,7 @@ const JARVIS_STATE: JarvisState = {
   available: false,
   brains: [],
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
+  preferredBrain: DEFAULT_JARVIS_BRAIN,
   gate: null,
   budget: null,
   ownBudget: null,

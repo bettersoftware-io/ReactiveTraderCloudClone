@@ -27,6 +27,32 @@ describe("maskOwnKey", () => {
   it("never contains the middle of a long key", () => {
     expect(maskOwnKey(KEY)).not.toContain("abcdefghij");
   });
+
+  it("an OpenRouter key keeps its provider prefix", () => {
+    expect(maskOwnKey("sk-or-v1-abcdefghijklmnop9876")).toBe("sk-or-…9876");
+  });
+
+  it("a plain sk- key keeps only sk-", () => {
+    expect(maskOwnKey("sk-abcdefghijklmnopqrstuvwxyz-Q1w2")).toBe("sk-…Q1w2");
+  });
+
+  it.each([
+    "correct-horse-battery-staple",
+    "my-very-secret-passphrase-1234",
+    "AKIA-not-a-provider-key-0000",
+  ])("an unknown shape (%s) shows only an ellipsis and the suffix", (key) => {
+    expect(maskOwnKey(key)).toBe(`…${key.slice(-4)}`);
+  });
+
+  it.each([
+    "sk-ant-api03-abcdefghij1234",
+    "sk-or-v1-abcdefghijklmnop9876",
+    "sk-abcdefghijklmnopqrstuvwxyz-Q1w2",
+    "correct-horse-battery-staple",
+    "x".repeat(40),
+  ])("%s exposes at most a prefix of 7 and a suffix of 4", (key) => {
+    expect(maskOwnKey(key).length).toBeLessThanOrEqual(7 + 1 + 4);
+  });
 });
 
 describe("createOwnKeyController", () => {
@@ -75,6 +101,28 @@ describe("createOwnKeyController", () => {
 
     expect(store.clear).toHaveBeenCalledOnce();
     expect(setOwnKey).not.toHaveBeenCalled();
+  });
+
+  it("a repeated reading for the same owner sends nothing", () => {
+    const { controller, setOwnKey } = build(stored("ann"));
+    controller.authChanged("ann");
+    setOwnKey.mockClear();
+
+    const again = controller.authChanged("ann");
+
+    expect(again?.masked).toBe("sk-ant-…1234");
+    expect(setOwnKey).not.toHaveBeenCalled();
+  });
+
+  it("a live owner switch sends clear", () => {
+    const { controller, store, setOwnKey } = build(stored("ann"));
+    controller.authChanged("ann");
+    setOwnKey.mockClear();
+
+    expect(controller.authChanged("bob")).toBe(null);
+
+    expect(store.clear).toHaveBeenCalledOnce();
+    expect(setOwnKey).toHaveBeenCalledExactlyOnceWith(null);
   });
 
   it("signing in with nothing stored sends nothing", () => {

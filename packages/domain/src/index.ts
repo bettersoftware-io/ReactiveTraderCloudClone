@@ -356,6 +356,7 @@ export {
   nextThemeModePreference,
   POWER_SAVER_LEVELS,
   type PowerSaverLevel,
+  parseStoredJarvisBrain,
   readJarvisIndicators,
   resolveThemeMode,
   THEME_MODE_PREFERENCES,

@@ -576,6 +576,20 @@ export function describePreferencesPortContract(
         expect(seen).toEqual([DEFAULT_JARVIS_BRAIN, "claude-opus-5"]);
       });
 
+      it("a seeded own brain whose model left the list reads as scripted", async () => {
+        const port = makeSeeded({ jarvisBrain: "own:anthropic:retired-model" });
+        expect(await firstValueFrom(port.jarvisBrain$())).toBe("scripted");
+      });
+
+      it("reads back a seeded listed own brain", async () => {
+        const port = makeSeeded({
+          jarvisBrain: "own:anthropic:claude-sonnet-5",
+        });
+        expect(await firstValueFrom(port.jarvisBrain$())).toBe(
+          "own:anthropic:claude-sonnet-5",
+        );
+      });
+
       it("reads back a seeded jarvisBrain", async () => {
         const port = makeSeeded({ jarvisBrain: "claude-sonnet-5" });
         expect(await firstValueFrom(port.jarvisBrain$())).toBe(

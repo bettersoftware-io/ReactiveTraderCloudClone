@@ -7,6 +7,7 @@ import {
   type JarvisBudgetView,
 } from "@rtc/domain";
 
+import { describeBrainReadout } from "#/presenters/jarvisBrainIndicators";
 import {
   createJarvisController,
   formatBrainHint,
@@ -186,6 +187,12 @@ describe("formatBrainHint — which budget the gate belongs to", () => {
     ).toBeUndefined();
   });
 
+  it("a spent house budget does not blame the house for pausing an own preference", () => {
+    expect(formatBrainHint(gate, OWN_SONNET, "scripted", spentHouse)).toBe(
+      "Sonnet 5 isn't available — using scripted",
+    );
+  });
+
   it("a spent own cap names the paused own brain", () => {
     expect(formatBrainHint(gate, OWN_SONNET, "scripted", spentOwn)).toBe(
       `${formatGateHint(RESETS_AT_MS)} · Sonnet 5 paused, using scripted`,
@@ -220,6 +227,53 @@ describe("formatBrainHint — which budget the gate belongs to", () => {
     } as unknown as JarvisBudgetView,
     ownBudget: null,
   };
+});
+
+describe("createJarvisController — a saved own preference without its key", () => {
+  it("reads back as 'your key isn't set' through the controller and the readout", () => {
+    const controller = createJarvisController();
+    const preferred =
+      controller.preferredBrainPatch(OWN_SONNET)(JARVIS_INITIAL_STATE);
+
+    const next = controller.availabilityPatch(anAvailability())(preferred);
+
+    expect(next.effectiveBrain).toBe("scripted");
+    expect(next.preferredBrain).toBe(OWN_SONNET);
+    expect(describeBrainReadout(next)?.text).toBe(
+      "Scripted · your key isn't set",
+    );
+  });
+
+  it("a key dropped mid-conversation says so, not 'your daily limit'", () => {
+    const controller = createJarvisController();
+    controller.preferredBrainPatch(OWN_SONNET);
+    const talking = withConversation(OWN_SONNET);
+
+    const next = controller.availabilityPatch(
+      anAvailability({
+        gate: { level: "hard", resetsAtMs: RESETS_AT_MS, gated: [] },
+        ownBudget: null,
+        ownKey: null,
+      }),
+    )({ ...talking, preferredBrain: OWN_SONNET });
+
+    expect(next.entries.at(-1)?.text).toBe(
+      "Your key isn't set — switching to the scripted brain.",
+    );
+  });
+
+  it("a key dropped with no gate at all still gets the line", () => {
+    const controller = createJarvisController();
+    controller.preferredBrainPatch(OWN_SONNET);
+
+    const next = controller.availabilityPatch(anAvailability())(
+      withConversation(OWN_SONNET),
+    );
+
+    expect(next.entries.at(-1)?.text).toBe(
+      "Your key isn't set — switching to the scripted brain.",
+    );
+  });
 });
 
 describe("gateAppliesTo", () => {

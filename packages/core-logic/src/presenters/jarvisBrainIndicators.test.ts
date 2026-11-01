@@ -265,14 +265,75 @@ describe("describeBrainReadout — an own key", () => {
     });
   });
 
-  it("key missing: an own brain with no key set", () => {
-    const state = aState(OWN_SONNET, null, { ownKey: null });
+  it("key missing: the person prefers an own brain but no key is set", () => {
+    const state = aState("scripted", null, {
+      preferredBrain: OWN_SONNET,
+      ownKey: null,
+    });
 
     expect(describeBrainReadout(state)).toEqual({
       text: "Scripted · your key isn't set",
       tone: "warning",
       meterFraction: null,
     });
+  });
+
+  it("key unreachable: names the provider that could not be reached", () => {
+    const state = aState("scripted", null, {
+      preferredBrain: OWN_SONNET,
+      ownKey: anOwnKey("unreachable"),
+    });
+
+    expect(describeBrainReadout(state)).toEqual({
+      text: "Scripted · couldn't reach Anthropic",
+      tone: "warning",
+      meterFraction: null,
+    });
+  });
+
+  it("key checks limited: says too many key checks", () => {
+    const state = aState("scripted", null, {
+      preferredBrain: OWN_SONNET,
+      ownKey: anOwnKey("limited"),
+    });
+
+    expect(describeBrainReadout(state)).toEqual({
+      text: "Scripted · too many key checks",
+      tone: "warning",
+      meterFraction: null,
+    });
+  });
+
+  it("a spent own cap keeps its own row for an own preference", () => {
+    const state = aState("scripted", null, {
+      preferredBrain: OWN_SONNET,
+      ownKey: anOwnKey(),
+      ownBudget: anOwnBudget({ exhausted: "user" }),
+    });
+
+    expect(describeBrainReadout(state)?.text).toBe(
+      "Scripted · your daily limit used · back at 00:00 UTC",
+    );
+  });
+
+  it("an own preference's missing key outranks a spent house budget", () => {
+    const state = aState("scripted", aBudget({ exhausted: "house" }), {
+      preferredBrain: OWN_SONNET,
+      ownKey: null,
+    });
+
+    expect(describeBrainReadout(state)?.text).toBe(
+      "Scripted · your key isn't set",
+    );
+  });
+
+  it("a house preference that is scripted never mentions a key", () => {
+    const state = aState("scripted", aBudget(), {
+      preferredBrain: "claude-haiku-4-5",
+      ownKey: null,
+    });
+
+    expect(describeBrainReadout(state)?.text).toBe("Scripted");
   });
 
   it("a spent HOUSE budget does not hide a working own key", () => {
@@ -323,6 +384,7 @@ interface StateOverrides {
   readonly demo?: boolean;
   readonly ownBudget?: JarvisBudgetView | null;
   readonly ownKey?: JarvisOwnKeyView | null;
+  readonly preferredBrain?: JarvisBrain;
 }
 
 function aBudget(overrides: Partial<JarvisBudgetView> = {}): JarvisBudgetView {
@@ -345,6 +407,7 @@ function aState(
     available: true,
     demo: false,
     effectiveBrain,
+    preferredBrain: effectiveBrain,
     budget,
     ownBudget: null,
     ownKey: null,

@@ -768,6 +768,7 @@ describe("brain pill", () => {
       describeBrainPill({
         available: true,
         effectiveBrain: "claude-haiku-4-5",
+        preferredBrain: "claude-haiku-4-5",
         budget,
         ownBudget: null,
         ownKey: null,

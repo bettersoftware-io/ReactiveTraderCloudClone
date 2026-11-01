@@ -2372,6 +2372,7 @@ const jarvisStateIdle: JarvisState = {
   // and pill all read live Haiku.
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
+  preferredBrain: DEFAULT_JARVIS_BRAIN,
   gate: null,
   budget: jarvisBudgetHouseLive,
   ownBudget: null,
@@ -2486,6 +2487,7 @@ function jarvisStateScripted(
     entries: jarvisExhaustedEntries(exhausted),
     brains: ["scripted"],
     effectiveBrain: "scripted",
+    preferredBrain: "scripted",
     gate: {
       level: "hard",
       resetsAtMs: JARVIS_RESETS_AT_MS,
@@ -2509,6 +2511,7 @@ fixtures["jarvis-indicators-no-limit"] = makeAppData({
     ...jarvisStateChat,
     entries: jarvisLiveEntries("claude-opus-5"),
     effectiveBrain: "claude-opus-5",
+    preferredBrain: "claude-opus-5",
     budget: { ...jarvisBudgetHouseLive, spentUsd: 1.37, limitUsd: null },
     ownBudget: null,
     ownKey: null,
@@ -2528,6 +2531,7 @@ fixtures["jarvis-indicators-demo"] = makeAppData({
     ...jarvisStateChat,
     entries: jarvisLiveEntries("scripted"),
     effectiveBrain: "scripted",
+    preferredBrain: "scripted",
     budget: null,
     ownBudget: null,
     ownKey: null,

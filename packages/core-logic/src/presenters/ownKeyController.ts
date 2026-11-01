@@ -13,7 +13,9 @@ import type {
 } from "@rtc/core-api";
 import type { JarvisOwnKeySetting } from "@rtc/domain";
 
-const VENDOR_TAG = /^[a-z]+-[a-z]+-/;
+// Known provider prefixes, longest first. Anything else is not assumed to
+// have a public prefix: a mistyped paste must not be shown back to the person.
+const KNOWN_PREFIXES = ["sk-ant-", "sk-or-", "sk-"] as const;
 const LONG_KEY_CHARS = 16;
 
 function lastChars(key: string, count: number): string {
@@ -25,8 +27,10 @@ function lastChars(key: string, count: number): string {
  * more than its last two characters, and a very short one none. */
 export function maskOwnKey(key: string): string {
   if (key.length >= LONG_KEY_CHARS) {
-    const tag = VENDOR_TAG.exec(key)?.[0] ?? "";
-    return `${tag}…${lastChars(key, 4)}`;
+    const tag = KNOWN_PREFIXES.find((prefix) => {
+      return key.startsWith(prefix);
+    });
+    return `${tag ?? ""}…${lastChars(key, 4)}`;
   }
 
   return `…${lastChars(key, Math.min(2, Math.floor(key.length / 4)))}`;
@@ -72,9 +76,11 @@ export function createOwnKeyController(
   // The key this session holds. Mirrors the store, and is all there is on a
   // platform that supplies none.
   let held: StoredOwnKey | null = null;
-  // Whether a signed-in owner has been seen. The boot's first unauthenticated
-  // reading precedes sign-in restoration and must not wipe a remembered key.
-  let seenOwner = false;
+  // The signed-in owner last seen, or `null` before one was. The boot's first
+  // unauthenticated reading precedes sign-in restoration and must not wipe a
+  // remembered key; and a repeated reading of the same owner (lock, unlock)
+  // must not resend a key the server already holds.
+  let currentOwner: string | null = null;
 
   function wipe(): void {
     held = null;
@@ -91,17 +97,29 @@ export function createOwnKeyController(
   return {
     authChanged: (owner: string | null): SavedOwnKey | null => {
       if (owner === null) {
-        if (!seenOwner) {
+        if (currentOwner === null) {
           return null;
         }
 
-        seenOwner = false;
+        currentOwner = null;
         wipe();
         deps.setOwnKey?.(null);
         return null;
       }
 
-      seenOwner = true;
+      if (owner === currentOwner) {
+        return held === null ? null : toSaved(held);
+      }
+
+      const previousOwner = currentOwner;
+      currentOwner = owner;
+
+      if (previousOwner !== null) {
+        wipe();
+        deps.setOwnKey?.(null);
+        return null;
+      }
+
       const candidate = deps.store?.read() ?? held;
 
       if (candidate === null) {
@@ -119,7 +137,7 @@ export function createOwnKeyController(
     },
 
     save: (owner: string, input: OwnKeyInput): SavedOwnKey => {
-      seenOwner = true;
+      currentOwner = owner;
       return hold({ owner, ...input });
     },
 

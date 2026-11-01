@@ -14,7 +14,6 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_FORCE_BOOT_ANIMATION,
-  DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_INDICATORS,
   DEFAULT_JARVIS_NARRATOR,
@@ -40,6 +39,7 @@ import {
   type LoginWaitStyle,
   type LoginWaitVariant,
   type PowerSaverLevel,
+  parseStoredJarvisBrain,
   type ThemeModePreference,
   type ThemeSkin,
   type ViewMode,
@@ -177,7 +177,7 @@ export class PreferencesSimulator implements PreferencesPort {
       seed.eqBlotterView ?? DEFAULT_EQ_BLOTTER_VIEW,
     );
     this.jarvisBrainSubject = new BehaviorSubject<JarvisBrain>(
-      seed.jarvisBrain ?? DEFAULT_JARVIS_BRAIN,
+      parseStoredJarvisBrain(seed.jarvisBrain),
     );
     this.jarvisEffortSubject = new BehaviorSubject<JarvisEffort>(
       seed.jarvisEffort ?? DEFAULT_JARVIS_EFFORT,

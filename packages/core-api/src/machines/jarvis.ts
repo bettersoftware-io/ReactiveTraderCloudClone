@@ -83,6 +83,11 @@ export interface JarvisState {
    * (an availability flip can un-offer the currently-preferred brain
    * mid-session). */
   readonly effectiveBrain: JarvisBrain;
+  /** The brain the person asked for (`JarvisDeps.preferredBrain$`), whether
+   * or not it is on offer. Differs from `effectiveBrain` when it is not: an
+   * own-key preference without its key, or with its cap spent, runs scripted
+   * and the indicators need to say why. */
+  readonly preferredBrain: JarvisBrain;
   /** The active usage-budget gate, mirrored verbatim from the live
    * `availability$` feed's own `gate` field on every emission (`null` when
    * none is active, including sim mode's always-`null` default). Distinct

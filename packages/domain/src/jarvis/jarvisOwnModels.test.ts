@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_JARVIS_BRAIN,
   isJarvisBrain,
   JARVIS_BRAIN_LABELS,
   JARVIS_BRAIN_NAMES,
   type JarvisBrain,
   jarvisBrainLabel,
   jarvisBrainName,
+  parseStoredJarvisBrain,
 } from "../preferences/preferences.js";
 import {
   isJarvisOwnBrain,
@@ -14,6 +16,28 @@ import {
   ownModelOf,
   ownModelsFor,
 } from "./jarvisOwnModels.js";
+
+describe("parseStoredJarvisBrain", () => {
+  it("keeps a house brain and a listed own brain", () => {
+    expect(parseStoredJarvisBrain("claude-opus-5")).toBe("claude-opus-5");
+    expect(parseStoredJarvisBrain("own:anthropic:claude-sonnet-5")).toBe(
+      "own:anthropic:claude-sonnet-5",
+    );
+  });
+
+  it("reads an own brain whose model left the list as scripted, never the default", () => {
+    expect(parseStoredJarvisBrain("own:anthropic:retired-model")).toBe(
+      "scripted",
+    );
+  });
+
+  it.each([null, undefined, 3, "", "gpt-9", "own:evil:x"])(
+    "falls back to the default brain for %s",
+    (value) => {
+      expect(parseStoredJarvisBrain(value)).toBe(DEFAULT_JARVIS_BRAIN);
+    },
+  );
+});
 
 describe("jarvisOwnModels", () => {
   it("an own brain keeps provider and model apart from the house brain of the same model", () => {

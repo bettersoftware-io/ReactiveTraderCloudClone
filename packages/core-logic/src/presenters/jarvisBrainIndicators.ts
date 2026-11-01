@@ -14,7 +14,13 @@ import { formatGateResetTimeUtc } from "./jarvisController.js";
 /** The slice of `JarvisState` the indicator copy reads. */
 export type BrainIndicatorState = Pick<
   JarvisState,
-  "available" | "effectiveBrain" | "budget" | "ownBudget" | "ownKey" | "demo"
+  | "available"
+  | "effectiveBrain"
+  | "preferredBrain"
+  | "budget"
+  | "ownBudget"
+  | "ownKey"
+  | "demo"
 >;
 
 /** The header readout: one line of copy, its tone, and a meter fill in
@@ -111,15 +117,7 @@ function describeLiveBudget(
 function describeOwnBrain(state: BrainIndicatorState): BrainReadout {
   const { ownKey, ownBudget } = state;
 
-  if (ownKey === null) {
-    return {
-      text: "Scripted · your key isn't set",
-      tone: "warning",
-      meterFraction: null,
-    };
-  }
-
-  if (ownKey.status === "refused") {
+  if (ownKey?.status === "refused") {
     return {
       text: `${JARVIS_PROVIDER_NAMES[ownKey.provider]} refused your key`,
       tone: "warning",
@@ -147,6 +145,39 @@ function describeOwnBrain(state: BrainIndicatorState): BrainReadout {
   return describeLiveBudget(label, ownBudget, "no limit");
 }
 
+function warning(text: string): BrainReadout {
+  return { text, tone: "warning", meterFraction: null };
+}
+
+/** The readout for a person who prefers an own brain but is running scripted:
+ * a spent cap, a key that is not set, or one that could not be checked. `null`
+ * when none of those explains it. */
+function describeOwnPreferenceUnmet(
+  state: BrainIndicatorState,
+): BrainReadout | null {
+  const { ownKey, ownBudget } = state;
+  const exhausted =
+    ownBudget === null ? null : describeExhausted(ownBudget, true);
+
+  if (exhausted !== null) {
+    return exhausted;
+  }
+
+  if (ownKey === null) {
+    return warning("Scripted · your key isn't set");
+  }
+
+  if (ownKey.status === "unreachable") {
+    return warning(
+      `Scripted · couldn't reach ${JARVIS_PROVIDER_NAMES[ownKey.provider]}`,
+    );
+  }
+
+  return ownKey.status === "limited"
+    ? warning("Scripted · too many key checks")
+    : null;
+}
+
 /** The header readout, or `null` when Jarvis is unavailable. */
 export function describeBrainReadout(
   state: BrainIndicatorState,
@@ -161,6 +192,17 @@ export function describeBrainReadout(
 
   if (isJarvisOwnBrain(state.effectiveBrain)) {
     return describeOwnBrain(state);
+  }
+
+  if (
+    state.effectiveBrain === "scripted" &&
+    isJarvisOwnBrain(state.preferredBrain)
+  ) {
+    const unmet = describeOwnPreferenceUnmet(state);
+
+    if (unmet !== null) {
+      return unmet;
+    }
   }
 
   const exhausted =
