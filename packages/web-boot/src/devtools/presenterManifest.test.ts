@@ -13,6 +13,10 @@ describe("PRESENTER_MANIFEST", () => {
     }
   });
 
+  it("never observes jarvisOwnKey: an instrumented intent logs its arguments, and save's is the raw key", () => {
+    expect(PRESENTER_MANIFEST).not.toHaveProperty("jarvisOwnKey");
+  });
+
   it("gives every entry something to observe", () => {
     for (const [name, entry] of Object.entries(PRESENTER_MANIFEST)) {
       const observed =

@@ -12,7 +12,9 @@ import type { PresenterManifest } from "@rtc/devtools-core";
  * `machine: true` marks the shared Machine seams. Presenters the ViewModel
  * touches only through one-shot command methods — `execution` (`execute`),
  * `rfqQuote` (`requestQuote`), `bootPreference` (`current`/`setVariant`) —
- * expose no observed state stream and are intentionally absent. */
+ * expose no observed state stream and are intentionally absent. `jarvisOwnKey`
+ * is absent too, and must stay so: `save` carries the raw key, and an
+ * instrumented intent logs its arguments to the hub. */
 export const PRESENTER_MANIFEST: PresenterManifest = {
   priceStream: { methods: ["price$"] },
   priceHistory: { methods: ["history$"] },

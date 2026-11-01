@@ -75,6 +75,7 @@ import type {
   EventLogPresenter,
   ForceBootAnimationPresenter,
   InstrumentsPresenter,
+  JarvisOwnKeyPresenter,
   JarvisPanelsPresenter,
   JarvisPreferencesPresenter,
   JarvisUsagePresenter,
@@ -314,6 +315,10 @@ export interface Presenters {
   /** J.A.R.V.I.S. usage/cost telemetry (Ops surface) — null until the
    * first snapshot. */
   jarvisUsage: JarvisUsagePresenter;
+  /** The person's own model key: the masked form of what is saved, and the
+   * intents that save, re-cap or remove it. Live only where the transport
+   * takes a key (`JarvisPort.setOwnKey`); elsewhere an inert no-op. */
+  jarvisOwnKey: JarvisOwnKeyPresenter;
   /** J.A.R.V.I.S. generative-UI desk panels: spawned/edited/dismissed via
    * `jarvis`'s own "panel" turn events, interpreted into live `PanelData`
    * over the domain ports. */

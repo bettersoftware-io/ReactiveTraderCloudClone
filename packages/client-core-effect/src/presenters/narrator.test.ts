@@ -1,6 +1,7 @@
 import { BehaviorSubject, of, Subject, throwError } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { JARVIS_INITIAL_STATE } from "@rtc/core-logic";
 import {
   type CurrencyPair,
   type JarvisNarratorPreference,
@@ -98,6 +99,9 @@ function createRig(options: RigOptions = {}): Rig {
       narrations.push(prompt);
     },
     preference$,
+    jarvisStateNow: () => {
+      return JARVIS_INITIAL_STATE;
+    },
     config: { windowSize: 400, minWindowFill: 4 },
   });
   return {

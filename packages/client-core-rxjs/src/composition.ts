@@ -107,6 +107,7 @@ import {
   ForceBootAnimationPresenter,
   InstrumentsPresenter,
   type JarvisDriverDeps,
+  JarvisOwnKeyPresenter,
   JarvisPanelsPresenter,
   JarvisPreferencesPresenter,
   JarvisUsagePresenter,
@@ -418,6 +419,16 @@ export function createApp(givenPorts: AppPorts): App {
     undefined,
     authDeps.cycle,
   );
+
+  // The own-key fold is the composition's, from here until `app.dispose()`,
+  // and not a subscriber's: the transport remembers a key with no owner check
+  // of its own, so the fold follows `auth` ahead of the transport gate below
+  // and a key change lands before the socket opens or closes.
+  const jarvisOwnKey = new JarvisOwnKeyPresenter(
+    ports.jarvis,
+    ports.ownKeyStore,
+  );
+  held.add(jarvisOwnKey.followAuth(auth.state$));
 
   // Hoisted (rather than built inline in the `presenters` literal below,
   // unlike eqWorkspace) so JarvisDriverMachine — composed here beside
@@ -811,6 +822,7 @@ export function createApp(givenPorts: AppPorts): App {
       jarvis.intents.narrate(prompt);
     },
     preference$: jarvisPreferences.narrator$,
+    jarvisStateNow: jarvis.stateNow,
     config: ports.narratorConfig,
   });
 
@@ -916,6 +928,7 @@ export function createApp(givenPorts: AppPorts): App {
     ),
     jarvis,
     jarvisUsage: new JarvisUsagePresenter(ports.jarvisUsage, disposed$),
+    jarvisOwnKey,
     jarvisPanels,
     dockPanel: workspaceDock.dockPanel,
     dockedPanelIdsFor,

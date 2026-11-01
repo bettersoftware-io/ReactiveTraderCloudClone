@@ -1,6 +1,7 @@
 import { BehaviorSubject, of, Subject, throwError } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import { JARVIS_INITIAL_STATE } from "@rtc/core-logic";
 import type {
   CurrencyPair,
   JarvisNarratorPreference,
@@ -49,6 +50,9 @@ describe("createNarrator (async core)", () => {
           // unused
         },
         preference$: of<JarvisNarratorPreference>("on"),
+        jarvisStateNow: () => {
+          return JARVIS_INITIAL_STATE;
+        },
         now: () => {
           return 0;
         },
@@ -122,6 +126,9 @@ function createRig(options: RigOptions = {}): Rig {
         rig.narrations.push(prompt);
       },
       preference$,
+      jarvisStateNow: () => {
+        return JARVIS_INITIAL_STATE;
+      },
       config: { windowSize: 400, minWindowFill: 4 },
       now: () => {
         return rig.now;

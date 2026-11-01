@@ -1,6 +1,7 @@
-import type { Stream } from "@rtc/core-api";
+import type { JarvisState, Stream } from "@rtc/core-api";
 import {
   admitAnomaly,
+  canNarrate,
   formatNarrationPrompt,
   NARRATOR_INITIAL_GATE,
   type NarratorGateState,
@@ -24,6 +25,8 @@ export interface NarratorDeps {
   readonly priceFor: (pair: CurrencyPair) => Stream<PriceTick>;
   readonly narrate: (prompt: string) => void;
   readonly preference$: Stream<JarvisNarratorPreference>;
+  /** Jarvis's state now, for `canNarrate`. */
+  readonly jarvisStateNow: () => Pick<JarvisState, "effectiveBrain" | "ownKey">;
   readonly config?: Partial<AnomalyDetectorConfig>;
   /** The clock the cooldown is measured on. */
   readonly now: () => number;
@@ -34,8 +37,8 @@ export interface NarratorDeps {
  * session-wide `createAnomalyDetector` step (its windows persist across
  * roster changes, as the RxJS `detectAnomalies` over a `switchMap` does)
  * reads the ticks of every pair in the latest roster; a surviving anomaly
- * is gated by the latest preference, then by the shared cooldown/cap gate,
- * and an admitted one becomes a `narrate()` turn.
+ * is gated by the latest preference and `canNarrate`, then by the shared
+ * cooldown/cap gate, and an admitted one becomes a `narrate()` turn.
  */
 export function createNarrator(
   deps: NarratorDeps,
@@ -48,7 +51,7 @@ export function createNarrator(
 
   function foldTick(tick: PriceTick): void {
     for (const anomaly of detect(tick)) {
-      if (preference !== "on") {
+      if (preference !== "on" || !canNarrate(deps.jarvisStateNow())) {
         continue;
       }
 

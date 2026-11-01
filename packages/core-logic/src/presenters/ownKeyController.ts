@@ -6,6 +6,9 @@
  * `setOwnKey` the transport gave us, and nowhere else.
  */
 import type {
+  AuthViewState,
+  JarvisOwnKeyPresenter,
+  JarvisPort,
   OwnKeyInput,
   OwnKeyStore,
   SavedOwnKey,
@@ -151,3 +154,96 @@ export function createOwnKeyController(
     },
   };
 }
+
+/** The part of an auth reading the fold looks at. */
+type OwnKeyAuthReading = Pick<AuthViewState, "status" | "user">;
+
+/** Whose key an auth reading is about: the signed-in account's email, or
+ * `null` for anything but `authenticated`. */
+export function ownKeyOwner(auth: OwnKeyAuthReading): string | null {
+  return auth.status === "authenticated" ? (auth.user?.email ?? null) : null;
+}
+
+/** What a core's `jarvisOwnKey` member is a shell over: it hands every auth
+ * reading to `readAuth` and supplies the replaying cell `publish` writes. The
+ * intents are the presenter's own. */
+export interface OwnKeyFold
+  extends Pick<JarvisOwnKeyPresenter, "save" | "setCap" | "remove"> {
+  readAuth(auth: OwnKeyAuthReading): void;
+}
+
+export interface OwnKeyFoldDeps {
+  readonly jarvis: Pick<JarvisPort, "setOwnKey">;
+  readonly store: OwnKeyStore | undefined;
+  /** Writes what `saved$` shows. Called only when that changes. */
+  readonly publish: (saved: SavedOwnKey | null) => void;
+}
+
+/** The `jarvisOwnKey` member's rules over `createOwnKeyController`. A repeated
+ * reading of one owner (a lock, an unlock) reaches the controller not at all;
+ * with nobody signed in the intents do nothing, because a key belongs to an
+ * owner and a remembered one must survive until its owner is known; and a port
+ * without `setOwnKey` has no server to give a key to (the simulator), so the
+ * whole member is inert and `saved$` stays `null`. */
+export function createOwnKeyFold(deps: OwnKeyFoldDeps): OwnKeyFold {
+  const { jarvis, publish } = deps;
+
+  if (jarvis.setOwnKey === undefined) {
+    return INERT_OWN_KEY_FOLD;
+  }
+
+  const controller = createOwnKeyController({
+    store: deps.store,
+    // Through the port, so a class-based adapter keeps its own `this`.
+    setOwnKey: (setting: JarvisOwnKeySetting | null): void => {
+      jarvis.setOwnKey?.(setting);
+    },
+  });
+  let owner: string | null = null;
+  let shown: SavedOwnKey | null = null;
+
+  function show(next: SavedOwnKey | null): void {
+    if (next === null && shown === null) {
+      return;
+    }
+
+    shown = next;
+    publish(next);
+  }
+
+  return {
+    readAuth: (auth: OwnKeyAuthReading): void => {
+      const next = ownKeyOwner(auth);
+
+      if (next !== owner) {
+        owner = next;
+        show(controller.authChanged(next));
+      }
+    },
+    save: (input: OwnKeyInput): void => {
+      if (owner !== null) {
+        show(controller.save(owner, input));
+      }
+    },
+    setCap: (capUsd: number | null): void => {
+      if (owner !== null) {
+        show(controller.setCap(capUsd));
+      }
+    },
+    remove: (): void => {
+      if (owner !== null) {
+        controller.remove();
+        show(null);
+      }
+    },
+  };
+}
+
+function dropOwnKeyCall(): void {}
+
+const INERT_OWN_KEY_FOLD: OwnKeyFold = {
+  readAuth: dropOwnKeyCall,
+  save: dropOwnKeyCall,
+  setCap: dropOwnKeyCall,
+  remove: dropOwnKeyCall,
+};
