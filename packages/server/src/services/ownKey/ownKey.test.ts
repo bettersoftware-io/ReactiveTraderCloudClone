@@ -188,7 +188,7 @@ describe("ConnectionOwnKey", () => {
   });
 
   it("a newer key's answer wins over an older check landing late", async () => {
-    const { verify, calls } = deferredVerify();
+    const { verify, calls } = deferredVerify(false);
     const { own } = build(verify);
 
     own.apply(setOf("old-key"));
@@ -196,16 +196,85 @@ describe("ConnectionOwnKey", () => {
 
     expect(calls[0]?.signal.aborted).toBe(true);
 
+    const changes = vi.fn();
+
+    own.changes$.subscribe(changes);
     calls[1]?.resolve("accepted");
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(own.view()?.status).toBe("accepted");
+    expect(changes).toHaveBeenCalledTimes(1);
+
+    // The older check answers AFTER the newer one has landed.
     calls[0]?.resolve("refused");
     await own.settled();
 
     expect(own.view()?.status).toBe("accepted");
+    expect(changes).toHaveBeenCalledTimes(1);
     expect(
       own.use((_p, key) => {
         return key;
       }),
     ).toBe("new-key");
+  });
+
+  it("unreachable then the same key makes a second, charged call", async () => {
+    const { verify, calls } = deferredVerify();
+    const { own, limiter } = build(verify);
+    const allow = vi.spyOn(limiter, "allow");
+
+    own.apply(setOf(SECRET));
+    calls[0]?.resolve("unreachable");
+    await own.settled();
+    own.apply(setOf(SECRET));
+
+    expect(verify).toHaveBeenCalledTimes(2);
+    expect(allow).toHaveBeenCalledTimes(2);
+    expect(own.view()?.status).toBe("checking");
+  });
+
+  it("refused then the same key updates the cap and makes no call", async () => {
+    const { verify, calls } = deferredVerify();
+    const { own } = build(verify);
+
+    own.apply(setOf(SECRET, 5));
+    calls[0]?.resolve("refused");
+    await own.settled();
+    own.apply(setOf(SECRET, 7));
+
+    expect(verify).toHaveBeenCalledTimes(1);
+    expect(own.view()).toEqual({
+      provider: "anthropic",
+      status: "refused",
+      capUsd: 7,
+    });
+  });
+
+  it("limited then the same key after the window reopens checks again", async () => {
+    vi.useFakeTimers();
+
+    const { verify } = deferredVerify();
+    const { own } = build(verify);
+
+    for (let i = 0; i < 20; i++) {
+      own.apply(setOf(`key-${String(i)}`));
+    }
+
+    own.apply(setOf("again"));
+
+    expect(own.view()?.status).toBe("limited");
+    expect(verify).toHaveBeenCalledTimes(20);
+
+    own.apply(setOf("again"));
+
+    expect(verify).toHaveBeenCalledTimes(20);
+
+    vi.advanceTimersByTime(60 * 60_000);
+    own.apply(setOf("again"));
+
+    expect(verify).toHaveBeenCalledTimes(21);
+    expect(own.view()?.status).toBe("checking");
   });
 
   it("the 21st check in an hour makes no provider call and reads limited", async () => {
@@ -368,12 +437,19 @@ interface Pending {
 }
 
 /** A verify function whose every call stays open until the test answers it. */
-function deferredVerify(): Deferred {
+function deferredVerify(abortAnswers = true): Deferred {
   const calls: Pending[] = [];
   const verify = vi.fn<VerifyOwnKey>((_provider, _key, signal) => {
     return new Promise<OwnKeyVerdict>((resolve) => {
       calls.push({ signal, resolve });
+
       // A real fetch rejects when aborted; settled() must not hang on it.
+      // With abortAnswers false an aborted check stays open, so a test can
+      // deliver its stale answer after the newer one.
+      if (!abortAnswers) {
+        return;
+      }
+
       signal.addEventListener("abort", () => {
         resolve("unreachable");
       });

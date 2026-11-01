@@ -59,7 +59,15 @@ export class ConnectionOwnKey {
       return;
     }
 
-    if (this.#key === payload.key && this.#provider === payload.provider) {
+    // The same key updates the cap only — unless the last answer judged
+    // nothing (unreachable) or was never obtained (limited): then it is
+    // checked again, and charged.
+    if (
+      this.#key === payload.key &&
+      this.#provider === payload.provider &&
+      this.#status !== "unreachable" &&
+      this.#status !== "limited"
+    ) {
       this.#capUsd = payload.capUsd;
       this.#changes.next();
 
