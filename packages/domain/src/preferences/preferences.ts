@@ -8,6 +8,8 @@
  * `ThemeMode` (light/dark recolouring).
  */
 
+import { JARVIS_OWN_MODELS, ownModelOf } from "../jarvis/jarvisOwnModels.js";
+
 export type ThemeMode = "dark" | "light";
 /**
  * The user's stored theme-mode choice. `"system"` defers the concrete mode to
@@ -309,25 +311,43 @@ export function isPowerSaverLevel(
  * transport-neutral scripted brain (`@rtc/shared`'s `ScriptedAgentLoop`,
  * timer-driven canned responses, no network call); the `claude-*` entries
  * select a live Claude model via the server's Anthropic-backed agent loop. */
-export type JarvisBrain =
+export type JarvisHouseBrain =
   | "scripted"
   | "claude-haiku-4-5"
   | "claude-sonnet-5"
   | "claude-opus-5";
 
-/** Selectable Jarvis brains, in picker order (cheapest/offline first). */
-export const JARVIS_BRAINS: readonly JarvisBrain[] = [
+/** Where an own-key brain's key is from. */
+export type JarvisProvider = "anthropic" | "openrouter" | "openai";
+
+/** A brain run on the person's own key: `own:<provider>:<model id>`. Still one
+ * string, so the wire, the stored preference and the picker keep their shape. */
+export type JarvisOwnBrain = `own:${JarvisProvider}:${string}`;
+
+export type JarvisBrain = JarvisHouseBrain | JarvisOwnBrain;
+
+/** A brain that calls a model (everything but the scripted one). */
+export type JarvisLiveBrain = Exclude<JarvisBrain, "scripted">;
+
+/** The house brains, in picker order (cheapest/offline first). */
+export const JARVIS_BRAINS: readonly JarvisHouseBrain[] = [
   "scripted",
   "claude-haiku-4-5",
   "claude-sonnet-5",
   "claude-opus-5",
 ];
 
-export const DEFAULT_JARVIS_BRAIN: JarvisBrain = "claude-haiku-4-5";
+export const DEFAULT_JARVIS_BRAIN: JarvisHouseBrain = "claude-haiku-4-5";
 
-/** Storage/type guard — a valid stored brain string. */
+/** Storage/type guard — a valid stored brain string: a house brain or a
+ * listed own-key model (one that left the list reads as invalid). */
 export function isJarvisBrain(value: unknown): value is JarvisBrain {
-  return (JARVIS_BRAINS as readonly unknown[]).includes(value);
+  return (
+    (JARVIS_BRAINS as readonly unknown[]).includes(value) ||
+    JARVIS_OWN_MODELS.some((model) => {
+      return model.brain === value;
+    })
+  );
 }
 
 /** The thinking-effort budget passed to a live Claude brain (Anthropic's
@@ -350,7 +370,7 @@ export function isJarvisEffort(value: unknown): value is JarvisEffort {
 }
 
 /** UI/footer display names — the wire and storage always use the id. */
-export const JARVIS_BRAIN_LABELS: Record<JarvisBrain, string> = {
+export const JARVIS_BRAIN_LABELS: Record<JarvisHouseBrain, string> = {
   scripted: "scripted",
   "claude-haiku-4-5": "Haiku 4.5",
   "claude-sonnet-5": "Sonnet 5",
@@ -359,12 +379,31 @@ export const JARVIS_BRAIN_LABELS: Record<JarvisBrain, string> = {
 
 /** Full display names, for sentences ("Claude Haiku 4.5 · house key"); the
  * short form in `JARVIS_BRAIN_LABELS` serves the chip and the pill. */
-export const JARVIS_BRAIN_NAMES: Readonly<Record<JarvisBrain, string>> = {
+export const JARVIS_BRAIN_NAMES: Readonly<Record<JarvisHouseBrain, string>> = {
   scripted: "Scripted",
   "claude-haiku-4-5": "Claude Haiku 4.5",
   "claude-sonnet-5": "Claude Sonnet 5",
   "claude-opus-5": "Claude Opus 5",
 };
+
+/** Full display name of any brain. An own brain whose model left the list
+ * falls back to its model id. */
+export function jarvisBrainName(brain: JarvisBrain): string {
+  return (
+    ownModelOf(brain)?.name ??
+    JARVIS_BRAIN_NAMES[brain as JarvisHouseBrain] ??
+    brain.split(":").slice(2).join(":")
+  );
+}
+
+/** Short display label of any brain (chip, pill). */
+export function jarvisBrainLabel(brain: JarvisBrain): string {
+  return (
+    ownModelOf(brain)?.label ??
+    JARVIS_BRAIN_LABELS[brain as JarvisHouseBrain] ??
+    brain.split(":").slice(2).join(":")
+  );
+}
 
 /** Whether the app-driving proactive narrator (`NarratorMachine`) is allowed
  * to dispatch unsolicited `narrate()` turns into the Jarvis transcript.

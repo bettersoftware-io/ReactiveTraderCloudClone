@@ -1,0 +1,611 @@
+import { inspect } from "node:util";
+
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import type { JarvisKeyPayload } from "@rtc/shared";
+
+import { ConnectionOwnKey } from "./ConnectionOwnKey.js";
+import { OwnKeyCheckLimiter } from "./OwnKeyCheckLimiter.js";
+import { OWN_KEY_ENDPOINTS } from "./ownKeyEndpoints.js";
+import {
+  fakeVerifyOwnKey,
+  type OwnKeyVerdict,
+  type VerifyOwnKey,
+  verifyOwnKey,
+} from "./verifyOwnKey.js";
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
+
+describe("verifyOwnKey", () => {
+  it("a 200 accepts; a 401 and a 403 refuse; a 500 and a network error are unreachable", async () => {
+    const signal = new AbortController().signal;
+
+    expect(await verifyOwnKey("anthropic", "k", signal, replying(200))).toBe(
+      "accepted",
+    );
+    expect(await verifyOwnKey("anthropic", "k", signal, replying(401))).toBe(
+      "refused",
+    );
+    expect(await verifyOwnKey("anthropic", "k", signal, replying(403))).toBe(
+      "refused",
+    );
+    expect(await verifyOwnKey("anthropic", "k", signal, replying(500))).toBe(
+      "unreachable",
+    );
+    expect(
+      await verifyOwnKey(
+        "anthropic",
+        "k",
+        signal,
+        vi.fn(() => {
+          return Promise.reject(new TypeError("fetch failed"));
+        }),
+      ),
+    ).toBe("unreachable");
+  });
+
+  it("the URL comes from the provider id and redirects are refused", async () => {
+    const fetchFn = replying(200);
+
+    await verifyOwnKey(
+      "openrouter",
+      "k1",
+      new AbortController().signal,
+      fetchFn,
+    );
+
+    const [url, init] = vi.mocked(fetchFn).mock.calls[0] ?? [];
+
+    expect(url).toBe(OWN_KEY_ENDPOINTS.openrouter.url);
+    expect(url).toBe("https://openrouter.ai/api/v1/key");
+    expect(init?.redirect).toBe("error");
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+    expect(new Headers(init?.headers).get("authorization")).toBe("Bearer k1");
+
+    await verifyOwnKey(
+      "anthropic",
+      "k2",
+      new AbortController().signal,
+      fetchFn,
+    );
+    const headers = new Headers(vi.mocked(fetchFn).mock.calls[1]?.[1]?.headers);
+
+    expect(vi.mocked(fetchFn).mock.calls[1]?.[0]).toBe(
+      "https://api.anthropic.com/v1/models",
+    );
+    expect(headers.get("x-api-key")).toBe("k2");
+    expect(headers.get("anthropic-version")).toBe("2023-06-01");
+  });
+
+  it("logs neither the key, the URL nor an error message", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await verifyOwnKey(
+      "anthropic",
+      SECRET,
+      new AbortController().signal,
+      vi.fn(() => {
+        return Promise.reject(
+          new TypeError(`boom ${SECRET} api.anthropic.com`),
+        );
+      }),
+    );
+
+    const logged = JSON.stringify([...warn.mock.calls, ...error.mock.calls]);
+
+    expect(logged).not.toContain(SECRET);
+    expect(logged).not.toContain("api.anthropic.com");
+    expect(logged).not.toContain("boom");
+  });
+});
+
+describe("fakeVerifyOwnKey", () => {
+  it("under RTC_JARVIS_FAKE=1 no provider is called", async () => {
+    const fetchStub = vi.fn();
+
+    vi.stubGlobal("fetch", fetchStub);
+
+    try {
+      expect(await fakeVerifyOwnKey("anthropic", "fake-good-1")).toBe(
+        "accepted",
+      );
+      expect(await fakeVerifyOwnKey("anthropic", "sk-real")).toBe("refused");
+      expect(fetchStub).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe("OwnKeyCheckLimiter", () => {
+  it("allows 20 an hour per identity, then the window reopens", () => {
+    let now = 1_000;
+    const limiter = new OwnKeyCheckLimiter(() => {
+      return now;
+    });
+
+    for (let i = 0; i < 20; i++) {
+      expect(limiter.allow("ada")).toBe(true);
+    }
+
+    expect(limiter.allow("ada")).toBe(false);
+    expect(limiter.allow("bob")).toBe(true);
+
+    now += 60 * 60_000;
+
+    expect(limiter.allow("ada")).toBe(true);
+  });
+
+  it("a refunded check does not count against the caller", () => {
+    const limiter = new OwnKeyCheckLimiter();
+
+    for (let i = 0; i < 20; i++) {
+      limiter.allow("ada");
+    }
+
+    limiter.refund("ada");
+
+    expect(limiter.allow("ada")).toBe(true);
+    expect(limiter.allow("ada")).toBe(false);
+  });
+});
+
+describe("ConnectionOwnKey", () => {
+  it("an accepted check costs the caller nothing: 30 in a row stay allowed", async () => {
+    const limiter = new OwnKeyCheckLimiter();
+    const { own } = build(fakeVerifyOwnKey, limiter);
+
+    for (let i = 0; i < 30; i++) {
+      own.apply(setOf(`fake-good-${String(i)}`));
+      await own.settled();
+
+      expect(own.view()?.status).toBe("accepted");
+    }
+  });
+
+  it("a refused check stays charged: the 21st is limited, so guessing stays bounded", async () => {
+    const limiter = new OwnKeyCheckLimiter();
+    const { own } = build(fakeVerifyOwnKey, limiter);
+
+    for (let i = 0; i < 20; i++) {
+      own.apply(setOf(`wrong-${String(i)}`));
+      await own.settled();
+
+      expect(own.view()?.status).toBe("refused");
+    }
+
+    own.apply(setOf("wrong-20"));
+    await own.settled();
+
+    expect(own.view()?.status).toBe("limited");
+  });
+
+  it("alternating two accepted keys stops calling the provider after 120 checks", async () => {
+    const verify = vi.fn<VerifyOwnKey>(fakeVerifyOwnKey);
+    const { own } = build(verify, new OwnKeyCheckLimiter());
+
+    await runAcceptedChecks(own, 120);
+
+    expect(verify).toHaveBeenCalledTimes(120);
+    expect(own.view()?.status).toBe("accepted");
+
+    own.apply(setOf("fake-good-even"));
+    own.apply(setOf("fake-good-odd"));
+    await own.settled();
+
+    expect(verify).toHaveBeenCalledTimes(120);
+    expect(own.view()?.status).toBe("limited");
+  });
+
+  it("a reconnect does not reset the ceiling; the hour does", async () => {
+    let now = 1_000;
+    const verify = vi.fn<VerifyOwnKey>(fakeVerifyOwnKey);
+    const limiter = new OwnKeyCheckLimiter(() => {
+      return now;
+    });
+
+    await runAcceptedChecks(build(verify, limiter).own, 120);
+
+    const { own: reconnected } = build(verify, limiter);
+
+    reconnected.apply(setOf("fake-good-even"));
+    await reconnected.settled();
+
+    expect(verify).toHaveBeenCalledTimes(120);
+    expect(reconnected.view()?.status).toBe("limited");
+
+    now += 60 * 60_000;
+    reconnected.apply(setOf("fake-good-even"));
+    await reconnected.settled();
+
+    expect(verify).toHaveBeenCalledTimes(121);
+    expect(reconnected.view()?.status).toBe("accepted");
+  });
+
+  it("failed guesses still stop at 20 with accepted checks mixed in", async () => {
+    const verify = vi.fn<VerifyOwnKey>(fakeVerifyOwnKey);
+    const { own } = build(verify, new OwnKeyCheckLimiter());
+
+    for (let i = 0; i < 20; i++) {
+      own.apply(setOf(`fake-good-${String(i)}`));
+      await own.settled();
+      own.apply(setOf(`wrong-${String(i)}`));
+      await own.settled();
+    }
+
+    expect(verify).toHaveBeenCalledTimes(40);
+
+    own.apply(setOf("wrong-20"));
+    await own.settled();
+
+    expect(verify).toHaveBeenCalledTimes(40);
+    expect(own.view()?.status).toBe("limited");
+  });
+
+  it("an accepted answer that arrives too late refunds nothing: a superseded check stays charged", async () => {
+    const { verify, calls } = deferredVerify(false);
+    const limiter = new OwnKeyCheckLimiter();
+    const refund = vi.spyOn(limiter, "refund");
+    const { own } = build(verify, limiter);
+
+    own.apply(setOf("old-key"));
+    own.apply(setOf("new-key"));
+    calls[0]?.resolve("accepted");
+    calls[1]?.resolve("refused");
+    await own.settled();
+
+    expect(refund).not.toHaveBeenCalled();
+  });
+
+  it("accepts after the provider says so, and use() hands out the key", async () => {
+    const { verify, calls } = deferredVerify();
+    const { own } = build(verify);
+
+    own.apply(setOf(SECRET));
+
+    expect(own.view()).toEqual({
+      provider: "anthropic",
+      status: "checking",
+      capUsd: 5,
+    });
+    expect(
+      own.use(() => {
+        return "x";
+      }),
+    ).toBeNull();
+
+    calls[0]?.resolve("accepted");
+    await own.settled();
+
+    expect(own.view()?.status).toBe("accepted");
+    expect(
+      own.use((provider, key) => {
+        return `${provider}:${key}`;
+      }),
+    ).toBe(`anthropic:${SECRET}`);
+  });
+
+  it("the same key again updates the cap without a provider call", async () => {
+    const { verify, calls } = deferredVerify();
+    const { own } = build(verify);
+
+    own.apply(setOf(SECRET, 5));
+    calls[0]?.resolve("accepted");
+    await own.settled();
+    own.apply(setOf(SECRET, 9));
+
+    expect(verify).toHaveBeenCalledTimes(1);
+    expect(own.view()).toEqual({
+      provider: "anthropic",
+      status: "accepted",
+      capUsd: 9,
+    });
+  });
+
+  it("a newer key's answer wins over an older check landing late", async () => {
+    const { verify, calls } = deferredVerify(false);
+    const { own } = build(verify);
+
+    own.apply(setOf("old-key"));
+    own.apply(setOf("new-key"));
+
+    expect(calls[0]?.signal.aborted).toBe(true);
+
+    const changes = vi.fn();
+
+    own.changes$.subscribe(changes);
+    calls[1]?.resolve("accepted");
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(own.view()?.status).toBe("accepted");
+    expect(changes).toHaveBeenCalledTimes(1);
+
+    // The older check answers AFTER the newer one has landed.
+    calls[0]?.resolve("refused");
+    await own.settled();
+
+    expect(own.view()?.status).toBe("accepted");
+    expect(changes).toHaveBeenCalledTimes(1);
+    expect(
+      own.use((_p, key) => {
+        return key;
+      }),
+    ).toBe("new-key");
+  });
+
+  it("unreachable then the same key makes a second, charged call", async () => {
+    const { verify, calls } = deferredVerify();
+    const { own, limiter } = build(verify);
+    const allow = vi.spyOn(limiter, "allow");
+
+    own.apply(setOf(SECRET));
+    calls[0]?.resolve("unreachable");
+    await own.settled();
+    own.apply(setOf(SECRET));
+
+    expect(verify).toHaveBeenCalledTimes(2);
+    expect(allow).toHaveBeenCalledTimes(2);
+    expect(own.view()?.status).toBe("checking");
+  });
+
+  it("refused then the same key updates the cap and makes no call", async () => {
+    const { verify, calls } = deferredVerify();
+    const { own } = build(verify);
+
+    own.apply(setOf(SECRET, 5));
+    calls[0]?.resolve("refused");
+    await own.settled();
+    own.apply(setOf(SECRET, 7));
+
+    expect(verify).toHaveBeenCalledTimes(1);
+    expect(own.view()).toEqual({
+      provider: "anthropic",
+      status: "refused",
+      capUsd: 7,
+    });
+  });
+
+  it("limited then the same key after the window reopens checks again", async () => {
+    vi.useFakeTimers();
+
+    const { verify } = deferredVerify();
+    const { own } = build(verify);
+
+    for (let i = 0; i < 20; i++) {
+      own.apply(setOf(`key-${String(i)}`));
+    }
+
+    own.apply(setOf("again"));
+
+    expect(own.view()?.status).toBe("limited");
+    expect(verify).toHaveBeenCalledTimes(20);
+
+    own.apply(setOf("again"));
+
+    expect(verify).toHaveBeenCalledTimes(20);
+
+    vi.advanceTimersByTime(60 * 60_000);
+    own.apply(setOf("again"));
+
+    expect(verify).toHaveBeenCalledTimes(21);
+    expect(own.view()?.status).toBe("checking");
+  });
+
+  it("the 21st check in an hour makes no provider call and reads limited", async () => {
+    const { verify, calls } = deferredVerify();
+    const { own } = build(verify);
+
+    for (let i = 0; i < 20; i++) {
+      own.apply(setOf(`key-${String(i)}`));
+    }
+
+    expect(verify).toHaveBeenCalledTimes(20);
+
+    own.apply(setOf("key-21"));
+    calls.forEach((call) => {
+      call.resolve("accepted");
+    });
+    await own.settled();
+
+    expect(verify).toHaveBeenCalledTimes(20);
+    expect(own.view()?.status).toBe("limited");
+    expect(
+      own.use(() => {
+        return "x";
+      }),
+    ).toBeNull();
+    expect(calls).toHaveLength(20);
+  });
+
+  it("a reconnecting caller does not get a fresh allowance", () => {
+    const { verify } = deferredVerify();
+    const limiter = new OwnKeyCheckLimiter(() => {
+      return Date.now();
+    });
+    const first = new ConnectionOwnKey({ verify, limiter, identity: "ada" });
+
+    for (let i = 0; i < 20; i++) {
+      first.apply(setOf(`key-${String(i)}`));
+    }
+
+    first.dispose();
+
+    const second = new ConnectionOwnKey({ verify, limiter, identity: "ada" });
+
+    second.apply(setOf("another"));
+
+    expect(verify).toHaveBeenCalledTimes(20);
+    expect(second.view()?.status).toBe("limited");
+  });
+
+  it("dispose during a check keeps nothing: a late answer changes no state", async () => {
+    const { verify, calls } = deferredVerify();
+    const { own } = build(verify);
+    const changes = vi.fn();
+
+    own.apply(setOf(SECRET));
+    own.changes$.subscribe(changes);
+    own.dispose();
+
+    expect(calls[0]?.signal.aborted).toBe(true);
+
+    calls[0]?.resolve("accepted");
+    await own.settled();
+
+    expect(own.view()).toBeNull();
+    expect(
+      own.use(() => {
+        return "x";
+      }),
+    ).toBeNull();
+    expect(changes).not.toHaveBeenCalled();
+  });
+
+  it("clear drops the key and markRefused flips an accepted key", async () => {
+    const { verify, calls } = deferredVerify();
+    const { own } = build(verify);
+
+    own.apply(setOf(SECRET));
+    calls[0]?.resolve("accepted");
+    await own.settled();
+    own.markRefused();
+
+    expect(own.view()?.status).toBe("refused");
+    expect(
+      own.use(() => {
+        return "x";
+      }),
+    ).toBeNull();
+
+    own.apply({ action: "clear" });
+
+    expect(own.view()).toBeNull();
+  });
+
+  it("a verify that throws reads unreachable", async () => {
+    const own = new ConnectionOwnKey({
+      verify: () => {
+        return Promise.reject(new Error("x"));
+      },
+      limiter: new OwnKeyCheckLimiter(() => {
+        return Date.now();
+      }),
+      identity: "ada",
+    });
+
+    own.apply(setOf(SECRET));
+    await own.settled();
+
+    expect(own.view()?.status).toBe("unreachable");
+  });
+
+  it("no key text in JSON.stringify, String or util.inspect of the object", async () => {
+    const { verify, calls } = deferredVerify();
+    const { own } = build(verify);
+
+    own.apply(setOf(SECRET));
+    calls[0]?.resolve("accepted");
+    await own.settled();
+
+    for (const text of [
+      JSON.stringify(own),
+      String(own),
+      inspect(own, { depth: 5, showHidden: true }),
+      JSON.stringify(own.view()),
+    ]) {
+      expect(text).not.toContain(SECRET);
+    }
+  });
+
+  it("settled resolves at once with no check in flight", async () => {
+    vi.useFakeTimers();
+
+    const { verify } = deferredVerify();
+    const { own } = build(verify);
+
+    await expect(own.settled()).resolves.toBeUndefined();
+  });
+});
+
+const SECRET = "sk-ant-SECRET-key-text-0123456789";
+
+function replying(status: number): typeof fetch {
+  return vi.fn(() => {
+    return Promise.resolve(new Response("{}", { status }));
+  });
+}
+
+interface Deferred {
+  verify: ReturnType<typeof vi.fn<VerifyOwnKey>>;
+  calls: Pending[];
+}
+
+interface Built {
+  own: ConnectionOwnKey;
+  limiter: OwnKeyCheckLimiter;
+}
+
+interface Pending {
+  readonly signal: AbortSignal;
+  resolve(verdict: OwnKeyVerdict): void;
+}
+
+/** A verify function whose every call stays open until the test answers it. */
+function deferredVerify(abortAnswers = true): Deferred {
+  const calls: Pending[] = [];
+  const verify = vi.fn<VerifyOwnKey>((_provider, _key, signal) => {
+    return new Promise<OwnKeyVerdict>((resolve) => {
+      calls.push({ signal, resolve });
+
+      // A real fetch rejects when aborted; settled() must not hang on it.
+      // With abortAnswers false an aborted check stays open, so a test can
+      // deliver its stale answer after the newer one.
+      if (!abortAnswers) {
+        return;
+      }
+
+      signal.addEventListener("abort", () => {
+        resolve("unreachable");
+      });
+    });
+  });
+
+  return { verify, calls };
+}
+
+/** Two keys the fake check accepts, in turn, so every one is a provider
+ * check and not a repeat. */
+async function runAcceptedChecks(
+  own: ConnectionOwnKey,
+  count: number,
+): Promise<void> {
+  for (let i = 0; i < count; i++) {
+    own.apply(setOf(i % 2 === 0 ? "fake-good-even" : "fake-good-odd"));
+    await own.settled();
+  }
+}
+
+function setOf(key: string, capUsd: number | null = 5): JarvisKeyPayload {
+  return {
+    action: "set",
+    provider: "anthropic",
+    key,
+    capUsd,
+  } as const;
+}
+
+function build(
+  verify: VerifyOwnKey,
+  limiter: OwnKeyCheckLimiter = new OwnKeyCheckLimiter(() => {
+    return Date.now();
+  }),
+): Built {
+  const own = new ConnectionOwnKey({ verify, limiter, identity: "ada" });
+
+  return { own, limiter };
+}

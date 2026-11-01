@@ -2,6 +2,38 @@ import { describe, expect, it } from "vitest";
 
 import { createRateLimiter } from "#/auth/rateLimit";
 
+describe("refund", () => {
+  it("gives back one hit of the current window", () => {
+    const limiter = createRateLimiter(2, 1_000);
+
+    limiter.hit("a", 0);
+    limiter.hit("a", 0);
+    limiter.refund("a");
+
+    expect(limiter.hit("a", 20)).toBe(true);
+    expect(limiter.hit("a", 20)).toBe(false);
+  });
+
+  it("does nothing for a key with no window", () => {
+    const limiter = createRateLimiter(1, 1_000);
+
+    limiter.refund("a");
+
+    expect(limiter.size()).toBe(0);
+  });
+
+  it("never gives back more than was charged", () => {
+    const limiter = createRateLimiter(1, 1_000);
+
+    limiter.hit("a", 0);
+    limiter.refund("a");
+    limiter.refund("a");
+    limiter.hit("a", 3);
+
+    expect(limiter.hit("a", 4)).toBe(false);
+  });
+});
+
 describe("rateLimit", () => {
   it("allows up to max then throttles within the window", () => {
     const rl = createRateLimiter(3, 1000);

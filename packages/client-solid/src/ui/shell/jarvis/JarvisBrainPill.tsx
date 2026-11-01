@@ -8,11 +8,7 @@ import {
 } from "solid-js";
 
 import { describeBrainPill } from "@rtc/core-logic";
-import {
-  JARVIS_BRAIN_NAMES,
-  JARVIS_BRAINS,
-  type JarvisBrain,
-} from "@rtc/domain";
+import { JARVIS_BRAINS, type JarvisBrain, jarvisBrainName } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import styles from "./JarvisBrainPill.module.css";
@@ -131,7 +127,7 @@ export function JarvisBrainPill(): JSX.Element {
                   <span class={styles.mark} aria-hidden="true">
                     {brain === state().effectiveBrain ? "✓" : ""}
                   </span>
-                  {JARVIS_BRAIN_NAMES[brain]}
+                  {jarvisBrainName(brain)}
                 </button>
               );
             }}

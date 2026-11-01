@@ -39,7 +39,7 @@
  *      `DriveBatchV1` (via the real `parseDriveBatch`, same reuse doctrine
  *      as check 4's `parsePanelSpec`) containing a `switchTab` command.
  *   6. A FRESH WebSocket connection (same login token, new server-side
- *      `AgentSession` — `jarvisEffects`' `jarvisSessionEffect` mints one per
+ *      `AgentSession` — `jarvisEffects`' `jarvisConnectionEffect` mints one per
  *      socket) carrying turns 1-3 as wire `history`, stretched with synthetic
  *      filler so the server's own 20-entry wire cap
  *      (`JARVIS_WIRE_HISTORY_MAX_ENTRIES` in jarvis.effects.ts) truncates it

@@ -18,11 +18,17 @@ export interface RateLimiter {
   size(): number;
 }
 
+export interface RefundableRateLimiter extends RateLimiter {
+  /** Gives back one `hit`, for a caller whose charge turned out not to be
+   * owed. A window that has ended starts over at the next `hit` regardless. */
+  refund(key: string): void;
+}
+
 export function createRateLimiter(
   maxPerWindow: number,
   windowMs: number,
   options: RateLimiterOptions = {},
-): RateLimiter {
+): RefundableRateLimiter {
   const maxKeys = options.maxKeys ?? DEFAULT_MAX_KEYS;
   const windows = new Map<string, WindowState>();
 
@@ -87,6 +93,13 @@ export function createRateLimiter(
       }
 
       return state.count < maxPerWindow;
+    },
+    refund(key: string): void {
+      const state = windows.get(key);
+
+      if (state !== undefined && state.count > 0) {
+        state.count--;
+      }
     },
     size(): number {
       return windows.size;

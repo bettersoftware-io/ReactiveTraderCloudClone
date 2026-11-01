@@ -437,6 +437,8 @@ B3c starts with a `Content-Security-Policy` header on both web clients
 Deploy workflow now checks, after each client build, that the bundle names a
 server host the policy allows.
 
+**Client half (PR 1).**
+
 1. **Deploy both web clients** (`deploy.yml`). Its smoke step already fails if
    `/` or `/devtools/` lacks the header.
 2. **Check the header yourself**, on both sites:
@@ -452,6 +454,22 @@ server host the policy allows.
 4. **If a page breaks**, the console names the blocked directive. Widen that one
    directive in both `vercel.*.json` files, run `pnpm check:scripts`, and add the
    reason to `security.md` §3.1. Do not remove the header.
+
+**Server half (PR 2).** It deploys alone, in any order against the clients.
+
+5. **Deploy the server** (`deploy.yml`). There is **no migration** and no new
+   setting: own keys are held in the connection's memory and the spend rows
+   reuse `jarvis_spend_daily`. Old clients are unaffected: they never send
+   `jarvis.key`, and the extra availability fields (`ownKey`, `ownBudget`) are
+   ignored by a client that does not read them.
+6. **Expect one behaviour change (D16).** With no `ANTHROPIC_API_KEY`, Jarvis
+   is now available on the scripted brain instead of reporting itself
+   unavailable, so an operator can turn the house key off without taking
+   Jarvis away.
+7. **Verify.** `pnpm test:e2e` covers the wiring (the full-stack node smoke,
+   under `RTC_JARVIS_FAKE=1`, sends `jarvis.key` over a real socket). On the
+   deployed server the availability frame carries no `ownKey` until a client
+   sends a key.
 
 ## Deploying
 

@@ -1,6 +1,8 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import { JARVIS_OWN_MODELS } from "@rtc/domain";
+
 import {
   estimateUsageCostUsd,
   JARVIS_PRICE_TABLE,
@@ -276,6 +278,41 @@ describe("estimateUsageCostUsd", () => {
         cacheCreationTokens: 1_000_000,
       }),
     ).toBeCloseTo(2 + 10 + 0.2 + 2.5, 10);
+  });
+
+  it("prices an own-key brain from its curated model", () => {
+    expect(
+      estimateUsageCostUsd("own:anthropic:claude-opus-5", {
+        inputTokens: 1_000_000,
+        outputTokens: 1_000_000,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+      }),
+    ).toBeCloseTo(5 + 25, 10);
+  });
+
+  it("has no price for an own brain that is not curated, so the budget refuses it", () => {
+    expect(
+      estimateUsageCostUsd("own:anthropic:claude-unlisted", {
+        inputTokens: 1,
+        outputTokens: 1,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+      }),
+    ).toBeNaN();
+  });
+
+  it("prices each own Anthropic model exactly like its house table row", () => {
+    for (const model of JARVIS_OWN_MODELS) {
+      const houseRow =
+        JARVIS_PRICE_TABLE[model.modelId as keyof typeof JARVIS_PRICE_TABLE];
+
+      expect(houseRow).toBeDefined();
+      expect({
+        inputUsdPerMtok: model.inputUsdPerMtok,
+        outputUsdPerMtok: model.outputUsdPerMtok,
+      }).toEqual(houseRow);
+    }
   });
 
   it("prices the scripted brain at zero", () => {

@@ -1,6 +1,6 @@
 import type { WsEffect } from "@better-software/rx-ws-effects";
 
-import type { JarvisLoops } from "../agent/agentLoop.js";
+import type { JarvisLoops, OwnKeyLoopBuilder } from "../agent/agentLoop.js";
 import { accountAdminEffects } from "./accountAdmin.effects.js";
 import type { Ctx } from "./context.js";
 import { creditEffects } from "./credit.effects.js";
@@ -11,10 +11,8 @@ import { opsEffects } from "./ops.effects.js";
 import { opsJarvisUsageEffects } from "./opsJarvisUsage.effects.js";
 
 // `opsJarvisUsageEffects` reads only `ctx.usageMeter` and `ctx.jarvisBudget`,
-// which are always present on the `ServiceContainer` regardless of whether
-// Jarvis itself is wired — so it belongs in the unconditional set, not behind
-// `buildEffects`' `loops` gate (the ops usage dock stays queryable even with
-// Jarvis absent, correctly reporting an all-zero snapshot).
+// which are always present on the `ServiceContainer`, so it belongs with the
+// rest of the shared set, apart from the effects `buildEffects` adds.
 export const allEffects: WsEffect<Ctx>[] = [
   ...fxEffects,
   ...creditEffects,
@@ -24,10 +22,10 @@ export const allEffects: WsEffect<Ctx>[] = [
   ...accountAdminEffects,
 ];
 
-/** `allEffects` plus the JARVIS_* effects. `jarvisEffects` itself always
- * registers the availability responder — even with `loops === null` — and
- * adds the per-connection session effect only when a loop set is present
- * (see `createJarvisLoops`'s env precedence). */
-export function buildEffects(loops: JarvisLoops | null): WsEffect<Ctx>[] {
-  return [...allEffects, ...jarvisEffects(loops)];
+/** `allEffects` plus the JARVIS_* effects. */
+export function buildEffects(
+  loops: JarvisLoops,
+  buildOwnKeyLoop: OwnKeyLoopBuilder,
+): WsEffect<Ctx>[] {
+  return [...allEffects, ...jarvisEffects(loops, buildOwnKeyLoop)];
 }

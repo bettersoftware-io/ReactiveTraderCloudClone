@@ -74,9 +74,9 @@ export interface JarvisAvailabilityGate {
  * who have no personal limit (their spend still counts toward the house cap).
  * `exhausted` says why house turns are off: the caller's own limit, the
  * house-wide cap, a spend store that cannot be reached, or a forced gate.
- * `keyKind` widens to `"own"` with bring-your-own keys (B3c). */
+ * `keyKind` is `"own"` when the caller's own key pays (B3c). */
 export interface JarvisBudgetView {
-  readonly keyKind: "house";
+  readonly keyKind: "house" | "own";
   readonly spentUsd: number;
   readonly limitUsd: number | null;
   readonly exhausted: "user" | "house" | "unavailable" | "forced" | null;

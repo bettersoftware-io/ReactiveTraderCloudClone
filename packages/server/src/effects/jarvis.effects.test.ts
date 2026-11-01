@@ -1,3 +1,5 @@
+import { inspect } from "node:util";
+
 import {
   combineEffects,
   createWsListener,
@@ -5,16 +7,28 @@ import {
   type Outbound,
 } from "@better-software/rx-ws-effects";
 import { firstValueFrom, type Observable, of, Subject } from "rxjs";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type Mock,
+  vi,
+} from "vitest";
 
+import type { ConfirmGate } from "@rtc/agent-tools";
 import {
   DEFAULT_JARVIS_BRAIN,
   Direction,
   type DriveBatchV1,
   JARVIS_BRAINS,
+  JARVIS_KEY_MAX_CHARS,
+  JARVIS_OWN_CAP_MAX_USD,
   type JarvisBrain,
   type JarvisEvent,
   type JarvisHistoryEntry,
+  type JarvisOwnBrain,
   type PanelSpecV1,
 } from "@rtc/domain";
 import {
@@ -23,15 +37,24 @@ import {
   type JarvisCancelPayload,
   type JarvisChatPayload,
   type JarvisConfirmPayload,
+  type JarvisKeyPayload,
   SERVER_MSG,
 } from "@rtc/shared";
 
+import { AnthropicAgentLoop } from "../agent/AnthropicAgentLoop.js";
+import type {
+  AnthropicFinalMessage,
+  AnthropicMessageStream,
+  AnthropicRunner,
+} from "../agent/AnthropicAgentSession.js";
 import {
   type AgentLoop,
   type AgentSession,
   createJarvisLoops,
   type JarvisLoops,
   type JarvisTurnOptions,
+  type OwnKeyFailureSink,
+  type OwnKeyLoopBuilder,
 } from "../agent/agentLoop.js";
 import { scopeServicesToConnection } from "../services/connectionScope.js";
 import { createInMemorySpendStore } from "../services/jarvisBudget/InMemorySpendStore.js";
@@ -146,22 +169,6 @@ afterEach(() => {
 });
 
 describe("jarvis availability", () => {
-  it("responds { available: false, brains: [], defaultBrain: 'scripted' } to jarvis.subscribe when no loops are present", () => {
-    const sent: Outbound[] = [];
-    const socket = createSocket(sent);
-    const ctx = { caller: null } as unknown as Ctx;
-    createWsListener(combineEffects(...jarvisEffects(null)), ctx)(socket);
-
-    socket.messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
-
-    expect(sent).toEqual([
-      {
-        type: SERVER_MSG.JARVIS_AVAILABILITY,
-        payload: { available: false, brains: [], defaultBrain: "scripted" },
-      },
-    ]);
-  });
-
   it("responds { available: true, brains: ['scripted'], defaultBrain: 'scripted' } when only the scripted loop is present (RTC_JARVIS_FAKE=1)", () => {
     const { messages$, sent } = createHarness();
 
@@ -194,14 +201,10 @@ describe("jarvis availability", () => {
       },
     );
 
-    if (!loops) {
-      throw new Error("expected a non-null JarvisLoops");
-    }
-
     const sent: Outbound[] = [];
     const socket = createSocket(sent);
     createWsListener(
-      combineEffects(...jarvisEffects(loops)),
+      combineEffects(...jarvisEffects(loops, refuseOwnKeyLoop)),
       scopeServicesToConnection(services, OPERATOR),
     )(socket);
 
@@ -1413,14 +1416,10 @@ describe("per-caller offers and the daily budget", () => {
     const services = createBudgetServices();
     const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
 
-    if (!loops) {
-      throw new Error("expected a non-null JarvisLoops");
-    }
-
     const sent: Outbound[] = [];
     const socket = createSocket(sent);
     createWsListener(
-      combineEffects(...jarvisEffects(loops)),
+      combineEffects(...jarvisEffects(loops, refuseOwnKeyLoop)),
       scopeServicesToConnection(services, MEMBER),
     )(socket);
 
@@ -1572,7 +1571,7 @@ describe("per-caller offers and the daily budget", () => {
     };
     const socket = createSocket([]);
     createWsListener(
-      combineEffects(...jarvisEffects(loops)),
+      combineEffects(...jarvisEffects(loops, refuseOwnKeyLoop)),
       scopeServicesToConnection(services, MEMBER),
     )(socket);
 
@@ -1665,7 +1664,7 @@ describe("per-caller offers and the daily budget", () => {
     };
     // One effect for the process, one scoped container per socket — the
     // way `index.ts` composes every connection.
-    const effect = combineEffects(...jarvisEffects(loops));
+    const effect = combineEffects(...jarvisEffects(loops, refuseOwnKeyLoop));
     const sentA: Outbound[] = [];
     const socketA = createSocket(sentA);
     createWsListener(
@@ -1961,6 +1960,1080 @@ describe("jarvis effects — each turn is stamped with the brain that ran", () =
   });
 });
 
+describe("a person's own key", () => {
+  beforeEach(() => {
+    vi.setSystemTime(NOON);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  describe("availability", () => {
+    it("an accepted key adds its models to the availability frame with ownKey and ownBudget", async () => {
+      answerFetchWith(200);
+      const { messages$, sent } = ownKeyHarness();
+
+      messages$.next(SUBSCRIBE_FRAME);
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+
+      expect(lastAvailability(sent)).toEqual({
+        available: true,
+        brains: [
+          "scripted",
+          "claude-haiku-4-5",
+          "claude-sonnet-5",
+          OWN_HAIKU,
+          OWN_SONNET,
+          OWN_OPUS,
+        ],
+        defaultBrain: DEFAULT_JARVIS_BRAIN,
+        budget: expect.objectContaining({ keyKind: "house" }),
+        ownBudget: {
+          keyKind: "own",
+          spentUsd: 0,
+          limitUsd: 1,
+          exhausted: null,
+          resetsAtMs: NEXT_MIDNIGHT,
+        },
+        ownKey: { provider: "anthropic", status: "accepted", capUsd: 1 },
+      });
+    });
+
+    it("offers the own brains while the key is being checked", async () => {
+      holdFetch();
+      const { messages$, sent } = ownKeyHarness();
+
+      messages$.next(SUBSCRIBE_FRAME);
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+
+      expect(lastAvailability(sent).ownKey?.status).toBe("checking");
+      expect(lastAvailability(sent).brains).toContain(OWN_HAIKU);
+    });
+
+    it.each([
+      ["unreachable", 500, (): void => {}],
+      [
+        "limited",
+        200,
+        (services: ServiceContainer): void => {
+          vi.spyOn(services.ownKeyChecks, "allow").mockReturnValue(false);
+        },
+      ],
+    ])(
+      "offers no own brain on a key reading %s, and gates none, though the frame says why",
+      async (status, httpStatus, prepare) => {
+        answerFetchWith(httpStatus);
+        const services = createBudgetServices();
+        prepare(services);
+        const { messages$, sent } = ownKeyHarness({ services });
+
+        messages$.next(SUBSCRIBE_FRAME);
+        messages$.next(keyFrame());
+        await settleBudgetReads();
+
+        const frame = lastAvailability(sent);
+
+        expect(frame.ownKey?.status).toBe(status);
+        expect(frame.ownBudget?.keyKind).toBe("own");
+        expect(frame.brains).not.toContain(OWN_HAIKU);
+        expect(frame.gate).toBeUndefined();
+      },
+    );
+
+    it("clearing the key takes ownKey and ownBudget off the frame", async () => {
+      answerFetchWith(200);
+      const { messages$, sent } = ownKeyHarness();
+
+      messages$.next(SUBSCRIBE_FRAME);
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+      messages$.next(CLEAR_KEY_FRAME);
+      await settleBudgetReads();
+
+      expect(lastAvailability(sent)).not.toHaveProperty("ownKey");
+      expect(lastAvailability(sent)).not.toHaveProperty("ownBudget");
+      expect(lastAvailability(sent).brains).not.toContain(OWN_HAIKU);
+    });
+
+    it("a house budget that is spent still leaves the own brains offered, with the house brains gated", async () => {
+      answerFetchWith(200);
+      const services = createBudgetServices({ RTC_JARVIS_USER_DAILY_USD: "0" });
+      const { messages$, sent } = ownKeyHarness({ services });
+
+      messages$.next(SUBSCRIBE_FRAME);
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+
+      expect(lastAvailability(sent).brains).toEqual([
+        "scripted",
+        OWN_HAIKU,
+        OWN_SONNET,
+        OWN_OPUS,
+      ]);
+      expect(lastAvailability(sent).gate?.gated).toEqual([
+        "claude-haiku-4-5",
+        "claude-sonnet-5",
+      ]);
+    });
+  });
+
+  describe("routing", () => {
+    it.each<readonly [string, number, JarvisBrain, boolean]>([
+      ["no key", 200, OWN_HAIKU, false],
+      ["an unreachable check", 500, OWN_HAIKU, true],
+      ["a model that left the list", 200, RETIRED_OWN_BRAIN, true],
+      ["another provider's model", 200, OPENAI_OWN_BRAIN, true],
+    ])(
+      "an own brain with no key runs scripted, never a house brain: %s",
+      async (_name, httpStatus, brain, sendKey) => {
+        answerFetchWith(httpStatus);
+        const { messages$, sent, scriptedSpy, anthropicSpy, buildOwnKeyLoop } =
+          ownKeyHarness();
+
+        if (sendKey) {
+          messages$.next(keyFrame());
+        }
+
+        await settleBudgetReads();
+        messages$.next(chatFrame(brain));
+        await settleBudgetReads();
+
+        expectBrainFirst(sent, "scripted");
+        expect(scriptedSpy.sessions[0]?.runTurn).toHaveBeenCalledTimes(1);
+        expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+        expect(buildOwnKeyLoop).not.toHaveBeenCalled();
+      },
+    );
+
+    it("an own brain with no key runs scripted, never a house brain: a limited check", async () => {
+      answerFetchWith(200);
+      const services = createBudgetServices();
+      vi.spyOn(services.ownKeyChecks, "allow").mockReturnValue(false);
+      const { messages$, sent, anthropicSpy, buildOwnKeyLoop } = ownKeyHarness({
+        services,
+      });
+
+      messages$.next(keyFrame());
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+
+      expectBrainFirst(sent, "scripted");
+      expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+      expect(buildOwnKeyLoop).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      "own:evil:x",
+      "own:anthropic",
+      "own:anthropic:",
+      "own:",
+      "own:evil",
+    ])(
+      "an own-shaped string the guard rejects runs scripted, never a house brain: %s",
+      async (brain) => {
+        const { messages$, sent, anthropicSpy, buildOwnKeyLoop } =
+          ownKeyHarness();
+
+        messages$.next(chatFrame(brain as JarvisBrain));
+        await settleBudgetReads();
+
+        expectBrainFirst(sent, "scripted");
+        expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+        expect(buildOwnKeyLoop).not.toHaveBeenCalled();
+      },
+    );
+
+    it("an unrecognized string outside the own: prefix still gets the default brain", async () => {
+      const { loops, messages$, sent } = ownKeyHarness();
+
+      messages$.next(chatFrame("gpt-from-a-stale-client" as JarvisBrain));
+      await settleBudgetReads();
+
+      expectBrainFirst(sent, loops.defaultBrain);
+    });
+
+    it("an own brain on a connection with no caller runs scripted", async () => {
+      const { messages$, sent, anthropicSpy } = ownKeyHarness({ caller: null });
+
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+
+      expectBrainFirst(sent, "scripted");
+      expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+    });
+
+    it("an accepted key runs the turn on that brain, building the loop lazily with the provider and key", async () => {
+      answerFetchWith(200);
+      const { messages$, sent, ownSpy, buildOwnKeyLoop, anthropicSpy } =
+        ownKeyHarness();
+
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+
+      expect(buildOwnKeyLoop).not.toHaveBeenCalled();
+
+      messages$.next(chatFrame(OWN_SONNET));
+      await settleBudgetReads();
+
+      expect(buildOwnKeyLoop).toHaveBeenCalledExactlyOnceWith(
+        "anthropic",
+        OWN_KEY,
+      );
+      expect(ownSpy.sessions[0]?.runTurn).toHaveBeenCalledExactlyOnceWith(
+        "hi",
+        [],
+        {
+          brain: OWN_SONNET,
+          effort: undefined,
+          meter: expect.anything(),
+          keyFailure: {
+            providerName: "Anthropic",
+            refused: expect.any(Function),
+          },
+        },
+      );
+      expectBrainFirst(sent, OWN_SONNET);
+      expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+    });
+
+    it("an own brain still being checked waits for the answer", async () => {
+      const fetches = holdFetch();
+      const { messages$, sent, scriptedSpy, anthropicSpy, ownSpy } =
+        ownKeyHarness();
+
+      messages$.next(keyFrame());
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+
+      expect(brainFramesOf(sent)).toEqual([]);
+      expect(scriptedSpy.createSession).not.toHaveBeenCalled();
+      expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+
+      fetches.answer(0, 200);
+      await settleBudgetReads();
+
+      expectBrainFirst(sent, OWN_HAIKU);
+      expect(ownSpy.sessions[0]?.runTurn).toHaveBeenCalledTimes(1);
+    });
+
+    it("a newer key sent during the wait is waited for too", async () => {
+      const fetches = holdFetch();
+      const { messages$, sent, ownSpy, buildOwnKeyLoop } = ownKeyHarness();
+
+      messages$.next(keyFrame("sk-first"));
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+      messages$.next(keyFrame("sk-second"));
+      await settleBudgetReads();
+      fetches.answer(0, 200);
+      await settleBudgetReads();
+
+      expect(brainFramesOf(sent)).toEqual([]);
+
+      fetches.answer(1, 200);
+      await settleBudgetReads();
+
+      expectBrainFirst(sent, OWN_HAIKU);
+      expect(ownSpy.sessions).toHaveLength(1);
+      expect(buildOwnKeyLoop).toHaveBeenCalledWith("anthropic", "sk-second");
+    });
+
+    it("a turn cancelled while its key is being checked never starts", async () => {
+      const fetches = holdFetch();
+      const { messages$, sent, scriptedSpy, buildOwnKeyLoop } = ownKeyHarness();
+
+      messages$.next(keyFrame());
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+      messages$.next({
+        type: CLIENT_MSG.JARVIS_CANCEL,
+        payload: { turnId: STUB_TURN_ID } satisfies JarvisCancelPayload,
+      });
+      fetches.answer(0, 200);
+      await settleBudgetReads();
+
+      expect(sent).toEqual([]);
+      expect(scriptedSpy.createSession).not.toHaveBeenCalled();
+      expect(buildOwnKeyLoop).not.toHaveBeenCalled();
+    });
+
+    it("a refused key keeps the own brain offered and each turn fails naming the provider", async () => {
+      answerFetchWith(401);
+      const {
+        messages$,
+        sent,
+        scriptedSpy,
+        anthropicSpy,
+        buildOwnKeyLoop,
+        recordTurn,
+      } = ownKeyHarness();
+
+      messages$.next(SUBSCRIBE_FRAME);
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+
+      expect(lastAvailability(sent).ownKey?.status).toBe("refused");
+      expect(lastAvailability(sent).brains).toContain(OWN_HAIKU);
+
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_SONNET));
+      await settleBudgetReads();
+
+      expect(errorMessagesOf(sent)).toEqual([
+        "Anthropic refused your key.",
+        "Anthropic refused your key.",
+      ]);
+      expect(brainFramesOf(sent)).toEqual([]);
+      expect(buildOwnKeyLoop).not.toHaveBeenCalled();
+      expect(scriptedSpy.createSession).not.toHaveBeenCalled();
+      expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+      expect(recordTurn).not.toHaveBeenCalled();
+    });
+
+    it("a house brain runs as today with a refused key beside it", async () => {
+      answerFetchWith(401);
+      const { messages$, sent, anthropicSpy } = ownKeyHarness();
+
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+      messages$.next(chatFrame("claude-sonnet-5"));
+      await settleBudgetReads();
+
+      expectBrainFirst(sent, "claude-sonnet-5");
+      expect(anthropicSpy.sessions[0]?.runTurn).toHaveBeenCalledTimes(1);
+    });
+
+    it("a provider 401 mid-session marks the key refused and pushes availability", async () => {
+      answerFetchWith(200);
+      const runner = vi.fn((): never => {
+        throw providerError(401, "denied");
+      });
+
+      const { messages$, sent } = ownKeyHarness({
+        ownLoop: anthropicLoopOver(runner),
+      });
+
+      messages$.next(SUBSCRIBE_FRAME);
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+
+      expect(errorMessagesOf(sent)).toEqual(["Anthropic refused your key."]);
+      expect(lastAvailability(sent).ownKey?.status).toBe("refused");
+      expect(lastAvailability(sent).brains).toContain(OWN_HAIKU);
+
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+
+      expect(runner).toHaveBeenCalledTimes(1);
+      expect(errorMessagesOf(sent)).toHaveLength(2);
+    });
+
+    it("a failure from the session of an old key leaves a newer accepted key alone", async () => {
+      answerFetchWith(200);
+      const sinks: OwnKeyFailureSink[] = [];
+      const { messages$, sent } = ownKeyHarness({
+        runOwnTurn: (options?: JarvisTurnOptions): Observable<JarvisEvent> => {
+          if (options?.keyFailure !== undefined) {
+            sinks.push(options.keyFailure);
+          }
+
+          return of<JarvisEvent>({ type: "done" });
+        },
+      });
+
+      messages$.next(SUBSCRIBE_FRAME);
+      messages$.next(keyFrame("sk-old"));
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+      messages$.next(keyFrame("sk-new"));
+      await settleBudgetReads();
+
+      sinks[0]?.refused();
+      await settleBudgetReads();
+
+      expect(lastAvailability(sent).ownKey?.status).toBe("accepted");
+
+      // The witness: the sink of the current key's session does refuse it.
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+      sinks[1]?.refused();
+      await settleBudgetReads();
+
+      expect(lastAvailability(sent).ownKey?.status).toBe("refused");
+    });
+
+    it("a spent cap runs scripted and gates the own brains; a house brain still runs", async () => {
+      answerFetchWith(200);
+      const store = createInMemorySpendStore();
+      await store.record("account:acc-ann", TODAY, "own", 1);
+      const services = createBudgetServices({}, store);
+      const { messages$, sent, anthropicSpy, buildOwnKeyLoop } = ownKeyHarness({
+        services,
+      });
+
+      messages$.next(SUBSCRIBE_FRAME);
+      messages$.next(keyFrame(OWN_KEY, 1));
+      await settleBudgetReads();
+
+      const frame = lastAvailability(sent);
+
+      expect(frame.brains).toEqual([
+        "scripted",
+        "claude-haiku-4-5",
+        "claude-sonnet-5",
+      ]);
+      expect(frame.gate).toEqual({
+        level: "hard",
+        resetsAtMs: NEXT_MIDNIGHT,
+        gated: [OWN_HAIKU, OWN_SONNET, OWN_OPUS],
+      });
+      expect(frame.ownBudget?.exhausted).toBe("user");
+      expect(frame.budget?.exhausted).toBeNull();
+
+      sent.length = 0;
+      messages$.next(chatFrame(OWN_SONNET));
+      await settleBudgetReads();
+
+      expectBrainFirst(sent, "scripted");
+      expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+      expect(buildOwnKeyLoop).not.toHaveBeenCalled();
+
+      sent.length = 0;
+      messages$.next(chatFrame("claude-sonnet-5"));
+      await settleBudgetReads();
+
+      expectBrainFirst(sent, "claude-sonnet-5");
+      expect(anthropicSpy.sessions[0]?.runTurn).toHaveBeenCalledTimes(1);
+    });
+
+    it.each<readonly [string, number | null, JarvisBrain]>([
+      ["a capped turn fails closed to scripted", 1, "scripted"],
+      ["a no-limit turn runs regardless", null, OWN_HAIKU],
+    ])(
+      "a spend store that cannot be read (D15): %s",
+      async (_name, capUsd, ranOn) => {
+        answerFetchWith(200);
+        const store: SpendStore = {
+          kind: "in-memory",
+          read: () => {
+            return Promise.resolve("unavailable");
+          },
+          record: () => {
+            return Promise.resolve("unavailable");
+          },
+        };
+        const services = createBudgetServices({}, store);
+        const { messages$, sent, anthropicSpy } = ownKeyHarness({ services });
+
+        messages$.next(keyFrame(OWN_KEY, capUsd));
+        await settleBudgetReads();
+        messages$.next(chatFrame(OWN_HAIKU));
+        await settleBudgetReads();
+
+        expectBrainFirst(sent, ranOn);
+        expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+      },
+    );
+
+    it("an own-key turn books to the own row, not the house budget or the usage meter", async () => {
+      answerFetchWith(200);
+      const store = createInMemorySpendStore();
+      const record = vi.spyOn(store, "record");
+      const services = createBudgetServices({}, store);
+      const meterFor = vi.spyOn(services.jarvisBudget, "meterFor");
+      const { messages$, sent, recordTurn, recordTokens } = ownKeyHarness({
+        services,
+        runOwnTurn: (options?: JarvisTurnOptions): Observable<JarvisEvent> => {
+          options?.meter?.record(OWN_SONNET, createUsageFixture(50_000));
+          return of<JarvisEvent>({ type: "done" });
+        },
+      });
+
+      messages$.next(SUBSCRIBE_FRAME);
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_SONNET));
+      await settleBudgetReads();
+
+      expect(record).toHaveBeenCalledExactlyOnceWith(
+        "account:acc-ann",
+        TODAY,
+        "own",
+        expect.any(Number),
+      );
+      expect(services.jarvisBudget.houseToday().spentUsd).toBe(0);
+      expect(meterFor).not.toHaveBeenCalled();
+      expect(recordTurn).not.toHaveBeenCalled();
+      expect(recordTokens).not.toHaveBeenCalled();
+      expect(lastAvailability(sent).ownBudget?.spentUsd).toBeGreaterThan(0);
+      expect(lastAvailability(sent).budget?.spentUsd).toBe(0);
+    });
+
+    it("an own turn's meter stops at the cap the person set", async () => {
+      answerFetchWith(200);
+      const services = createBudgetServices();
+      const ownMeterFor = vi.spyOn(services.jarvisBudget, "ownMeterFor");
+      const { messages$ } = ownKeyHarness({ services });
+
+      messages$.next(keyFrame(OWN_KEY, 2.5));
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_SONNET));
+      await settleBudgetReads();
+
+      expect(ownMeterFor).toHaveBeenCalledTimes(1);
+      expect(ownMeterFor.mock.calls[0]?.[0]).toBe(MEMBER);
+      expect(ownMeterFor.mock.calls[0]?.[1]()).toBe(2.5);
+    });
+
+    it("lowering the cap mid-turn stops the turn before its next request", async () => {
+      answerFetchWith(200);
+      const firstReply = holdReply();
+      const nextRequest = vi.fn();
+      const { messages$, sent } = ownKeyHarness({
+        ownLoop: anthropicRunnerLoop(
+          async function* streamTwoRequests(): AsyncGenerator<AnthropicMessageStream> {
+            yield createFakeOwnStream(
+              "tool_use",
+              firstReply.held,
+              COSTLY_INPUT_TOKENS,
+            );
+            nextRequest();
+            yield createFakeOwnStream("end_turn");
+          },
+        ),
+      });
+
+      messages$.next(keyFrame(OWN_KEY, 1));
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_SONNET));
+      await settleBudgetReads();
+      messages$.next(keyFrame(OWN_KEY, CAP_BELOW_ONE_REQUEST));
+      firstReply.release();
+      await settleBudgetReads();
+
+      expect(nextRequest).not.toHaveBeenCalled();
+      expect(reassembleDeltas(sent)).toContain(
+        "Today's AI budget is used — switching to the scripted brain.",
+      );
+    });
+
+    it("a narrator turn on an own brain runs on it and counts against the cap; on a house brain it stays scripted", async () => {
+      answerFetchWith(200);
+      const store = createInMemorySpendStore();
+      const record = vi.spyOn(store, "record");
+      const services = createBudgetServices({}, store);
+      const { messages$, sent, ownSpy, scriptedSpy, anthropicSpy } =
+        ownKeyHarness({
+          services,
+          runOwnTurn: (
+            options?: JarvisTurnOptions,
+          ): Observable<JarvisEvent> => {
+            options?.meter?.record(OWN_SONNET, createUsageFixture(50_000));
+            return of<JarvisEvent>({ type: "done" });
+          },
+        });
+
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_SONNET, "narrator"));
+      await settleBudgetReads();
+
+      expectBrainFirst(sent, OWN_SONNET);
+      expect(ownSpy.sessions[0]?.runTurn).toHaveBeenCalledTimes(1);
+      expect(record).toHaveBeenCalledWith(
+        "account:acc-ann",
+        TODAY,
+        "own",
+        expect.any(Number),
+      );
+
+      sent.length = 0;
+      messages$.next(chatFrame("claude-sonnet-5", "narrator"));
+      await settleBudgetReads();
+
+      expectBrainFirst(sent, "scripted");
+      expect(scriptedSpy.sessions[0]?.runTurn).toHaveBeenCalledTimes(1);
+      expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+    });
+
+    it("a narrator turn on an own brain with its cap spent runs scripted", async () => {
+      answerFetchWith(200);
+      const store = createInMemorySpendStore();
+      await store.record("account:acc-ann", TODAY, "own", 1);
+      const { messages$, sent, buildOwnKeyLoop } = ownKeyHarness({
+        services: createBudgetServices({}, store),
+      });
+
+      messages$.next(keyFrame(OWN_KEY, 1));
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_SONNET, "narrator"));
+      await settleBudgetReads();
+
+      expectBrainFirst(sent, "scripted");
+      expect(buildOwnKeyLoop).not.toHaveBeenCalled();
+    });
+
+    it("with no house key, Jarvis is available and an own key works", async () => {
+      answerFetchWith(200);
+      const services = createBudgetServices();
+      const { messages$, sent, ownSpy } = ownKeyHarness({
+        services,
+        loops: createJarvisLoops({}, services),
+      });
+
+      messages$.next(SUBSCRIBE_FRAME);
+      await settleBudgetReads();
+
+      expect(lastAvailability(sent).available).toBe(true);
+      expect(lastAvailability(sent).brains).toEqual(["scripted"]);
+
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+
+      expect(lastAvailability(sent).brains).toEqual([
+        "scripted",
+        OWN_HAIKU,
+        OWN_SONNET,
+        OWN_OPUS,
+      ]);
+
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+
+      expect(ownSpy.sessions[0]?.runTurn).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("the own session's life", () => {
+    it("clearing the key cancels a running own turn and disposes its session", async () => {
+      answerFetchWith(200);
+      const turn = new Subject<JarvisEvent>();
+      const { messages$, sent, ownSpy } = ownKeyHarness({
+        runOwnTurn: (): Observable<JarvisEvent> => {
+          return turn;
+        },
+      });
+
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+
+      const session = ownSpy.sessions[0];
+
+      expect(session?.dispose).not.toHaveBeenCalled();
+
+      messages$.next(CLEAR_KEY_FRAME);
+
+      expect(session?.cancelTurn).toHaveBeenCalledTimes(1);
+      expect(session?.dispose).toHaveBeenCalledTimes(1);
+      expect(session?.cancelTurn.mock.invocationCallOrder[0]).toBeLessThan(
+        session?.dispose.mock.invocationCallOrder[0] ?? 0,
+      );
+
+      turn.complete();
+      await settleBudgetReads();
+      sent.length = 0;
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+
+      expectBrainFirst(sent, "scripted");
+      expect(ownSpy.sessions).toHaveLength(1);
+    });
+
+    it("a different key retires the session; the next own turn gets a new one on the new key", async () => {
+      answerFetchWith(200);
+      const { messages$, ownSpy, buildOwnKeyLoop } = ownKeyHarness();
+
+      messages$.next(keyFrame("sk-old"));
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+      messages$.next(keyFrame("sk-new"));
+      await settleBudgetReads();
+
+      expect(ownSpy.sessions[0]?.dispose).toHaveBeenCalledTimes(1);
+
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+
+      expect(ownSpy.sessions).toHaveLength(2);
+      expect(buildOwnKeyLoop).toHaveBeenLastCalledWith("anthropic", "sk-new");
+    });
+
+    it("a new cap on the same key keeps the session and its running turn", async () => {
+      answerFetchWith(200);
+      const { messages$, ownSpy } = ownKeyHarness();
+
+      messages$.next(keyFrame(OWN_KEY, 1));
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+      messages$.next(keyFrame(OWN_KEY, 5));
+      await settleBudgetReads();
+
+      expect(ownSpy.sessions[0]?.dispose).not.toHaveBeenCalled();
+      expect(ownSpy.sessions[0]?.cancelTurn).not.toHaveBeenCalled();
+    });
+
+    it("the socket closing stops a check in flight", async () => {
+      const fetches = holdFetch();
+      const { messages$, closed$ } = ownKeyHarness();
+
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+
+      expect(fetches.signals[0]?.aborted).toBe(false);
+
+      closed$.next();
+
+      expect(fetches.signals[0]?.aborted).toBe(true);
+    });
+
+    it("the socket closing disposes the own session of a key still current", async () => {
+      answerFetchWith(200);
+      const { messages$, closed$, ownSpy } = ownKeyHarness();
+
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+
+      closed$.next();
+
+      expect(ownSpy.sessions[0]?.cancelTurn).toHaveBeenCalledTimes(1);
+      expect(ownSpy.sessions[0]?.dispose).toHaveBeenCalledTimes(1);
+    });
+
+    describe("a trade whose confirmation comes after the turn was cancelled", () => {
+      it("the socket closing leaves no reservation behind", async () => {
+        answerFetchWith(200);
+        const services = createBudgetServices();
+        const { messages$, closed$ } = ownKeyHarness({
+          services,
+          ownLoop: tradingLoop(),
+        });
+
+        await startOwnTrade(messages$);
+
+        expect(isOwnSpendHeld(services)).toBe(true);
+
+        closed$.next();
+        await vi.advanceTimersByTimeAsync(TRADE_QUOTE_DELAY_MS);
+
+        expect(isOwnSpendHeld(services)).toBe(false);
+      });
+
+      it("clearing the key ends the turn, with no reservation behind", async () => {
+        answerFetchWith(200);
+        const services = createBudgetServices();
+        const { messages$, sent } = ownKeyHarness({
+          services,
+          ownLoop: tradingLoop(),
+        });
+
+        await startOwnTrade(messages$);
+        messages$.next(CLEAR_KEY_FRAME);
+        await vi.advanceTimersByTimeAsync(TRADE_QUOTE_DELAY_MS);
+
+        expect(errorMessagesOf(sent)).toEqual(["Cancelled, sir."]);
+        expect(isOwnSpendHeld(services)).toBe(false);
+      });
+
+      it("a later turn on the same socket still runs", async () => {
+        answerFetchWith(200);
+        const { messages$, sent, scriptedSpy } = ownKeyHarness({
+          ownLoop: tradingLoop(),
+        });
+
+        await startOwnTrade(messages$);
+        messages$.next(CLEAR_KEY_FRAME);
+        messages$.next(chatFrame("scripted"));
+        await vi.advanceTimersByTimeAsync(TRADE_QUOTE_DELAY_MS);
+
+        expect(scriptedSpy.sessions[0]?.runTurn).toHaveBeenCalledTimes(1);
+        expect(brainFramesOf(sent).at(-1)?.payload).toMatchObject({
+          brain: "scripted",
+        });
+      });
+
+      it("a cancel while the quote is on its way answers the gate with no", async () => {
+        answerFetchWith(200);
+        const approved = vi.fn();
+        const { messages$, sent } = ownKeyHarness({
+          ownLoop: tradingLoop(approved),
+        });
+
+        await startOwnTrade(messages$);
+        messages$.next({
+          type: CLIENT_MSG.JARVIS_CANCEL,
+          payload: { turnId: STUB_TURN_ID } satisfies JarvisCancelPayload,
+        });
+        await vi.advanceTimersByTimeAsync(TRADE_QUOTE_DELAY_MS);
+
+        expect(approved).toHaveBeenCalledExactlyOnceWith(false);
+        expect(findConfirmRequests(sent)).toEqual([]);
+      });
+    });
+
+    it("jarvis.confirm and jarvis.cancel reach the own session", async () => {
+      answerFetchWith(200);
+      const turn = new Subject<JarvisEvent>();
+      const { messages$, ownSpy } = ownKeyHarness({
+        runOwnTurn: (): Observable<JarvisEvent> => {
+          return turn;
+        },
+      });
+
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+      messages$.next({
+        type: CLIENT_MSG.JARVIS_CONFIRM,
+        payload: {
+          confirmationId: "confirm-own",
+          approved: true,
+        } satisfies JarvisConfirmPayload,
+      });
+      messages$.next({
+        type: CLIENT_MSG.JARVIS_CANCEL,
+        payload: { turnId: STUB_TURN_ID } satisfies JarvisCancelPayload,
+      });
+
+      expect(ownSpy.sessions[0]?.resolveConfirmation).toHaveBeenCalledWith(
+        "confirm-own",
+        true,
+      );
+      expect(ownSpy.sessions[0]?.cancelTurn).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("the jarvis.key frame", () => {
+    it.each<readonly [string, unknown]>([
+      ["not an object", OWN_KEY],
+      ["a key in the turnId field", { turnId: OWN_KEY }],
+      [
+        "a bad frame with a key in turnId",
+        setKeyPayload({ capUsd: 0, turnId: OWN_KEY }),
+      ],
+      ["no action", { provider: "anthropic", key: OWN_KEY, capUsd: 1 }],
+      ["an unknown action", setKeyPayload({ action: "replace" })],
+      ["a provider outside the set", setKeyPayload({ provider: "evil" })],
+      ["a provider not offered yet", setKeyPayload({ provider: "openai" })],
+      ["a key that is no string", setKeyPayload({ key: [OWN_KEY] })],
+      [
+        "a key over the limit",
+        setKeyPayload({ key: OWN_KEY.padEnd(JARVIS_KEY_MAX_CHARS + 1, "x") }),
+      ],
+      ["a missing cap", setKeyPayload({ capUsd: undefined })],
+      ["a cap that is no number", setKeyPayload({ capUsd: "1" })],
+      ["a NaN cap", setKeyPayload({ capUsd: Number.NaN })],
+      ["an infinite cap", setKeyPayload({ capUsd: Number.POSITIVE_INFINITY })],
+      ["a zero cap", setKeyPayload({ capUsd: 0 })],
+      ["a negative cap", setKeyPayload({ capUsd: -1 })],
+      [
+        "a cap over the limit",
+        setKeyPayload({ capUsd: JARVIS_OWN_CAP_MAX_USD + 0.01 }),
+      ],
+    ])(
+      "a malformed or refused key frame's log lines do not contain the key: %s",
+      async (_name, payload) => {
+        const fetchFn = answerFetchWith(200);
+        const logged = captureConsole();
+        const { messages$, sent } = ownKeyHarness();
+
+        messages$.next(SUBSCRIBE_FRAME);
+        await settleBudgetReads();
+        messages$.next({ type: CLIENT_MSG.JARVIS_KEY, payload });
+        await settleBudgetReads();
+
+        expect(fetchFn).not.toHaveBeenCalled();
+        expect(lastAvailability(sent)).not.toHaveProperty("ownKey");
+        expect(logged()).toContain("type=jarvis.key");
+        expect(logged()).toContain("payload omitted");
+        expect(logged()).not.toContain(OWN_KEY);
+      },
+    );
+
+    it("a malformed or refused key frame's log lines do not contain the key: refused by the provider", async () => {
+      const fetchFn = answerFetchWith(401);
+      const logged = captureConsole();
+      const { messages$, sent } = ownKeyHarness();
+
+      messages$.next(SUBSCRIBE_FRAME);
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+      expect(logged()).not.toContain(OWN_KEY);
+      expect(JSON.stringify(sent)).not.toContain(OWN_KEY);
+    });
+
+    it("takes the largest key and the largest cap, and no limit", async () => {
+      answerFetchWith(200);
+      const { messages$, sent } = ownKeyHarness();
+      const longestKey = "k".repeat(JARVIS_KEY_MAX_CHARS);
+
+      messages$.next(SUBSCRIBE_FRAME);
+      messages$.next(keyFrame(longestKey, JARVIS_OWN_CAP_MAX_USD));
+      await settleBudgetReads();
+
+      expect(lastAvailability(sent).ownKey).toEqual({
+        provider: "anthropic",
+        status: "accepted",
+        capUsd: JARVIS_OWN_CAP_MAX_USD,
+      });
+
+      messages$.next(keyFrame(longestKey, null));
+      await settleBudgetReads();
+
+      expect(lastAvailability(sent).ownKey?.capUsd).toBeNull();
+    });
+
+    it("a connection with no caller ignores the frame", async () => {
+      const fetchFn = answerFetchWith(200);
+      const logged = captureConsole();
+      const { messages$, sent } = ownKeyHarness({ caller: null });
+
+      messages$.next(SUBSCRIBE_FRAME);
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+
+      expect(fetchFn).not.toHaveBeenCalled();
+      expect(lastAvailability(sent)).not.toHaveProperty("ownKey");
+      expect(logged()).toBe("");
+    });
+
+    it("the same key sent again after an unreachable check is checked again", async () => {
+      const fetchFn = answerFetchWith(500);
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const { messages$, sent } = ownKeyHarness();
+
+      messages$.next(SUBSCRIBE_FRAME);
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+
+      expect(lastAvailability(sent).ownKey?.status).toBe("unreachable");
+
+      fetchFn.mockImplementation(() => {
+        return Promise.resolve(new Response(null, { status: 200 }));
+      });
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+      expect(lastAvailability(sent).ownKey?.status).toBe("accepted");
+    });
+
+    it.each<readonly [string, Caller, string]>([
+      ["an account", MEMBER, "account:acc-ann"],
+      ["the roster persona", OPERATOR, "roster:demo"],
+    ])(
+      "charges the check to the stable id of %s, across sockets",
+      async (_name, caller, identity) => {
+        answerFetchWith(200);
+        const services = createBudgetServices();
+        const allow = vi.spyOn(services.ownKeyChecks, "allow");
+        const first = ownKeyHarness({ services, caller });
+        const second = ownKeyHarness({ services, caller });
+
+        first.messages$.next(keyFrame("sk-one"));
+        second.messages$.next(keyFrame("sk-two"));
+        await settleBudgetReads();
+
+        expect(allow.mock.calls).toEqual([[identity], [identity]]);
+      },
+    );
+  });
+
+  describe("provider errors", () => {
+    it("a provider error's message is never logged or sent to the client", async () => {
+      answerFetchWith(200);
+      const logged = captureConsole();
+      const { messages$, sent } = ownKeyHarness({
+        ownLoop: anthropicLoopOver((): never => {
+          throw providerError(500, `upstream said ${SECRET_MARKER}`);
+        }),
+      });
+
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+
+      expect(errorMessagesOf(sent)).toHaveLength(1);
+      expect(JSON.stringify(sent)).not.toContain(SECRET_MARKER);
+      expect(logged()).toContain("status 500");
+      expect(logged()).not.toContain(SECRET_MARKER);
+      expect(logged()).not.toContain(OWN_KEY);
+    });
+
+    it("a loop that throws while it is built logs no message either", async () => {
+      answerFetchWith(200);
+      const logged = captureConsole();
+      const { messages$, sent } = ownKeyHarness({
+        buildOwnKeyLoop: (): AgentLoop => {
+          throw new Error(`bad key ${SECRET_MARKER}`);
+        },
+      });
+
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+
+      expect(logged()).toContain("Error");
+      expect(logged()).not.toContain(SECRET_MARKER);
+      expect(JSON.stringify(sent)).not.toContain(SECRET_MARKER);
+    });
+
+    it("a loop that throws while it is built ends the turn with the sanitized error", async () => {
+      answerFetchWith(200);
+      captureConsole();
+      const { messages$, sent } = ownKeyHarness({
+        buildOwnKeyLoop: (): AgentLoop => {
+          throw new Error("no loop");
+        },
+      });
+
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+
+      expect(errorMessagesOf(sent)).toEqual([
+        "The desk link faltered, sir — do try again.",
+      ]);
+    });
+
+    it("a house turn's internal failure keeps its message and stack in the log", async () => {
+      const logged = captureConsole();
+      const services = createBudgetServices();
+      vi.spyOn(services.jarvisBudget, "meterFor").mockImplementation(() => {
+        throw new Error("house meter detail");
+      });
+      const { messages$ } = ownKeyHarness({ services });
+
+      messages$.next(chatFrame("claude-sonnet-5"));
+      await settleBudgetReads();
+
+      expect(logged()).toContain("house meter detail");
+      expect(logged()).toContain("jarvis.effects");
+    });
+  });
+});
+
 interface WireMappingCase {
   readonly event: JarvisEvent;
   readonly wireType: string;
@@ -1984,6 +3057,11 @@ interface ConfirmationCarrier {
  * the `turnId` field this test reads back. */
 interface TurnIdCarrier {
   readonly turnId: string;
+}
+
+/** Shape of a `jarvis.error` payload. */
+interface ErrorPayload {
+  readonly message: string;
 }
 
 /** Shape of a `jarvis.delta` payload. */
@@ -2043,13 +3121,12 @@ function createHarness(): Harness {
   const services = createServices({});
   const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
 
-  if (!loops) {
-    throw new Error("expected a non-null JarvisLoops");
-  }
-
   const sent: Outbound[] = [];
   const socket = createSocket(sent);
-  createWsListener(combineEffects(...jarvisEffects(loops)), services)(socket);
+  createWsListener(
+    combineEffects(...jarvisEffects(loops, refuseOwnKeyLoop)),
+    services,
+  )(socket);
   return {
     services,
     messages$: socket.messages$,
@@ -2077,12 +3154,8 @@ function createTwoSocketHarness(): TwoSocketHarness {
   const services = createServices({});
   const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
 
-  if (!loops) {
-    throw new Error("expected a non-null JarvisLoops");
-  }
-
   const listen = createWsListener(
-    combineEffects(...jarvisEffects(loops)),
+    combineEffects(...jarvisEffects(loops, refuseOwnKeyLoop)),
     services,
   );
   const sentA: Outbound[] = [];
@@ -2136,7 +3209,10 @@ function createStubHarness(loop: AgentLoop): StubHarness {
   } as unknown as Ctx;
   const sent: Outbound[] = [];
   const socket = createSocket(sent);
-  createWsListener(combineEffects(...jarvisEffects(loops)), ctx)(socket);
+  createWsListener(
+    combineEffects(...jarvisEffects(loops, refuseOwnKeyLoop)),
+    ctx,
+  )(socket);
   return { messages$: socket.messages$, sent };
 }
 
@@ -2219,7 +3295,10 @@ function wireDualLoops(
   };
   const sent: Outbound[] = [];
   const socket = createSocket(sent);
-  createWsListener(combineEffects(...jarvisEffects(loops)), ctx)(socket);
+  createWsListener(
+    combineEffects(...jarvisEffects(loops, refuseOwnKeyLoop)),
+    ctx,
+  )(socket);
   return { messages$: socket.messages$, closed$: socket.closed$, sent };
 }
 
@@ -2278,7 +3357,10 @@ function wireSpySocket(
     caller === null ? services : scopeServicesToConnection(services, caller);
   const sent: Outbound[] = [];
   const socket = createSocket(sent);
-  createWsListener(combineEffects(...jarvisEffects(loops)), ctx)(socket);
+  createWsListener(
+    combineEffects(...jarvisEffects(loops, refuseOwnKeyLoop)),
+    ctx,
+  )(socket);
   return {
     loops,
     scriptedSpy,
@@ -2467,3 +3549,391 @@ const OTHER_MEMBER: Caller = {
 
 /** The roster persona: no account, an operator. */
 const OPERATOR: Caller = { username: "demo", accountId: null, issuedAt: null };
+
+/** For a test whose key frames never reach an own turn. */
+function refuseOwnKeyLoop(): AgentLoop {
+  throw new Error("this test runs no own-key turn");
+}
+
+const OWN_KEY = "sk-ant-own-key-a1b2c3d4";
+
+const OWN_HAIKU: JarvisOwnBrain = "own:anthropic:claude-haiku-4-5";
+
+const OWN_SONNET: JarvisOwnBrain = "own:anthropic:claude-sonnet-5";
+
+const OWN_OPUS: JarvisOwnBrain = "own:anthropic:claude-opus-5";
+
+/** The right shape, but off the curated list. */
+const RETIRED_OWN_BRAIN: JarvisOwnBrain = "own:anthropic:claude-retired-1";
+
+/** A provider the accepted test key is not for. */
+const OPENAI_OWN_BRAIN: JarvisOwnBrain = "own:openai:gpt-test";
+
+/** Stands for whatever a provider's error text may quote. */
+const SECRET_MARKER = "MARKER-must-stay-out";
+
+const SUBSCRIBE_FRAME: Inbound = {
+  type: CLIENT_MSG.JARVIS_SUBSCRIBE,
+  payload: {},
+};
+
+const CLEAR_KEY_FRAME: Inbound = {
+  type: CLIENT_MSG.JARVIS_KEY,
+  payload: { action: "clear" } satisfies JarvisKeyPayload,
+};
+
+function keyFrame(key: string = OWN_KEY, capUsd: number | null = 1): Inbound {
+  return {
+    type: CLIENT_MSG.JARVIS_KEY,
+    payload: {
+      action: "set",
+      provider: "anthropic",
+      key,
+      capUsd,
+    } satisfies JarvisKeyPayload,
+  };
+}
+
+/** A well-formed key frame's payload with the given fields replaced. */
+function setKeyPayload(
+  overrides: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+  return {
+    action: "set",
+    provider: "anthropic",
+    key: OWN_KEY,
+    capUsd: 1,
+    ...overrides,
+  };
+}
+
+/** Every provider check answers `status`. */
+function answerFetchWith(status: number): Mock<typeof fetch> {
+  const fetchFn = vi.fn<typeof fetch>(() => {
+    return Promise.resolve(new Response(null, { status }));
+  });
+
+  vi.stubGlobal("fetch", fetchFn);
+
+  return fetchFn;
+}
+
+interface HeldFetches {
+  /** Answers the `index`-th check made. */
+  answer(index: number, status: number): void;
+  /** The abort signal each check was given, in call order. */
+  readonly signals: AbortSignal[];
+}
+
+/** Every provider check stays open until the test answers it. */
+function holdFetch(): HeldFetches {
+  const answers: ((status: number) => void)[] = [];
+  const signals: AbortSignal[] = [];
+
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>((_url, init) => {
+      if (init?.signal) {
+        signals.push(init.signal);
+      }
+
+      return new Promise<Response>((resolve) => {
+        answers.push((status: number): void => {
+          resolve(new Response(null, { status }));
+        });
+      });
+    }),
+  );
+
+  return {
+    answer: (index: number, status: number): void => {
+      answers[index]?.(status);
+    },
+    signals,
+  };
+}
+
+function availabilityFramesOf(
+  sent: readonly Outbound[],
+): JarvisAvailabilityPayload[] {
+  return sent
+    .filter((frame) => {
+      return frame.type === SERVER_MSG.JARVIS_AVAILABILITY;
+    })
+    .map((frame) => {
+      return frame.payload as JarvisAvailabilityPayload;
+    });
+}
+
+function lastAvailability(
+  sent: readonly Outbound[],
+): JarvisAvailabilityPayload {
+  const frame = availabilityFramesOf(sent).at(-1);
+
+  if (frame === undefined) {
+    throw new Error("expected a jarvis.availability frame");
+  }
+
+  return frame;
+}
+
+function errorMessagesOf(sent: readonly Outbound[]): string[] {
+  return sent
+    .filter((frame) => {
+      return frame.type === SERVER_MSG.JARVIS_ERROR;
+    })
+    .map((frame) => {
+      return (frame.payload as ErrorPayload).message;
+    });
+}
+
+/** Mutes the console and returns a reader of everything written to it,
+ * errors in full: message, stack and properties. */
+function captureConsole(): () => string {
+  const spies = [
+    vi.spyOn(console, "log").mockImplementation(() => {}),
+    vi.spyOn(console, "info").mockImplementation(() => {}),
+    vi.spyOn(console, "warn").mockImplementation(() => {}),
+    vi.spyOn(console, "error").mockImplementation(() => {}),
+    vi.spyOn(console, "debug").mockImplementation(() => {}),
+  ];
+
+  return (): string => {
+    return spies
+      .flatMap((spy) => {
+        return spy.mock.calls.flat();
+      })
+      .map((argument: unknown) => {
+        return typeof argument === "string" ? argument : inspect(argument);
+      })
+      .join("\n");
+  };
+}
+
+/** What the Anthropic SDK throws for an HTTP failure. */
+function providerError(status: number, message: string): Error {
+  class APIError extends Error {
+    readonly status = status;
+  }
+
+  return new APIError(message);
+}
+
+/** What `reference data` takes before `execute_trade` reaches its gate. */
+const TRADE_QUOTE_DELAY_MS = 1_000;
+
+/** The worst case of one Sonnet request is about $0.07; a reservation of it
+ * alone exhausts this cap. */
+const CAP_BELOW_ONE_REQUEST = 0.05;
+
+function findConfirmRequests(sent: readonly Outbound[]): Outbound[] {
+  return sent.filter((frame) => {
+    return frame.type === SERVER_MSG.JARVIS_CONFIRM_REQUEST;
+  });
+}
+
+/** Whether an own request is still reserved for the member. */
+function isOwnSpendHeld(services: ServiceContainer): boolean {
+  return services.jarvisBudget
+    .ownMeterFor(MEMBER, (): number => {
+      return CAP_BELOW_ONE_REQUEST;
+    })
+    .exhausted();
+}
+
+async function startOwnTrade(messages$: Subject<Inbound>): Promise<void> {
+  messages$.next(keyFrame(OWN_KEY, null));
+  await settleBudgetReads();
+  messages$.next(chatFrame(OWN_SONNET));
+  await settleBudgetReads();
+}
+
+/** On Sonnet, about $0.10: past `CAP_BELOW_ONE_REQUEST`. */
+const COSTLY_INPUT_TOKENS = 50_000;
+
+interface HeldReply {
+  readonly held: Promise<void>;
+  release(): void;
+}
+
+/** A reply the provider has not finished until the test says so. */
+function holdReply(): HeldReply {
+  const releases: (() => void)[] = [];
+  const held = new Promise<void>((resolve) => {
+    releases.push(resolve);
+  });
+
+  return {
+    held,
+    release: (): void => {
+      releases[0]?.();
+    },
+  };
+}
+
+/** One request's stream: nothing streamed, ending in `stopReason`, optionally
+ * held open until `held` settles. Free unless it reports `inputTokens`. */
+function createFakeOwnStream(
+  stopReason: string,
+  held: Promise<void> = Promise.resolve(),
+  inputTokens = 0,
+): AnthropicMessageStream {
+  return {
+    async *[Symbol.asyncIterator](): AsyncGenerator<never> {},
+    finalMessage: async (): Promise<AnthropicFinalMessage> => {
+      await held;
+
+      return {
+        stop_reason: stopReason,
+        content: [],
+        usage: { input_tokens: inputTokens, output_tokens: 0 },
+      };
+    },
+  };
+}
+
+/** A real own-key loop whose runner is the given iteration of requests. */
+function anthropicRunnerLoop(
+  requests: () => AsyncGenerator<AnthropicMessageStream>,
+  onConfirmGate?: (confirmTrade: ConfirmGate) => void,
+): AgentLoop {
+  return new AnthropicAgentLoop({
+    apiKey: OWN_KEY,
+    knownSymbols: [],
+    buildTools: (confirmTrade: ConfirmGate) => {
+      onConfirmGate?.(confirmTrade);
+
+      return [];
+    },
+    runnerFactory: (): AnthropicRunner => {
+      return {
+        [Symbol.asyncIterator]: requests,
+        pushMessages: (): void => {},
+      };
+    },
+  });
+}
+
+/**
+ * A turn the way a real trade runs: the model asks for `execute_trade`, the
+ * runner runs the tool, and the tool waits for its quote before it reaches
+ * the confirm gate. Neither the tool nor that wait knows of the turn's abort
+ * signal, so a cancel lands while nothing is pending at the gate, and the
+ * gate is reached afterwards. The runner stops only because the gate answered
+ * and its next request would go out on an aborted signal, which rejects.
+ */
+function tradingLoop(onGateAnswer?: (approved: boolean) => void): AgentLoop {
+  let confirmTrade: ConfirmGate | undefined;
+
+  return anthropicRunnerLoop(
+    async function* streamTradeRequest(): AsyncGenerator<AnthropicMessageStream> {
+      yield createFakeOwnStream("tool_use");
+      await new Promise((resolve) => {
+        setTimeout(resolve, TRADE_QUOTE_DELAY_MS);
+      });
+
+      const approved = await confirmTrade?.({
+        symbol: "EURUSD",
+        direction: Direction.Buy,
+        notional: 1_000_000,
+        quotedPrice: 1.1,
+        ratePrecision: 5,
+      });
+
+      onGateAnswer?.(approved ?? false);
+      throw new Error("the request went out on an aborted signal");
+    },
+    (gate: ConfirmGate): void => {
+      confirmTrade = gate;
+    },
+  );
+}
+
+/** A real own-key loop whose runner is the test's. */
+function anthropicLoopOver(runner: () => never): AgentLoop {
+  return new AnthropicAgentLoop({
+    apiKey: OWN_KEY,
+    knownSymbols: [],
+    buildTools: () => {
+      return [];
+    },
+    runnerFactory: runner,
+  });
+}
+
+interface OwnKeyHarnessOptions {
+  /** Null: the unscoped shared container. A member by default. */
+  readonly caller?: Caller | null;
+  readonly services?: ServiceContainer;
+  readonly loops?: JarvisLoops;
+  /** What every own session's turn does; `done` at once by default. */
+  readonly runOwnTurn?: (
+    options?: JarvisTurnOptions,
+  ) => Observable<JarvisEvent>;
+  /** The loop the builder returns; the own spy loop by default. */
+  readonly ownLoop?: AgentLoop;
+  readonly buildOwnKeyLoop?: OwnKeyLoopBuilder;
+}
+
+interface OwnKeyHarness extends DualSpyHarness {
+  readonly ownSpy: SpyLoop;
+  readonly buildOwnKeyLoop: Mock<OwnKeyLoopBuilder>;
+  readonly recordTurn: ReturnType<typeof vi.fn>;
+  readonly recordTokens: ReturnType<typeof vi.fn>;
+}
+
+/** One socket with spy house loops, a spy own-key loop, and a usage meter
+ * that only records. The key checks go through the real `verifyOwnKey`, so a
+ * test answers them by stubbing `fetch`. */
+function ownKeyHarness(options: OwnKeyHarnessOptions = {}): OwnKeyHarness {
+  const services = options.services ?? createBudgetServices();
+  const scriptedSpy = createSpyLoop();
+  const anthropicSpy = createSpyLoop();
+  const ownSpy = createSpyLoop(options.runOwnTurn);
+  const loops: JarvisLoops = options.loops ?? {
+    scripted: scriptedSpy.loop,
+    anthropic: anthropicSpy.loop,
+    brains: JARVIS_BRAINS,
+    defaultBrain: DEFAULT_JARVIS_BRAIN,
+  };
+
+  const buildOwnKeyLoop = vi.fn<OwnKeyLoopBuilder>(
+    options.buildOwnKeyLoop ??
+      ((): AgentLoop => {
+        return options.ownLoop ?? ownSpy.loop;
+      }),
+  );
+  const recordTurn = vi.fn();
+  const recordTokens = vi.fn();
+  const caller = options.caller === undefined ? MEMBER : options.caller;
+  const scoped =
+    caller === null ? services : scopeServicesToConnection(services, caller);
+
+  const ctx: Ctx = {
+    ...scoped,
+    usageMeter: {
+      recordTurn,
+      recordTokens,
+    } as unknown as Ctx["usageMeter"],
+  };
+  const sent: Outbound[] = [];
+  const socket = createSocket(sent);
+
+  createWsListener(
+    combineEffects(...jarvisEffects(loops, buildOwnKeyLoop)),
+    ctx,
+  )(socket);
+
+  return {
+    loops,
+    scriptedSpy,
+    anthropicSpy,
+    ownSpy,
+    buildOwnKeyLoop,
+    recordTurn,
+    recordTokens,
+    messages$: socket.messages$,
+    closed$: socket.closed$,
+    sent,
+  };
+}

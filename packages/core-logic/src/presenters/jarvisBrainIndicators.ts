@@ -1,9 +1,10 @@
 import type { JarvisState } from "@rtc/core-api";
 import {
-  JARVIS_BRAIN_LABELS,
   JARVIS_BRAIN_NAMES,
   type JarvisBrain,
   type JarvisBudgetView,
+  jarvisBrainLabel,
+  jarvisBrainName,
 } from "@rtc/domain";
 
 import { formatGateResetTimeUtc } from "./jarvisController.js";
@@ -30,7 +31,7 @@ export function formatUsd(amount: number): string {
 
 /** The name of the brain the server ran, for a reply's tag. */
 export function describeReplyTag(brain: JarvisBrain): string {
-  return JARVIS_BRAIN_NAMES[brain];
+  return jarvisBrainName(brain);
 }
 
 function leftToday(limitUsd: number, spentUsd: number): number {
@@ -74,33 +75,29 @@ function describeLiveBudget(
   name: string,
   budget: JarvisBudgetView | null,
 ): BrainReadout {
-  const head = `${name} · house key`;
-
   if (budget === null) {
-    return { text: head, tone: "normal", meterFraction: null };
+    return { text: `${name} · house key`, tone: "normal", meterFraction: null };
   }
 
-  switch (budget.keyKind) {
-    case "house": {
-      if (budget.limitUsd === null) {
-        return {
-          text: `${head} · no personal limit`,
-          tone: "normal",
-          meterFraction: null,
-        };
-      }
+  const head = `${name} · ${budget.keyKind === "own" ? "your key" : "house key"}`;
 
-      const left = leftToday(budget.limitUsd, budget.spentUsd);
-      return {
-        text: `${head} · ${formatUsd(left)} of ${formatUsd(budget.limitUsd)} left today`,
-        tone: "normal",
-        // A non-positive limit has no meter (and 0 / 0 would be NaN). The
-        // server reads a 0 limit as already spent, but this copy does not
-        // lean on that.
-        meterFraction: budget.limitUsd > 0 ? left / budget.limitUsd : null,
-      };
-    }
+  if (budget.limitUsd === null) {
+    return {
+      text: `${head} · no personal limit`,
+      tone: "normal",
+      meterFraction: null,
+    };
   }
+
+  const left = leftToday(budget.limitUsd, budget.spentUsd);
+  return {
+    text: `${head} · ${formatUsd(left)} of ${formatUsd(budget.limitUsd)} left today`,
+    tone: "normal",
+    // A non-positive limit has no meter (and 0 / 0 would be NaN). The
+    // server reads a 0 limit as already spent, but this copy does not
+    // lean on that.
+    meterFraction: budget.limitUsd > 0 ? left / budget.limitUsd : null,
+  };
 }
 
 /** The header readout, or `null` when Jarvis is unavailable. */
@@ -127,7 +124,7 @@ export function describeBrainReadout(
   }
 
   return describeLiveBudget(
-    JARVIS_BRAIN_NAMES[state.effectiveBrain],
+    jarvisBrainName(state.effectiveBrain),
     state.budget,
   );
 }
@@ -139,7 +136,7 @@ export function describeBrainPill(state: BrainIndicatorState): string {
     return JARVIS_BRAIN_NAMES.scripted;
   }
 
-  const label = JARVIS_BRAIN_LABELS[state.effectiveBrain];
+  const label = jarvisBrainLabel(state.effectiveBrain);
   const budget = state.budget;
 
   if (budget === null || budget.limitUsd === null) {

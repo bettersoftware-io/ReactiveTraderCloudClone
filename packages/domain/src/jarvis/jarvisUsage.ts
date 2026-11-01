@@ -7,12 +7,12 @@
  * day) and `sinceBoot` (cumulative since server start).
  */
 
-import type { JarvisBrain } from "../preferences/preferences.js";
+import type { JarvisHouseBrain } from "../preferences/preferences.js";
 import type { JarvisGateLevel } from "./jarvisEvent.js";
 
 /** One brain's totals over one window. */
 export interface JarvisBrainUsageRow {
-  readonly brain: JarvisBrain;
+  readonly brain: JarvisHouseBrain;
   readonly turns: number;
   readonly inputTokens: number;
   readonly outputTokens: number;

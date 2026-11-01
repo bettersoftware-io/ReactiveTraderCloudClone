@@ -83,13 +83,7 @@ describe("allEffects composition", () => {
 });
 
 describe("buildEffects", () => {
-  it("appends only the availability effect when no loop set is present", () => {
-    const built = buildEffects(null);
-    expect(built.length).toBe(allEffects.length + 1);
-    expect(built.slice(0, allEffects.length)).toEqual(allEffects);
-  });
-
-  it("appends the availability effect plus the per-connection session effect when a loop set is present", () => {
+  it("appends the one per-connection Jarvis effect to the rest", () => {
     const session: AgentSession = {
       runTurn: vi.fn(),
       resolveConfirmation: vi.fn(),
@@ -109,8 +103,11 @@ describe("buildEffects", () => {
       brains: ["scripted"],
       defaultBrain: "scripted",
     };
-    const built = buildEffects(loops);
-    expect(built.length).toBe(allEffects.length + 2);
+
+    const built = buildEffects(loops, (): AgentLoop => {
+      return loop;
+    });
+    expect(built.length).toBe(allEffects.length + 1);
     expect(built.slice(0, allEffects.length)).toEqual(allEffects);
   });
 });

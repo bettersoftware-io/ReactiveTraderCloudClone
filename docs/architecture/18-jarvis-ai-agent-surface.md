@@ -1577,6 +1577,49 @@ type). A new client on an old server receives none and tags each reply with the
 brain it asked for, never blank. B3b therefore deploys the server and both web
 clients, in any order, with no migration.
 
+### Own keys on the server (B3c)
+
+A person's own model key reaches the server on one client message, `jarvis.key`
+(`set` with a provider, the key and a daily cap, or `clear`). The server reads
+it in `jarvis.effects.ts` (`parseKeyPayload`, which refuses an unlisted
+provider or a key over `JARVIS_KEY_MAX_CHARS`) and hands it to the
+connection's `ConnectionOwnKey`; nothing else holds it. Its path:
+
+1. `ConnectionOwnKey` checks the key once with the provider's cheapest read
+   (`verifyOwnKey`, a models-list call, bounded by `JARVIS_KEY_CHECK_TIMEOUT_MS`
+   and by `OwnKeyCheckLimiter`: per caller, `JARVIS_KEY_CHECKS_PER_HOUR` failed
+   checks, since an accepted one is refunded, and `JARVIS_KEY_CHECKS_HARD_PER_HOUR`
+   checks of any kind, never refunded)
+   and settles on `accepted`, `refused`, `unreachable` or `limited`.
+2. The availability frame reports the outcome as `ownKey` (provider, status,
+   cap) and the key's own meter as `ownBudget`. The key's curated models are
+   added to `brains` while it is `checking`, `accepted` or `refused` (so a
+   refused key's turn can say why); an `unreachable` or `limited` key offers
+   none. The key text is in no frame.
+3. A turn on an own brain builds its loop per connection through
+   `buildOwnKeyLoop` in `index.ts` (an Anthropic client on that key; under
+   `RTC_JARVIS_FAKE=1` a `ScriptedAgentLoop`, and `fakeVerifyOwnKey` accepts a
+   key starting `fake-good`). The loop is never shared between connections.
+4. The key goes when the connection's scope is disposed (socket close), on
+   `clear`, or on a replacement key, which retires the session built on the
+   old one. It is never stored and never logged: the malformed-frame log line
+   for `jarvis.key` names the type and drops the payload.
+
+Routing, as `jarvisEffects` decides it for each `jarvis.chat` (spec D13, D15,
+D19):
+
+| Asked for | State | Runs |
+|---|---|---|
+| own brain | key accepted, cap not spent | that brain, own meter |
+| own brain | key refused | an error naming the provider, no provider call |
+| own brain | no key, unreachable, limited, other provider, unlisted model, cap spent | scripted, never a house brain |
+| house brain | | as the house budget says |
+
+An own turn can never reach a house loop, so a person's missing, spent or
+refused key never spends the house key. With no `ANTHROPIC_API_KEY` (or the
+house amounts at `0`) Jarvis is still available, on the scripted brain plus
+any accepted own key (D16).
+
 ## 18.16 The generative-UI surface (round 1)
 
 Round 1 (2026-08-04) of the "Jarvis generative UI" workstream (design:

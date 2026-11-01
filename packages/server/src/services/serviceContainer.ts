@@ -25,6 +25,8 @@ import { JarvisBudgetService } from "./jarvisBudget/JarvisBudgetService.js";
 import { parseJarvisBudgetConfig } from "./jarvisBudget/jarvisBudgetConfig.js";
 import type { JarvisTier } from "./jarvisBudget/jarvisTier.js";
 import type { SpendStore } from "./jarvisBudget/SpendStore.js";
+import { OwnKeyCheckLimiter } from "./ownKey/OwnKeyCheckLimiter.js";
+import { type VerifyOwnKey, verifyOwnKey } from "./ownKey/verifyOwnKey.js";
 import { ThroughputService } from "./ThroughputService.js";
 import { UsageMeter } from "./UsageMeter.js";
 
@@ -57,6 +59,11 @@ export interface ServiceContainer {
   readonly jarvisBudget: JarvisBudgetService;
   /** Which house offer and budget a caller gets. A connection asks once. */
   readonly jarvisTier: (caller: Caller) => Promise<JarvisTier>;
+  /** Provider checks of people's own keys, per caller. One instance for the
+   * process, so a reconnect does not reset a caller's allowance. */
+  readonly ownKeyChecks: OwnKeyCheckLimiter;
+  /** How a person's own key is checked with its provider. */
+  readonly verifyOwnKey: VerifyOwnKey;
   /** Null on the shared container; set on a connection's scoped one. */
   readonly caller: Caller | null;
   /** The administrator rules behind the `admin.accounts.*` RPCs. */
@@ -97,6 +104,8 @@ export interface ServiceOptions {
   readonly spendStore?: SpendStore;
   /** How a caller's tier is read; by login kind when omitted. */
   readonly jarvisTier?: (caller: Caller) => Promise<JarvisTier>;
+  /** How an own key is checked; with its provider when omitted. */
+  readonly verifyOwnKey?: VerifyOwnKey;
 }
 
 /**
@@ -158,6 +167,8 @@ export function createServices(
     usageMeter,
     jarvisBudget,
     jarvisTier: options.jarvisTier ?? readTierFromLoginKind,
+    ownKeyChecks: new OwnKeyCheckLimiter(),
+    verifyOwnKey: options.verifyOwnKey ?? verifyOwnKey,
     caller: null,
     accountAdmin:
       options.accountAdmin ?? createUnavailableAccountAdminService(),

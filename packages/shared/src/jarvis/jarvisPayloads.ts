@@ -4,6 +4,8 @@ import type {
   JarvisBudgetView,
   JarvisEffort,
   JarvisHistoryEntry,
+  JarvisOwnKeyView,
+  JarvisProvider,
 } from "@rtc/domain";
 
 /**
@@ -41,6 +43,16 @@ export interface JarvisChatPayload {
   readonly origin?: "user" | "narrator";
 }
 
+/** `CLIENT_MSG.JARVIS_KEY` payload — set or clear the caller's own key. */
+export type JarvisKeyPayload =
+  | {
+      readonly action: "set";
+      readonly provider: JarvisProvider;
+      readonly key: string;
+      readonly capUsd: number | null;
+    }
+  | { readonly action: "clear" };
+
 /** `CLIENT_MSG.JARVIS_CONFIRM` payload — resolves a pending confirmRequest. */
 export interface JarvisConfirmPayload {
   readonly confirmationId: string;
@@ -65,4 +77,8 @@ export interface JarvisAvailabilityPayload {
   /** The caller's budget for today. Absent on pre-B3a servers and on a
    * connection with no signed-in caller; clients ignore it until B3b. */
   readonly budget?: JarvisBudgetView;
+  /** The budget of the caller's own key, when one is set (B3c). */
+  readonly ownBudget?: JarvisBudgetView;
+  /** What the server knows of the caller's own key; never the key itself. */
+  readonly ownKey?: JarvisOwnKeyView;
 }
