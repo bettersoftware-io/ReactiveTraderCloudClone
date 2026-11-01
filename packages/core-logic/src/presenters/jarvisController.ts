@@ -21,7 +21,6 @@ import {
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_SKIN,
-  JARVIS_BRAIN_LABELS,
   JARVIS_BRAINS,
   JARVIS_GREETING,
   JARVIS_NARRATION_PREFIX,
@@ -30,6 +29,7 @@ import {
   type JarvisEvent,
   type JarvisHistoryEntry,
   type JarvisSkin,
+  jarvisBrainLabel,
 } from "@rtc/domain";
 
 /** Strip `JARVIS_NARRATION_PREFIX` from a narrate prompt for display; a
@@ -150,7 +150,7 @@ function formatSwitchLine(
   to: JarvisBrain,
   resetsAtMs: number,
 ): string {
-  const target = `switching to the ${JARVIS_BRAIN_LABELS[to]} brain`;
+  const target = `switching to the ${jarvisBrainLabel(to)} brain`;
 
   if (exhausted === "unavailable") {
     return `The AI budget is unavailable — ${target}.`;
@@ -204,12 +204,12 @@ export function formatBrainHint(
 
   if (gate === null) {
     return moved
-      ? `${JARVIS_BRAIN_LABELS[preferred]} isn't available — using ${JARVIS_BRAIN_LABELS[effective]}`
+      ? `${jarvisBrainLabel(preferred)} isn't available — using ${jarvisBrainLabel(effective)}`
       : undefined;
   }
 
   const fallback = moved
-    ? ` · ${JARVIS_BRAIN_LABELS[preferred]} paused, using ${JARVIS_BRAIN_LABELS[effective]}`
+    ? ` · ${jarvisBrainLabel(preferred)} paused, using ${jarvisBrainLabel(effective)}`
     : "";
 
   return `${formatGateHint(gate.resetsAtMs)}${fallback}`;

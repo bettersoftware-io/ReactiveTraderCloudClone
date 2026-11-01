@@ -31,6 +31,10 @@ export type { SessionUser } from "./auth/sessionUser.js";
 
 // FX
 
+// FX
+
+// FX
+
 export {
   aggregatePositionsByCurrency,
   type CurrencyPositionNode,
@@ -203,6 +207,21 @@ export type {
   JarvisGateLevel,
   JarvisHistoryEntry,
 } from "./jarvis/jarvisEvent.js";
+export {
+  isJarvisOwnBrain,
+  JARVIS_KEY_MAX_CHARS,
+  JARVIS_OWN_CAP_DEFAULT_USD,
+  JARVIS_OWN_CAP_MAX_USD,
+  JARVIS_OWN_MODELS,
+  JARVIS_OWN_PROVIDERS,
+  JARVIS_PROVIDER_NAMES,
+  type JarvisOwnKeySetting,
+  type JarvisOwnKeyStatus,
+  type JarvisOwnKeyView,
+  type JarvisOwnModel,
+  ownModelOf,
+  ownModelsFor,
+} from "./jarvis/jarvisOwnModels.js";
 export type {
   JarvisBrainUsageRow,
   JarvisUsage,
@@ -313,9 +332,15 @@ export {
   JARVIS_SKINS,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisHouseBrain,
   type JarvisIndicators,
+  type JarvisLiveBrain,
   type JarvisNarratorPreference,
+  type JarvisOwnBrain,
+  type JarvisProvider,
   type JarvisSkin,
+  jarvisBrainLabel,
+  jarvisBrainName,
   jarvisIndicatorsEqual,
   LAYOUT_ENGINES,
   type LayoutEngine,

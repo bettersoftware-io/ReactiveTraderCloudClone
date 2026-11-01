@@ -71,6 +71,8 @@ export const CLIENT_MSG = {
   JARVIS_CANCEL: "jarvis.cancel",
   // Subscribes to availability pushes (see SERVER_MSG.JARVIS_AVAILABILITY).
   JARVIS_SUBSCRIBE: "jarvis.subscribe",
+  // Sets or clears the caller's own model key (see JarvisKeyPayload).
+  JARVIS_KEY: "jarvis.key",
 } as const;
 
 // ── Server → Client ─────────────────────────────────────────────

@@ -2,8 +2,8 @@ import { BehaviorSubject, type Observable } from "rxjs";
 
 import {
   JARVIS_BRAINS,
-  type JarvisBrain,
   type JarvisBrainUsageRow,
+  type JarvisHouseBrain,
   type JarvisUsageSnapshot,
 } from "@rtc/domain";
 
@@ -24,7 +24,7 @@ export interface JarvisBrainPrice {
 }
 
 export const JARVIS_PRICE_TABLE: Record<
-  Exclude<JarvisBrain, "scripted">,
+  Exclude<JarvisHouseBrain, "scripted">,
   JarvisBrainPrice
 > = {
   "claude-haiku-4-5": { inputUsdPerMtok: 1, outputUsdPerMtok: 5 },
@@ -67,7 +67,7 @@ function createAccumulator(): BrainAccumulator {
  * figure the Ops card shows.
  */
 export function estimateUsageCostUsd(
-  brain: JarvisBrain,
+  brain: JarvisHouseBrain,
   usage: JarvisTokenUsage,
 ): number {
   if (brain === "scripted") {
@@ -85,7 +85,10 @@ export function estimateUsageCostUsd(
   );
 }
 
-function toRow(brain: JarvisBrain, acc: BrainAccumulator): JarvisBrainUsageRow {
+function toRow(
+  brain: JarvisHouseBrain,
+  acc: BrainAccumulator,
+): JarvisBrainUsageRow {
   return {
     brain,
     turns: acc.turns,
@@ -98,7 +101,7 @@ function toRow(brain: JarvisBrain, acc: BrainAccumulator): JarvisBrainUsageRow {
 }
 
 function toRows(
-  accumulators: ReadonlyMap<JarvisBrain, BrainAccumulator>,
+  accumulators: ReadonlyMap<JarvisHouseBrain, BrainAccumulator>,
 ): readonly JarvisBrainUsageRow[] {
   const rows: JarvisBrainUsageRow[] = [];
 
@@ -130,9 +133,12 @@ function toRows(
 export class UsageMeter {
   private readonly now: () => number;
 
-  private readonly currentWindow = new Map<JarvisBrain, BrainAccumulator>();
+  private readonly currentWindow = new Map<
+    JarvisHouseBrain,
+    BrainAccumulator
+  >();
 
-  private readonly sinceBoot = new Map<JarvisBrain, BrainAccumulator>();
+  private readonly sinceBoot = new Map<JarvisHouseBrain, BrainAccumulator>();
 
   private windowStartMs = 0;
 
@@ -151,14 +157,14 @@ export class UsageMeter {
     return this.snapshotSubject.asObservable();
   }
 
-  recordTurn(brain: JarvisBrain): void {
+  recordTurn(brain: JarvisHouseBrain): void {
     this.rollWindowIfElapsed();
     this.accumulatorFor(this.currentWindow, brain).turns += 1;
     this.accumulatorFor(this.sinceBoot, brain).turns += 1;
     this.publishSnapshot();
   }
 
-  recordTokens(brain: JarvisBrain, usage: JarvisTokenUsage): void {
+  recordTokens(brain: JarvisHouseBrain, usage: JarvisTokenUsage): void {
     this.rollWindowIfElapsed();
     this.accumulateTokens(
       this.accumulatorFor(this.currentWindow, brain),
@@ -169,8 +175,8 @@ export class UsageMeter {
   }
 
   private accumulatorFor(
-    accumulators: Map<JarvisBrain, BrainAccumulator>,
-    brain: JarvisBrain,
+    accumulators: Map<JarvisHouseBrain, BrainAccumulator>,
+    brain: JarvisHouseBrain,
   ): BrainAccumulator {
     let acc = accumulators.get(brain);
 

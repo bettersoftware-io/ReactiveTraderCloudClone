@@ -28,10 +28,10 @@ import {
   JARVIS_HISTORY_ENTRY_MAX_CHARS,
   JARVIS_HISTORY_MAX_ENTRIES,
   JARVIS_MESSAGE_MAX_CHARS,
-  type JarvisBrain,
   type JarvisBudgetView,
   type JarvisEvent,
   type JarvisHistoryEntry,
+  type JarvisHouseBrain,
 } from "@rtc/domain";
 import {
   CLIENT_MSG,
@@ -198,10 +198,10 @@ function parseCancelPayload(payload: unknown): JarvisCancelPayload | undefined {
 /** What one connection may pick right now, and what a spent budget took
  * away from that. */
 interface ConnectionOffer {
-  readonly brains: readonly JarvisBrain[];
-  readonly defaultBrain: JarvisBrain;
+  readonly brains: readonly JarvisHouseBrain[];
+  readonly defaultBrain: JarvisHouseBrain;
   /** Empty while the budget lasts. */
-  readonly gated: readonly JarvisBrain[];
+  readonly gated: readonly JarvisHouseBrain[];
 }
 
 /** A connection with no signed-in caller has no one to meter, so the house
@@ -329,13 +329,13 @@ function createTurnMeter(
 
   return {
     beginRequest: (
-      brain: Exclude<JarvisBrain, "scripted">,
+      brain: Exclude<JarvisHouseBrain, "scripted">,
       ceiling: JarvisTokenUsage,
     ): void => {
       budgetMeter.beginRequest(brain, ceiling);
     },
     record: (
-      brain: Exclude<JarvisBrain, "scripted">,
+      brain: Exclude<JarvisHouseBrain, "scripted">,
       usage: JarvisTokenUsage,
     ): void => {
       budgetMeter.record(brain, usage);
@@ -487,26 +487,27 @@ export function jarvisEffects(loops: JarvisLoops | null): WsEffect<Ctx>[] {
     function resolveBrain(
       offer: ConnectionOffer,
       payload: JarvisChatPayload,
-    ): JarvisBrain {
-      if (payload.brain && offer.brains.includes(payload.brain)) {
-        return payload.brain;
-      }
-
-      return offer.defaultBrain;
+    ): JarvisHouseBrain {
+      // Find, not `includes`: the match comes back typed as the house brain.
+      return (
+        offer.brains.find((brain) => {
+          return brain === payload.brain;
+        }) ?? offer.defaultBrain
+      );
     }
 
     /** Opens a turn's event stream with the brain that actually runs it, so
      * the client can tag the reply with it (spec §4.2) — the server may have
      * resolved a different brain than the one the client asked for. */
     function stampWithBrain(
-      brain: JarvisBrain,
+      brain: JarvisHouseBrain,
       events$: Observable<JarvisEvent>,
     ): Observable<JarvisEvent> {
       return concat(of<JarvisEvent>({ type: "brain", brain }), events$);
     }
 
     function runTurnFor(
-      brain: JarvisBrain,
+      brain: JarvisHouseBrain,
       payload: JarvisChatPayload,
       meter: TurnMeter | undefined,
     ): Observable<JarvisEvent> {

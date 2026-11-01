@@ -1,7 +1,7 @@
 import { type JSX, Show } from "solid-js";
 
 import type { JarvisState } from "@rtc/core-api";
-import { JARVIS_BRAIN_LABELS } from "@rtc/domain";
+import { jarvisBrainLabel } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import styles from "./StatusBar.module.css";
@@ -46,7 +46,7 @@ export function JarvisStatusChip(): JSX.Element {
         data-gate={gate() === null ? undefined : gate()?.level}
         class={chipClass()}
       >
-        JARVIS · {JARVIS_BRAIN_LABELS[state().effectiveBrain]}
+        JARVIS · {jarvisBrainLabel(state().effectiveBrain)}
         <Show when={gate() !== null}>
           {gate()?.level === "soft"
             ? " · budget-limited"

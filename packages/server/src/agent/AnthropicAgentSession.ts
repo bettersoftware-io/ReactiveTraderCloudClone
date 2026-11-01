@@ -21,9 +21,9 @@ import {
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
   type DriveBatchV1,
-  type JarvisBrain,
   type JarvisEvent,
   type JarvisHistoryEntry,
+  type JarvisHouseBrain,
   type PanelSpecV1,
 } from "@rtc/domain";
 
@@ -335,7 +335,7 @@ interface RequestLedger {
 
 interface RequestLedgerDeps {
   readonly meter: TurnMeter | undefined;
-  readonly model: JarvisBrain;
+  readonly model: JarvisHouseBrain;
   /** The turn's signal: aborted means the person cancelled the turn. */
   readonly signal: AbortSignal;
   /** The messages the open request sent. */
@@ -360,7 +360,7 @@ function createRequestLedger(deps: RequestLedgerDeps): RequestLedger {
   }
 
   const liveMeter: TurnMeter = meter;
-  const liveModel: Exclude<JarvisBrain, "scripted"> = model;
+  const liveModel: Exclude<JarvisHouseBrain, "scripted"> = model;
   // A brain that thinks before it replies: see `estimateAbortedOutputTokens`.
   const thinks = JARVIS_EFFORT_CAPABLE_BRAINS.has(model);
   // A request has been reserved and not yet booked or released.
@@ -566,7 +566,7 @@ function streamedLengthOf(delta: BetaRawContentBlockDelta): number {
  */
 function recordSafely(
   meter: TurnMeter,
-  model: Exclude<JarvisBrain, "scripted">,
+  model: Exclude<JarvisHouseBrain, "scripted">,
   usage: JarvisTokenUsage,
 ): void {
   try {

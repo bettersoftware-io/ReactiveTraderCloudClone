@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { JARVIS_BRAIN_LABELS } from "@rtc/domain";
+import { jarvisBrainLabel } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./StatusBar.module.css";
@@ -45,7 +45,7 @@ export function JarvisStatusChip(): ReactElement | null {
             : `${styles.jarvisChip} ${styles.jarvisChipGated}`
         }
       >
-        JARVIS · {JARVIS_BRAIN_LABELS[state.effectiveBrain]}
+        JARVIS · {jarvisBrainLabel(state.effectiveBrain)}
         {gate === null
           ? null
           : gate.level === "soft"

@@ -1,6 +1,6 @@
 import { type Observable, Subject } from "rxjs";
 
-import type { JarvisBrain } from "@rtc/domain";
+import type { JarvisHouseBrain } from "@rtc/domain";
 
 import type { Caller } from "#/services/serviceContainer.js";
 import {
@@ -48,11 +48,11 @@ export interface BudgetState {
  */
 export interface TurnMeter {
   beginRequest(
-    brain: Exclude<JarvisBrain, "scripted">,
+    brain: Exclude<JarvisHouseBrain, "scripted">,
     ceiling: JarvisTokenUsage,
   ): void;
   record(
-    brain: Exclude<JarvisBrain, "scripted">,
+    brain: Exclude<JarvisHouseBrain, "scripted">,
     usage: JarvisTokenUsage,
   ): void;
   endRequest(): void;
@@ -196,7 +196,7 @@ export class JarvisBudgetService {
 
     return {
       beginRequest: (
-        brain: Exclude<JarvisBrain, "scripted">,
+        brain: Exclude<JarvisHouseBrain, "scripted">,
         ceiling: JarvisTokenUsage,
       ): void => {
         releaseReservation();
@@ -211,7 +211,7 @@ export class JarvisBudgetService {
         }
       },
       record: (
-        brain: Exclude<JarvisBrain, "scripted">,
+        brain: Exclude<JarvisHouseBrain, "scripted">,
         usage: JarvisTokenUsage,
       ): void => {
         releaseReservation();
@@ -316,7 +316,7 @@ export class JarvisBudgetService {
 
   private recordSpend(
     owner: SpendOwner,
-    brain: Exclude<JarvisBrain, "scripted">,
+    brain: Exclude<JarvisHouseBrain, "scripted">,
     usage: JarvisTokenUsage,
   ): void {
     const usd = estimateUsageCostUsd(brain, usage);

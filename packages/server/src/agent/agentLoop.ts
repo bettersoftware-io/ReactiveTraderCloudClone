@@ -3,10 +3,10 @@ import type { Observable } from "rxjs";
 import {
   DEFAULT_JARVIS_BRAIN,
   JARVIS_BRAINS,
-  type JarvisBrain,
   type JarvisEffort,
   type JarvisEvent,
   type JarvisHistoryEntry,
+  type JarvisHouseBrain,
 } from "@rtc/domain";
 
 import type { TurnMeter } from "../services/jarvisBudget/JarvisBudgetService.js";
@@ -26,7 +26,7 @@ import { ScriptedAgentLoop } from "./ScriptedAgentLoop.js";
  * engine has no notion of model or effort.
  */
 export interface JarvisTurnOptions {
-  readonly brain?: Exclude<JarvisBrain, "scripted">;
+  readonly brain?: Exclude<JarvisHouseBrain, "scripted">;
   readonly effort?: JarvisEffort;
   /** The turn's budget: every model request is recorded into it, and it is
    * asked before every further request whether the budget is spent. Absent,
@@ -86,8 +86,8 @@ export type AnthropicLoopBuilder = (
 export interface JarvisLoops {
   readonly scripted: AgentLoop;
   readonly anthropic: AgentLoop | null;
-  readonly brains: readonly JarvisBrain[];
-  readonly defaultBrain: JarvisBrain;
+  readonly brains: readonly JarvisHouseBrain[];
+  readonly defaultBrain: JarvisHouseBrain;
 }
 
 /**

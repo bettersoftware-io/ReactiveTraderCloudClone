@@ -48,6 +48,7 @@ export type {
   JarvisCancelPayload,
   JarvisChatPayload,
   JarvisConfirmPayload,
+  JarvisKeyPayload,
 } from "./jarvis/jarvisPayloads.js";
 export {
   PANEL_SPEC_JSON_SCHEMA,
