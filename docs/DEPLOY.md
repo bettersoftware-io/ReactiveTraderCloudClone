@@ -429,6 +429,27 @@ new setting.
    readout reads the exhausted copy instead. The demo login reads
    `Scripted · demo`.
 
+## Rolling out B3c
+
+B3c lets a person bring their own model key. It ships in pieces; this is the
+server piece (the client pieces follow in later PRs, and the page
+Content-Security-Policy merged earlier as #1100 is a client change that is not
+part of this step).
+
+1. **Deploy the server alone** (`deploy.yml`). There is **no migration** and no
+   new setting: own keys are held in the connection's memory and the spend rows
+   reuse `jarvis_spend_daily`. Old clients are unaffected: they never send
+   `jarvis.key`, and the extra availability fields (`ownKey`, `ownBudget`) are
+   ignored by a client that does not read them.
+2. **Expect one behaviour change (D16).** With no `ANTHROPIC_API_KEY`, Jarvis
+   is now available on the scripted brain instead of reporting itself
+   unavailable, so an operator can turn the house key off without taking
+   Jarvis away.
+3. **Verify.** `pnpm test:e2e` covers the wiring (the
+   full-stack node smoke, under `RTC_JARVIS_FAKE=1`, sends `jarvis.key` over a real socket); on the
+   deployed server the availability frame carries no `ownKey` until a client
+   sends a key.
+
 ## Deploying
 
 Run the **Deploy** workflow manually — Actions tab → "Deploy" → Run workflow,

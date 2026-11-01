@@ -402,6 +402,200 @@ async function runGateSmoke(): Promise<void> {
   }
 }
 
+// ── Own-key witness ──────────────────────────────────────────────
+//
+// The first proof of the `index.ts` wiring for bring-your-own keys. Under
+// `RTC_JARVIS_FAKE=1` the server verifies with `fakeVerifyOwnKey` (a key
+// starting `fake-good` is accepted, any other refused, no provider call) and
+// builds an accepted key's loop with a `ScriptedAgentLoop`. Everything is read
+// off a raw socket, as the server sent it, so the check that no frame carries
+// the key text covers every frame of the exchange.
+
+const OWN_BRAIN = "own:anthropic:claude-haiku-4-5";
+const REFUSED_KEY = "not-a-good-key-MARKER-refused";
+const ACCEPTED_KEY = "fake-good-MARKER-accepted";
+
+interface OwnKeyFrame {
+  readonly type?: string;
+  readonly payload?: {
+    readonly brains?: readonly string[];
+    readonly ownKey?: { readonly status?: string };
+    readonly turnId?: string;
+  };
+}
+
+interface RecordingSocket {
+  send(type: string, payload?: unknown): void;
+  nextFrame(
+    accept: (frame: OwnKeyFrame) => boolean,
+    what: string,
+  ): Promise<OwnKeyFrame>;
+  allText(): string;
+  close(): void;
+}
+
+/** One raw socket that keeps every frame the server sends, as text. */
+async function openRecordingSocket(
+  port: number,
+  token: string,
+): Promise<RecordingSocket> {
+  const { WebSocket } = await import("ws");
+  const raw = new WebSocket(`ws://${HOST}:${port}/?access=${token}`);
+  const seen: string[] = [];
+  const frames: OwnKeyFrame[] = [];
+  const waiters: Array<() => void> = [];
+
+  raw.on("message", (data: unknown) => {
+    const text = String(data);
+
+    seen.push(text);
+    frames.push(JSON.parse(text) as OwnKeyFrame);
+
+    for (const wake of waiters.splice(0)) {
+      wake();
+    }
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    raw.on("open", () => {
+      resolve();
+    });
+    raw.on("error", reject);
+  });
+
+  let cursor = 0;
+
+  return {
+    send: (type: string, payload?: unknown): void => {
+      raw.send(JSON.stringify({ type, payload }));
+    },
+    nextFrame: async (
+      accept: (frame: OwnKeyFrame) => boolean,
+      what: string,
+    ): Promise<OwnKeyFrame> => {
+      const deadline = Date.now() + FIRST_VALUE_TIMEOUT_MS;
+
+      for (;;) {
+        while (cursor < frames.length) {
+          const frame = frames[cursor++];
+
+          if (frame !== undefined && accept(frame)) {
+            return frame;
+          }
+        }
+
+        const left = deadline - Date.now();
+
+        if (left <= 0) {
+          throw new Error(`no ${what} in time`);
+        }
+
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, left);
+
+          waiters.push(() => {
+            clearTimeout(timer);
+            resolve();
+          });
+        });
+      }
+    },
+    allText: () => {
+      return seen.join("\n");
+    },
+    close: () => {
+      raw.close();
+    },
+  };
+}
+
+function isAvailabilityWithKey(
+  status: string,
+): (frame: OwnKeyFrame) => boolean {
+  return (frame: OwnKeyFrame): boolean => {
+    return (
+      frame.type === "jarvis.availability" &&
+      frame.payload?.ownKey?.status === status
+    );
+  };
+}
+
+/**
+ * Own keys over the real socket, with the server's fake verifier: a key not
+ * starting `fake-good` reads `refused`, one that does reads `accepted`, an
+ * accepted key puts an own brain on the availability frame, a `jarvis.chat` on
+ * that brain completes, and no frame ever contains either key's text.
+ */
+async function runOwnKeySmoke(): Promise<void> {
+  const httpBase = `http://${HOST}:${PORT}`;
+  const login = await loginForToken(httpBase);
+  const socket = await openRecordingSocket(PORT, login.token);
+
+  try {
+    socket.send("jarvis.subscribe", {});
+    await socket.nextFrame((frame) => {
+      return frame.type === "jarvis.availability";
+    }, "first jarvis.availability");
+
+    socket.send("jarvis.key", {
+      action: "set",
+      provider: "anthropic",
+      key: REFUSED_KEY,
+      capUsd: 1,
+    });
+    await socket.nextFrame(
+      isAvailabilityWithKey("refused"),
+      "availability reading refused",
+    );
+    console.log("  ✓ own key: a key not starting fake-good reads refused");
+
+    socket.send("jarvis.key", {
+      action: "set",
+      provider: "anthropic",
+      key: ACCEPTED_KEY,
+      capUsd: 1,
+    });
+    const accepted = await socket.nextFrame(
+      isAvailabilityWithKey("accepted"),
+      "availability reading accepted",
+    );
+
+    assert(
+      accepted.payload?.brains?.includes(OWN_BRAIN) === true,
+      `accepted key offers an own brain (got ${JSON.stringify(accepted.payload?.brains)})`,
+    );
+    console.log(
+      "  ✓ own key: a key starting fake-good reads accepted and offers an own brain",
+    );
+
+    const turnId = crypto.randomUUID();
+
+    socket.send("jarvis.chat", {
+      text: "Where is EURUSD?",
+      turnId,
+      brain: OWN_BRAIN,
+    });
+    await socket.nextFrame((frame) => {
+      if (frame.type === "jarvis.error" && frame.payload?.turnId === turnId) {
+        throw new Error("own-brain turn errored");
+      }
+
+      return frame.type === "jarvis.done" && frame.payload?.turnId === turnId;
+    }, "jarvis.done for the own-brain turn");
+    console.log("  ✓ own key: a jarvis.chat on the own brain completes");
+
+    const wire = socket.allText();
+
+    assert(
+      !wire.includes(REFUSED_KEY) && !wire.includes(ACCEPTED_KEY),
+      "no frame contains the key text",
+    );
+    console.log("  ✓ own key: no frame the server sent contains the key text");
+  } finally {
+    socket.close();
+  }
+}
+
 /** The fields of `JARVIS_AVAILABILITY`'s `budget` this smoke reads. */
 interface BudgetFrameFields {
   readonly limitUsd: number | null;
@@ -628,6 +822,8 @@ try {
   await waitForHttp(`http://${HOST}:${PORT}/health`, 30_000);
   await runChecks();
   await runHotSwapSmoke();
+  // Before the edge guard below, whose ban takes this address's logins away.
+  await runOwnKeySmoke();
   await runAccountsJourney(`http://${HOST}:${PORT}`, `ws://${HOST}:${PORT}`);
   await runOversizedFrameSmoke();
   await runEdgeGuardSmoke();

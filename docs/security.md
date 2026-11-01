@@ -186,16 +186,41 @@ of them is misread as more than it is.
 | **Startup refusals** | Running with a dangerous configuration: a short `AUTH_SECRET` with accounts on, a roster username with `@`, the dev account directory on a deployed machine, a missing origin allowlist on a deployed machine, a malformed `REGISTRATION_OPEN` or sign-up lever. The server exits instead of starting. | A *correct* configuration that is wrong for your intent, such as `REGISTRATION_OPEN=true` by accident. | `resolveAccountsMode.ts`, `originPolicy.ts` |
 | **Fly concurrency `hard_limit`** | The proxy handing the machine more than 250 connections, so a flood becomes refused connections instead of an out-of-memory crash. | Fairness between callers; anything per IP. | `fly.toml` |
 | **The AI daily budget** | Unbounded Anthropic spend from the server: a per-person daily limit and a house-wide daily cap on the house key, kept durably in the `jarvis_spend_daily` table and added up by the `record_jarvis_spend` function (both private to the server: row security on, no policy, no grants to the public roles). A store that cannot be reached fails closed to the scripted brain. A deployed server (account store on Supabase) always keeps the budget in the database: the wiring picks the durable store for that mode, and a test pins it. The Console spend limit stays the real backstop. | Bring-your-own keys (B3c); one person with many accounts gets many daily limits, bounded by the house cap and the sign-up levers. | `jarvisBudget/`, `RTC_JARVIS_USER_DAILY_USD`, `RTC_JARVIS_HOUSE_DAILY_USD` |
+| **Own model keys** | The server spending a person's key beyond what they allowed, or leaking it: a key arrives on `jarvis.key`, is checked once with the provider's cheapest read (bounded per caller per hour and by a timeout), is held only in the connection's memory (`ConnectionOwnKey`) and in an Anthropic client built for that connection, and is gone when the socket closes, on `clear` or on replacement. Its own daily cap is enforced like the house budget; an own turn never falls back to a house brain. No frame, log line or error text carries it (`describeMalformedFrame` drops the payload). | Anything on the page: see the section below. | `ConnectionOwnKey`, `verifyOwnKey`, `OwnKeyCheckLimiter`, `JARVIS_KEY_*` in `limits.ts` |
 | **Supply chain** | Unpinned actions, images and installers; secrets in the tree; workflow tokens with write scope. | A compromised upstream package inside its pinned version. | `scorecard.yml`, pinned `Dockerfile`, `pnpm audit --prod` gate, push protection |
 
 Two layers are **planned, not built**: Cloudflare in front of the Fly server
 (volumetric absorption, edge rate limits and bans, a Turnstile challenge on
 sign-up, `RTC_TRUSTED_IP_HEADER=cf-connecting-ip` plus a server check that
-drops traffic not from Cloudflare's ranges), and durable per-user metering
-with bring-your-own model keys (B3). The first is the only layer that stops a
+drops traffic not from Cloudflare's ranges), and bring-your-own model keys on the client (B3c; the server half is built). The first is the only layer that stops a
 real flood before it is paid for, and the one that removes the sign-up denial
 levers; it needs a custom domain proxied through Cloudflare and a client
 redeploy for the new server URL.
+
+### 3.1 The own model key: where it lives and what is not protected
+
+A person's own model key lives in the browser (session storage by default,
+local storage if they opt in to remembering it on the device, wiped at
+sign-out, on an account switch and when the server ends the session). It is
+sent over the authenticated socket in a `jarvis.key` message, held by the
+server only in that connection's scope, and never stored, logged or echoed
+back; the client shows it masked.
+
+The threat that matters is script running on the page: a cross-site-scripting
+bug, a compromised dependency or a browser extension. **That script can read
+the key**, from either kind of storage and from memory, and encrypting it in
+the browser does not help, because whatever decrypts it runs on the same page
+(an unextractable WebCrypto key can still be used by injected script). So the
+page cannot protect the key from its own script; storage choice only changes
+how long it is exposed. Keeping keys on the server was ruled out by the parent
+spec (section 10).
+
+What does protect the person is a key with its own spend limit at the
+provider, which the Preferences section tells them to create before they enter
+it, and the content-security policy, which narrows what script can run at all
+(merged as #1100; not yet deployed). Spec:
+[`2026-10-25-b3-ai-metering-byo-keys-design.md`](superpowers/specs/2026-10-25-b3-ai-metering-byo-keys-design.md)
+section 5.2.
 
 ## 4. Risks and what tackles them
 

@@ -79,10 +79,11 @@ test.describe("full-stack: jarvis chat + confirm-gated execution over the real w
     // jarvis.availability {available:true} against the server's
     // ScriptedAgentLoop, RTC_JARVIS_FAKE=1) is witnessed at the
     // adapter/machine layers instead (see WsJarvisAdapter's and
-    // JarvisMachine's own unit tests). The true wire-drives-UI witness this
-    // spec is missing — a negative-path fullstack case where the server
-    // reports unavailable and the orb actually hides — is tracked as a
-    // follow-up in docs/STATUS.md's Jarvis P3 entry.
+    // JarvisMachine's own unit tests). A fullstack case where the server
+    // reports unavailable and the orb actually hides can no longer be written
+    // the way it was once planned: with no ANTHROPIC_API_KEY the server now
+    // stays available on the scripted brain (B3c D16), so it never sends an
+    // unavailable availability frame for a signed-in caller.
     await jarvis.expectOrbVisibleWithin(ctx, 20);
 
     await jarvis.openViaOrb(ctx);
