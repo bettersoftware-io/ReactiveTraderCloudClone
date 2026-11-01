@@ -2119,6 +2119,36 @@ describe("a person's own key", () => {
       expect(buildOwnKeyLoop).not.toHaveBeenCalled();
     });
 
+    it.each([
+      "own:evil:x",
+      "own:anthropic",
+      "own:anthropic:",
+      "own:",
+      "own:evil",
+    ])(
+      "an own-shaped string the guard rejects runs scripted, never a house brain: %s",
+      async (brain) => {
+        const { messages$, sent, anthropicSpy, buildOwnKeyLoop } =
+          ownKeyHarness();
+
+        messages$.next(chatFrame(brain as JarvisBrain));
+        await settleBudgetReads();
+
+        expectBrainFirst(sent, "scripted");
+        expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+        expect(buildOwnKeyLoop).not.toHaveBeenCalled();
+      },
+    );
+
+    it("an unrecognized string outside the own: prefix still gets the default brain", async () => {
+      const { loops, messages$, sent } = ownKeyHarness();
+
+      messages$.next(chatFrame("gpt-from-a-stale-client" as JarvisBrain));
+      await settleBudgetReads();
+
+      expectBrainFirst(sent, loops.defaultBrain);
+    });
+
     it("an own brain on a connection with no caller runs scripted", async () => {
       const { messages$, sent, anthropicSpy } = ownKeyHarness({ caller: null });
 
@@ -2679,6 +2709,11 @@ describe("a person's own key", () => {
   describe("the jarvis.key frame", () => {
     it.each<readonly [string, unknown]>([
       ["not an object", OWN_KEY],
+      ["a key in the turnId field", { turnId: OWN_KEY }],
+      [
+        "a bad frame with a key in turnId",
+        setKeyPayload({ capUsd: 0, turnId: OWN_KEY }),
+      ],
       ["no action", { provider: "anthropic", key: OWN_KEY, capUsd: 1 }],
       ["an unknown action", setKeyPayload({ action: "replace" })],
       ["a provider outside the set", setKeyPayload({ provider: "evil" })],
@@ -2847,9 +2882,43 @@ describe("a person's own key", () => {
       messages$.next(chatFrame(OWN_HAIKU));
       await settleBudgetReads();
 
-      expect(logged()).not.toBe("");
+      expect(logged()).toContain("Error");
       expect(logged()).not.toContain(SECRET_MARKER);
       expect(JSON.stringify(sent)).not.toContain(SECRET_MARKER);
+    });
+
+    it("a loop that throws while it is built ends the turn with the sanitized error", async () => {
+      answerFetchWith(200);
+      captureConsole();
+      const { messages$, sent } = ownKeyHarness({
+        buildOwnKeyLoop: (): AgentLoop => {
+          throw new Error("no loop");
+        },
+      });
+
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+
+      expect(errorMessagesOf(sent)).toEqual([
+        "The desk link faltered, sir — do try again.",
+      ]);
+    });
+
+    it("a house turn's internal failure keeps its message and stack in the log", async () => {
+      const logged = captureConsole();
+      const services = createBudgetServices();
+      vi.spyOn(services.jarvisBudget, "meterFor").mockImplementation(() => {
+        throw new Error("house meter detail");
+      });
+      const { messages$ } = ownKeyHarness({ services });
+
+      messages$.next(chatFrame("claude-sonnet-5"));
+      await settleBudgetReads();
+
+      expect(logged()).toContain("house meter detail");
+      expect(logged()).toContain("jarvis.effects");
     });
   });
 });

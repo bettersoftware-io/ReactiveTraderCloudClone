@@ -33,6 +33,7 @@ import type { TurnMeter } from "../services/jarvisBudget/JarvisBudgetService.js"
 import type { JarvisTokenUsage } from "../services/UsageMeter.js";
 import {
   type AgentSession,
+  DESK_LINK_FALTERED_MESSAGE,
   describeRefusedKey,
   describeSdkErrorForLogging,
   hasNumericStatus,
@@ -67,9 +68,6 @@ import { buildRenderPanelTool } from "./renderPanelTool.js";
 const JARVIS_RUNNER_MAX_ITERATIONS = 8;
 
 const REFUSAL_MESSAGE = "I'm afraid I can't assist with that, sir.";
-const DESK_LINK_FALTERED_MESSAGE =
-  "The desk link faltered, sir — do try again.";
-
 const SESSION_CAP_MESSAGE =
   "We've had quite the session, sir — do reconnect for a fresh one.";
 

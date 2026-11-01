@@ -26,6 +26,10 @@ export interface OwnKeyFailureSink {
   refused(): void;
 }
 
+/** The one thing a client hears of a failure that is not its own to act on. */
+export const DESK_LINK_FALTERED_MESSAGE =
+  "The desk link faltered, sir — do try again.";
+
 /** The turn's error when a provider turns a person's own key down (D13). */
 export function describeRefusedKey(providerName: string): string {
   return `${providerName} refused your key.`;

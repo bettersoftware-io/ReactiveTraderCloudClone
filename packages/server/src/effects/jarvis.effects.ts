@@ -58,6 +58,7 @@ import {
 
 import {
   type AgentSession,
+  DESK_LINK_FALTERED_MESSAGE,
   describeRefusedKey,
   describeSdkErrorForLogging,
   type JarvisLoops,
@@ -153,6 +154,20 @@ function describeMalformedFrame(frameType: string, payload: unknown): string {
   return `type=${frameType} turnId=${turnId ?? "<none>"} payload omitted`;
 }
 
+/** A listed brain as it is. Anything else starting `own:` was meant for a
+ * person's own key — a model that left the list, a provider or shape this
+ * server does not know — so it runs scripted: absent would mean the routing
+ * default, a house brain, and the house key must not pay for this turn. */
+function parseBrain(brain: unknown): JarvisBrain | undefined {
+  if (isJarvisBrain(brain)) {
+    return brain;
+  }
+
+  return typeof brain === "string" && brain.startsWith("own:")
+    ? "scripted"
+    : undefined;
+}
+
 /**
  * `text`/`turnId`/`history` stay strict (malformed → the whole frame is
  * rejected, per the JARVIS_ERROR/drop paths below). `brain`/`effort`/`origin`
@@ -160,8 +175,8 @@ function describeMalformedFrame(frameType: string, payload: unknown): string {
  * the session's own default, the person's own turn), so an invalid or absent
  * value is treated as simply absent rather than failing the frame — a stale
  * client sending an unrecognized `brain` string still gets served, just on
- * the default brain. An own brain whose model left the list is not such a
- * string: it stays an own brain, so routing can keep it off the house key.
+ * the default brain. An `own:` string is not such a stale client: see
+ * `parseBrain`.
  */
 function parseChatPayload(payload: unknown): JarvisChatPayload | undefined {
   if (!isRecord(payload)) {
@@ -192,7 +207,7 @@ function parseChatPayload(payload: unknown): JarvisChatPayload | undefined {
       history === undefined
         ? undefined
         : truncateHistory(history as readonly JarvisHistoryEntry[]),
-    brain: isJarvisBrain(brain) || isJarvisOwnBrain(brain) ? brain : undefined,
+    brain: parseBrain(brain),
     effort: isJarvisEffort(effort) ? effort : undefined,
     origin: origin === "narrator" ? "narrator" : "user",
   };
@@ -853,6 +868,21 @@ export function jarvisEffects(
             ? runTurnFor("scripted", parsed, undefined)
             : runOwnTurn(model.brain, view.capUsd, caller, session, parsed);
         }),
+        // Inside the key's own path, ahead of `jarvisChat$`'s catch, which
+        // logs the whole error: here it may be the provider's, and its
+        // message may quote the request. Name and status only, and the turn
+        // still ends for the client.
+        catchError((err: unknown): Observable<JarvisEvent> => {
+          console.error(
+            "jarvis.chat: own-key turn failed —",
+            describeSdkErrorForLogging(err),
+          );
+
+          return of<JarvisEvent>({
+            type: "error",
+            message: DESK_LINK_FALTERED_MESSAGE,
+          });
+        }),
       );
     }
 
@@ -986,12 +1016,7 @@ export function jarvisEffects(
         concatMap((msg) => {
           return projectChatTurn(msg.payload).pipe(
             catchError((err: unknown): Observable<never> => {
-              // Name and status only: on an own key the error may be the
-              // provider's, and its message may quote the request.
-              console.error(
-                "ws-effects: stream effect error",
-                describeSdkErrorForLogging(err),
-              );
+              console.error("ws-effects: stream effect error", err);
               return EMPTY;
             }),
           );
@@ -1015,7 +1040,9 @@ export function jarvisEffects(
           if (!parsed) {
             console.warn(
               "jarvis.key: dropping malformed payload",
-              describeMalformedFrame(CLIENT_MSG.JARVIS_KEY, payload),
+              // No payload, not even for its `turnId`: this frame carries a
+              // key, and any field of it may be where the key landed.
+              describeMalformedFrame(CLIENT_MSG.JARVIS_KEY, undefined),
             );
             return EMPTY;
           }
