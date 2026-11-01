@@ -188,6 +188,10 @@ export const REVOCATION_LEDGER_MAX_ENTRIES = 10_000;
  * Counted per caller across reconnects, in memory (a restart resets it). A
  * check the provider accepts is refunded, so only failed ones count. */
 export const JARVIS_KEY_CHECKS_PER_HOUR = 20;
+/** B3c — every provider check per caller per window, accepted or not, and
+ * never refunded: the ceiling on calls that `JARVIS_KEY_CHECKS_PER_HOUR`'s
+ * refund leaves open, since two good keys in turn fail nothing. */
+export const JARVIS_KEY_CHECKS_HARD_PER_HOUR = 120;
 export const JARVIS_KEY_CHECK_WINDOW_MS = 60 * 60 * 1000;
 
 /** B3c — how long one provider key check may take before it reads

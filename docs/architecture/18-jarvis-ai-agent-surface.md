@@ -1587,8 +1587,9 @@ connection's `ConnectionOwnKey`; nothing else holds it. Its path:
 
 1. `ConnectionOwnKey` checks the key once with the provider's cheapest read
    (`verifyOwnKey`, a models-list call, bounded by `JARVIS_KEY_CHECK_TIMEOUT_MS`
-   and by `JARVIS_KEY_CHECKS_PER_HOUR` per caller through `OwnKeyCheckLimiter`,
-   which refunds an accepted check, so only failed ones count)
+   and by `OwnKeyCheckLimiter`: per caller, `JARVIS_KEY_CHECKS_PER_HOUR` failed
+   checks, since an accepted one is refunded, and `JARVIS_KEY_CHECKS_HARD_PER_HOUR`
+   checks of any kind, never refunded)
    and settles on `accepted`, `refused`, `unreachable` or `limited`.
 2. The availability frame reports the outcome as `ownKey` (provider, status,
    cap) and the key's own meter as `ownBudget`. The key's curated models are

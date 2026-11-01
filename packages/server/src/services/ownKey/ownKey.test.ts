@@ -184,6 +184,68 @@ describe("ConnectionOwnKey", () => {
     expect(own.view()?.status).toBe("limited");
   });
 
+  it("alternating two accepted keys stops calling the provider after 120 checks", async () => {
+    const verify = vi.fn<VerifyOwnKey>(fakeVerifyOwnKey);
+    const { own } = build(verify, new OwnKeyCheckLimiter());
+
+    await runAcceptedChecks(own, 120);
+
+    expect(verify).toHaveBeenCalledTimes(120);
+    expect(own.view()?.status).toBe("accepted");
+
+    own.apply(setOf("fake-good-even"));
+    own.apply(setOf("fake-good-odd"));
+    await own.settled();
+
+    expect(verify).toHaveBeenCalledTimes(120);
+    expect(own.view()?.status).toBe("limited");
+  });
+
+  it("a reconnect does not reset the ceiling; the hour does", async () => {
+    let now = 1_000;
+    const verify = vi.fn<VerifyOwnKey>(fakeVerifyOwnKey);
+    const limiter = new OwnKeyCheckLimiter(() => {
+      return now;
+    });
+
+    await runAcceptedChecks(build(verify, limiter).own, 120);
+
+    const { own: reconnected } = build(verify, limiter);
+
+    reconnected.apply(setOf("fake-good-even"));
+    await reconnected.settled();
+
+    expect(verify).toHaveBeenCalledTimes(120);
+    expect(reconnected.view()?.status).toBe("limited");
+
+    now += 60 * 60_000;
+    reconnected.apply(setOf("fake-good-even"));
+    await reconnected.settled();
+
+    expect(verify).toHaveBeenCalledTimes(121);
+    expect(reconnected.view()?.status).toBe("accepted");
+  });
+
+  it("failed guesses still stop at 20 with accepted checks mixed in", async () => {
+    const verify = vi.fn<VerifyOwnKey>(fakeVerifyOwnKey);
+    const { own } = build(verify, new OwnKeyCheckLimiter());
+
+    for (let i = 0; i < 20; i++) {
+      own.apply(setOf(`fake-good-${String(i)}`));
+      await own.settled();
+      own.apply(setOf(`wrong-${String(i)}`));
+      await own.settled();
+    }
+
+    expect(verify).toHaveBeenCalledTimes(40);
+
+    own.apply(setOf("wrong-20"));
+    await own.settled();
+
+    expect(verify).toHaveBeenCalledTimes(40);
+    expect(own.view()?.status).toBe("limited");
+  });
+
   it("an accepted answer that arrives too late refunds nothing: a superseded check stays charged", async () => {
     const { verify, calls } = deferredVerify(false);
     const limiter = new OwnKeyCheckLimiter();
@@ -514,6 +576,18 @@ function deferredVerify(abortAnswers = true): Deferred {
   });
 
   return { verify, calls };
+}
+
+/** Two keys the fake check accepts, in turn, so every one is a provider
+ * check and not a repeat. */
+async function runAcceptedChecks(
+  own: ConnectionOwnKey,
+  count: number,
+): Promise<void> {
+  for (let i = 0; i < count; i++) {
+    own.apply(setOf(i % 2 === 0 ? "fake-good-even" : "fake-good-odd"));
+    await own.settled();
+  }
 }
 
 function setOf(key: string, capUsd: number | null = 5): JarvisKeyPayload {
