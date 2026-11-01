@@ -1590,8 +1590,10 @@ connection's `ConnectionOwnKey`; nothing else holds it. Its path:
    and by `JARVIS_KEY_CHECKS_PER_HOUR` per caller through `OwnKeyCheckLimiter`)
    and settles on `accepted`, `refused`, `unreachable` or `limited`.
 2. The availability frame reports the outcome as `ownKey` (provider, status,
-   cap) and the key's own meter as `ownBudget`; an accepted key adds its
-   curated models to `brains`. The key text is in no frame.
+   cap) and the key's own meter as `ownBudget`. The key's curated models are
+   added to `brains` while it is `checking`, `accepted` or `refused` (so a
+   refused key's turn can say why); an `unreachable` or `limited` key offers
+   none. The key text is in no frame.
 3. A turn on an own brain builds its loop per connection through
    `buildOwnKeyLoop` in `index.ts` (an Anthropic client on that key; under
    `RTC_JARVIS_FAKE=1` a `ScriptedAgentLoop`, and `fakeVerifyOwnKey` accepts a

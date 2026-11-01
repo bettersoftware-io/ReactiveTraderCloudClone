@@ -421,6 +421,7 @@ interface OwnKeyFrame {
     readonly brains?: readonly string[];
     readonly ownKey?: { readonly status?: string };
     readonly turnId?: string;
+    readonly brain?: string;
   };
 }
 
@@ -575,6 +576,14 @@ async function runOwnKeySmoke(): Promise<void> {
       turnId,
       brain: OWN_BRAIN,
     });
+    const brainFrame = await socket.nextFrame((frame) => {
+      return frame.type === "jarvis.brain" && frame.payload?.turnId === turnId;
+    }, "jarvis.brain for the own-brain turn");
+
+    assert(
+      brainFrame.payload?.brain === OWN_BRAIN,
+      `the turn was served on the own brain (got ${brainFrame.payload?.brain})`,
+    );
     await socket.nextFrame((frame) => {
       if (frame.type === "jarvis.error" && frame.payload?.turnId === turnId) {
         throw new Error("own-brain turn errored");

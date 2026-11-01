@@ -445,8 +445,8 @@ part of this step).
    is now available on the scripted brain instead of reporting itself
    unavailable, so an operator can turn the house key off without taking
    Jarvis away.
-3. **Verify.** `pnpm test:e2e` covers the wiring (the
-   full-stack node smoke, under `RTC_JARVIS_FAKE=1`, sends `jarvis.key` over a real socket); on the
+3. **Verify.** `pnpm test:e2e` covers the wiring (the full-stack node smoke,
+   under `RTC_JARVIS_FAKE=1`, sends `jarvis.key` over a real socket). On the
    deployed server the availability frame carries no `ownKey` until a client
    sends a key.
 
