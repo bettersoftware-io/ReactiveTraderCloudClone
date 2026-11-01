@@ -25,6 +25,7 @@ import { JarvisBudgetService } from "./jarvisBudget/JarvisBudgetService.js";
 import { parseJarvisBudgetConfig } from "./jarvisBudget/jarvisBudgetConfig.js";
 import type { JarvisTier } from "./jarvisBudget/jarvisTier.js";
 import type { SpendStore } from "./jarvisBudget/SpendStore.js";
+import { OwnKeyCheckLimiter } from "./ownKey/OwnKeyCheckLimiter.js";
 import { ThroughputService } from "./ThroughputService.js";
 import { UsageMeter } from "./UsageMeter.js";
 
@@ -57,6 +58,9 @@ export interface ServiceContainer {
   readonly jarvisBudget: JarvisBudgetService;
   /** Which house offer and budget a caller gets. A connection asks once. */
   readonly jarvisTier: (caller: Caller) => Promise<JarvisTier>;
+  /** Provider checks of people's own keys, per caller. One instance for the
+   * process, so a reconnect does not reset a caller's allowance. */
+  readonly ownKeyChecks: OwnKeyCheckLimiter;
   /** Null on the shared container; set on a connection's scoped one. */
   readonly caller: Caller | null;
   /** The administrator rules behind the `admin.accounts.*` RPCs. */
@@ -158,6 +162,7 @@ export function createServices(
     usageMeter,
     jarvisBudget,
     jarvisTier: options.jarvisTier ?? readTierFromLoginKind,
+    ownKeyChecks: new OwnKeyCheckLimiter(),
     caller: null,
     accountAdmin:
       options.accountAdmin ?? createUnavailableAccountAdminService(),

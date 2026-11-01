@@ -132,6 +132,7 @@ Every per-caller bound lives in `src/config/limits.ts` (hardening spec §2.2 /
 | Distinct `keyedStream()` keys per effect per connection | rx-ws-effects `KeyedStreamOptions.maxKeys` | 128 |
 | `rpc()` requests waiting on their handler per effect per connection (one over is nacked) | rx-ws-effects `RpcOptions.maxActive` | 64 |
 | Shared blotter / equity order book / RFQ store | `@rtc/domain` simulator constructor arguments | 500 / 500 / 200, oldest evicted first |
+| Provider checks of a person's own model key, per caller per hour (kept across reconnects; over it the key reads `limited` and no call is made) | `JARVIS_KEY_CHECKS_PER_HOUR` | 20 |
 | `/login` body (bytes received, `413` past it) | `LOGIN_MAX_BODY_BYTES` | 4 KiB |
 | `/mcp` declared `Content-Length` (`413` past it; a chunked body is bounded only by the MCP SDK's own 4 MB limit, behind the Bearer check) | `MCP_MAX_BODY_BYTES` | 64 KiB |
 | Live sockets, whole process / per client IP (`503` upgrade past it) | `MAX_CONNECTIONS_TOTAL` / `MAX_CONNECTIONS_PER_IP` | 200 / 8 |

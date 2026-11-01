@@ -181,3 +181,14 @@ export const ADMIN_ACCOUNT_LIST_MAX = 500;
  * a stamp could not be written to the account store; past this the oldest
  * entry is dropped. */
 export const REVOCATION_LEDGER_MAX_ENTRIES = 10_000;
+
+/** B3c — provider checks of a person's own model key, per caller per window.
+ * Each check is a real call to the provider with the person's key, so a
+ * client looping on `jarvis.key` must not turn the server into a prober.
+ * Counted per caller across reconnects, in memory (a restart resets it). */
+export const JARVIS_KEY_CHECKS_PER_HOUR = 20;
+export const JARVIS_KEY_CHECK_WINDOW_MS = 60 * 60 * 1000;
+
+/** B3c — how long one provider key check may take before it reads
+ * unreachable. */
+export const JARVIS_KEY_CHECK_TIMEOUT_MS = 5_000;
