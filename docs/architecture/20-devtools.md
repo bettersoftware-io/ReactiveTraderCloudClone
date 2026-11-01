@@ -583,17 +583,20 @@ deliberately carries a 5,000-row event log and whole `InspectorState`
 snapshots as props, so under live traffic (~15 commits/s) it storms
 `RangeError: Invalid string length` and the tab goes unresponsive
 (live-acceptance, 2026-07-21). React reads `hook.isDisabled` at
-module-evaluation time, so the guard has to run before any module script —
-an ES-module import can't guarantee that (`biome.jsonc`'s `organizeImports`
+module-evaluation time, so the guard has to evaluate before React does. An
+import in `main.tsx` can't promise that (`biome.jsonc`'s `organizeImports`
 groups sort a same-package import after `react`/`react-dom` regardless of
 source position, and this repo bans lint-disable comments). Instead
-`packages/devtools-app/index.html` carries the guard as a **classic inline
-`<script>` in `<head>`, before the `type="module"` entry script** — classic
-scripts run synchronously in document order, ahead of any deferred module
-script, so no import order is involved at all. Opt back in with
+`packages/devtools-app/index.html` loads `src/disableReactDevtoolsHook.ts` as
+its **own `<script type="module">`, ahead of the `main.tsx` one**. The guard
+module imports nothing, and Vite keeps the two scripts in document order inside
+one entry chunk, so the guard's code comes first. It is a module and not an
+inline `<script>` because the deployed site sends `script-src 'self'`, which
+blocks inline script ([security](../security.md)). Opt back in with
 `?react-devtools` to debug the inspector's own React tree.
-`scripts/check-devtools-dist.mts` asserts the built `/devtools/` page still
-contains the guard, post-build. The extension panel is its own
+`scripts/check-devtools-dist.mts` asserts the built `/devtools/` page has no
+inline script and that its entry chunk still carries the guard, post-build.
+The extension panel is its own
 `chrome-extension://` page that the content script never reaches, and MV3's
 CSP forbids inline scripts there anyway, so it carries no guard.
 

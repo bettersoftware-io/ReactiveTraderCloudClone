@@ -1,5 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 
+import { watchCspViolations } from "#/browser/cspViolations.ts";
+
 import type { AccountField, LoginScreenPO } from "../contracts/LoginScreen.ts";
 import { TESTIDS } from "../contracts/testids.ts";
 import { awaitAppMount, navigateAndAwaitMount } from "./appMount.ts";
@@ -30,6 +32,8 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
 
   /** URL paths of every request the login page made since `open()`. */
   private requestPaths: string[] = [];
+
+  private violations: string[] = [];
 
   private readonly appPage: Page;
 
@@ -63,6 +67,7 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
 
     const context = await browser.newContext();
     const page = await context.newPage();
+    this.violations = watchCspViolations(context);
     this.pageErrors = [];
     page.on("pageerror", (error) => {
       this.pageErrors.push(error.message);
@@ -93,6 +98,10 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
     // on a still-empty #root (see appMount.ts). The navigation has
     // already happened, so this only waits.
     await awaitAppMount(page, this.pageErrors);
+  }
+
+  cspViolations(): readonly string[] {
+    return this.violations;
   }
 
   async waitVisible(timeoutMs: number): Promise<void> {

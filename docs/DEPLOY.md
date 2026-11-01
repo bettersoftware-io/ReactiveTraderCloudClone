@@ -431,21 +431,42 @@ new setting.
 
 ## Rolling out B3c
 
-B3c lets a person bring their own model key. It ships in pieces; this is the
-server piece (the client pieces follow in later PRs, and the page
-Content-Security-Policy merged earlier as #1100 is a client change that is not
-part of this step).
+B3c starts with a `Content-Security-Policy` header on both web clients
+(`vercel.react.json`, `vercel.solid.json`; the policy and its reasons are in
+[`security.md`](security.md) §3.1). It needs no migration and no setting. The
+Deploy workflow now checks, after each client build, that the bundle names a
+server host the policy allows.
 
-1. **Deploy the server alone** (`deploy.yml`). There is **no migration** and no
-   new setting: own keys are held in the connection's memory and the spend rows
+**Client half (PR 1).**
+
+1. **Deploy both web clients** (`deploy.yml`). Its smoke step already fails if
+   `/` or `/devtools/` lacks the header.
+2. **Check the header yourself**, on both sites:
+   `curl -sI https://rtc-clone-react.vercel.app/ | grep -i content-security-policy`
+   (and `…solid.vercel.app`, and `/devtools/` on each). It must print the policy
+   with `script-src 'self'`. A missing header means the checks below pass
+   without the policy being in force.
+3. **Verify, on both sites** (React and Solid): open the site, sign in with the
+   demo login and open a workspace. Open the browser console and confirm there
+   is no "Content Security Policy" error. Then open `/devtools/` on each site
+   and confirm it connects. Finally sign in with a real account and open
+   Jarvis, which uses the WebSocket to the Fly server.
+4. **If a page breaks**, the console names the blocked directive. Widen that one
+   directive in both `vercel.*.json` files, run `pnpm check:scripts`, and add the
+   reason to `security.md` §3.1. Do not remove the header.
+
+**Server half (PR 2).** It deploys alone, in any order against the clients.
+
+5. **Deploy the server** (`deploy.yml`). There is **no migration** and no new
+   setting: own keys are held in the connection's memory and the spend rows
    reuse `jarvis_spend_daily`. Old clients are unaffected: they never send
    `jarvis.key`, and the extra availability fields (`ownKey`, `ownBudget`) are
    ignored by a client that does not read them.
-2. **Expect one behaviour change (D16).** With no `ANTHROPIC_API_KEY`, Jarvis
+6. **Expect one behaviour change (D16).** With no `ANTHROPIC_API_KEY`, Jarvis
    is now available on the scripted brain instead of reporting itself
    unavailable, so an operator can turn the house key off without taking
    Jarvis away.
-3. **Verify.** `pnpm test:e2e` covers the wiring (the full-stack node smoke,
+7. **Verify.** `pnpm test:e2e` covers the wiring (the full-stack node smoke,
    under `RTC_JARVIS_FAKE=1`, sends `jarvis.key` over a real socket). On the
    deployed server the availability frame carries no `ownKey` until a client
    sends a key.
@@ -467,6 +488,8 @@ loudly instead of shipping:
 - every application core ships only as a lazy chunk (the RxJS composition root too, since approach B)
   (`scripts/check-core-bundle.mts`)
 - an inline sourcemap is present when `include_sourcemaps` was ticked
+- the bundle names a server host the Content-Security-Policy allows
+  (`scripts/check-csp.mts --dist`)
 
 Each ticked target is then smoke-checked:
 - server `/health` → 200

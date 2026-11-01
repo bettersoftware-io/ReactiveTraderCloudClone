@@ -8,6 +8,7 @@ import {
   JARVIS_NARRATOR_STORAGE_KEY,
   seedLocalStorageItem,
 } from "../authSeed.ts";
+import { watchCspViolations } from "../cspViolations.ts";
 import {
   FIRST_DOCK_RENDER_ARM_KEY,
   installFirstDockRenderRecorder,
@@ -60,6 +61,7 @@ export class PlaywrightWorld extends World {
       po: buildPlaywrightPageObjects(this.page),
       scratch: new Scratchpad(),
       pageErrors,
+      cspViolations: watchCspViolations(this.context),
     };
   }
 

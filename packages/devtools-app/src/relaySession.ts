@@ -10,7 +10,8 @@ import {
 import type { InspectorSession } from "#/inspectorSession";
 
 /** Panel-side session pointed at the standalone WebSocket relay (React Native
- * inspection): the browser `devtools-app`, served from anywhere, constructs a
+ * inspection): the browser `devtools-app`, served from a local dev server (the deployed
+ * `/devtools/` page's Content-Security-Policy blocks a relay socket), constructs a
  * `WsRelayDuplex` tagged "panel" instead of a same-origin
  * `BroadcastChannelDuplex`. The `InspectorStore` + `InspectorClient` and the
  * four panels are byte-identical to the BroadcastChannel path — only the

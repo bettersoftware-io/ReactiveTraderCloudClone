@@ -7,6 +7,7 @@ import { PlaywrightBoot } from "./Boot.ts";
 import { PlaywrightConnectionOverlay } from "./ConnectionOverlay.ts";
 import { PlaywrightCreditRfqForm } from "./CreditRfqForm.ts";
 import { PlaywrightCreditRfqPanel } from "./CreditRfqPanel.ts";
+import { PlaywrightCsp } from "./Csp.ts";
 import { PlaywrightEquitiesChart } from "./EquitiesChart.ts";
 import { PlaywrightEquitiesWatchlist } from "./EquitiesWatchlist.ts";
 import { PlaywrightFooter } from "./Footer.ts";
@@ -44,5 +45,6 @@ export function buildPlaywrightPageObjects(page: Page): PageObjects {
     login: new PlaywrightLoginScreen(page),
     powerSaver: new PlaywrightPowerSaver(page),
     boot: new PlaywrightBoot(page),
+    csp: new PlaywrightCsp(page),
   };
 }

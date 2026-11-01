@@ -17,6 +17,9 @@ export interface LoginScreenPO {
   /** Open a fresh, unauthenticated view of the app (no seeded session) and
    *  navigate to "/". Must be called before any other method. */
   open(): Promise<void>;
+  /** Content-Security-Policy violations the login page has logged since
+   *  `open()`. */
+  cspViolations(): readonly string[];
   /** Wait until the login form root is visible. */
   waitVisible(timeoutMs: number): Promise<void>;
   /** Wait until the sign-in title reads exactly `expected`. */

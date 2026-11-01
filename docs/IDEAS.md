@@ -128,6 +128,79 @@ Zero-change trial: set the fallback plus `project_doc_max_bytes = 65536` in the
 user's own Codex config — no repo edit needed.
 
 
+### Replace `STATUS.md` and this file with a real backlog and board
+
+`docs/STATUS.md` conflicts constantly and no human can read it. The user wants
+this solved, just not yet. Assessed 2026-11-01; nothing has been adopted.
+
+**The problem, measured that day:**
+
+- `STATUS.md` is 103 KB across 74 bullets, averaging 1.3 KB each. Its longest
+  single line is 18,261 characters.
+- Replaying the 634 merges since 2026-09-01 with `git merge-tree`, 51
+  conflicted and `STATUS.md` was in 21 of them, the most of any file
+  (`CLAUDE.md` was next with 11).
+- 118 of the 213 PRs merged since 2026-10-01 edited it. Git merges by line, so
+  one shared file of very long lines collides easily. The cause is the
+  workflow as much as the format.
+- [`rn-open-items.md`](rn-open-items.md) (97 KB) may be a third backlog of the
+  same shape. Check it before migrating.
+
+**Options, in the order to try them:**
+
+1. **[Backlog.md](https://github.com/MrLesk/Backlog.md).** One Markdown file
+   per task in the repo, with a terminal board, a local web board, a CLI and an
+   MCP server. MIT, TypeScript, 7.2k stars, v1.55.3 released 2026-10-23.
+   Status stays in PR review. Its risk is sequential IDs, which parallel
+   worktrees could duplicate, and open bug
+   [#1146](https://github.com/MrLesk/Backlog.md/issues/1146) says duplicates
+   make `task list` and `search` fail. Prefer the CLI to MCP:
+   [#1034](https://github.com/MrLesk/Backlog.md/issues/1034) reports MCP
+   writes landing in the wrong worktree, though the README now says MCP
+   follows worktrees.
+2. **Our own board, if Backlog.md fails that test.** One file per item under
+   `docs/backlog/`, with YAML frontmatter (title, status, area, blocked-by,
+   plan). A `scripts/backlog-board.mts` generator renders one static page,
+   `publish-site.yml` publishes it (not yet checked that it fits), and a CI
+   gate validates the frontmatter. A filename as the ID removes the collision
+   risk. The board is read-only, so a status change is a PR. Estimated at a few
+   hundred lines; the larger job is splitting the 74 bullets by hand or by
+   agent.
+3. **GitHub Issues + Projects.** Free, already enabled, with hosted boards, and
+   `Closes #N` would replace the manual cleanup. It loses same-PR review,
+   offline reading and `check:doc-links` coverage. Issue types are documented
+   only for organizations, so use labels. `gh` needs the project scope for
+   boards.
+
+**Ruled out:**
+
+- **[Beads](https://github.com/gastownhall/beads)** has plenty of human tools,
+  but its source of truth is a gitignored Dolt database synced through
+  `refs/dolt/data`, outside normal PR review. Its embedded default also allows
+  only one writer at a time.
+- **Linear** caps the free plan at about 250 issues per third-party sources;
+  its own docs only imply that figure, and its pricing page would not load.
+
+**A possible community contribution.** A new Beads viewer would be lost among
+the [~60 listed](https://beads.gascity.com/community-tools), 20 of them marked
+historical or stale. The gap worth testing is a hosted, read-only board for
+Backlog.md that opens on a phone: its README shows only a local board and a
+Markdown export, though this was not checked exhaustively. Propose it as an
+issue first, because
+[#1063](https://github.com/MrLesk/Backlog.md/issues/1063) reports that the
+maintainers want one before a PR and closed an earlier proposal over scope. If
+they decline, publish it as a companion tool. The same generator serves option
+2 if written against its own format.
+
+**The first step when this is picked up:** test Backlog.md in a throwaway repo.
+Create tasks on two parallel worktrees with nothing pushed, merge both, and see
+whether the IDs collide. This did not run on 2026-11-01 because the permission
+classifier blocked the install. If it passes, trial Backlog.md on this file
+first, then `STATUS.md`. Delete each old file as it moves, or leave a one-line
+pointer, so there are never two sources of truth. Specs, plans, ADRs and
+`CHANGELOG.md` stay as they are.
+
+
 ### Shrink the repository (screenshot history)
 
 The GitHub repo is **1.96 GB** and nearly all of it is old PNG versions, not

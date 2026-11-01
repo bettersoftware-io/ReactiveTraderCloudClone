@@ -2,6 +2,24 @@
   "framework": "vite",
   "buildCommand": "pnpm turbo run build --filter=@rtc/client-solid",
   "outputDirectory": "packages/client-solid/dist",
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
-  "git": { "deploymentEnabled": false }
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://rtc-clone-server.fly.dev wss://rtc-clone-server.fly.dev; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+        }
+      ]
+    }
+  ],
+  "git": {
+    "deploymentEnabled": false
+  }
 }

@@ -4,6 +4,7 @@ import type { BootPO } from "./Boot.ts";
 import type { ConnectionOverlayPO } from "./ConnectionOverlay.ts";
 import type { CreditRfqFormPO } from "./CreditRfqForm.ts";
 import type { CreditRfqPanelPO } from "./CreditRfqPanel.ts";
+import type { CspPO } from "./Csp.ts";
 import type { EquitiesChartPO } from "./EquitiesChart.ts";
 import type { EquitiesWatchlistPO } from "./EquitiesWatchlist.ts";
 import type { FooterPO } from "./Footer.ts";
@@ -50,4 +51,7 @@ export interface PageObjects {
    *  preference's real-browser effect on it. Only the Playwright factory
    *  provides it (see {@link BootPO}). */
   boot?: BootPO;
+  /** Optional: the Content-Security-Policy header and its enforcement. Only
+   *  the Playwright factory provides it (see {@link CspPO}). */
+  csp?: CspPO;
 }

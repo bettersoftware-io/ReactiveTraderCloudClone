@@ -42,6 +42,9 @@ export interface TestContext {
    * expectSelectedCoreImpl so a boot failure surfaces as ITS message, not as
    * a locator timeout. */
   pageErrors: string[];
+  /** Content-Security-Policy violations any page of the context has logged
+   * since it opened — asserted empty by the CSP boot test. */
+  cspViolations: string[];
 }
 
 /**

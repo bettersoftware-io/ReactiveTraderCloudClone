@@ -75,7 +75,7 @@
     "lint:actions": "scripts/install-actionlint.sh && .tooling/actionlint -color",
     "lint:actions:security": "scripts/install-zizmor.sh && .tooling/zizmor --no-progress .github/",
     "check:versions": "manypkg check && syncpack lint",
-    "check:scripts": "node scripts/check-workspace-scripts.mts && node scripts/check-package-wiring.mts",
+    "check:scripts": "node scripts/check-workspace-scripts.mts && node scripts/check-package-wiring.mts && node scripts/check-csp.mts",
     "check:react-policies": "node scripts/check-react-package-policies.mts",
     "check:doc-links": "node scripts/check-doc-links.mts",
     "check:worklet-order": "node scripts/check-worklet-order.mts",
