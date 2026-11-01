@@ -1,7 +1,8 @@
-import type {
-  JarvisBrain,
-  JarvisOwnBrain,
-  JarvisProvider,
+import {
+  isJarvisProvider,
+  type JarvisBrain,
+  type JarvisOwnBrain,
+  type JarvisProvider,
 } from "../preferences/preferences.js";
 
 /** One curated bring-your-own-key model: the person's key, their provider,
@@ -76,9 +77,7 @@ export function isJarvisOwnBrain(value: unknown): value is JarvisOwnBrain {
   return (
     parts.length >= 3 &&
     parts[0] === "own" &&
-    (parts[1] === "anthropic" ||
-      parts[1] === "openrouter" ||
-      parts[1] === "openai") &&
+    isJarvisProvider(parts[1]) &&
     parts.slice(2).join(":").length > 0
   );
 }

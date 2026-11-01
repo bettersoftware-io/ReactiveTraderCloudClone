@@ -1620,8 +1620,31 @@ describe("WsJarvisAdapter own key", () => {
         firstAvailability({ ownBudget, ownKey: { ...ownKey, provider: 3 } }),
       ).toMatchObject({ ownBudget, ownKey: null });
       expect(
+        firstAvailability({
+          ownBudget,
+          ownKey: { ...ownKey, provider: "acme" },
+        }),
+      ).toMatchObject({ ownBudget, ownKey: null });
+      expect(
         firstAvailability({ ownBudget, ownKey: { ...ownKey, capUsd: "2" } }),
       ).toMatchObject({ ownBudget, ownKey: null });
+    });
+
+    it("a budget is pinned to its slot: an own budget in budget, or a house budget in ownBudget, is dropped alone", () => {
+      expect(
+        firstAvailability({ budget: ownBudget, ownBudget, ownKey }),
+      ).toMatchObject({ budget: null, ownBudget, ownKey });
+      expect(
+        firstAvailability({
+          budget: { ...ownBudget, keyKind: "house" },
+          ownBudget: { ...ownBudget, keyKind: "house" },
+          ownKey,
+        }),
+      ).toMatchObject({
+        budget: { ...ownBudget, keyKind: "house" },
+        ownBudget: null,
+        ownKey,
+      });
     });
 
     it("a null cap on the own key is kept", () => {

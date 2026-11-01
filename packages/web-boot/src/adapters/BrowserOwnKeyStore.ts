@@ -1,8 +1,7 @@
 import type { OwnKeyStore, StoredOwnKey } from "@rtc/core-api";
+import { isJarvisProvider } from "@rtc/domain";
 
 export const OWN_KEY_STORAGE_KEY = "rt-jarvis-own-key";
-
-const PROVIDERS: readonly unknown[] = ["anthropic", "openrouter", "openai"];
 
 function isStoredOwnKey(value: unknown): value is StoredOwnKey {
   if (typeof value !== "object" || value === null) {
@@ -12,7 +11,7 @@ function isStoredOwnKey(value: unknown): value is StoredOwnKey {
   const parsed = value as Record<string, unknown>;
   return (
     typeof parsed.owner === "string" &&
-    PROVIDERS.includes(parsed.provider) &&
+    isJarvisProvider(parsed.provider) &&
     typeof parsed.key === "string" &&
     (parsed.capUsd === null || typeof parsed.capUsd === "number") &&
     typeof parsed.remember === "boolean"
@@ -28,27 +27,38 @@ function removeFrom(storage: () => Storage): void {
   }
 }
 
-/** Reads one JSON value from `storage`: `undefined` when the entry is absent
- * or storage throws, `null` when it was present but malformed (and removed). */
-function readFrom(storage: () => Storage): StoredOwnKey | null | undefined {
+/** Reads one JSON value from `storage`. Storage that throws, or holds
+ * nothing, reads as `null` and removes nothing (a transient failure must not
+ * delete a valid key); only data that WAS read and is malformed is removed. */
+function readFrom(storage: () => Storage): StoredOwnKey | null {
+  let raw: string | null;
+
   try {
-    const raw = storage().getItem(OWN_KEY_STORAGE_KEY);
-
-    if (raw === null) {
-      return undefined;
-    }
-
-    const parsed: unknown = JSON.parse(raw);
-
-    if (isStoredOwnKey(parsed)) {
-      return parsed;
-    }
+    raw = storage().getItem(OWN_KEY_STORAGE_KEY);
   } catch {
-    // unreadable storage, or JSON.parse threw: treated as malformed below
+    return null;
   }
 
-  removeFrom(storage);
-  return null;
+  if (raw === null) {
+    return null;
+  }
+
+  const parsed = parseStored(raw);
+
+  if (parsed === null) {
+    removeFrom(storage);
+  }
+
+  return parsed;
+}
+
+function parseStored(raw: string): StoredOwnKey | null {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return isStoredOwnKey(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 function sessionArea(): Storage {

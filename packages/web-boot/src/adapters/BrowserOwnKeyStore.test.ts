@@ -90,6 +90,10 @@ describe("BrowserOwnKeyStore", () => {
     ["a string", '"x"'],
     ["no owner", JSON.stringify({ ...stored, owner: undefined })],
     ["an unknown provider", JSON.stringify({ ...stored, provider: "acme" })],
+    [
+      "a provider that is not a string",
+      JSON.stringify({ ...stored, provider: 4 }),
+    ],
     ["a non-string key", JSON.stringify({ ...stored, key: 7 })],
     ["a string cap", JSON.stringify({ ...stored, capUsd: "2" })],
     ["no remember flag", JSON.stringify({ ...stored, remember: undefined })],
@@ -110,6 +114,20 @@ describe("BrowserOwnKeyStore", () => {
     store.write({ ...stored, capUsd: null });
 
     expect(store.read()?.capUsd).toBeNull();
+  });
+
+  it("a read that throws reads as null and removes nothing", () => {
+    sessionStorage.setItem(OWN_KEY_STORAGE_KEY, JSON.stringify(stored));
+    const remove = vi.spyOn(Storage.prototype, "removeItem");
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("transient");
+    });
+
+    expect(new BrowserOwnKeyStore().read()).toBeNull();
+    expect(remove).not.toHaveBeenCalled();
+
+    vi.restoreAllMocks();
+    expect(new BrowserOwnKeyStore().read()).toEqual(stored);
   });
 
   it("storage that throws reads as null and never throws", () => {

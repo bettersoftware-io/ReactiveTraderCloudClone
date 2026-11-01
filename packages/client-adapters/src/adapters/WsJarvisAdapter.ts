@@ -19,6 +19,7 @@ import { UNSUPPORTED_SENTINEL_SPEC } from "@rtc/core-logic";
 import {
   DEFAULT_JARVIS_BRAIN,
   isJarvisBrain,
+  isJarvisProvider,
   JARVIS_BRAINS,
   JARVIS_HISTORY_ENTRY_MAX_CHARS,
   JARVIS_HISTORY_MAX_ENTRIES,
@@ -443,8 +444,13 @@ const BUDGET_EXHAUSTED_REASONS: readonly unknown[] = [
  * `JarvisBudgetView`, or `null` on ANY shape mismatch — the same silent-drop
  * rule as `parseGate`: a malformed budget never throws and never takes the
  * rest of the frame with it. `limitUsd` may be `null` (no personal limit);
- * `exhausted` is `null` or one of the four known reasons. */
-function parseBudget(budget: unknown): JarvisBudgetView | null {
+ * `exhausted` is `null` or one of the four known reasons. A budget whose
+ * `keyKind` is not the one its slot expects (`house` for `budget`, `own` for
+ * `ownBudget`) is dropped, so a mis-slotted value never changes the copy. */
+function parseBudget(
+  budget: unknown,
+  keyKind: JarvisBudgetView["keyKind"],
+): JarvisBudgetView | null {
   if (typeof budget !== "object" || budget === null) {
     return null;
   }
@@ -452,9 +458,7 @@ function parseBudget(budget: unknown): JarvisBudgetView | null {
   const candidate = budget as BudgetCandidate;
   const { spentUsd, limitUsd, exhausted, resetsAtMs } = candidate;
 
-  const { keyKind } = candidate;
-
-  if (keyKind !== "house" && keyKind !== "own") {
+  if (candidate.keyKind !== keyKind) {
     return null;
   }
 
@@ -478,12 +482,6 @@ function parseBudget(budget: unknown): JarvisBudgetView | null {
     resetsAtMs,
   };
 }
-
-const OWN_KEY_PROVIDERS: readonly unknown[] = [
-  "anthropic",
-  "openrouter",
-  "openai",
-];
 
 const OWN_KEY_STATUSES: readonly unknown[] = [
   "checking",
@@ -511,7 +509,7 @@ function parseOwnKey(ownKey: unknown): JarvisOwnKeyView | null {
 
   const { provider, status, capUsd } = ownKey as OwnKeyCandidate;
 
-  if (!OWN_KEY_PROVIDERS.includes(provider)) {
+  if (!isJarvisProvider(provider)) {
     return null;
   }
 
@@ -548,8 +546,8 @@ function parseAvailability(
     brains: payload.brains ?? (payload.available ? JARVIS_BRAINS : []),
     defaultBrain: payload.defaultBrain ?? DEFAULT_JARVIS_BRAIN,
     gate: parseGate(payload.gate),
-    budget: parseBudget(payload.budget),
-    ownBudget: parseBudget(payload.ownBudget),
+    budget: parseBudget(payload.budget, "house"),
+    ownBudget: parseBudget(payload.ownBudget, "own"),
     ownKey: parseOwnKey(payload.ownKey),
     // A live server is never the in-browser demo.
     demo: false,

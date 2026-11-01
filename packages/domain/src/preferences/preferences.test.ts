@@ -13,8 +13,10 @@ import {
   DEFAULT_THEME_SKIN,
   EQ_WATCHLIST_SORTS,
   isJarvisNarratorPreference,
+  isJarvisProvider,
   isPowerSaverLevel,
   JARVIS_NARRATOR_PREFERENCES,
+  JARVIS_PROVIDERS,
   jarvisIndicatorsEqual,
   nextEqWatchlistSort,
   nextPowerSaverLevel,
@@ -207,5 +209,19 @@ describe("jarvis indicators preference", () => {
     expect(jarvisIndicatorsEqual(base, { ...base, brainPill: true })).toBe(
       false,
     );
+  });
+});
+
+describe("JARVIS_PROVIDERS", () => {
+  it("lists every provider, and isJarvisProvider accepts exactly those", () => {
+    expect(JARVIS_PROVIDERS).toEqual(["anthropic", "openrouter", "openai"]);
+
+    for (const provider of JARVIS_PROVIDERS) {
+      expect(isJarvisProvider(provider)).toBe(true);
+    }
+
+    for (const other of ["acme", "", 4, null, undefined, {}]) {
+      expect(isJarvisProvider(other)).toBe(false);
+    }
   });
 });
