@@ -7,6 +7,7 @@ import {
   JARVIS_NARRATOR_STORAGE_KEY,
   seedLocalStorageItem,
 } from "../authSeed.ts";
+import { watchCspViolations } from "../cspViolations.ts";
 import {
   FIRST_DOCK_RENDER_ARM_KEY,
   installFirstDockRenderRecorder,
@@ -70,6 +71,7 @@ export const test = base.extend<TestFixtures>({
       po: buildPlaywrightPageObjects(page),
       scratch: new Scratchpad(),
       pageErrors,
+      cspViolations: watchCspViolations(page.context()),
     };
     await use(ctx);
   },

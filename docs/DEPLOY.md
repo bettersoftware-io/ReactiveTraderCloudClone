@@ -429,6 +429,24 @@ new setting.
    readout reads the exhausted copy instead. The demo login reads
    `Scripted · demo`.
 
+## Rolling out B3c
+
+B3c starts with a `Content-Security-Policy` header on both web clients
+(`vercel.react.json`, `vercel.solid.json`; the policy and its reasons are in
+[`security.md`](security.md) §3.1). It needs no migration and no setting. The
+Deploy workflow now checks, after each client build, that the bundle names a
+server host the policy allows.
+
+1. **Deploy both web clients** (`deploy.yml`).
+2. **Verify, on both sites** (React and Solid): open the site, sign in with the
+   demo login and open a workspace. Open the browser console and confirm there
+   is no "Content Security Policy" error. Then open `/devtools/` on each site
+   and confirm it connects. Finally sign in with a real account and open
+   Jarvis, which uses the WebSocket to the Fly server.
+3. **If a page breaks**, the console names the blocked directive. Widen that one
+   directive in both `vercel.*.json` files, run `pnpm check:scripts`, and add the
+   reason to `security.md` §3.1. Do not remove the header.
+
 ## Deploying
 
 Run the **Deploy** workflow manually — Actions tab → "Deploy" → Run workflow,

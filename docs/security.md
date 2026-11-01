@@ -186,6 +186,7 @@ of them is misread as more than it is.
 | **Startup refusals** | Running with a dangerous configuration: a short `AUTH_SECRET` with accounts on, a roster username with `@`, the dev account directory on a deployed machine, a missing origin allowlist on a deployed machine, a malformed `REGISTRATION_OPEN` or sign-up lever. The server exits instead of starting. | A *correct* configuration that is wrong for your intent, such as `REGISTRATION_OPEN=true` by accident. | `resolveAccountsMode.ts`, `originPolicy.ts` |
 | **Fly concurrency `hard_limit`** | The proxy handing the machine more than 250 connections, so a flood becomes refused connections instead of an out-of-memory crash. | Fairness between callers; anything per IP. | `fly.toml` |
 | **The AI daily budget** | Unbounded Anthropic spend from the server: a per-person daily limit and a house-wide daily cap on the house key, kept durably in the `jarvis_spend_daily` table and added up by the `record_jarvis_spend` function (both private to the server: row security on, no policy, no grants to the public roles). A store that cannot be reached fails closed to the scripted brain. A deployed server (account store on Supabase) always keeps the budget in the database: the wiring picks the durable store for that mode, and a test pins it. The Console spend limit stays the real backstop. | Bring-your-own keys (B3c); one person with many accounts gets many daily limits, bounded by the house cap and the sign-up levers. | `jarvisBudget/`, `RTC_JARVIS_USER_DAILY_USD`, `RTC_JARVIS_HOUSE_DAILY_USD` |
+| **Content-Security-Policy** | Script from anywhere but our own origin: no inline script, no third-party script, no `eval`. A page that gets HTML into the DOM cannot run it, load a plugin, rewrite `<base>` or be framed. | Injected *styles* (`'unsafe-inline'` is on `style-src`, see §3.1); a script served from our own origin; anything the server does. It limits what a hostile page can *do in the browser*; it is not an input filter. | `headers` in `vercel.react.json` and `vercel.solid.json`; `scripts/check-csp.mts` |
 | **Supply chain** | Unpinned actions, images and installers; secrets in the tree; workflow tokens with write scope. | A compromised upstream package inside its pinned version. | `scorecard.yml`, pinned `Dockerfile`, `pnpm audit --prod` gate, push protection |
 
 Two layers are **planned, not built**: Cloudflare in front of the Fly server
@@ -196,6 +197,50 @@ with bring-your-own model keys (B3). The first is the only layer that stops a
 real flood before it is paid for, and the one that removes the sign-up denial
 levers; it needs a custom domain proxied through Cloudflare and a client
 redeploy for the new server URL.
+
+### 3.1 The Content-Security-Policy
+
+Both web clients send the same header on every path (`vercel.react.json` and
+`vercel.solid.json`, `source: "/(.*)"`):
+
+```text
+default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://rtc-clone-server.fly.dev wss://rtc-clone-server.fly.dev; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+```
+
+What it allows:
+
+- **Scripts** only from our own origin. No inline script and no third party.
+- **Connections** to our own origin and to the Fly server, over HTTPS and WSS.
+  Nothing else, so a script that did run could not send data elsewhere.
+- **Images and fonts** from our origin, plus `data:` (and `blob:` for images).
+- **Nothing** for `<object>`, `<embed>` and `<base>`. The page cannot be framed.
+  Forms post only to our origin.
+
+Why `'unsafe-inline'` is on styles only: the goal is to block inline and
+third-party *script*. Styles are a much smaller risk, and the layout engine
+needs them. Dockview's pop-out copies the parent window's stylesheets into a
+new window, and the components set style attributes at runtime. A style-only
+exception costs little; the same exception on scripts would cancel the policy.
+
+Rules that keep the policy honest:
+
+- The two files must carry the same value. `scripts/check-csp.mts` (part of
+  `pnpm check:scripts`) fails if they differ, if `script-src` is anything but
+  `'self'`, or if `object-src`, `base-uri` or `frame-ancestors` is not `'none'`.
+- `vite preview` sends the same header (each client's `vite.config.ts` reads it
+  from its `vercel.*.json`), plus `ws://localhost:*` and `http://localhost:*` in
+  `connect-src` for a local server. The Playwright suites drive a production
+  build through preview, so they run under the real policy.
+  `tests/browser/playwright/csp.spec.ts` signs in, opens a workspace and
+  `/devtools/`, and fails on any "Content Security Policy" console error.
+- `deploy.yml` runs `node scripts/check-csp.mts --dist … vercel.*.json` after
+  each client build. A bundle that names a server outside `connect-src` would
+  be blocked by the browser, so the build fails instead.
+- The `/devtools/` page had one inline script (the React DevTools guard). It is
+  now a module, `packages/devtools-app/src/disableReactDevtoolsHook.ts`; see
+  [`architecture/20-devtools.md`](architecture/20-devtools.md) §20.10.
+- A new origin the app must talk to (another API, an image CDN) is a change to
+  both `vercel.*.json` files, and to this section, in the same pull request.
 
 ## 4. Risks and what tackles them
 

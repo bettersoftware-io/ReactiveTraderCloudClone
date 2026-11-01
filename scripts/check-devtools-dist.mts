@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 const indexPath = join(
   process.cwd(),
@@ -25,10 +25,29 @@ if (!html.includes("/devtools/")) {
   process.exit(1);
 }
 
-if (!html.includes("__REACT_DEVTOOLS_GLOBAL_HOOK__")) {
+// The deployed site sends `script-src 'self'`, which blocks an inline script —
+// so the React DevTools guard must be a module, not a `<script>` in the page.
+if (/<script(?![^>]*\ssrc=)/.test(html)) {
   console.error(
-    "check-devtools-dist: the React DevTools guard script was dropped from " +
-      "the prod /devtools/ page — see docs/architecture/20-devtools.md §20.10",
+    "check-devtools-dist: the prod /devtools/ page has an inline <script>; " +
+      "the Content-Security-Policy (script-src 'self') would block it — " +
+      "see docs/architecture/20-devtools.md §20.10",
+  );
+  process.exit(1);
+}
+
+const entry = /<script[^>]*\ssrc="\/devtools\/(assets\/[^"]+\.js)"/.exec(html);
+const entryChunk =
+  entry === null ? undefined : join(dirname(indexPath), entry[1]);
+
+if (
+  entryChunk === undefined ||
+  !existsSync(entryChunk) ||
+  !readFileSync(entryChunk, "utf8").includes("__REACT_DEVTOOLS_GLOBAL_HOOK__")
+) {
+  console.error(
+    "check-devtools-dist: the React DevTools guard was dropped from " +
+      "the prod /devtools/ entry chunk — see docs/architecture/20-devtools.md §20.10",
   );
   process.exit(1);
 }

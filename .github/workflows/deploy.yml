@@ -182,6 +182,13 @@ jobs:
           fi
           echo "OK: Fly WS URL is present in the built client bundle."
 
+      # The Content-Security-Policy (vercel.react.json) lets the page connect only to the
+      # hosts in its connect-src. A build that names a different server would be
+      # blocked by the browser at runtime, so the server host the bundle names
+      # must be one the policy allows.
+      - name: Guard — the bundle's server host is one the CSP allows
+        run: node scripts/check-csp.mts --dist .vercel/output/static vercel.react.json
+
       # The hybrid (spec §8) only exists if the demo roster was inlined next to
       # the server URL; a build that lost .env.production would silently send
       # every login — demo accounts included — to the server. The witness is the
@@ -289,6 +296,13 @@ jobs:
             exit 1
           fi
           echo "OK: Fly WS URL is present in the built client bundle."
+
+      # The Content-Security-Policy (vercel.solid.json) lets the page connect only to the
+      # hosts in its connect-src. A build that names a different server would be
+      # blocked by the browser at runtime, so the server host the bundle names
+      # must be one the policy allows.
+      - name: Guard — the bundle's server host is one the CSP allows
+        run: node scripts/check-csp.mts --dist .vercel/output/static vercel.solid.json
 
       # The hybrid (spec §8) only exists if the demo roster was inlined next to
       # the server URL; a build that lost .env.production would silently send

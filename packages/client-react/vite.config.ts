@@ -1,4 +1,4 @@
-import { cpSync, createReadStream, existsSync } from "node:fs";
+import { cpSync, createReadStream, existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -214,6 +214,46 @@ function dropDepSourcemaps(): Plugin {
   };
 }
 
+/** The part of a `vercel.*.json` that `previewCsp` reads. */
+interface VercelHeaderConfig {
+  headers: { headers: { key: string; value: string }[] }[];
+}
+
+/** The Content-Security-Policy the deployed site sends, read from the Vercel
+ * config that sends it (`vercel.react.json`), so `vite preview` — which the Playwright
+ * suites drive — runs under the real policy. The one difference: `connect-src`
+ * also admits a local server, because the e2e harness starts one on a random
+ * localhost port. `pnpm check:scripts` (scripts/check-csp.mts) keeps the two
+ * clients' Vercel policies identical. */
+function previewCsp(): string {
+  const config = JSON.parse(
+    readFileSync(
+      resolve(
+        dirname(fileURLToPath(import.meta.url)),
+        "..",
+        "..",
+        "vercel.react.json",
+      ),
+      "utf8",
+    ),
+  ) as VercelHeaderConfig;
+
+  const policy = config.headers[0].headers.find((header) => {
+    return header.key === "Content-Security-Policy";
+  });
+
+  if (policy === undefined) {
+    throw new Error(
+      "vercel.react.json carries no Content-Security-Policy header",
+    );
+  }
+
+  return policy.value.replace(
+    /(connect-src [^;]*)/,
+    "$1 ws://localhost:* http://localhost:*",
+  );
+}
+
 export default defineConfig({
   // VITE_CORE_IMPL sets this build's DEFAULT application core (see
   // packages/web-boot/src/coreSelection.ts's resolveCoreChoice, which ranks `?core=` and
@@ -255,6 +295,9 @@ export default defineConfig({
     // bound port from Vite's output, so drifting is fine and race-free across
     // parallel runners. Plain `pnpm dev` (no PORT) defaults to 5173.
     port: parseInt(process.env.PORT || "5173", 10),
+  },
+  preview: {
+    headers: { "Content-Security-Policy": previewCsp() },
   },
   build: {
     outDir: "dist",

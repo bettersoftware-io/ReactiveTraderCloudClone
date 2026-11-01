@@ -2,110 +2,69 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 
-test("the guard's inline classic script appears before the module script", () => {
-  const guardIndex = html.indexOf(findGuardScript(html));
-  const moduleIndex = html.indexOf('<script type="module"');
+import { disableReactDevtoolsHook } from "#/disableReactDevtoolsHook";
 
-  expect(guardIndex).toBeGreaterThan(-1);
-  expect(moduleIndex).toBeGreaterThan(-1);
-  expect(guardIndex).toBeLessThan(moduleIndex);
+afterEach(() => {
+  delete (window as HookWindow).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+  window.history.replaceState({}, "", "/");
+  vi.resetModules();
 });
 
-test("importing the guard disables an installed hook", () => {
-  const window: FakeHookWindow = {
-    __REACT_DEVTOOLS_GLOBAL_HOOK__: { isDisabled: false },
-    location: { search: "" },
-  };
+test("the guard module loads before the app module, and neither is inline", () => {
+  const guardIndex = html.indexOf(
+    '<script type="module" src="/src/disableReactDevtoolsHook.ts">',
+  );
+  const appIndex = html.indexOf('<script type="module" src="/src/main.tsx">');
 
-  runGuardScript(window);
+  expect(guardIndex).toBeGreaterThan(-1);
+  expect(appIndex).toBeGreaterThan(-1);
+  expect(guardIndex).toBeLessThan(appIndex);
+  // The deployed Content-Security-Policy is `script-src 'self'`.
+  expect(html).not.toMatch(/<script(?![^>]*\ssrc=)/);
+});
 
-  expect(window.__REACT_DEVTOOLS_GLOBAL_HOOK__?.isDisabled).toBe(true);
+test("disables an installed hook", () => {
+  const hook = { isDisabled: false };
+
+  disableReactDevtoolsHook(hook, false);
+
+  expect(hook.isDisabled).toBe(true);
 });
 
 test("?react-devtools keeps the hook enabled for debugging the inspector itself", () => {
-  const window: FakeHookWindow = {
-    __REACT_DEVTOOLS_GLOBAL_HOOK__: { isDisabled: false },
-    location: { search: "?react-devtools" },
-  };
+  const hook = { isDisabled: false };
 
-  runGuardScript(window);
+  disableReactDevtoolsHook(hook, true);
 
-  expect(window.__REACT_DEVTOOLS_GLOBAL_HOOK__?.isDisabled).toBe(false);
+  expect(hook.isDisabled).toBe(false);
 });
 
 test("no hook installed is a no-op", () => {
-  const window: FakeHookWindow = { location: { search: "" } };
-
   expect(() => {
-    runGuardScript(window);
+    disableReactDevtoolsHook(undefined, false);
   }).not.toThrow();
 });
 
-function extractGuardScriptBody(source: string): string {
-  const guard = findGuardScript(source);
+test("importing the module disables the page's hook", async () => {
+  const window_ = window as HookWindow;
+  window_.__REACT_DEVTOOLS_GLOBAL_HOOK__ = { isDisabled: false };
 
-  return guard.slice(SCRIPT_OPEN.length, guard.length - SCRIPT_CLOSE.length);
-}
+  await import("#/disableReactDevtoolsHook");
 
-/** The guard is identified by what it does (it names the hook), never by
- * position — a second bare inline script above it must not be mistaken for it. */
-function findGuardScript(source: string): string {
-  const guard = collectInlineScriptBlocks(source).find((block) => {
-    return block.includes("__REACT_DEVTOOLS_GLOBAL_HOOK__");
-  });
+  expect(window_.__REACT_DEVTOOLS_GLOBAL_HOOK__.isDisabled).toBe(true);
+});
 
-  if (guard === undefined) {
-    throw new Error("guard <script> not found in index.html");
-  }
+test("importing the module with ?react-devtools in the URL leaves the hook enabled", async () => {
+  const window_ = window as HookWindow;
+  window_.__REACT_DEVTOOLS_GLOBAL_HOOK__ = { isDisabled: false };
+  window.history.replaceState({}, "", "/?react-devtools");
 
-  return guard;
-}
+  await import("#/disableReactDevtoolsHook");
 
-// Index scanning rather than a `/<script>…<\/script>/` regex: CodeQL flags any
-// tag-matching regex as js/bad-tag-filter (bypassable as an HTML *sanitizer* —
-// a role this test-only extractor of our own committed index.html never plays,
-// but scanning literals is just as clear and keeps the alert unrepresentable).
-function collectInlineScriptBlocks(source: string): string[] {
-  const blocks: string[] = [];
-  let from = 0;
-
-  for (;;) {
-    const open = source.indexOf(SCRIPT_OPEN, from);
-
-    if (open === -1) {
-      break;
-    }
-
-    const close = source.indexOf(SCRIPT_CLOSE, open);
-
-    if (close === -1) {
-      break;
-    }
-
-    const end = close + SCRIPT_CLOSE.length;
-    blocks.push(source.slice(open, end));
-    from = end;
-  }
-
-  return blocks;
-}
-
-const SCRIPT_OPEN = "<script>";
-const SCRIPT_CLOSE = "</script>";
-
-function runGuardScript(window: FakeHookWindow): void {
-  const body = extractGuardScriptBody(html);
-  const run = new Function("window", body) as (win: FakeHookWindow) => void;
-
-  run(window);
-}
-
-interface FakeHookWindow {
-  __REACT_DEVTOOLS_GLOBAL_HOOK__?: { isDisabled?: boolean };
-  location: { search: string };
-}
+  expect(window_.__REACT_DEVTOOLS_GLOBAL_HOOK__.isDisabled).toBe(false);
+});
 
 // `join(dirname(fileURLToPath(import.meta.url)), ...)` rather than the more
 // obvious `new URL("../../index.html", import.meta.url)`: Vite statically
@@ -118,3 +77,7 @@ const html = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "../../index.html"),
   "utf8",
 );
+
+interface HookWindow {
+  __REACT_DEVTOOLS_GLOBAL_HOOK__?: { isDisabled?: boolean };
+}

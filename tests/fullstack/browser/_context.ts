@@ -6,6 +6,7 @@ import {
   JARVIS_NARRATOR_STORAGE_KEY,
   seedLocalStorageItem,
 } from "#/browser/authSeed.js";
+import { watchCspViolations } from "#/browser/cspViolations.js";
 import { buildPlaywrightPageObjects } from "#/browser/page-objects/playwright/factory.js";
 import { Scratchpad, type TestContext } from "#/browser/testContext.js";
 
@@ -42,6 +43,7 @@ async function createCtx(
     po: buildPlaywrightPageObjects(page),
     scratch: new Scratchpad(),
     pageErrors,
+    cspViolations: watchCspViolations(page.context()),
   };
   await use(ctx);
 }
