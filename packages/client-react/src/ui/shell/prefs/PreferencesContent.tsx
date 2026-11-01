@@ -129,6 +129,7 @@ export function PreferencesContent(): ReactElement {
     gate,
     jarvisBrain,
     jarvisState.effectiveBrain,
+    jarvisState,
   );
 
   // Real (non-"scripted") brain options are disabled when the server isn't

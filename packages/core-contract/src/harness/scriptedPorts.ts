@@ -581,6 +581,8 @@ const SIM_JARVIS_AVAILABILITY: JarvisAvailability = {
   defaultBrain: "scripted",
   gate: null,
   budget: null,
+  ownBudget: null,
+  ownKey: null,
   demo: true,
 };
 

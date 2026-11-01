@@ -26,6 +26,8 @@ describe("JarvisStatusChip", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     });
@@ -40,6 +42,8 @@ describe("JarvisStatusChip", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       jarvisBrain: "claude-opus-5",
@@ -57,6 +61,8 @@ describe("JarvisStatusChip", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       jarvisBrain: "scripted",
@@ -73,6 +79,8 @@ describe("JarvisStatusChip", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       // Preferred, but NOT among the offered brains above.
@@ -90,6 +98,8 @@ describe("JarvisStatusChip", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     });
@@ -110,6 +120,8 @@ describe("JarvisStatusChip", () => {
           gated: ["claude-sonnet-5", "claude-opus-5"],
         },
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     });
@@ -129,6 +141,8 @@ describe("JarvisStatusChip", () => {
           gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
         },
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     });

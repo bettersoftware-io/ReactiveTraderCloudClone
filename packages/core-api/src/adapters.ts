@@ -6,6 +6,9 @@ import type {
   JarvisEffort,
   JarvisEvent,
   JarvisHistoryEntry,
+  JarvisOwnKeySetting,
+  JarvisOwnKeyView,
+  JarvisProvider,
   JarvisUsage,
   SessionUser,
 } from "@rtc/domain";
@@ -35,6 +38,26 @@ export interface StoredSession {
 export interface SessionStore {
   read(): StoredSession | null;
   write(session: StoredSession): void;
+  clear(): void;
+}
+
+/** A person's own model key as persisted on this device, tagged with the
+ * signed-in owner so it is never offered to a different account. The raw
+ * key lives here and passes through `JarvisPort.setOwnKey`, nowhere else. */
+export interface StoredOwnKey {
+  readonly owner: string;
+  readonly provider: JarvisProvider;
+  readonly key: string;
+  readonly capUsd: number | null;
+  /** `true` = survives a browser restart; `false` = this session only. */
+  readonly remember: boolean;
+}
+
+/** Per-device persistence for the person's own key. Optional on `AppPorts`:
+ * a platform without one keeps the key in memory for the session. */
+export interface OwnKeyStore {
+  read(): StoredOwnKey | null;
+  write(stored: StoredOwnKey): void;
   clear(): void;
 }
 
@@ -110,6 +133,10 @@ export interface JarvisPort {
    * Offered by the WS adapter only; a single slot, so exactly one core may
    * call it. */
   setHistorySource?(source: () => readonly JarvisHistoryEntry[]): void;
+  /** Hands the transport the person's own key (and daily cap), or `null` to
+   * clear it. Offered by the WS adapter only; a port without it has no
+   * server to give a key to. */
+  setOwnKey?(setting: JarvisOwnKeySetting | null): void;
 }
 
 /** Live availability of the Jarvis backend: whether a brain is reachable at
@@ -131,6 +158,12 @@ export interface JarvisAvailability {
    * pre-B3a server, or no signed-in caller). Required so tsc flags every
    * construction site. */
   readonly budget: JarvisBudgetView | null;
+  /** The caller's own-key budget for today, or `null` while no key is set
+   * (and from a server that predates own keys). */
+  readonly ownBudget: JarvisBudgetView | null;
+  /** What the server says about the caller's key, or `null` while none is
+   * set. Never carries the key itself. */
+  readonly ownKey: JarvisOwnKeyView | null;
   /** `true` only for the in-browser scripted brain (the demo login and every
    * simulator mode); a live server never sets it. */
   readonly demo: boolean;

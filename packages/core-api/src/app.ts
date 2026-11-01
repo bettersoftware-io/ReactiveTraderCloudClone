@@ -31,6 +31,7 @@ import type {
   JarvisPort,
   JarvisUsagePort,
   LayoutPresetStore,
+  OwnKeyStore,
   SessionStore,
 } from "#/adapters";
 import type { LayoutState, WorkspaceTab } from "#/layout";
@@ -140,6 +141,10 @@ export interface AppPorts {
   sessions: SessionsPort;
   auth: AuthPort;
   sessionStore: SessionStore;
+  /** Per-device persistence for a person's own model key. Optional: without
+   * it the key is held in memory for the session. Browser implementation:
+   * `BrowserOwnKeyStore`. */
+  ownKeyStore?: OwnKeyStore;
   /** Perturbable controls passed to IncidentMachine — latency, errorRate, topology, eventLog sims. */
   metricControls: readonly MetricControl[];
   /** Auth-gated transport handle. Optional — the simulator branch has no

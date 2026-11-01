@@ -2374,6 +2374,8 @@ const jarvisStateIdle: JarvisState = {
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
   gate: null,
   budget: jarvisBudgetHouseLive,
+  ownBudget: null,
+  ownKey: null,
   demo: false,
   // 1, not 0: these fixtures render the overlay open, so the goldens must
   // show the seed-1 chip set rather than the machine's true closed-session
@@ -2508,6 +2510,8 @@ fixtures["jarvis-indicators-no-limit"] = makeAppData({
     entries: jarvisLiveEntries("claude-opus-5"),
     effectiveBrain: "claude-opus-5",
     budget: { ...jarvisBudgetHouseLive, spentUsd: 1.37, limitUsd: null },
+    ownBudget: null,
+    ownKey: null,
   },
 });
 fixtures["jarvis-indicators-spent"] = makeAppData({
@@ -2525,6 +2529,8 @@ fixtures["jarvis-indicators-demo"] = makeAppData({
     entries: jarvisLiveEntries("scripted"),
     effectiveBrain: "scripted",
     budget: null,
+    ownBudget: null,
+    ownKey: null,
     demo: true,
   },
 });

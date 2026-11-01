@@ -4,6 +4,7 @@ import type {
   JarvisBrain,
   JarvisBudgetView,
   JarvisEvent,
+  JarvisOwnKeyView,
   JarvisSkin,
 } from "@rtc/domain";
 
@@ -94,6 +95,12 @@ export interface JarvisState {
   /** The caller's budget for today, mirrored from the live `availability$`
    * feed (`null` when none was sent, and in sim mode). */
   readonly budget: JarvisBudgetView | null;
+  /** The caller's own-key budget for today, mirrored from `availability$`
+   * (`null` while no key is set, and in sim mode). */
+  readonly ownBudget: JarvisBudgetView | null;
+  /** The server's view of the caller's own key, mirrored from
+   * `availability$` (`null` while none is set). Never the key. */
+  readonly ownKey: JarvisOwnKeyView | null;
   /** `true` in the in-browser scripted demo, mirrored from `availability$`. */
   readonly demo: boolean;
   /** Times the overlay has been opened this session — the chip-rotation

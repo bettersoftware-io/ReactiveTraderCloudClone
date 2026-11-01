@@ -341,6 +341,8 @@ describe("JarvisOverlay", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     });
@@ -380,6 +382,8 @@ describe("JarvisOverlay", () => {
         gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
       },
       budget: null,
+      ownBudget: null,
+      ownKey: null,
       demo: false,
     });
 
@@ -629,6 +633,8 @@ describe("brain readout", () => {
           exhausted: "user",
           resetsAtMs: 1_754_000_000_000,
         },
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     });
@@ -699,6 +705,8 @@ describe("reply tags", () => {
         gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
       },
       budget: null,
+      ownBudget: null,
+      ownKey: null,
       demo: false,
     });
 
@@ -761,6 +769,8 @@ describe("brain pill", () => {
         available: true,
         effectiveBrain: "claude-haiku-4-5",
         budget,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       }),
     );
@@ -780,6 +790,8 @@ describe("brain pill", () => {
             gated: ["claude-sonnet-5"],
           },
           budget: null,
+          ownBudget: null,
+          ownKey: null,
           demo: false,
         },
         jarvisIndicators: PILL_ON,
@@ -998,6 +1010,8 @@ function liveAvailability(budget: JarvisBudgetView | null): JarvisAvailability {
     defaultBrain: "claude-haiku-4-5",
     gate: null,
     budget,
+    ownBudget: null,
+    ownKey: null,
     demo: false,
   };
 }

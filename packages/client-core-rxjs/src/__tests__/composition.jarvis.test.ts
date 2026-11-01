@@ -321,6 +321,8 @@ function createUnavailable(): JarvisAvailability {
     defaultBrain: "scripted",
     gate: null,
     budget: null,
+    ownBudget: null,
+    ownKey: null,
     demo: false,
   };
 }

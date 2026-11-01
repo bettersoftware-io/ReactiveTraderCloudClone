@@ -68,6 +68,8 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
   // separately) — every existing golden stays pixel-identical.
   gate: null,
   budget: null,
+  ownBudget: null,
+  ownKey: null,
   demo: false,
   // Matches INITIAL's own 0 (never-opened session) — mirrors the react
   // driver's DEFAULT_JARVIS_STATE_FOR_FIXTURES exactly.

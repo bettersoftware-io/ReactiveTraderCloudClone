@@ -493,6 +493,10 @@ function parseAvailability(
     defaultBrain: payload.defaultBrain ?? DEFAULT_JARVIS_BRAIN,
     gate: parseGate(payload.gate),
     budget: parseBudget(payload.budget),
+    // Parsed from the payload's `ownBudget` / `ownKey` by the adapter task
+    // (B3c Task 8); until then no own-key state reaches the app.
+    ownBudget: null,
+    ownKey: null,
     // A live server is never the in-browser demo.
     demo: false,
   };

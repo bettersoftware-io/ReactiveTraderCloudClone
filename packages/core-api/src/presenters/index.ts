@@ -21,6 +21,7 @@ export type * from "#/presenters/errorRate";
 export type * from "#/presenters/eventLog";
 export type * from "#/presenters/forceBootAnimation";
 export type * from "#/presenters/instruments";
+export type * from "#/presenters/jarvisOwnKey";
 export type * from "#/presenters/jarvisPanels";
 export type * from "#/presenters/jarvisPreferences";
 export type * from "#/presenters/jarvisUsage";

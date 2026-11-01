@@ -914,6 +914,8 @@ describe("scriptPorts — Jarvis turns, confirmations, availability, history and
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: true,
       },
     ]);
@@ -1062,6 +1064,8 @@ function createAvailability(available: boolean): JarvisAvailability {
     defaultBrain: "scripted",
     gate: null,
     budget: null,
+    ownBudget: null,
+    ownKey: null,
     demo: false,
   };
 }

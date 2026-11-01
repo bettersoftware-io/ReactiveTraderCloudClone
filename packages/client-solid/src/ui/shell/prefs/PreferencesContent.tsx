@@ -151,7 +151,12 @@ export function PreferencesContent(): JSX.Element {
   });
 
   const brainHint = createMemo((): string | undefined => {
-    return formatBrainHint(gate(), jarvisBrain(), jarvisState().effectiveBrain);
+    return formatBrainHint(
+      gate(),
+      jarvisBrain(),
+      jarvisState().effectiveBrain,
+      jarvisState(),
+    );
   });
 
   // Real (non-"scripted") brain options are disabled when the server isn't

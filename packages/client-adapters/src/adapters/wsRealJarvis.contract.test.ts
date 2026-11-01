@@ -883,6 +883,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: "claude-haiku-4-5",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -909,6 +911,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: "claude-haiku-4-5",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -931,6 +935,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -953,6 +959,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -993,6 +1001,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -1011,6 +1021,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       {
@@ -1019,6 +1031,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -1052,6 +1066,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       {
@@ -1060,6 +1076,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -1089,6 +1107,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       {
@@ -1097,6 +1117,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -1134,6 +1156,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -1211,6 +1235,8 @@ describe("WsJarvisAdapter.availability$()", () => {
           gated: ["claude-opus-5"],
         },
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -1255,6 +1281,8 @@ describe("WsJarvisAdapter.availability$()", () => {
           defaultBrain: "claude-haiku-4-5",
           gate: null,
           budget: null,
+          ownBudget: null,
+          ownKey: null,
           demo: false,
         },
       ]);
@@ -1323,6 +1351,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: "scripted",
         gate: { level: "soft", resetsAtMs: 100, gated: ["claude-opus-5"] },
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -1473,11 +1503,15 @@ describe("WsJarvisAdapter.availability$()", () => {
     ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
       available: true,
       budget: { ...budget, spentUsd: 0.15 },
+      ownBudget: null,
+      ownKey: null,
     });
     // Same contents again: deduped.
     ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
       available: true,
       budget: { ...budget, spentUsd: 0.15 },
+      ownBudget: null,
+      ownKey: null,
     });
 
     expect(

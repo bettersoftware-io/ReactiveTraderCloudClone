@@ -5,8 +5,10 @@
  * the detector pipeline), and the alternative application cores import it
  * rather than re-implementing it (pluggable-core slice 7 wave 2, ruling 2).
  */
+import type { JarvisState } from "@rtc/core-api";
 import {
   type AnomalyEvent,
+  isJarvisOwnBrain,
   JARVIS_NARRATION_PREFIX,
   MAX_NARRATIONS_PER_SESSION,
   NARRATION_COOLDOWN_MS,
@@ -73,4 +75,16 @@ export function isAdmittedGate(
   state: NarratorGateState,
 ): state is AdmittedGateState {
   return state.shouldNarrate;
+}
+
+/** Whether the narrator may start a turn at all. A refused own key would
+ * fail every narration, and narration is on by default, so it stays quiet
+ * while the effective brain is an own brain whose key the provider refused.
+ * Every core's narrator checks this beside the preference gate. */
+export function canNarrate(
+  state: Pick<JarvisState, "effectiveBrain" | "ownKey">,
+): boolean {
+  return !(
+    isJarvisOwnBrain(state.effectiveBrain) && state.ownKey?.status === "refused"
+  );
 }

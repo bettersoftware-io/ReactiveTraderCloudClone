@@ -1,6 +1,8 @@
 import type { JarvisState } from "@rtc/core-api";
 import {
+  isJarvisOwnBrain,
   JARVIS_BRAIN_NAMES,
+  JARVIS_PROVIDER_NAMES,
   type JarvisBrain,
   type JarvisBudgetView,
   jarvisBrainLabel,
@@ -12,7 +14,7 @@ import { formatGateResetTimeUtc } from "./jarvisController.js";
 /** The slice of `JarvisState` the indicator copy reads. */
 export type BrainIndicatorState = Pick<
   JarvisState,
-  "available" | "effectiveBrain" | "budget" | "demo"
+  "available" | "effectiveBrain" | "budget" | "ownBudget" | "ownKey" | "demo"
 >;
 
 /** The header readout: one line of copy, its tone, and a meter fill in
@@ -45,7 +47,10 @@ function backAt(resetsAtMs: number): string {
     : ` · back at ${formatGateResetTimeUtc(resetsAtMs)}`;
 }
 
-function describeExhausted(budget: JarvisBudgetView): BrainReadout | null {
+function describeExhausted(
+  budget: JarvisBudgetView,
+  own: boolean,
+): BrainReadout | null {
   switch (budget.exhausted) {
     case null:
       return null;
@@ -64,7 +69,7 @@ function describeExhausted(budget: JarvisBudgetView): BrainReadout | null {
     case "user":
     case "forced":
       return {
-        text: `Scripted · today's AI budget used${backAt(budget.resetsAtMs)}`,
+        text: `Scripted · ${own ? "your daily limit" : "today's AI budget"} used${backAt(budget.resetsAtMs)}`,
         tone: "warning",
         meterFraction: null,
       };
@@ -74,6 +79,7 @@ function describeExhausted(budget: JarvisBudgetView): BrainReadout | null {
 function describeLiveBudget(
   name: string,
   budget: JarvisBudgetView | null,
+  noLimitCopy: string,
 ): BrainReadout {
   if (budget === null) {
     return { text: `${name} · house key`, tone: "normal", meterFraction: null };
@@ -83,7 +89,7 @@ function describeLiveBudget(
 
   if (budget.limitUsd === null) {
     return {
-      text: `${head} · no personal limit`,
+      text: `${head} · ${noLimitCopy}`,
       tone: "normal",
       meterFraction: null,
     };
@@ -100,6 +106,47 @@ function describeLiveBudget(
   };
 }
 
+/** The readout while an own brain is the effective one. The house budget is
+ * deliberately not read: a spent house budget does not stop a person's own key. */
+function describeOwnBrain(state: BrainIndicatorState): BrainReadout {
+  const { ownKey, ownBudget } = state;
+
+  if (ownKey === null) {
+    return {
+      text: "Scripted · your key isn't set",
+      tone: "warning",
+      meterFraction: null,
+    };
+  }
+
+  if (ownKey.status === "refused") {
+    return {
+      text: `${JARVIS_PROVIDER_NAMES[ownKey.provider]} refused your key`,
+      tone: "warning",
+      meterFraction: null,
+    };
+  }
+
+  const exhausted =
+    ownBudget === null ? null : describeExhausted(ownBudget, true);
+
+  if (exhausted !== null) {
+    return exhausted;
+  }
+
+  const label = jarvisBrainLabel(state.effectiveBrain);
+
+  if (ownBudget === null) {
+    return {
+      text: `${label} · your key`,
+      tone: "normal",
+      meterFraction: null,
+    };
+  }
+
+  return describeLiveBudget(label, ownBudget, "no limit");
+}
+
 /** The header readout, or `null` when Jarvis is unavailable. */
 export function describeBrainReadout(
   state: BrainIndicatorState,
@@ -112,20 +159,33 @@ export function describeBrainReadout(
     return { text: "Scripted · demo", tone: "normal", meterFraction: null };
   }
 
+  if (isJarvisOwnBrain(state.effectiveBrain)) {
+    return describeOwnBrain(state);
+  }
+
   const exhausted =
-    state.budget === null ? null : describeExhausted(state.budget);
+    state.budget === null ? null : describeExhausted(state.budget, false);
 
   if (exhausted !== null) {
     return exhausted;
   }
 
   if (state.effectiveBrain === "scripted") {
-    return { text: "Scripted", tone: "normal", meterFraction: null };
+    // A person whose own cap is spent was moved here by it.
+    const ownExhausted =
+      state.ownBudget === null
+        ? null
+        : describeExhausted(state.ownBudget, true);
+
+    return (
+      ownExhausted ?? { text: "Scripted", tone: "normal", meterFraction: null }
+    );
   }
 
   return describeLiveBudget(
     jarvisBrainName(state.effectiveBrain),
     state.budget,
+    "no personal limit",
   );
 }
 
@@ -137,7 +197,9 @@ export function describeBrainPill(state: BrainIndicatorState): string {
   }
 
   const label = jarvisBrainLabel(state.effectiveBrain);
-  const budget = state.budget;
+  const budget = isJarvisOwnBrain(state.effectiveBrain)
+    ? state.ownBudget
+    : state.budget;
 
   if (budget === null || budget.limitUsd === null) {
     return label;

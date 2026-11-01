@@ -1,10 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { JarvisState } from "@rtc/core-api";
-import { Direction } from "@rtc/domain";
+import type { JarvisAvailability, JarvisState } from "@rtc/core-api";
+import {
+  Direction,
+  type JarvisBrain,
+  type JarvisBudgetView,
+} from "@rtc/domain";
 
 import {
   createJarvisController,
+  formatBrainHint,
+  formatGateHint,
+  gateAppliesTo,
   JARVIS_INITIAL_STATE,
 } from "#/presenters/jarvisController";
 
@@ -66,6 +73,175 @@ describe("createJarvisController — guards every core's timing relies on", () =
   });
 });
 
+const OWN_SONNET = "own:anthropic:claude-sonnet-5";
+const RESETS_AT_MS = Date.UTC(2026, 9, 28, 0, 0, 0);
+
+describe("createJarvisController — own brains", () => {
+  it("a preference for an unoffered own brain resolves to scripted, not the default brain", () => {
+    const controller = createJarvisController();
+    controller.availabilityPatch(anAvailability());
+
+    const patch = controller.preferredBrainPatch(OWN_SONNET);
+
+    expect(patch(JARVIS_INITIAL_STATE).effectiveBrain).toBe("scripted");
+  });
+
+  it("an unoffered house brain still resolves to the default brain", () => {
+    const controller = createJarvisController();
+    controller.availabilityPatch(anAvailability());
+
+    const patch = controller.preferredBrainPatch("claude-opus-5");
+
+    expect(patch(JARVIS_INITIAL_STATE).effectiveBrain).toBe("claude-haiku-4-5");
+  });
+
+  it("a refused key keeps the own brain effective", () => {
+    const controller = createJarvisController();
+    controller.preferredBrainPatch(OWN_SONNET);
+
+    const next = controller.availabilityPatch(
+      anAvailability({
+        brains: ["scripted", "claude-haiku-4-5", OWN_SONNET],
+        ownKey: { provider: "anthropic", status: "refused", capUsd: 1 },
+        ownBudget: anOwnBudget({ exhausted: null, spentUsd: 0 }),
+      }),
+    )(JARVIS_INITIAL_STATE);
+
+    expect(next.effectiveBrain).toBe(OWN_SONNET);
+    expect(next.ownKey?.status).toBe("refused");
+  });
+
+  it("mirrors ownKey and ownBudget into the state", () => {
+    const controller = createJarvisController();
+    const ownBudget = anOwnBudget({ exhausted: null });
+    const ownKey = { provider: "anthropic", status: "accepted", capUsd: 1 };
+
+    const next = controller.availabilityPatch(
+      anAvailability({ ownBudget, ownKey: ownKey as never }),
+    )(JARVIS_INITIAL_STATE);
+
+    expect(next.ownBudget).toBe(ownBudget);
+    expect(next.ownKey).toBe(ownKey);
+  });
+
+  it("a spent own cap that moves the person to scripted says so with 'your daily limit'", () => {
+    const controller = createJarvisController();
+    const talking = withConversation(OWN_SONNET);
+    controller.preferredBrainPatch(OWN_SONNET);
+
+    const next = controller.availabilityPatch(
+      anAvailability({
+        gate: { level: "hard", resetsAtMs: RESETS_AT_MS, gated: [OWN_SONNET] },
+        ownBudget: anOwnBudget(),
+        ownKey: { provider: "anthropic", status: "accepted", capUsd: 1 },
+      }),
+    )(talking);
+
+    expect(next.effectiveBrain).toBe("scripted");
+    expect(next.entries.at(-1)?.text).toBe(
+      "Your daily limit is used — switching to the scripted brain until 00:00 UTC.",
+    );
+  });
+
+  it("a spent house budget names the house when a house brain is moved", () => {
+    const controller = createJarvisController();
+    const talking = withConversation("claude-haiku-4-5");
+
+    const next = controller.availabilityPatch(
+      anAvailability({
+        brains: ["scripted"],
+        defaultBrain: "scripted",
+        gate: {
+          level: "hard",
+          resetsAtMs: RESETS_AT_MS,
+          gated: ["claude-haiku-4-5"],
+        },
+        budget: {
+          keyKind: "house",
+          spentUsd: 1,
+          limitUsd: 1,
+          exhausted: "house",
+          resetsAtMs: RESETS_AT_MS,
+        },
+        ownBudget: anOwnBudget({ exhausted: null, spentUsd: 0 }),
+      }),
+    )(talking);
+
+    expect(next.entries.at(-1)?.text).toBe(
+      "The house AI budget is used — switching to the scripted brain until 00:00 UTC.",
+    );
+  });
+});
+
+describe("formatBrainHint — which budget the gate belongs to", () => {
+  it("a spent own cap says nothing about a house brain that is running", () => {
+    expect(
+      formatBrainHint(gate, "claude-haiku-4-5", "claude-haiku-4-5", spentOwn),
+    ).toBeUndefined();
+  });
+
+  it("a spent house budget says nothing about an own brain that is running", () => {
+    expect(
+      formatBrainHint(gate, OWN_SONNET, OWN_SONNET, spentHouse),
+    ).toBeUndefined();
+  });
+
+  it("a spent own cap names the paused own brain", () => {
+    expect(formatBrainHint(gate, OWN_SONNET, "scripted", spentOwn)).toBe(
+      `${formatGateHint(RESETS_AT_MS)} · Sonnet 5 paused, using scripted`,
+    );
+  });
+
+  it("no budgets at all (an older server) still shows the gate copy", () => {
+    expect(
+      formatBrainHint(gate, "claude-haiku-4-5", "claude-haiku-4-5", {
+        budget: null,
+        ownBudget: null,
+      }),
+    ).toBe(formatGateHint(RESETS_AT_MS));
+  });
+
+  const gate = {
+    level: "hard",
+    resetsAtMs: RESETS_AT_MS,
+    gated: [OWN_SONNET],
+  } as const;
+
+  const spentOwn = { budget: null, ownBudget: anOwnBudget() };
+
+  const spentHouse = {
+    budget: {
+      keyBudget: 1,
+      keyKind: "house",
+      spentUsd: 1,
+      limitUsd: 1,
+      exhausted: "house",
+      resetsAtMs: RESETS_AT_MS,
+    } as unknown as JarvisBudgetView,
+    ownBudget: null,
+  };
+});
+
+describe("gateAppliesTo", () => {
+  it("is true only for the brain kind whose budget is spent", () => {
+    const state = { budget: null, ownBudget: anOwnBudget() };
+
+    expect(gateAppliesTo(state, OWN_SONNET)).toBe(true);
+    expect(gateAppliesTo(state, "claude-haiku-4-5")).toBe(false);
+  });
+});
+
+function withConversation(effectiveBrain: JarvisBrain): JarvisState {
+  return {
+    ...JARVIS_INITIAL_STATE,
+    effectiveBrain,
+    entries: [
+      ...JARVIS_INITIAL_STATE.entries,
+      { id: 1, role: "user", text: "hi", done: true },
+    ],
+  };
+}
+
 function createPendingState(confirmationId: string): JarvisState {
   return {
     ...JARVIS_INITIAL_STATE,
@@ -78,5 +254,34 @@ function createPendingState(confirmationId: string): JarvisState {
       ratePrecision: 5,
       remainingFraction: 1,
     },
+  };
+}
+
+function anAvailability(
+  overrides: Partial<JarvisAvailability> = {},
+): JarvisAvailability {
+  return {
+    available: true,
+    brains: ["scripted", "claude-haiku-4-5"],
+    defaultBrain: "claude-haiku-4-5",
+    gate: null,
+    budget: null,
+    ownBudget: null,
+    ownKey: null,
+    demo: false,
+    ...overrides,
+  };
+}
+
+function anOwnBudget(
+  overrides: Partial<JarvisBudgetView> = {},
+): JarvisBudgetView {
+  return {
+    keyKind: "own",
+    spentUsd: 1,
+    limitUsd: 1,
+    exhausted: "user",
+    resetsAtMs: RESETS_AT_MS,
+    ...overrides,
   };
 }

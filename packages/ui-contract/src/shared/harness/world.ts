@@ -1202,6 +1202,8 @@ export function createWorld(seeds: WorldSeeds = {}): World {
       defaultBrain: DEFAULT_JARVIS_BRAIN,
       gate: null,
       budget: null,
+      ownBudget: null,
+      ownKey: null,
       demo: false,
     },
   );
