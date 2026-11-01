@@ -15,8 +15,8 @@ import { createStore } from "#/kernel/store";
 /** `presenters.jarvisOwnKey` on the async core: a Store over the shared
  * `createOwnKeyFold`. Follows `auth` with a plain subscription, not a `relay`:
  * the reading must land in the turn it was made, ahead of the transport gate.
- * The abort stops the fold and wipes nothing, because a hot swap resumes with
- * the key in place. */
+ * The abort stops the fold, intents included, and wipes nothing, because a
+ * hot swap resumes with the key in place. */
 export function createJarvisOwnKeyPresenter(
   jarvis: Pick<JarvisPort, "setOwnKey">,
   keyStore: OwnKeyStore | undefined,
@@ -41,6 +41,7 @@ export function createJarvisOwnKeyPresenter(
     "abort",
     () => {
       subscription.unsubscribe();
+      fold.stop();
     },
     { once: true },
   );

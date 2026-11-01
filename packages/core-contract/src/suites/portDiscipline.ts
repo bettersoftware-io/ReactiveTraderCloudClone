@@ -533,7 +533,7 @@ export function describePortDisciplineContract(
       }
     });
 
-    it("jarvis.setOwnKey: none at composition with nothing to restore, none in sim mode", async () => {
+    it("jarvis.setOwnKey: none at composition signed out, none in sim mode", async () => {
       const live = makeHarness({ ownKey: {} });
       const sim = makeHarness();
 
@@ -544,6 +544,26 @@ export function describePortDisciplineContract(
       } finally {
         await live.teardown();
         await sim.teardown();
+      }
+    });
+
+    it("jarvis.setOwnKey: one clear at composition for a resumed owner with nothing to restore, because the transport outlives a composition", async () => {
+      const h = makeHarness({
+        session: {
+          token: "stored",
+          user: ROSTER[0].user,
+          username: ROSTER[0].username,
+          exp: Date.now() + 60_000,
+        },
+        ownKey: {},
+      });
+
+      try {
+        await settle();
+        expect(h.driver.portCalls("jarvis.setOwnKey")).toBe(1);
+        expect(h.driver.ownKeySends()).toEqual([null]);
+      } finally {
+        await h.teardown();
       }
     });
 

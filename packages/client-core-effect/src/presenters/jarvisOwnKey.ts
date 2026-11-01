@@ -15,8 +15,8 @@ import { createSyncRef } from "#/bridge/syncRef";
 
 /** `presenters.jarvisOwnKey` on the Effect core: a `SyncRef` over the shared
  * `createOwnKeyFold`, heard synchronously from the auth state and held until
- * `host`'s scope closes. The close stops the fold and wipes nothing, because
- * a hot swap resumes with the key in place. */
+ * `host`'s scope closes. The close stops the fold, intents included, and
+ * wipes nothing, because a hot swap resumes with the key in place. */
 export function createJarvisOwnKeyPresenter(
   host: EffectHost,
   jarvis: Pick<JarvisPort, "setOwnKey">,
@@ -41,7 +41,15 @@ export function createJarvisOwnKeyPresenter(
       reportOutOfBand(Cause.die(error));
     },
   );
-  host.runtime.runSync(Scope.addFinalizer(host.scope, Effect.sync(release)));
+  host.runtime.runSync(
+    Scope.addFinalizer(
+      host.scope,
+      Effect.sync(() => {
+        release();
+        fold.stop();
+      }),
+    ),
+  );
 
   return {
     saved$: saved.stateStream(),

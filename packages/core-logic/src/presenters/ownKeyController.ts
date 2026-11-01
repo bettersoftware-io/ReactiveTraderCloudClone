@@ -40,8 +40,13 @@ export function maskOwnKey(key: string): string {
 }
 
 export interface OwnKeyController {
-  /** Call on every auth reading: the signed-in username, or `null` for
-   * anything else. Returns what to show, or `null` when no key is held. */
+  /** Call on every auth reading: the signed-in account's email, or `null` for
+   * anything else. Returns what to show, or `null` when no key is held.
+   *
+   * After a non-null owner the transport holds that owner's key or nothing.
+   * It outlives a composition and has no owner check of its own, so a key it
+   * remembers from an earlier one is cleared here even when this controller
+   * has nothing to wipe. */
   authChanged(owner: string | null): SavedOwnKey | null;
   save(owner: string, input: OwnKeyInput): SavedOwnKey;
   /** Resends the held key with the new cap; `null` when no key is held. */
@@ -126,11 +131,13 @@ export function createOwnKeyController(
       const candidate = deps.store?.read() ?? held;
 
       if (candidate === null) {
+        deps.setOwnKey?.(null);
         return null;
       }
 
       if (candidate.owner !== owner) {
         wipe();
+        deps.setOwnKey?.(null);
         return null;
       }
 
@@ -170,6 +177,10 @@ export function ownKeyOwner(auth: OwnKeyAuthReading): string | null {
 export interface OwnKeyFold
   extends Pick<JarvisOwnKeyPresenter, "save" | "setCap" | "remove"> {
   readAuth(auth: OwnKeyAuthReading): void;
+  /** Ends the member with its composition: the intents do nothing from here
+   * on, and nothing is wiped. A presenter someone still holds after a hot swap
+   * must not act on the key the next composition resumed with. */
+  stop(): void;
 }
 
 export interface OwnKeyFoldDeps {
@@ -220,6 +231,9 @@ export function createOwnKeyFold(deps: OwnKeyFoldDeps): OwnKeyFold {
         show(controller.authChanged(next));
       }
     },
+    stop: (): void => {
+      owner = null;
+    },
     save: (input: OwnKeyInput): void => {
       if (owner !== null) {
         show(controller.save(owner, input));
@@ -243,6 +257,7 @@ function dropOwnKeyCall(): void {}
 
 const INERT_OWN_KEY_FOLD: OwnKeyFold = {
   readAuth: dropOwnKeyCall,
+  stop: dropOwnKeyCall,
   save: dropOwnKeyCall,
   setCap: dropOwnKeyCall,
   remove: dropOwnKeyCall,

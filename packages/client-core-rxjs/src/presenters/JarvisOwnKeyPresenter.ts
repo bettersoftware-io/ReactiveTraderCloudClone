@@ -13,7 +13,8 @@ import { createOwnKeyFold, type OwnKeyFold } from "@rtc/core-logic";
 /** Implements `JarvisOwnKeyPresenter` (`@rtc/core-api`): a `BehaviorSubject`
  * over the shared `createOwnKeyFold`. `followAuth` is separate from the
  * constructor so the composition holds the subscription: ending it stops the
- * fold and wipes nothing, because a hot swap resumes with the key in place. */
+ * fold, intents included, and wipes nothing, because a hot swap resumes with
+ * the key in place. */
 export class JarvisOwnKeyPresenter implements JarvisOwnKeyPresenterApi {
   private readonly saved = new BehaviorSubject<SavedOwnKey | null>(null);
 
@@ -35,9 +36,14 @@ export class JarvisOwnKeyPresenter implements JarvisOwnKeyPresenterApi {
   }
 
   followAuth(authState$: Observable<AuthViewState>): Subscription {
-    return authState$.subscribe((auth) => {
+    const subscription = authState$.subscribe((auth) => {
       this.fold.readAuth(auth);
     });
+
+    subscription.add(() => {
+      this.fold.stop();
+    });
+    return subscription;
   }
 
   save(input: OwnKeyInput): void {

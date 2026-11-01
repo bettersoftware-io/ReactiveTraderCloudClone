@@ -107,13 +107,22 @@ describe("createOwnKeyController", () => {
     expect(setOwnKey).toHaveBeenCalledExactlyOnceWith(null);
   });
 
-  it("a different owner wipes the key and sends nothing", () => {
+  it("a different owner wipes the key and sends clear", () => {
     const { controller, store, setOwnKey } = build(stored("ann"));
 
     expect(controller.authChanged("bob")).toBe(null);
 
     expect(store.clear).toHaveBeenCalledOnce();
-    expect(setOwnKey).not.toHaveBeenCalled();
+    expect(setOwnKey).toHaveBeenCalledExactlyOnceWith(null);
+  });
+
+  it("an owner with nothing to restore sends clear: the transport outlives a composition", () => {
+    const { controller, store, setOwnKey } = build(null);
+
+    expect(controller.authChanged("ann")).toBe(null);
+
+    expect(store.clear).not.toHaveBeenCalled();
+    expect(setOwnKey).toHaveBeenCalledExactlyOnceWith(null);
   });
 
   it("a repeated reading for the same owner sends nothing", () => {
@@ -136,13 +145,6 @@ describe("createOwnKeyController", () => {
 
     expect(store.clear).toHaveBeenCalledOnce();
     expect(setOwnKey).toHaveBeenCalledExactlyOnceWith(null);
-  });
-
-  it("signing in with nothing stored sends nothing", () => {
-    const { controller, setOwnKey } = build(null);
-
-    expect(controller.authChanged("ann")).toBe(null);
-    expect(setOwnKey).not.toHaveBeenCalled();
   });
 
   it("save stores the key under the owner, sends it, and returns only the masked form", () => {
@@ -274,7 +276,7 @@ describe("createOwnKeyFold", () => {
     fold.readAuth(SIGNED_IN);
     fold.save(INPUT);
 
-    expect(jarvis.received).toHaveLength(1);
+    expect(jarvis.received.at(-1)?.key).toBe(KEY);
   });
 
   it("publishes a change once, and neither null over null nor a repeated reading", () => {
@@ -289,6 +291,7 @@ describe("createOwnKeyFold", () => {
     fold.readAuth(SIGNED_OUT);
     fold.readAuth(SIGNED_IN);
     expect(publish).not.toHaveBeenCalled();
+    setOwnKey.mockClear();
 
     fold.save(INPUT);
     fold.readAuth(SIGNED_IN);
@@ -299,6 +302,37 @@ describe("createOwnKeyFold", () => {
     fold.readAuth(SIGNED_OUT);
     expect(publish).toHaveBeenCalledTimes(2);
     expect(publish).toHaveBeenLastCalledWith(null);
+  });
+
+  it("does nothing on an intent once stopped, and wipes nothing", () => {
+    const { store, setOwnKey } = build(stored(DEMO.user.email));
+    const publish = vi.fn<(saved: SavedOwnKey | null) => void>();
+    const fold = createOwnKeyFold({ jarvis: { setOwnKey }, store, publish });
+    fold.readAuth(SIGNED_IN);
+    setOwnKey.mockClear();
+    publish.mockClear();
+
+    fold.stop();
+    fold.save(INPUT);
+    fold.setCap(3);
+    fold.remove();
+
+    expect(store.write).not.toHaveBeenCalled();
+    expect(store.clear).not.toHaveBeenCalled();
+    expect(setOwnKey).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("an inert fold can be stopped", () => {
+    const fold = createOwnKeyFold({
+      jarvis: {},
+      store: undefined,
+      publish: vi.fn(),
+    });
+
+    expect(() => {
+      fold.stop();
+    }).not.toThrow();
   });
 
   it("does nothing on an intent while nobody is signed in", () => {

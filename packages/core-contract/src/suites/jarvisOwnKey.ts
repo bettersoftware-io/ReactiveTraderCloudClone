@@ -71,7 +71,7 @@ export function describeJarvisOwnKeyContract(
           expect(returned).toBeUndefined();
           expect(saved.values).toEqual([null, SAVED]);
           expect(h.driver.storedOwnKey()).toEqual({ owner: OWNER, ...INPUT });
-          expect(h.driver.ownKeySends()).toEqual([SETTING]);
+          expect(h.driver.ownKeySends()).toEqual([null, SETTING]);
           saved.unsubscribe();
         },
       );
@@ -196,11 +196,18 @@ export function describeJarvisOwnKeyContract(
           const saved = collect(h.app.presenters.jarvisOwnKey.saved$);
           await signIn(h.app, h.driver.resolveLogin, clock.settle);
           expect(h.driver.storedOwnKey()).toBe(null);
-          expect(h.driver.ownKeySends()).toEqual([]);
+          expect(h.driver.ownKeySends()).toEqual([null]);
           expect(saved.values).toEqual([null]);
           saved.unsubscribe();
         },
       );
+    });
+
+    it("signing in with nothing stored clears the transport: it outlives a composition", async () => {
+      await withHarness({ ownKey: {} }, async (h, clock) => {
+        await signIn(h.app, h.driver.resolveLogin, clock.settle);
+        expect(h.driver.ownKeySends()).toEqual([null]);
+      });
     });
 
     it("the first unauthenticated reading wipes nothing", async () => {
@@ -350,6 +357,70 @@ export function describeJarvisOwnKeyContract(
       );
     });
 
+    it("a hot swap over an expired session leaves the next account nothing of the last one's key", async () => {
+      await withHarness(
+        {
+          transport: true,
+          session: createSession(),
+          ownKey: { stored: createStored(OWNER) },
+        },
+        async (h, clock) => {
+          expect(h.driver.wireCalls()).toEqual(["setOwnKey", "connect"]);
+          vi.setSystemTime(NOW + 120_000);
+          const b = await h.recompose();
+          await clock.settle();
+          // The session did not resume, so nobody is signed in yet: the key
+          // stays put for its owner, and the transport still remembers it.
+          expect(h.driver.wireCalls()).toEqual([
+            "setOwnKey",
+            "connect",
+            "disconnect",
+          ]);
+          expect(h.driver.ownKeySends()).toEqual([SETTING]);
+          b.presenters.auth.login(ROSTER[1].username, "pw");
+          await clock.settle();
+          h.driver.resolveLogin({
+            ok: true,
+            token: "tok",
+            user: ROSTER[1].user,
+            exp: NOW + 240_000,
+          });
+          await clock.settle();
+          expect(h.driver.wireCalls()).toEqual([
+            "setOwnKey",
+            "connect",
+            "disconnect",
+            "setOwnKey",
+            "connect",
+          ]);
+          expect(h.driver.ownKeySends()).toEqual([SETTING, null]);
+          expect(h.driver.storedOwnKey()).toBe(null);
+        },
+      );
+    });
+
+    it("a disposed composition's intents do nothing to the key the next one resumed with", async () => {
+      await withHarness(
+        { session: createSession(), ownKey: { stored: createStored(OWNER) } },
+        async (h, clock) => {
+          const b = await h.recompose();
+          await clock.settle();
+          const stale = h.app.presenters.jarvisOwnKey;
+          stale.save({ ...INPUT, key: NEXT_KEY });
+          await clock.settle();
+          stale.setCap(9);
+          await clock.settle();
+          stale.remove();
+          await clock.settle();
+          expect(h.driver.storedOwnKey()).toEqual(createStored(OWNER));
+          expect(h.driver.ownKeySends()).toEqual([SETTING, SETTING]);
+          const saved = collect(b.presenters.jarvisOwnKey.saved$);
+          expect(saved.values).toEqual([SAVED]);
+          saved.unsubscribe();
+        },
+      );
+    });
+
     it("dispose wipes nothing, and a disposed fold hears no more", async () => {
       await withHarness(
         { session: createSession(), ownKey: { stored: createStored(OWNER) } },
@@ -382,6 +453,7 @@ export function describeJarvisOwnKeyContract(
           p.setCap(3);
           await clock.settle();
           expect(h.driver.ownKeySends()).toEqual([
+            null,
             SETTING,
             { ...SETTING, capUsd: 3 },
           ]);

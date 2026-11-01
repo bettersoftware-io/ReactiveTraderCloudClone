@@ -11,6 +11,7 @@
 import {
   isJarvisOwnBrain,
   JARVIS_OWN_MODELS,
+  type JarvisProvider,
   ownModelOf,
 } from "../jarvis/jarvisOwnModels.js";
 
@@ -320,17 +321,6 @@ export type JarvisHouseBrain =
   | "claude-haiku-4-5"
   | "claude-sonnet-5"
   | "claude-opus-5";
-
-/** Where an own-key brain's key is from. */
-export const JARVIS_PROVIDERS = ["anthropic", "openrouter", "openai"] as const;
-
-export type JarvisProvider = (typeof JARVIS_PROVIDERS)[number];
-
-/** Every provider the app knows, whether or not it is offered yet
- * (`JARVIS_OWN_PROVIDERS` is the offered subset). */
-export function isJarvisProvider(value: unknown): value is JarvisProvider {
-  return (JARVIS_PROVIDERS as readonly unknown[]).includes(value);
-}
 
 /** A brain run on the person's own key: `own:<provider>:<model id>`. Still one
  * string, so the wire, the stored preference and the picker keep their shape. */

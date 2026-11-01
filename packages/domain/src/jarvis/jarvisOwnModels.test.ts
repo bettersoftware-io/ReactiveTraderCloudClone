@@ -12,10 +12,26 @@ import {
 } from "../preferences/preferences.js";
 import {
   isJarvisOwnBrain,
+  isJarvisProvider,
   JARVIS_OWN_MODELS,
+  JARVIS_PROVIDERS,
   ownModelOf,
   ownModelsFor,
 } from "./jarvisOwnModels.js";
+
+describe("JARVIS_PROVIDERS", () => {
+  it("lists every provider, and isJarvisProvider accepts exactly those", () => {
+    expect(JARVIS_PROVIDERS).toEqual(["anthropic", "openrouter", "openai"]);
+
+    for (const provider of JARVIS_PROVIDERS) {
+      expect(isJarvisProvider(provider)).toBe(true);
+    }
+
+    for (const other of ["acme", "", 4, null, undefined, {}]) {
+      expect(isJarvisProvider(other)).toBe(false);
+    }
+  });
+});
 
 describe("parseStoredJarvisBrain", () => {
   it("keeps a house brain and a listed own brain", () => {

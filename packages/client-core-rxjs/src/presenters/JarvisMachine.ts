@@ -107,9 +107,6 @@ function isTurnEventItem(item: TurnItem): item is TurnEventItem {
   return item.kind === "event";
 }
 
-/** The RxJS shell over `createJarvisController` (`./jarvisController`):
- * the rules live there; this file owns only the timing — the serial turn
- * queue, the confirmation countdown and the preference subscriptions. */
 /** The machine, plus the synchronous read the narrator needs beside the
  * public handle. Survives `dispose` with the last state, and holds no
  * subscription of a reader's. */
@@ -117,6 +114,9 @@ export interface NativeJarvis extends JarvisMachineHandle {
   stateNow(): JarvisState;
 }
 
+/** The RxJS shell over `createJarvisController` (`./jarvisController`):
+ * the rules live there; this file owns only the timing — the serial turn
+ * queue, the confirmation countdown and the preference subscriptions. */
 export function createJarvisMachine(deps: JarvisDeps): NativeJarvis {
   const confirmTimeoutMs = deps.confirmTimeoutMs ?? JARVIS_CONFIRM_TIMEOUT_MS;
   const availabilitySource$: Observable<JarvisAvailability> =

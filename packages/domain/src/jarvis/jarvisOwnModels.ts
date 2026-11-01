@@ -1,9 +1,18 @@
-import {
-  isJarvisProvider,
-  type JarvisBrain,
-  type JarvisOwnBrain,
-  type JarvisProvider,
+import type {
+  JarvisBrain,
+  JarvisOwnBrain,
 } from "../preferences/preferences.js";
+
+/** Where an own-key brain's key is from. */
+export const JARVIS_PROVIDERS = ["anthropic", "openrouter", "openai"] as const;
+
+export type JarvisProvider = (typeof JARVIS_PROVIDERS)[number];
+
+/** Every provider the app knows, whether or not it is offered yet
+ * (`JARVIS_OWN_PROVIDERS` is the offered subset). */
+export function isJarvisProvider(value: unknown): value is JarvisProvider {
+  return (JARVIS_PROVIDERS as readonly unknown[]).includes(value);
+}
 
 /** One curated bring-your-own-key model: the person's key, their provider,
  * a model the app lists. `brain` is the string every other layer carries. */
