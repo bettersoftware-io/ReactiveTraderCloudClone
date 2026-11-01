@@ -40,14 +40,22 @@ const entry = /<script[^>]*\ssrc="\/devtools\/(assets\/[^"]+\.js)"/.exec(html);
 const entryChunk =
   entry === null ? undefined : join(dirname(indexPath), entry[1]);
 
-if (
-  entryChunk === undefined ||
-  !existsSync(entryChunk) ||
-  !readFileSync(entryChunk, "utf8").includes("__REACT_DEVTOOLS_GLOBAL_HOOK__")
-) {
+// Witness: `react-devtools` (the opt-out query the guard reads) occurs once, in
+// the guard. `__REACT_DEVTOOLS_GLOBAL_HOOK__` would not do: react-dom in the
+// same chunk names it too. The guard must also precede the first React code,
+// because react-dom reads the hook as it evaluates.
+const chunk =
+  entryChunk !== undefined && existsSync(entryChunk)
+    ? readFileSync(entryChunk, "utf8")
+    : "";
+const guardAt = chunk.indexOf("react-devtools");
+const reactAt = chunk.indexOf("react.transitional.element");
+
+if (guardAt === -1 || reactAt === -1 || guardAt > reactAt) {
   console.error(
-    "check-devtools-dist: the React DevTools guard was dropped from " +
-      "the prod /devtools/ entry chunk — see docs/architecture/20-devtools.md §20.10",
+    "check-devtools-dist: the React DevTools guard is missing from the prod " +
+      "/devtools/ entry chunk, or comes after the first React code — see " +
+      "docs/architecture/20-devtools.md §20.10",
   );
   process.exit(1);
 }

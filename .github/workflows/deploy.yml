@@ -242,6 +242,15 @@ jobs:
           code=$(curl -s -o /dev/null -w "%{http_code}" "https://rtc-clone-react.vercel.app")
           echo "Got HTTP $code"
           test "$code" = "200"
+          # The Content-Security-Policy must actually be served, on the app and on
+          # the /devtools/ page that is built separately.
+          for path in / /devtools/; do
+            if ! curl -s -D - -o /dev/null "https://rtc-clone-react.vercel.app$path" | grep -qi '^content-security-policy:.*script-src .self.'; then
+              echo "::error::no Content-Security-Policy header with script-src 'self' on $path"
+              exit 1
+            fi
+          done
+          echo "OK: Content-Security-Policy served on / and /devtools/."
 
   solid:
     name: client-solid → vercel
@@ -344,3 +353,12 @@ jobs:
           code=$(curl -s -o /dev/null -w "%{http_code}" "https://rtc-clone-solid.vercel.app")
           echo "Got HTTP $code"
           test "$code" = "200"
+          # The Content-Security-Policy must actually be served, on the app and on
+          # the /devtools/ page that is built separately.
+          for path in / /devtools/; do
+            if ! curl -s -D - -o /dev/null "https://rtc-clone-solid.vercel.app$path" | grep -qi '^content-security-policy:.*script-src .self.'; then
+              echo "::error::no Content-Security-Policy header with script-src 'self' on $path"
+              exit 1
+            fi
+          done
+          echo "OK: Content-Security-Policy served on / and /devtools/."

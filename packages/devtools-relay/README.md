@@ -30,8 +30,10 @@ Event/State/Diff/Machine context pane and Clear.
     pnpm --filter @rtc/devtools-relay dev 8123   # positional port arg
 
 Then boot a dev RN build (`pnpm dev:ios` or `pnpm dev:android`) and open the panel in a browser at
-`http://localhost:5280/?relay=ws://localhost:8790` (standalone dev server) or
-the deployed `/devtools/?relay=...`. The panels show the mobile client live;
+`http://localhost:5280/?relay=ws://localhost:8790` (standalone dev server, or
+`pnpm dev` of a web client, which serves `/devtools/` on its own origin). The
+deployed `/devtools/` cannot reach a local relay: its Content-Security-Policy
+allows connections to the Fly server only. The panels show the mobile client live;
 backgrounding the app flips the panel to "disconnected" (relay socket drop +
 the panel-side liveness timer), and reconnecting recovers via the re-hello path.
 

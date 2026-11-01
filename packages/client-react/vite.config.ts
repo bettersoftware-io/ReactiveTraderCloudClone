@@ -222,8 +222,8 @@ interface VercelHeaderConfig {
 /** The Content-Security-Policy the deployed site sends, read from the Vercel
  * config that sends it (`vercel.react.json`), so `vite preview` — which the Playwright
  * suites drive — runs under the real policy. The one difference: `connect-src`
- * also admits a local server, because the e2e harness starts one on a random
- * localhost port. `pnpm check:scripts` (scripts/check-csp.mts) keeps the two
+ * also admits a local server or relay (a preview run against a dev server on
+ * localhost, or an inspector relay). `pnpm check:scripts` (scripts/check-csp.mts) keeps the two
  * clients' Vercel policies identical. */
 function previewCsp(): string {
   const config = JSON.parse(

@@ -210,8 +210,12 @@ default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src
 What it allows:
 
 - **Scripts** only from our own origin. No inline script and no third party.
-- **Connections** to our own origin and to the Fly server, over HTTPS and WSS.
-  Nothing else, so a script that did run could not send data elsewhere.
+- **Connections** (fetch, WebSocket, EventSource) to our own origin and to the
+  Fly server, over HTTPS and WSS. `connect-src` does not govern top-level
+  navigation (`location.href`, `window.open`) or WebRTC, so a script that did
+  run could still send data out that way. `script-src` is what stops the script
+  from running; the policy does not stop exfiltration after it has run. Image
+  and font beacons are blocked by `img-src` and `font-src`.
 - **Images and fonts** from our origin, plus `data:` (and `blob:` for images).
 - **Nothing** for `<object>`, `<embed>` and `<base>`. The page cannot be framed.
   Forms post only to our origin.
@@ -239,6 +243,10 @@ Rules that keep the policy honest:
 - The `/devtools/` page had one inline script (the React DevTools guard). It is
   now a module, `packages/devtools-app/src/disableReactDevtoolsHook.ts`; see
   [`architecture/20-devtools.md`](architecture/20-devtools.md) §20.10.
+- **The deployed `/devtools/?relay=ws://localhost:…` no longer works.** The
+  policy lets the page connect to the Fly server only, so the React Native relay
+  panel must be opened from a local dev server (`pnpm dev:devtools`, port 5280).
+  That is intended: the production page does not open arbitrary sockets.
 - A new origin the app must talk to (another API, an image CDN) is a change to
   both `vercel.*.json` files, and to this section, in the same pull request.
 

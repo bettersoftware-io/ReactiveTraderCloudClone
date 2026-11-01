@@ -145,11 +145,22 @@ for (const file of CONFIGS) {
   policies.set(file, policy);
 
   const checks: ReadonlyArray<readonly [string, string]> = [
+    ["default-src", "'self'"],
     ["script-src", "'self'"],
     ["object-src", "'none'"],
     ["base-uri", "'none'"],
     ["frame-ancestors", "'none'"],
   ];
+
+  // script-src-elem and script-src-attr override script-src for their own
+  // kind of script, so either one could quietly re-allow inline script.
+  for (const name of ["script-src-elem", "script-src-attr"]) {
+    if (directive(policy, name) !== undefined) {
+      failures.push(
+        `${file}: ${name} must not be set — it overrides script-src`,
+      );
+    }
+  }
 
   for (const [name, expected] of checks) {
     const actual = directive(policy, name);

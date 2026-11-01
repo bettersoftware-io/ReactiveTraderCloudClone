@@ -19,4 +19,20 @@ test.describe("Content-Security-Policy", () => {
     const violations = await csp.openWorkspaceAndDevtools(ctx);
     csp.expectNoViolations(violations);
   });
+
+  test("sends the policy on every served path", async ({ ctx }) => {
+    await csp.expectPolicyOnEveryPath(ctx);
+  });
+
+  test("blocks an injected inline script and a third-party script", async ({
+    ctx,
+  }) => {
+    await csp.expectInjectedScriptsBlocked(ctx);
+  });
+
+  test("pops a panel out and back with no CSP violation", async ({ ctx }) => {
+    test.setTimeout(45_000);
+    const violations = await csp.popOutAndDockBack(ctx);
+    csp.expectNoViolations(violations);
+  });
 });

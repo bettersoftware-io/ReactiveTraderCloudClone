@@ -72,8 +72,10 @@ The repo ships its own devtools for the non-Redux state layer, wired into the RN
 client under `__DEV__` (see [architecture/20-devtools.md](architecture/20-devtools.md)).
 
 - **Run:** `pnpm dev:devtools:relay` (the dev-machine relay on
-  `ws://localhost:8790`), then open the browser panel at
-  `/devtools/?relay=ws://localhost:8790`.
+  `ws://localhost:8790`), then open the browser panel from the local dev server at
+  `http://localhost:5280/?relay=ws://localhost:8790`. The deployed `/devtools/`
+  cannot reach the relay: its Content-Security-Policy allows connections to the
+  Fly server only.
 - **Shows:** the **WebSocket wire** (every frame, natively — nothing off-the-shelf
   matches this for the app's protocol), plus presenters, machines, and the
   event timeline.
