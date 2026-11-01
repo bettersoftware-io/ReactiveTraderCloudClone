@@ -4,7 +4,9 @@ import {
   JARVIS_BRAINS,
   type JarvisBrainUsageRow,
   type JarvisHouseBrain,
+  type JarvisLiveBrain,
   type JarvisUsageSnapshot,
+  ownModelOf,
 } from "@rtc/domain";
 
 import { nextUtcMidnightMs } from "./jarvisBudget/utcDay.js";
@@ -67,14 +69,24 @@ function createAccumulator(): BrainAccumulator {
  * figure the Ops card shows.
  */
 export function estimateUsageCostUsd(
-  brain: JarvisHouseBrain,
+  brain: JarvisLiveBrain | "scripted",
   usage: JarvisTokenUsage,
 ): number {
   if (brain === "scripted") {
     return 0;
   }
 
-  const price = JARVIS_PRICE_TABLE[brain];
+  // An own-key brain is priced from its curated model; any other from the
+  // house table.
+  const housePrices: Readonly<Record<string, JarvisBrainPrice | undefined>> =
+    JARVIS_PRICE_TABLE;
+  const price = ownModelOf(brain) ?? housePrices[brain];
+
+  // A brain with no price is not guessed at: a NaN cost is refused by the
+  // budget's recording guard.
+  if (price === undefined) {
+    return Number.NaN;
+  }
 
   return (
     (usage.inputTokens * price.inputUsdPerMtok +

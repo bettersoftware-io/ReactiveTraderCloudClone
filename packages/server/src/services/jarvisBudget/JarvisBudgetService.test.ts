@@ -669,6 +669,214 @@ describe("JarvisBudgetService", () => {
     });
   });
 
+  describe("own-key spend", () => {
+    it("own spend does not count toward the house total or the person's house budget", async () => {
+      const store = createInMemorySpendStore();
+      const service = createService(store);
+
+      await service.stateFor(MEMBER, "member");
+      await service.ownStateFor(MEMBER, null);
+      service
+        .ownMeterFor(MEMBER, null)
+        .record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      await service.ownStateFor(MEMBER, null);
+
+      const house = await service.stateFor(MEMBER, "member");
+
+      expect(house.spentUsd).toBe(0);
+      expect(house.houseSpentUsd).toBe(0);
+      expect(house.exhausted).toBeNull();
+      expect(service.houseToday().spentUsd).toBe(0);
+      expect(await store.read("account:a", TODAY, "own")).toEqual({
+        ownerUsd: 0.1,
+        houseUsd: 0,
+      });
+    });
+
+    it("an own spend that comes back with a zero house total leaves the house copy alone", async () => {
+      const store = createInMemorySpendStore();
+
+      await store.record("roster:other", TODAY, "house", 1);
+
+      const service = createService(store);
+
+      await service.stateFor(MEMBER, "member");
+      await service.ownStateFor(MEMBER, null);
+      service
+        .ownMeterFor(MEMBER, null)
+        .record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      await service.ownStateFor(MEMBER, null);
+
+      expect(service.houseToday().spentUsd).toBe(1);
+    });
+
+    it("an own cap of 1 is exhausted at 1, and reserves like a house budget", async () => {
+      const service = createService(createInMemorySpendStore());
+
+      await service.ownStateFor(MEMBER, 1);
+
+      const first = service.ownMeterFor(MEMBER, 1);
+      const second = service.ownMeterFor(MEMBER, 1);
+
+      // 0.1 on Haiku, ten times: exactly 1.
+      for (let i = 0; i < 9; i += 1) {
+        first.record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      }
+
+      expect(second.exhausted()).toBe(false);
+
+      // A Sonnet worst case ($0.07096) in flight: 0.9 + 0.07096 < 1 still fits.
+      first.beginRequest("own:anthropic:claude-sonnet-5", SONNET_CEILING);
+
+      expect(second.exhausted()).toBe(false);
+
+      second.beginRequest("own:anthropic:claude-opus-5", SONNET_CEILING);
+
+      // The other meter's reservation now pushes this one past the cap.
+      expect(first.exhausted()).toBe(true);
+
+      second.endRequest();
+      first.endRequest();
+      first.record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+
+      expect(second.exhausted()).toBe(true);
+      expect(await service.ownStateFor(MEMBER, 1)).toMatchObject({
+        spentUsd: 1,
+        limitUsd: 1,
+        exhausted: "user",
+      });
+    });
+
+    it("own reservations do not count against the house cap", async () => {
+      const service = createService(createInMemorySpendStore(), {
+        houseDailyUsd: 0.05,
+      });
+
+      await service.stateFor(OPERATOR, "operator");
+      await service.ownStateFor(MEMBER, null);
+
+      const houseMeter = service.meterFor(OPERATOR, "operator");
+
+      service
+        .ownMeterFor(MEMBER, null)
+        .beginRequest("own:anthropic:claude-sonnet-5", SONNET_CEILING);
+
+      expect(houseMeter.exhausted()).toBe(false);
+    });
+
+    it("no limit is never exhausted, and spend is still recorded", async () => {
+      const service = createService(createInMemorySpendStore());
+
+      await service.ownStateFor(MEMBER, null);
+
+      const meter = service.ownMeterFor(MEMBER, null);
+
+      for (let i = 0; i < 20; i += 1) {
+        meter.record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      }
+
+      expect(meter.exhausted()).toBe(false);
+      expect(await service.ownStateFor(MEMBER, null)).toEqual({
+        spentUsd: 2,
+        limitUsd: null,
+        exhausted: null,
+        resetsAtMs: NEXT_MIDNIGHT,
+      });
+    });
+
+    it("forceExhausted does not apply to own keys", async () => {
+      const service = createService(createInMemorySpendStore(), {
+        forceExhausted: true,
+      });
+
+      expect((await service.ownStateFor(MEMBER, 1)).exhausted).toBeNull();
+      expect(service.ownMeterFor(MEMBER, 1).exhausted()).toBe(false);
+    });
+
+    it('with a cap, a failing store reads as exhausted "unavailable"; with no limit it does not', async () => {
+      const switchable = createSwitchableStore();
+      const service = createService(switchable.store);
+
+      switchable.setDown(true);
+
+      expect(await service.ownStateFor(MEMBER, 1)).toMatchObject({
+        exhausted: "unavailable",
+      });
+      expect(service.ownMeterFor(MEMBER, 1).exhausted()).toBe(true);
+      expect(await service.ownStateFor(MEMBER, null)).toMatchObject({
+        exhausted: null,
+      });
+      expect(service.ownMeterFor(MEMBER, null).exhausted()).toBe(false);
+    });
+
+    it("an own write the store refused is counted and sent again once it answers", async () => {
+      const switchable = createSwitchableStore();
+      const service = createService(switchable.store);
+
+      await service.ownStateFor(MEMBER, null);
+      switchable.setDown(true);
+      service
+        .ownMeterFor(MEMBER, null)
+        .record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      await settle();
+
+      expect((await service.ownStateFor(MEMBER, null)).spentUsd).toBe(0.1);
+
+      switchable.setDown(false);
+      await service.ownStateFor(MEMBER, null);
+      await settle();
+
+      expect(await switchable.store.read("account:a", TODAY, "own")).toEqual({
+        ownerUsd: 0.1,
+        houseUsd: 0,
+      });
+      expect((await service.ownStateFor(MEMBER, null)).spentUsd).toBe(0.1);
+    });
+
+    it("own spend resets at 00:00 UTC", async () => {
+      const service = createService(createInMemorySpendStore());
+
+      await service.ownStateFor(MEMBER, 0.1);
+      service
+        .ownMeterFor(MEMBER, 0.1)
+        .record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+
+      expect((await service.ownStateFor(MEMBER, 0.1)).exhausted).toBe("user");
+
+      await vi.advanceTimersByTimeAsync(NEXT_MIDNIGHT - NOON);
+
+      expect(await service.ownStateFor(MEMBER, 0.1)).toEqual({
+        spentUsd: 0,
+        limitUsd: 0.1,
+        exhausted: null,
+        resetsAtMs: NEXT_MIDNIGHT + DAY_MS,
+      });
+    });
+
+    it("a restart reloads own spend from the store", async () => {
+      const store = createInMemorySpendStore();
+
+      await store.record("account:a", TODAY, "own", 0.4);
+
+      const state = await createService(store).ownStateFor(MEMBER, 0.4);
+
+      expect(state.spentUsd).toBe(0.4);
+      expect(state.exhausted).toBe("user");
+    });
+
+    it("keeps the house and own copies of one person apart", async () => {
+      const store = createInMemorySpendStore();
+      const read = vi.spyOn(store, "read");
+      const service = createService(store);
+
+      await service.stateFor(MEMBER, "member");
+      await service.ownStateFor(MEMBER, 1);
+
+      expect(read).toHaveBeenNthCalledWith(1, "account:a", TODAY, "house");
+      expect(read).toHaveBeenNthCalledWith(2, "account:a", TODAY, "own");
+    });
+  });
+
   describe("changes$", () => {
     it("emits on every record", async () => {
       const service = createService(createInMemorySpendStore());

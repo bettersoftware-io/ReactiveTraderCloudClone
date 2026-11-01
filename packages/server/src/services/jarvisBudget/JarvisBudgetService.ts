@@ -1,6 +1,6 @@
 import { type Observable, Subject } from "rxjs";
 
-import type { JarvisHouseBrain } from "@rtc/domain";
+import type { JarvisLiveBrain } from "@rtc/domain";
 
 import type { Caller } from "#/services/serviceContainer.js";
 import {
@@ -10,7 +10,12 @@ import {
 
 import type { JarvisBudgetConfig } from "./jarvisBudgetConfig.js";
 import type { JarvisTier } from "./jarvisTier.js";
-import type { SpendOwner, SpendStore, SpendTotals } from "./SpendStore.js";
+import type {
+  KeyKind,
+  SpendOwner,
+  SpendStore,
+  SpendTotals,
+} from "./SpendStore.js";
 import { nextUtcMidnightMs, utcDayOf } from "./utcDay.js";
 
 /** Why house turns are off: the caller's own daily limit, the house-wide
@@ -47,16 +52,23 @@ export interface BudgetState {
  *    reported no usage. Both are safe to call with nothing reserved.
  */
 export interface TurnMeter {
-  beginRequest(
-    brain: Exclude<JarvisHouseBrain, "scripted">,
-    ceiling: JarvisTokenUsage,
-  ): void;
-  record(
-    brain: Exclude<JarvisHouseBrain, "scripted">,
-    usage: JarvisTokenUsage,
-  ): void;
+  beginRequest(brain: JarvisLiveBrain, ceiling: JarvisTokenUsage): void;
+  record(brain: JarvisLiveBrain, usage: JarvisTokenUsage): void;
   endRequest(): void;
   exhausted(): boolean;
+}
+
+/** The caller's spend on a key they brought, against the cap they set. */
+export interface OwnBudgetState {
+  /** The caller's own-key spend today, USD. */
+  readonly spentUsd: number;
+  /** The cap the caller set; null for "no limit". */
+  readonly limitUsd: number | null;
+  /** `"user"`: the cap is spent. `"unavailable"`: a cap is set and the
+   * spend store cannot be read or written (fail closed). With no limit a
+   * turn runs regardless. */
+  readonly exhausted: "user" | "unavailable" | null;
+  readonly resetsAtMs: number;
 }
 
 export interface HouseSpendToday {
@@ -76,8 +88,22 @@ interface StoreReply {
   readonly seq: number;
 }
 
-/** One owner's house-key spend for the copy's day. */
+/** One owner's spend on one kind of key. Every per-owner map below is keyed
+ * by `key`, so an owner's house turns and own-key turns never share a copy,
+ * a store queue or a reservation. */
+interface Slot {
+  readonly owner: SpendOwner;
+  readonly keyKind: KeyKind;
+  readonly key: string;
+}
+
+function slotOf(owner: SpendOwner, keyKind: KeyKind): Slot {
+  return { owner, keyKind, key: `${keyKind}:${owner}` };
+}
+
+/** One slot's spend for the copy's day. */
 interface OwnerCopy {
+  readonly slot: Slot;
   /** The store's latest answer for the owner's day total. */
   confirmedUsd: number;
   /** Booked here, not yet answered by the store. Counting it at once is what
@@ -92,7 +118,7 @@ interface OwnerCopy {
 }
 
 /**
- * Per-person daily Jarvis spend on the house key (spec §3), over a durable
+ * Per-person daily Jarvis spend (spec §3), over a durable
  * `SpendStore` so a restart never resets a budget.
  *
  * Reads go to the store once per owner per day — at `stateFor`, which every
@@ -106,6 +132,11 @@ interface OwnerCopy {
  * is exhausted with that reason until a later read succeeds. A write that
  * failed is not lost: its amount stays counted on top of the store's figure
  * and is written again once the store answers again.
+ *
+ * Spend on a key the person brought is tracked the same way, in its own slot
+ * per owner (copy, store queue, reservations), and never counts toward the
+ * house total. A cap on it fails closed like the house key; with no limit
+ * the turn runs regardless and its spend is recorded best effort.
  */
 export class JarvisBudgetService {
   readonly changes$: Observable<void>;
@@ -121,7 +152,7 @@ export class JarvisBudgetService {
   /** The UTC day every copy below belongs to. */
   private copyDay: string;
 
-  private readonly owners = new Map<SpendOwner, OwnerCopy>();
+  private readonly owners = new Map<string, OwnerCopy>();
 
   /** The house total only ever rises within a day, so the highest answer
    * wins: two owners' writes can come back out of order. */
@@ -136,7 +167,7 @@ export class JarvisBudgetService {
   /** In-flight requests' worst-case cost, per owner and house-wide. Not part
    * of the day's copy: a request in flight across midnight still holds its
    * reservation until it is booked or released. */
-  private readonly ownerReservedUsd = new Map<SpendOwner, number>();
+  private readonly ownerReservedUsd = new Map<string, number>();
 
   private houseReservedUsd = 0;
 
@@ -149,7 +180,7 @@ export class JarvisBudgetService {
 
   private latestFailedCallSeq = 0;
 
-  private readonly ownerQueues = new Map<SpendOwner, Promise<void>>();
+  private readonly ownerQueues = new Map<string, Promise<void>>();
 
   private midnightTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -166,16 +197,32 @@ export class JarvisBudgetService {
    * for today yet, or while the store is failing, so a recovered store
    * lifts the fail-closed state. */
   stateFor(caller: Caller, tier: JarvisTier): Promise<BudgetState> {
-    const owner = spendOwnerOf(caller);
+    const slot = slotOf(spendOwnerOf(caller), "house");
 
-    return this.enqueueStoreCall(owner, async (): Promise<BudgetState> => {
+    return this.enqueueStoreCall(slot, async (): Promise<BudgetState> => {
       const day = this.rollCopyToToday();
 
-      if (!this.storeAvailable || !this.copyFor(owner).loaded) {
-        await this.loadOwnerCopy(owner, day);
+      if (!this.storeAvailable || !this.copyFor(slot).loaded) {
+        await this.loadOwnerCopy(slot, day);
       }
 
-      return this.stateOf(owner, tier);
+      return this.stateOf(slot, tier);
+    });
+  }
+
+  /** The caller's own-key budget now, against the cap they set (null: no
+   * limit). Loads the own-key copy like `stateFor` loads the house one. */
+  ownStateFor(caller: Caller, capUsd: number | null): Promise<OwnBudgetState> {
+    const slot = slotOf(spendOwnerOf(caller), "own");
+
+    return this.enqueueStoreCall(slot, async (): Promise<OwnBudgetState> => {
+      const day = this.rollCopyToToday();
+
+      if (!this.storeAvailable || !this.copyFor(slot).loaded) {
+        await this.loadOwnerCopy(slot, day);
+      }
+
+      return this.ownStateOf(slot, capUsd);
     });
   }
 
@@ -183,20 +230,20 @@ export class JarvisBudgetService {
    * caller today, so the copy is loaded; before that the copy counts the
    * owner's spend as zero. */
   meterFor(caller: Caller, tier: JarvisTier): TurnMeter {
-    const owner = spendOwnerOf(caller);
+    const slot = slotOf(spendOwnerOf(caller), "house");
     // This meter's open reservation; 0 when none.
     let reservedUsd = 0;
 
     const releaseReservation = (): void => {
       if (reservedUsd > 0) {
-        this.adjustReservation(owner, -reservedUsd);
+        this.adjustReservation(slot, -reservedUsd);
         reservedUsd = 0;
       }
     };
 
     return {
       beginRequest: (
-        brain: Exclude<JarvisHouseBrain, "scripted">,
+        brain: JarvisLiveBrain,
         ceiling: JarvisTokenUsage,
       ): void => {
         releaseReservation();
@@ -207,24 +254,21 @@ export class JarvisBudgetService {
         // positive amount would loosen the check, so it is not taken.
         if (Number.isFinite(usd) && usd > 0) {
           reservedUsd = usd;
-          this.adjustReservation(owner, usd);
+          this.adjustReservation(slot, usd);
         }
       },
-      record: (
-        brain: Exclude<JarvisHouseBrain, "scripted">,
-        usage: JarvisTokenUsage,
-      ): void => {
+      record: (brain: JarvisLiveBrain, usage: JarvisTokenUsage): void => {
         releaseReservation();
-        this.recordSpend(owner, brain, usage);
+        this.recordSpend(slot, brain, usage);
       },
       endRequest: releaseReservation,
       exhausted: (): boolean => {
         this.rollCopyToToday();
 
-        const copy = this.copyFor(owner);
+        const copy = this.copyFor(slot);
         const limitUsd = tier === "member" ? this.config.userDailyUsd : null;
         const othersOfOwnerUsd =
-          (this.ownerReservedUsd.get(owner) ?? 0) - reservedUsd;
+          (this.ownerReservedUsd.get(slot.key) ?? 0) - reservedUsd;
         const othersOfHouseUsd = this.houseReservedUsd - reservedUsd;
 
         return (
@@ -232,6 +276,57 @@ export class JarvisBudgetService {
             roundUsd(ownerSpentUsd(copy) + othersOfOwnerUsd),
             limitUsd,
             roundUsd(this.houseSpentUsd() + othersOfHouseUsd),
+          ) !== null
+        );
+      },
+    };
+  }
+
+  /** A meter for one own-key turn, under the caller's cap (null: no limit).
+   * Same precondition as `meterFor`: `ownStateFor` was awaited today.
+   * Reservations are the owner's own-key ones alone; nothing here touches
+   * the house total or its reservations, and `forceExhausted` does not
+   * apply. */
+  ownMeterFor(caller: Caller, capUsd: number | null): TurnMeter {
+    const slot = slotOf(spendOwnerOf(caller), "own");
+    let reservedUsd = 0;
+
+    const releaseReservation = (): void => {
+      if (reservedUsd > 0) {
+        this.adjustReservation(slot, -reservedUsd);
+        reservedUsd = 0;
+      }
+    };
+
+    return {
+      beginRequest: (
+        brain: JarvisLiveBrain,
+        ceiling: JarvisTokenUsage,
+      ): void => {
+        releaseReservation();
+
+        const usd = estimateUsageCostUsd(brain, ceiling);
+
+        if (Number.isFinite(usd) && usd > 0) {
+          reservedUsd = usd;
+          this.adjustReservation(slot, usd);
+        }
+      },
+      record: (brain: JarvisLiveBrain, usage: JarvisTokenUsage): void => {
+        releaseReservation();
+        this.recordSpend(slot, brain, usage);
+      },
+      endRequest: releaseReservation,
+      exhausted: (): boolean => {
+        this.rollCopyToToday();
+
+        const othersUsd =
+          (this.ownerReservedUsd.get(slot.key) ?? 0) - reservedUsd;
+
+        return (
+          this.ownExhaustionOf(
+            roundUsd(ownerSpentUsd(this.copyFor(slot)) + othersUsd),
+            capUsd,
           ) !== null
         );
       },
@@ -253,8 +348,35 @@ export class JarvisBudgetService {
     this.changes.complete();
   }
 
-  private stateOf(owner: SpendOwner, tier: JarvisTier): BudgetState {
-    const copy = this.copyFor(owner);
+  private ownStateOf(slot: Slot, capUsd: number | null): OwnBudgetState {
+    const spentUsd = roundUsd(ownerSpentUsd(this.copyFor(slot)));
+
+    return {
+      spentUsd,
+      limitUsd: capUsd,
+      exhausted: this.ownExhaustionOf(spentUsd, capUsd),
+      resetsAtMs: nextUtcMidnightMs(this.now()),
+    };
+  }
+
+  private ownExhaustionOf(
+    spentUsd: number,
+    capUsd: number | null,
+  ): "user" | "unavailable" | null {
+    // No limit: the turn runs whatever the store says (D15).
+    if (capUsd === null) {
+      return null;
+    }
+
+    if (!this.storeAvailable) {
+      return "unavailable";
+    }
+
+    return spentUsd >= capUsd ? "user" : null;
+  }
+
+  private stateOf(slot: Slot, tier: JarvisTier): BudgetState {
+    const copy = this.copyFor(slot);
     const spentUsd = roundUsd(ownerSpentUsd(copy));
     const limitUsd = tier === "member" ? this.config.userDailyUsd : null;
     const houseSpentUsd = this.houseSpentUsd();
@@ -295,17 +417,23 @@ export class JarvisBudgetService {
     return null;
   }
 
-  private adjustReservation(owner: SpendOwner, usd: number): void {
-    const ownerUsd = roundUsd((this.ownerReservedUsd.get(owner) ?? 0) + usd);
+  private adjustReservation(slot: Slot, usd: number): void {
+    const ownerUsd = roundUsd((this.ownerReservedUsd.get(slot.key) ?? 0) + usd);
 
     // The last release drops the entry, so the map holds in-flight owners only.
     if (ownerUsd > 0) {
-      this.ownerReservedUsd.set(owner, ownerUsd);
+      this.ownerReservedUsd.set(slot.key, ownerUsd);
     } else {
-      this.ownerReservedUsd.delete(owner);
+      this.ownerReservedUsd.delete(slot.key);
     }
 
-    this.houseReservedUsd = Math.max(0, roundUsd(this.houseReservedUsd + usd));
+    // Own-key reservations never count against the house cap.
+    if (slot.keyKind === "house") {
+      this.houseReservedUsd = Math.max(
+        0,
+        roundUsd(this.houseReservedUsd + usd),
+      );
+    }
   }
 
   private houseSpentUsd(): number {
@@ -315,8 +443,8 @@ export class JarvisBudgetService {
   }
 
   private recordSpend(
-    owner: SpendOwner,
-    brain: Exclude<JarvisHouseBrain, "scripted">,
+    slot: Slot,
+    brain: JarvisLiveBrain,
     usage: JarvisTokenUsage,
   ): void {
     const usd = estimateUsageCostUsd(brain, usage);
@@ -333,42 +461,49 @@ export class JarvisBudgetService {
 
     const day = this.rollCopyToToday();
 
-    this.copyFor(owner).pendingUsd += usd;
-    this.housePendingUsd += usd;
+    this.copyFor(slot).pendingUsd += usd;
+
+    if (slot.keyKind === "house") {
+      this.housePendingUsd += usd;
+    }
+
     this.changes.next();
 
-    void this.enqueueStoreCall(owner, () => {
-      return this.writeHouseSpend(owner, day, usd);
+    void this.enqueueStoreCall(slot, () => {
+      return this.writeSpend(slot, day, usd);
     });
   }
 
-  private async writeHouseSpend(
-    owner: SpendOwner,
+  private async writeSpend(
+    slot: Slot,
     day: string,
     usd: number,
   ): Promise<void> {
     const { answer, seq } = await this.callStore(() => {
-      return this.store.record(owner, day, "house", usd);
+      return this.store.record(slot.owner, day, slot.keyKind, usd);
     });
 
     // Midnight dropped the copy this amount was booked in; today's copy
     // never counted it. (A stale `copyDay` here is harmless: every reader
     // rolls the copy before reading it.)
     if (day === this.copyDay) {
-      const copy = this.copyFor(owner);
+      const copy = this.copyFor(slot);
 
       copy.pendingUsd -= usd;
-      this.housePendingUsd -= usd;
+
+      if (slot.keyKind === "house") {
+        this.housePendingUsd -= usd;
+      }
 
       if (answer === "unavailable") {
         // Spent all the same: keep counting it, apart from the store's
         // figure, until a write of it lands.
         copy.unrecordedUsd += usd;
-        this.houseUnrecordedUsd += usd;
+
+        if (slot.keyKind === "house") {
+          this.houseUnrecordedUsd += usd;
+        }
       } else {
-        // Only a house-key answer may set the house copy: for own-key spend
-        // `record_jarvis_spend` answers house_usd 0. This service records
-        // house-key spend only.
         this.applyTotals(copy, answer);
       }
     }
@@ -380,18 +515,20 @@ export class JarvisBudgetService {
    * each in its owner's queue like any write. Called when the store answers
    * again after failing; a retry that fails waits for the next recovery. */
   private retryUnrecordedSpend(): void {
-    for (const [owner, copy] of this.owners) {
+    for (const copy of this.owners.values()) {
       if (copy.unrecordedUsd > 0) {
-        void this.enqueueStoreCall(owner, () => {
-          return this.rewriteUnrecordedSpend(owner);
+        const { slot } = copy;
+
+        void this.enqueueStoreCall(slot, () => {
+          return this.rewriteUnrecordedSpend(slot);
         });
       }
     }
   }
 
-  private async rewriteUnrecordedSpend(owner: SpendOwner): Promise<void> {
+  private async rewriteUnrecordedSpend(slot: Slot): Promise<void> {
     const day = this.rollCopyToToday();
-    const copy = this.copyFor(owner);
+    const copy = this.copyFor(slot);
     // Read when the write starts, not when it was queued: the owner's calls
     // run one at a time, so an earlier retry (a store that flapped) has
     // landed by now, and what it moved into the store is not sent twice.
@@ -402,7 +539,7 @@ export class JarvisBudgetService {
     }
 
     const { answer, seq } = await this.callStore(() => {
-      return this.store.record(owner, day, "house", usd);
+      return this.store.record(slot.owner, day, slot.keyKind, usd);
     });
 
     // A success that answers after midnight is not applied: midnight dropped
@@ -410,22 +547,26 @@ export class JarvisBudgetService {
     if (answer !== "unavailable" && day === this.rollCopyToToday()) {
       // The store's totals now include it: it moves from here into them.
       copy.unrecordedUsd = roundUsd(copy.unrecordedUsd - usd);
-      this.houseUnrecordedUsd = roundUsd(this.houseUnrecordedUsd - usd);
+
+      if (slot.keyKind === "house") {
+        this.houseUnrecordedUsd = roundUsd(this.houseUnrecordedUsd - usd);
+      }
+
       this.applyTotals(copy, answer);
     }
 
     this.noteStoreAnswer(answer, seq);
   }
 
-  private async loadOwnerCopy(owner: SpendOwner, day: string): Promise<void> {
+  private async loadOwnerCopy(slot: Slot, day: string): Promise<void> {
     const { answer, seq } = await this.callStore(() => {
-      return this.store.read(owner, day, "house");
+      return this.store.read(slot.owner, day, slot.keyKind);
     });
 
     // Rolled again after the wait, so a read of yesterday that answers after
     // midnight, before the timer's callback, never fills today's copy.
     if (answer !== "unavailable" && day === this.rollCopyToToday()) {
-      this.applyTotals(this.copyFor(owner), answer);
+      this.applyTotals(this.copyFor(slot), answer);
     }
 
     this.noteStoreAnswer(answer, seq);
@@ -434,7 +575,15 @@ export class JarvisBudgetService {
   private applyTotals(copy: OwnerCopy, totals: SpendTotals): void {
     copy.confirmedUsd = totals.ownerUsd;
     copy.loaded = true;
-    this.houseConfirmedUsd = Math.max(this.houseConfirmedUsd, totals.houseUsd);
+
+    // Only a house-key answer may set the house copy: for own-key spend
+    // `record_jarvis_spend` answers house_usd 0.
+    if (copy.slot.keyKind === "house") {
+      this.houseConfirmedUsd = Math.max(
+        this.houseConfirmedUsd,
+        totals.houseUsd,
+      );
+    }
   }
 
   /** A store that throws is treated as one that answered `"unavailable"`:
@@ -483,38 +632,36 @@ export class JarvisBudgetService {
   }
 
   /** Runs the call after every earlier store call for the owner settles. */
-  private enqueueStoreCall<T>(
-    owner: SpendOwner,
-    call: () => Promise<T>,
-  ): Promise<T> {
-    const previous = this.ownerQueues.get(owner) ?? Promise.resolve();
+  private enqueueStoreCall<T>(slot: Slot, call: () => Promise<T>): Promise<T> {
+    const previous = this.ownerQueues.get(slot.key) ?? Promise.resolve();
     const result = previous.then(call);
     // The queue waits on the call settling either way, never on its value.
     const tail = result.then(settleQuietly, settleQuietly);
 
-    this.ownerQueues.set(owner, tail);
+    this.ownerQueues.set(slot.key, tail);
     void tail.then(() => {
       // The last call out drops the queue, so an owner seen once a day does
       // not keep an entry for the life of the server.
-      if (this.ownerQueues.get(owner) === tail) {
-        this.ownerQueues.delete(owner);
+      if (this.ownerQueues.get(slot.key) === tail) {
+        this.ownerQueues.delete(slot.key);
       }
     });
 
     return result;
   }
 
-  private copyFor(owner: SpendOwner): OwnerCopy {
-    let copy = this.owners.get(owner);
+  private copyFor(slot: Slot): OwnerCopy {
+    let copy = this.owners.get(slot.key);
 
     if (copy === undefined) {
       copy = {
+        slot,
         confirmedUsd: 0,
         pendingUsd: 0,
         unrecordedUsd: 0,
         loaded: false,
       };
-      this.owners.set(owner, copy);
+      this.owners.set(slot.key, copy);
     }
 
     return copy;
