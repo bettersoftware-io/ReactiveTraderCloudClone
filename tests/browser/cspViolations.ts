@@ -3,7 +3,7 @@ import type { BrowserContext, ConsoleMessage } from "@playwright/test";
 /** True when a console line is the browser reporting a Content-Security-Policy
  *  block ("Refused to load the script ... violates the following Content
  *  Security Policy directive ..."). */
-export function isCspViolation(text: string): boolean {
+function isCspViolation(text: string): boolean {
   return /Content.Security.Policy/i.test(text);
 }
 
