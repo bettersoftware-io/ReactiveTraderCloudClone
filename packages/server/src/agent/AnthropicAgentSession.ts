@@ -288,6 +288,26 @@ function toolNameOrder(
  * credit, forbidden. A 429 is not one of them: the key may be fine. */
 const KEY_REFUSAL_STATUSES: ReadonlySet<number> = new Set([401, 402, 403]);
 
+/** Anthropic's answer to a key with no credit, as far as anyone recalls: a 400
+ * `invalid_request_error` saying the credit balance is too low. To be
+ * confirmed by the real-key run (B3c Task 14). */
+const OUT_OF_CREDIT_TEXT = /credit balance/i;
+
+/** Whether a provider's error means it will not serve this key (D13). The
+ * message is read for this one test and goes nowhere else. */
+function isKeyRefusal(error: unknown): boolean {
+  if (!hasNumericStatus(error)) {
+    return false;
+  }
+
+  return (
+    KEY_REFUSAL_STATUSES.has(error.status) ||
+    (error.status === 400 &&
+      error instanceof Error &&
+      OUT_OF_CREDIT_TEXT.test(error.message))
+  );
+}
+
 /** Whether the tool runner follows this reply with another request: it runs
  * the tools a `tool_use` asked for and sends their results, and it resumes a
  * `pause_turn` once the paused content is pushed back. */
@@ -737,7 +757,12 @@ export class AnthropicAgentSession implements AgentSession {
   private requestConfirmation(details: JarvisConfirmDetails): Promise<boolean> {
     const push = this.currentPush;
 
-    if (!push) {
+    // A cancelled turn is answered no at once. A tool's work before its gate
+    // (a trade's quote takes a second) does not hear the abort, so it can
+    // land here after `cancelTurn` released every pending confirmation: a
+    // resolver registered now would never settle, and the turn, its
+    // reservation and the connection's queue behind it would wait for ever.
+    if (!push || this.currentAbort?.signal.aborted) {
       // No turn is currently open to receive this confirmRequest.
       // Registering a resolver here anyway would leak a Promise nothing can
       // ever settle: `resolveConfirmation` and `releasePendingConfirmations`
@@ -1092,11 +1117,7 @@ export class AnthropicAgentSession implements AgentSession {
       // On a person's own key the provider's refusal is theirs to act on
       // (D13): the turn says so, and the key reads refused from here on. It
       // never falls back to another key.
-      if (
-        options?.keyFailure !== undefined &&
-        hasNumericStatus(error) &&
-        KEY_REFUSAL_STATUSES.has(error.status)
-      ) {
+      if (options?.keyFailure !== undefined && isKeyRefusal(error)) {
         push({
           type: "error",
           message: describeRefusedKey(options.keyFailure.providerName),

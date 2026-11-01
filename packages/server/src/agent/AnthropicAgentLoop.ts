@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import Anthropic, { type ClientOptions } from "@anthropic-ai/sdk";
 import type { BetaToolRunnerRequestOptions } from "@anthropic-ai/sdk/lib/tools/BetaToolRunner";
 
 import type { ConfirmGate, JarvisToolDefinition } from "@rtc/agent-tools";
@@ -22,8 +22,49 @@ function buildDefaultRunnerFactory(client: Anthropic): AnthropicRunnerFactory {
   return runnerFactory;
 }
 
+/** The only host a person's key is sent to (spec §5.1). */
+const OWN_KEY_BASE_URL = "https://api.anthropic.com";
+
+/** The SDK reads `ANTHROPIC_CUSTOM_HEADERS` itself, with no option to turn it
+ * off, and lets `defaultHeaders` override what it read. A null removes a
+ * header, so this names each of them, split the way the SDK splits them. */
+function clearedEnvHeaders(env: NodeJS.ProcessEnv): Record<string, null> {
+  const cleared: Record<string, null> = {};
+
+  for (const line of (env.ANTHROPIC_CUSTOM_HEADERS ?? "").split("\n")) {
+    const colon = line.indexOf(":");
+
+    if (colon >= 0) {
+      cleared[line.slice(0, colon).trim()] = null;
+    }
+  }
+
+  return cleared;
+}
+
+/** A client that answers to the person's key and nothing in the process
+ * environment: the house deployment's bearer token, gateway host and custom
+ * headers stay off it, a redirect cannot carry the key elsewhere, and the
+ * SDK's own request logging stays off however `ANTHROPIC_LOG` is set. */
+function ownKeyClientOptions(
+  apiKey: string,
+  env: NodeJS.ProcessEnv,
+): ClientOptions {
+  return {
+    apiKey,
+    authToken: null,
+    baseURL: OWN_KEY_BASE_URL,
+    defaultHeaders: clearedEnvHeaders(env),
+    fetchOptions: { redirect: "error" },
+    logLevel: "off",
+  };
+}
+
 export interface AnthropicAgentLoopOptions {
   readonly apiKey: string;
+  /** The key is a person's own, not the deployment's: see
+   * `ownKeyClientOptions`. */
+  readonly ownKey?: boolean;
   /**
    * Builds ONE session's `JarvisToolDefinition` set, given THAT session's own
    * `confirmTrade` gate. A flat, loop-level `JarvisToolDefinition[]` can't
@@ -86,7 +127,13 @@ export class AnthropicAgentLoop implements AgentLoop {
     this.knownSymbols = options.knownSymbols;
     this.runnerFactory =
       options.runnerFactory ??
-      buildDefaultRunnerFactory(new Anthropic({ apiKey: options.apiKey }));
+      buildDefaultRunnerFactory(
+        new Anthropic(
+          options.ownKey
+            ? ownKeyClientOptions(options.apiKey, process.env)
+            : { apiKey: options.apiKey },
+        ),
+      );
   }
 
   createSession(): AgentSession {

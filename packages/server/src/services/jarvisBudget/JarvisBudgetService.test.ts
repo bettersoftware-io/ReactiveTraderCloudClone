@@ -670,6 +670,27 @@ describe("JarvisBudgetService", () => {
   });
 
   describe("own-key spend", () => {
+    it("a meter reads the cap each time it is asked, so a lowered cap counts at once", async () => {
+      const service = createService(createInMemorySpendStore());
+      let capUsd: number | null = 1;
+      const meter = service.ownMeterFor(MEMBER, (): number | null => {
+        return capUsd;
+      });
+
+      await service.ownStateFor(MEMBER, 1);
+      meter.record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+
+      expect(meter.exhausted()).toBe(false);
+
+      capUsd = 0.05;
+
+      expect(meter.exhausted()).toBe(true);
+
+      capUsd = null;
+
+      expect(meter.exhausted()).toBe(false);
+    });
+
     it("own spend does not count toward the house total or the person's house budget", async () => {
       const store = createInMemorySpendStore();
       const service = createService(store);
@@ -677,7 +698,7 @@ describe("JarvisBudgetService", () => {
       await service.stateFor(MEMBER, "member");
       await service.ownStateFor(MEMBER, null);
       service
-        .ownMeterFor(MEMBER, null)
+        .ownMeterFor(MEMBER, capOf(null))
         .record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
       await service.ownStateFor(MEMBER, null);
 
@@ -703,7 +724,7 @@ describe("JarvisBudgetService", () => {
       await service.stateFor(MEMBER, "member");
       await service.ownStateFor(MEMBER, null);
       service
-        .ownMeterFor(MEMBER, null)
+        .ownMeterFor(MEMBER, capOf(null))
         .record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
       await service.ownStateFor(MEMBER, null);
 
@@ -715,8 +736,8 @@ describe("JarvisBudgetService", () => {
 
       await service.ownStateFor(MEMBER, 1);
 
-      const first = service.ownMeterFor(MEMBER, 1);
-      const second = service.ownMeterFor(MEMBER, 1);
+      const first = service.ownMeterFor(MEMBER, capOf(1));
+      const second = service.ownMeterFor(MEMBER, capOf(1));
 
       // 0.1 on Haiku, ten times: exactly 1.
       for (let i = 0; i < 9; i += 1) {
@@ -758,7 +779,7 @@ describe("JarvisBudgetService", () => {
       const houseMeter = service.meterFor(OPERATOR, "operator");
 
       service
-        .ownMeterFor(MEMBER, null)
+        .ownMeterFor(MEMBER, capOf(null))
         .beginRequest("own:anthropic:claude-sonnet-5", SONNET_CEILING);
 
       expect(houseMeter.exhausted()).toBe(false);
@@ -770,7 +791,7 @@ describe("JarvisBudgetService", () => {
 
       await service.ownStateFor(MEMBER, null);
 
-      const meter = service.ownMeterFor(MEMBER, null);
+      const meter = service.ownMeterFor(MEMBER, capOf(null));
 
       for (let i = 0; i < 20; i += 1) {
         meter.record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
@@ -797,7 +818,7 @@ describe("JarvisBudgetService", () => {
       });
 
       expect((await service.ownStateFor(MEMBER, 1)).exhausted).toBeNull();
-      expect(service.ownMeterFor(MEMBER, 1).exhausted()).toBe(false);
+      expect(service.ownMeterFor(MEMBER, capOf(1)).exhausted()).toBe(false);
     });
 
     it('with a cap, a failing store reads as exhausted "unavailable"; with no limit it does not', async () => {
@@ -809,11 +830,11 @@ describe("JarvisBudgetService", () => {
       expect(await service.ownStateFor(MEMBER, 1)).toMatchObject({
         exhausted: "unavailable",
       });
-      expect(service.ownMeterFor(MEMBER, 1).exhausted()).toBe(true);
+      expect(service.ownMeterFor(MEMBER, capOf(1)).exhausted()).toBe(true);
       expect(await service.ownStateFor(MEMBER, null)).toMatchObject({
         exhausted: null,
       });
-      expect(service.ownMeterFor(MEMBER, null).exhausted()).toBe(false);
+      expect(service.ownMeterFor(MEMBER, capOf(null)).exhausted()).toBe(false);
     });
 
     it("an own write the store refused is counted and sent again once it answers", async () => {
@@ -823,7 +844,7 @@ describe("JarvisBudgetService", () => {
       await service.ownStateFor(MEMBER, null);
       switchable.setDown(true);
       service
-        .ownMeterFor(MEMBER, null)
+        .ownMeterFor(MEMBER, capOf(null))
         .record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
       await settle();
 
@@ -845,7 +866,7 @@ describe("JarvisBudgetService", () => {
 
       await service.ownStateFor(MEMBER, 0.1);
       service
-        .ownMeterFor(MEMBER, 0.1)
+        .ownMeterFor(MEMBER, capOf(0.1))
         .record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
 
       expect((await service.ownStateFor(MEMBER, 0.1)).exhausted).toBe("user");
@@ -880,7 +901,7 @@ describe("JarvisBudgetService", () => {
       await loaded;
 
       service
-        .ownMeterFor(MEMBER, null)
+        .ownMeterFor(MEMBER, capOf(null))
         .record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
 
       expect(service.houseToday().spentUsd).toBe(0);
@@ -897,7 +918,7 @@ describe("JarvisBudgetService", () => {
       await service.ownStateFor(MEMBER, null);
       switchable.setDown(true);
       service
-        .ownMeterFor(MEMBER, null)
+        .ownMeterFor(MEMBER, capOf(null))
         .record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
       await settle();
 
@@ -919,7 +940,7 @@ describe("JarvisBudgetService", () => {
       await service.ownStateFor(MEMBER, 0.05);
 
       const houseMeter = service.meterFor(MEMBER, "member");
-      const ownMeter = service.ownMeterFor(MEMBER, 0.05);
+      const ownMeter = service.ownMeterFor(MEMBER, capOf(0.05));
 
       // A Sonnet worst case ($0.07096) is over either $0.05 budget.
       ownMeter.beginRequest("own:anthropic:claude-sonnet-5", SONNET_CEILING);
@@ -941,7 +962,7 @@ describe("JarvisBudgetService", () => {
       await loaded;
 
       service
-        .ownMeterFor(MEMBER, null)
+        .ownMeterFor(MEMBER, capOf(null))
         .record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
 
       const houseState = service.stateFor(MEMBER, "member");
@@ -1278,6 +1299,13 @@ function createManualStore(
 }
 
 /** Lets queued promise work run without moving the fake clock. */
+/** A cap that never moves. */
+function capOf(usd: number | null): () => number | null {
+  return (): number | null => {
+    return usd;
+  };
+}
+
 async function settle(): Promise<void> {
   await vi.advanceTimersByTimeAsync(0);
 }

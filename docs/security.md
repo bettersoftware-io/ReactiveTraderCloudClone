@@ -279,6 +279,21 @@ all (merged as #1100; not yet deployed). Spec:
 [`2026-10-25-b3-ai-metering-byo-keys-design.md`](superpowers/specs/2026-10-25-b3-ai-metering-byo-keys-design.md)
 section 5.2.
 
+**Spend is per person; the limit and the key are per socket.** The day's own-key
+spend is one figure for the person, but each connection holds its own key and
+its own cap, so tabs do not see each other:
+
+- the most generous tab governs: the person's spend stops only at the cap each
+  tab set for itself;
+- a cap change in one tab does not reach another;
+- two tabs can hold two different keys;
+- Remove in one tab leaves the key live in the other;
+- a sign-out in one tab leaves another tab's socket holding its key until that
+  socket closes.
+
+**There is no server ping.** A half-open socket, one whose client vanished
+without a close, holds the key in memory until TCP gives up on it.
+
 ## 4. Risks and what tackles them
 
 | Risk | Today | Residual, and who closes it |

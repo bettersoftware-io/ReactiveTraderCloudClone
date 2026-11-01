@@ -17,6 +17,7 @@ import {
   vi,
 } from "vitest";
 
+import type { ConfirmGate } from "@rtc/agent-tools";
 import {
   DEFAULT_JARVIS_BRAIN,
   Direction,
@@ -41,6 +42,11 @@ import {
 } from "@rtc/shared";
 
 import { AnthropicAgentLoop } from "../agent/AnthropicAgentLoop.js";
+import type {
+  AnthropicFinalMessage,
+  AnthropicMessageStream,
+  AnthropicRunner,
+} from "../agent/AnthropicAgentSession.js";
 import {
   type AgentLoop,
   type AgentSession,
@@ -2482,7 +2488,41 @@ describe("a person's own key", () => {
       messages$.next(chatFrame(OWN_SONNET));
       await settleBudgetReads();
 
-      expect(ownMeterFor).toHaveBeenCalledExactlyOnceWith(MEMBER, 2.5);
+      expect(ownMeterFor).toHaveBeenCalledTimes(1);
+      expect(ownMeterFor.mock.calls[0]?.[0]).toBe(MEMBER);
+      expect(ownMeterFor.mock.calls[0]?.[1]()).toBe(2.5);
+    });
+
+    it("lowering the cap mid-turn stops the turn before its next request", async () => {
+      answerFetchWith(200);
+      const firstReply = holdReply();
+      const nextRequest = vi.fn();
+      const { messages$, sent } = ownKeyHarness({
+        ownLoop: anthropicRunnerLoop(
+          async function* streamTwoRequests(): AsyncGenerator<AnthropicMessageStream> {
+            yield createFakeOwnStream(
+              "tool_use",
+              firstReply.held,
+              COSTLY_INPUT_TOKENS,
+            );
+            nextRequest();
+            yield createFakeOwnStream("end_turn");
+          },
+        ),
+      });
+
+      messages$.next(keyFrame(OWN_KEY, 1));
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_SONNET));
+      await settleBudgetReads();
+      messages$.next(keyFrame(OWN_KEY, CAP_BELOW_ONE_REQUEST));
+      firstReply.release();
+      await settleBudgetReads();
+
+      expect(nextRequest).not.toHaveBeenCalled();
+      expect(reassembleDeltas(sent)).toContain(
+        "Today's AI budget is used — switching to the scripted brain.",
+      );
     });
 
     it("a narrator turn on an own brain runs on it and counts against the cap; on a house brain it stays scripted", async () => {
@@ -2671,6 +2711,77 @@ describe("a person's own key", () => {
 
       expect(ownSpy.sessions[0]?.cancelTurn).toHaveBeenCalledTimes(1);
       expect(ownSpy.sessions[0]?.dispose).toHaveBeenCalledTimes(1);
+    });
+
+    describe("a trade whose confirmation comes after the turn was cancelled", () => {
+      it("the socket closing leaves no reservation behind", async () => {
+        answerFetchWith(200);
+        const services = createBudgetServices();
+        const { messages$, closed$ } = ownKeyHarness({
+          services,
+          ownLoop: tradingLoop(),
+        });
+
+        await startOwnTrade(messages$);
+
+        expect(isOwnSpendHeld(services)).toBe(true);
+
+        closed$.next();
+        await vi.advanceTimersByTimeAsync(TRADE_QUOTE_DELAY_MS);
+
+        expect(isOwnSpendHeld(services)).toBe(false);
+      });
+
+      it("clearing the key ends the turn, with no reservation behind", async () => {
+        answerFetchWith(200);
+        const services = createBudgetServices();
+        const { messages$, sent } = ownKeyHarness({
+          services,
+          ownLoop: tradingLoop(),
+        });
+
+        await startOwnTrade(messages$);
+        messages$.next(CLEAR_KEY_FRAME);
+        await vi.advanceTimersByTimeAsync(TRADE_QUOTE_DELAY_MS);
+
+        expect(errorMessagesOf(sent)).toEqual(["Cancelled, sir."]);
+        expect(isOwnSpendHeld(services)).toBe(false);
+      });
+
+      it("a later turn on the same socket still runs", async () => {
+        answerFetchWith(200);
+        const { messages$, sent, scriptedSpy } = ownKeyHarness({
+          ownLoop: tradingLoop(),
+        });
+
+        await startOwnTrade(messages$);
+        messages$.next(CLEAR_KEY_FRAME);
+        messages$.next(chatFrame("scripted"));
+        await vi.advanceTimersByTimeAsync(TRADE_QUOTE_DELAY_MS);
+
+        expect(scriptedSpy.sessions[0]?.runTurn).toHaveBeenCalledTimes(1);
+        expect(brainFramesOf(sent).at(-1)?.payload).toMatchObject({
+          brain: "scripted",
+        });
+      });
+
+      it("a cancel while the quote is on its way answers the gate with no", async () => {
+        answerFetchWith(200);
+        const approved = vi.fn();
+        const { messages$, sent } = ownKeyHarness({
+          ownLoop: tradingLoop(approved),
+        });
+
+        await startOwnTrade(messages$);
+        messages$.next({
+          type: CLIENT_MSG.JARVIS_CANCEL,
+          payload: { turnId: STUB_TURN_ID } satisfies JarvisCancelPayload,
+        });
+        await vi.advanceTimersByTimeAsync(TRADE_QUOTE_DELAY_MS);
+
+        expect(approved).toHaveBeenCalledExactlyOnceWith(false);
+        expect(findConfirmRequests(sent)).toEqual([]);
+      });
     });
 
     it("jarvis.confirm and jarvis.cancel reach the own session", async () => {
@@ -3606,6 +3717,136 @@ function providerError(status: number, message: string): Error {
   }
 
   return new APIError(message);
+}
+
+/** What `reference data` takes before `execute_trade` reaches its gate. */
+const TRADE_QUOTE_DELAY_MS = 1_000;
+
+/** The worst case of one Sonnet request is about $0.07; a reservation of it
+ * alone exhausts this cap. */
+const CAP_BELOW_ONE_REQUEST = 0.05;
+
+function findConfirmRequests(sent: readonly Outbound[]): Outbound[] {
+  return sent.filter((frame) => {
+    return frame.type === SERVER_MSG.JARVIS_CONFIRM_REQUEST;
+  });
+}
+
+/** Whether an own request is still reserved for the member. */
+function isOwnSpendHeld(services: ServiceContainer): boolean {
+  return services.jarvisBudget
+    .ownMeterFor(MEMBER, (): number => {
+      return CAP_BELOW_ONE_REQUEST;
+    })
+    .exhausted();
+}
+
+async function startOwnTrade(messages$: Subject<Inbound>): Promise<void> {
+  messages$.next(keyFrame(OWN_KEY, null));
+  await settleBudgetReads();
+  messages$.next(chatFrame(OWN_SONNET));
+  await settleBudgetReads();
+}
+
+/** On Sonnet, about $0.10: past `CAP_BELOW_ONE_REQUEST`. */
+const COSTLY_INPUT_TOKENS = 50_000;
+
+interface HeldReply {
+  readonly held: Promise<void>;
+  release(): void;
+}
+
+/** A reply the provider has not finished until the test says so. */
+function holdReply(): HeldReply {
+  const releases: (() => void)[] = [];
+  const held = new Promise<void>((resolve) => {
+    releases.push(resolve);
+  });
+
+  return {
+    held,
+    release: (): void => {
+      releases[0]?.();
+    },
+  };
+}
+
+/** One request's stream: nothing streamed, ending in `stopReason`, optionally
+ * held open until `held` settles. Free unless it reports `inputTokens`. */
+function createFakeOwnStream(
+  stopReason: string,
+  held: Promise<void> = Promise.resolve(),
+  inputTokens = 0,
+): AnthropicMessageStream {
+  return {
+    async *[Symbol.asyncIterator](): AsyncGenerator<never> {},
+    finalMessage: async (): Promise<AnthropicFinalMessage> => {
+      await held;
+
+      return {
+        stop_reason: stopReason,
+        content: [],
+        usage: { input_tokens: inputTokens, output_tokens: 0 },
+      };
+    },
+  };
+}
+
+/** A real own-key loop whose runner is the given iteration of requests. */
+function anthropicRunnerLoop(
+  requests: () => AsyncGenerator<AnthropicMessageStream>,
+  onConfirmGate?: (confirmTrade: ConfirmGate) => void,
+): AgentLoop {
+  return new AnthropicAgentLoop({
+    apiKey: OWN_KEY,
+    knownSymbols: [],
+    buildTools: (confirmTrade: ConfirmGate) => {
+      onConfirmGate?.(confirmTrade);
+
+      return [];
+    },
+    runnerFactory: (): AnthropicRunner => {
+      return {
+        [Symbol.asyncIterator]: requests,
+        pushMessages: (): void => {},
+      };
+    },
+  });
+}
+
+/**
+ * A turn the way a real trade runs: the model asks for `execute_trade`, the
+ * runner runs the tool, and the tool waits for its quote before it reaches
+ * the confirm gate. Neither the tool nor that wait knows of the turn's abort
+ * signal, so a cancel lands while nothing is pending at the gate, and the
+ * gate is reached afterwards. The runner stops only because the gate answered
+ * and its next request would go out on an aborted signal, which rejects.
+ */
+function tradingLoop(onGateAnswer?: (approved: boolean) => void): AgentLoop {
+  let confirmTrade: ConfirmGate | undefined;
+
+  return anthropicRunnerLoop(
+    async function* streamTradeRequest(): AsyncGenerator<AnthropicMessageStream> {
+      yield createFakeOwnStream("tool_use");
+      await new Promise((resolve) => {
+        setTimeout(resolve, TRADE_QUOTE_DELAY_MS);
+      });
+
+      const approved = await confirmTrade?.({
+        symbol: "EURUSD",
+        direction: Direction.Buy,
+        notional: 1_000_000,
+        quotedPrice: 1.1,
+        ratePrecision: 5,
+      });
+
+      onGateAnswer?.(approved ?? false);
+      throw new Error("the request went out on an aborted signal");
+    },
+    (gate: ConfirmGate): void => {
+      confirmTrade = gate;
+    },
+  );
 }
 
 /** A real own-key loop whose runner is the test's. */

@@ -1,3 +1,5 @@
+import { inspect } from "node:util";
+
 import type {
   BetaMessageParam,
   BetaRawMessageStreamEvent,
@@ -515,7 +517,123 @@ describe("AnthropicAgentLoop", () => {
     },
   );
 
-  it("a 429 on an own key stays the sanitized copy and refuses nothing", async () => {
+  it("a 400 saying the credit balance is too low refuses the key, and its text reaches no log or frame", async () => {
+    const refused = vi.fn();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: failingRunner(
+        400,
+        "invalid_request_error: Your Credit Balance is too low MARKER-1",
+      ),
+    });
+
+    const events = await runTurnCollecting(
+      loop.createSession(),
+      "hi",
+      [],
+      undefined,
+      {
+        brain: "own:anthropic:claude-haiku-4-5",
+        keyFailure: { providerName: "Anthropic", refused },
+      },
+    );
+
+    expect(events).toEqual([
+      { type: "error", message: "Anthropic refused your key." },
+    ]);
+    expect(refused).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(events)).not.toContain("MARKER-1");
+    expect(inspect(error.mock.calls)).not.toContain("MARKER-1");
+    error.mockRestore();
+  });
+
+  it("the same words on a 500 refuse nothing: only a 400 is read", async () => {
+    const refused = vi.fn();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: failingRunner(500, "credit balance service down"),
+    });
+
+    await runTurnCollecting(loop.createSession(), "hi", [], undefined, {
+      brain: "own:anthropic:claude-haiku-4-5",
+      keyFailure: { providerName: "Anthropic", refused },
+    });
+
+    expect(refused).not.toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  it("any other 400 on an own key stays the sanitized copy", async () => {
+    const refused = vi.fn();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: failingRunner(400, "invalid_request_error: bad messages"),
+    });
+
+    const events = await runTurnCollecting(
+      loop.createSession(),
+      "hi",
+      [],
+      undefined,
+      {
+        brain: "own:anthropic:claude-haiku-4-5",
+        keyFailure: { providerName: "Anthropic", refused },
+      },
+    );
+
+    expect(events).toEqual([
+      { type: "error", message: DESK_LINK_FALTERED_MESSAGE },
+    ]);
+    expect(refused).not.toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  it("a low-credit 400 on the house key is no key failure", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+      runnerFactory: failingRunner(400, "Your credit balance is too low"),
+    });
+
+    const events = await runTurnCollecting(loop.createSession(), "hi");
+
+    expect(events).toEqual([
+      { type: "error", message: DESK_LINK_FALTERED_MESSAGE },
+    ]);
+    error.mockRestore();
+  });
+
+  it("an own key's client ignores the environment: fixed host, no bearer token, no custom headers, no redirects", async () => {
+    const seen = await captureFirstRequest(true);
+
+    expect(new URL(seen.url).origin).toBe("https://api.anthropic.com");
+    expect(seen.headers.get("x-api-key")).toBe("sk-own");
+    expect(seen.headers.get("authorization")).toBeNull();
+    expect(seen.headers.get("x-house-tenant")).toBeNull();
+    expect(seen.headers.get("x-house-other")).toBeNull();
+    expect(seen.redirect).toBe("error");
+  });
+
+  it("the house client still takes the environment's settings", async () => {
+    const seen = await captureFirstRequest(false);
+
+    expect(new URL(seen.url).origin).toBe("https://gateway.example.test");
+    expect(seen.headers.get("x-house-tenant")).toBe("acme");
+    expect(seen.redirect).toBeUndefined();
+  });
+
+  it("(f) breaching the per-session turn cap short-circuits with no runnerFactory invocation", async () => {
     const refused = vi.fn();
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const loop = new AnthropicAgentLoop({
@@ -2495,6 +2613,67 @@ function throwingRunner(): AnthropicRunnerFactory {
   return () => {
     throw new Error("network exploded — must never reach the client");
   };
+}
+
+interface SeenRequest {
+  readonly url: string;
+  readonly headers: Headers;
+  readonly redirect: RequestInit["redirect"];
+}
+
+/** Runs one turn through a real SDK client, with the environment a house
+ * deployment might have set, and answers the first request with a 401. */
+async function captureFirstRequest(ownKey: boolean): Promise<SeenRequest> {
+  const seen: SeenRequest[] = [];
+
+  vi.stubEnv("ANTHROPIC_AUTH_TOKEN", "house-bearer");
+  vi.stubEnv("ANTHROPIC_BASE_URL", "https://gateway.example.test");
+  vi.stubEnv(
+    "ANTHROPIC_CUSTOM_HEADERS",
+    "X-House-Tenant: acme\nX-House-Other: two",
+  );
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>((input, init) => {
+      seen.push({
+        url: input instanceof Request ? input.url : String(input),
+        headers: new Headers(init?.headers),
+        redirect: init?.redirect,
+      });
+
+      return Promise.resolve(
+        new Response("{}", {
+          status: 401,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    }),
+  );
+
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  try {
+    const loop = new AnthropicAgentLoop({
+      apiKey: "sk-own",
+      ownKey,
+      knownSymbols: [],
+      buildTools: createToolsFixture(),
+    });
+
+    await runTurnCollecting(loop.createSession(), "hi");
+
+    const first = seen[0];
+
+    if (first === undefined) {
+      throw new Error("expected a request");
+    }
+
+    return first;
+  } finally {
+    error.mockRestore();
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  }
 }
 
 /** A runner that fails like the SDK does on an HTTP error status. */

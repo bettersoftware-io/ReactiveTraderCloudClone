@@ -135,10 +135,12 @@ function buildJarvisToolsFor(
  * (`jarvis.effects.ts`). */
 function buildAnthropicLoopOn(
   apiKey: string,
+  ownKey: boolean,
   services: ServiceContainer,
 ): AgentLoop {
   return new AnthropicAgentLoop({
     apiKey,
+    ownKey,
     buildTools: (confirmTrade: ConfirmGate) => {
       return buildJarvisToolsFor(services, confirmTrade);
     },
@@ -164,7 +166,7 @@ function buildAnthropicLoop(
   env: NodeJS.ProcessEnv,
   services: ServiceContainer,
 ): AgentLoop {
-  return buildAnthropicLoopOn(env.ANTHROPIC_API_KEY ?? "", services);
+  return buildAnthropicLoopOn(env.ANTHROPIC_API_KEY ?? "", false, services);
 }
 
 const auth = new AuthService({
@@ -245,7 +247,7 @@ const jarvisLoops = createJarvisLoops(
 function buildOwnKeyLoop(_provider: JarvisProvider, key: string): AgentLoop {
   return jarvisFake
     ? new ScriptedAgentLoop(services)
-    : buildAnthropicLoopOn(key, services);
+    : buildAnthropicLoopOn(key, true, services);
 }
 
 // One merged effect for the process; a listener is built PER CONNECTION

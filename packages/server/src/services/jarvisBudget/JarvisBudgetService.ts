@@ -249,11 +249,12 @@ export class JarvisBudgetService {
   }
 
   /** A meter for one own-key turn, under the caller's cap (null: no limit).
-   * Same precondition as `meterFor`: `ownStateFor` was awaited today.
-   * Reservations are the owner's own-key ones alone; nothing here touches
-   * the house total or its reservations, and `forceExhausted` does not
-   * apply. */
-  ownMeterFor(caller: Caller, capUsd: number | null): TurnMeter {
+   * `readCapUsd` is asked before every request, so a cap lowered mid-turn
+   * stops the turn at its next one. Same precondition as `meterFor`:
+   * `ownStateFor` was awaited today. Reservations are the owner's own-key
+   * ones alone; nothing here touches the house total or its reservations,
+   * and `forceExhausted` does not apply. */
+  ownMeterFor(caller: Caller, readCapUsd: () => number | null): TurnMeter {
     const slot = slotOf(spendOwnerOf(caller), "own");
 
     return this.meterOver(slot, (reservedUsd: number): boolean => {
@@ -263,7 +264,7 @@ export class JarvisBudgetService {
       return (
         this.ownExhaustionOf(
           roundUsd(ownerSpentUsd(this.copyFor(slot)) + othersUsd),
-          capUsd,
+          readCapUsd(),
         ) !== null
       );
     });

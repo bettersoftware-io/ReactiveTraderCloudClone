@@ -139,9 +139,66 @@ describe("OwnKeyCheckLimiter", () => {
 
     expect(limiter.allow("ada")).toBe(true);
   });
+
+  it("a refunded check does not count against the caller", () => {
+    const limiter = new OwnKeyCheckLimiter();
+
+    for (let i = 0; i < 20; i++) {
+      limiter.allow("ada");
+    }
+
+    limiter.refund("ada");
+
+    expect(limiter.allow("ada")).toBe(true);
+    expect(limiter.allow("ada")).toBe(false);
+  });
 });
 
 describe("ConnectionOwnKey", () => {
+  it("an accepted check costs the caller nothing: 30 in a row stay allowed", async () => {
+    const limiter = new OwnKeyCheckLimiter();
+    const { own } = build(fakeVerifyOwnKey, limiter);
+
+    for (let i = 0; i < 30; i++) {
+      own.apply(setOf(`fake-good-${String(i)}`));
+      await own.settled();
+
+      expect(own.view()?.status).toBe("accepted");
+    }
+  });
+
+  it("a refused check stays charged: the 21st is limited, so guessing stays bounded", async () => {
+    const limiter = new OwnKeyCheckLimiter();
+    const { own } = build(fakeVerifyOwnKey, limiter);
+
+    for (let i = 0; i < 20; i++) {
+      own.apply(setOf(`wrong-${String(i)}`));
+      await own.settled();
+
+      expect(own.view()?.status).toBe("refused");
+    }
+
+    own.apply(setOf("wrong-20"));
+    await own.settled();
+
+    expect(own.view()?.status).toBe("limited");
+  });
+
+  it("an accepted answer that arrives too late refunds nothing: a superseded check stays charged", async () => {
+    const { verify, calls } = deferredVerify(false);
+    const limiter = new OwnKeyCheckLimiter();
+    const refund = vi.spyOn(limiter, "refund");
+    const { own } = build(verify, limiter);
+
+    own.apply(setOf("old-key"));
+    own.apply(setOf("new-key"));
+    calls[0]?.resolve("accepted");
+    calls[1]?.resolve("refused");
+    await own.settled();
+
+    expect(refund).not.toHaveBeenCalled();
+  });
+
   it("accepts after the provider says so, and use() hands out the key", async () => {
     const { verify, calls } = deferredVerify();
     const { own } = build(verify);
@@ -468,10 +525,12 @@ function setOf(key: string, capUsd: number | null = 5): JarvisKeyPayload {
   } as const;
 }
 
-function build(verify: VerifyOwnKey): Built {
-  const limiter = new OwnKeyCheckLimiter(() => {
+function build(
+  verify: VerifyOwnKey,
+  limiter: OwnKeyCheckLimiter = new OwnKeyCheckLimiter(() => {
     return Date.now();
-  });
+  }),
+): Built {
   const own = new ConnectionOwnKey({ verify, limiter, identity: "ada" });
 
   return { own, limiter };

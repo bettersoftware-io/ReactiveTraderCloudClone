@@ -185,7 +185,8 @@ export const REVOCATION_LEDGER_MAX_ENTRIES = 10_000;
 /** B3c — provider checks of a person's own model key, per caller per window.
  * Each check is a real call to the provider with the person's key, so a
  * client looping on `jarvis.key` must not turn the server into a prober.
- * Counted per caller across reconnects, in memory (a restart resets it). */
+ * Counted per caller across reconnects, in memory (a restart resets it). A
+ * check the provider accepts is refunded, so only failed ones count. */
 export const JARVIS_KEY_CHECKS_PER_HOUR = 20;
 export const JARVIS_KEY_CHECK_WINDOW_MS = 60 * 60 * 1000;
 

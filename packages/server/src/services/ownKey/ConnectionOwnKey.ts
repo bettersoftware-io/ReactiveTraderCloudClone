@@ -188,6 +188,11 @@ export class ConnectionOwnKey {
 
         this.#controller = null;
         this.#status = verdict;
+
+        if (verdict === "accepted") {
+          this.#deps.limiter.refund(this.#deps.identity);
+        }
+
         this.#changes.next();
       });
 

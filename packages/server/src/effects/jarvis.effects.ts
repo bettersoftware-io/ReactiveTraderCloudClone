@@ -809,7 +809,7 @@ export function jarvisEffects(
      * no usage meter, and a failure reports to the session's sink. */
     function runOwnTurn(
       brain: JarvisOwnBrain,
-      capUsd: number | null,
+      readCapUsd: () => number | null,
       caller: Caller,
       session: OwnSession,
       payload: JarvisChatPayload,
@@ -819,7 +819,7 @@ export function jarvisEffects(
         session.session.runTurn(payload.text, payload.history ?? [], {
           brain,
           effort: payload.effort,
-          meter: ctx.jarvisBudget.ownMeterFor(caller, capUsd),
+          meter: ctx.jarvisBudget.ownMeterFor(caller, readCapUsd),
           keyFailure: session.keyFailure,
         }),
       );
@@ -864,9 +864,19 @@ export function jarvisEffects(
               ? getOwnSession(connectionKey)
               : null;
 
+          const lastCapUsd = view.capUsd;
+
+          // The live cap, so a change mid-turn counts from the next request.
+          // Key gone: the session is being retired, so the last cap stands.
+          function readCapUsd(): number | null {
+            const current = connectionKey.view();
+
+            return current === null ? lastCapUsd : current.capUsd;
+          }
+
           return session === null
             ? runTurnFor("scripted", parsed, undefined)
-            : runOwnTurn(model.brain, view.capUsd, caller, session, parsed);
+            : runOwnTurn(model.brain, readCapUsd, caller, session, parsed);
         }),
         // Inside the key's own path, ahead of `jarvisChat$`'s catch, which
         // logs the whole error: here it may be the provider's, and its
