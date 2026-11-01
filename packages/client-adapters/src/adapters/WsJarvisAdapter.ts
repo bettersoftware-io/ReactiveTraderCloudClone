@@ -27,6 +27,8 @@ import {
   type JarvisBudgetView,
   type JarvisEvent,
   type JarvisHistoryEntry,
+  type JarvisOwnKeySetting,
+  type JarvisOwnKeyView,
 } from "@rtc/domain";
 import {
   CLIENT_MSG,
@@ -34,6 +36,7 @@ import {
   type JarvisCancelPayload,
   type JarvisChatPayload,
   type JarvisConfirmPayload,
+  type JarvisKeyPayload,
   parseDriveBatch,
   parsePanelSpec,
   SERVER_MSG,
@@ -449,7 +452,9 @@ function parseBudget(budget: unknown): JarvisBudgetView | null {
   const candidate = budget as BudgetCandidate;
   const { spentUsd, limitUsd, exhausted, resetsAtMs } = candidate;
 
-  if (candidate.keyKind !== "house") {
+  const { keyKind } = candidate;
+
+  if (keyKind !== "house" && keyKind !== "own") {
     return null;
   }
 
@@ -466,11 +471,62 @@ function parseBudget(budget: unknown): JarvisBudgetView | null {
   }
 
   return {
-    keyKind: "house",
+    keyKind,
     spentUsd,
     limitUsd,
     exhausted: exhausted as JarvisBudgetView["exhausted"],
     resetsAtMs,
+  };
+}
+
+const OWN_KEY_PROVIDERS: readonly unknown[] = [
+  "anthropic",
+  "openrouter",
+  "openai",
+];
+
+const OWN_KEY_STATUSES: readonly unknown[] = [
+  "checking",
+  "accepted",
+  "refused",
+  "unreachable",
+  "limited",
+];
+
+/** The not-yet-validated shape `parseOwnKey` checks field by field. */
+interface OwnKeyCandidate {
+  provider?: unknown;
+  status?: unknown;
+  capUsd?: unknown;
+}
+
+/** Validates an unknown `ownKey` field off `JARVIS_AVAILABILITY` into a
+ * `JarvisOwnKeyView`, or `null` on ANY shape mismatch (the same silent-drop
+ * rule as `parseBudget`). Copies the three known fields only, so a stray
+ * `key` field on the wire could never be carried into the app. */
+function parseOwnKey(ownKey: unknown): JarvisOwnKeyView | null {
+  if (typeof ownKey !== "object" || ownKey === null) {
+    return null;
+  }
+
+  const { provider, status, capUsd } = ownKey as OwnKeyCandidate;
+
+  if (!OWN_KEY_PROVIDERS.includes(provider)) {
+    return null;
+  }
+
+  if (!OWN_KEY_STATUSES.includes(status)) {
+    return null;
+  }
+
+  if (capUsd !== null && typeof capUsd !== "number") {
+    return null;
+  }
+
+  return {
+    provider: provider as JarvisOwnKeyView["provider"],
+    status: status as JarvisOwnKeyView["status"],
+    capUsd,
   };
 }
 
@@ -493,10 +549,8 @@ function parseAvailability(
     defaultBrain: payload.defaultBrain ?? DEFAULT_JARVIS_BRAIN,
     gate: parseGate(payload.gate),
     budget: parseBudget(payload.budget),
-    // Parsed from the payload's `ownBudget` / `ownKey` by the adapter task
-    // (B3c Task 8); until then no own-key state reaches the app.
-    ownBudget: null,
-    ownKey: null,
+    ownBudget: parseBudget(payload.ownBudget),
+    ownKey: parseOwnKey(payload.ownKey),
     // A live server is never the in-browser demo.
     demo: false,
   };
@@ -544,6 +598,20 @@ function jarvisBudgetEquals(
   );
 }
 
+/** Field-wise equality for one `JarvisOwnKeyView | null` pair. */
+function jarvisOwnKeyEquals(
+  a: JarvisOwnKeyView | null,
+  b: JarvisOwnKeyView | null,
+): boolean {
+  if (a === null || b === null) {
+    return a === b;
+  }
+
+  return (
+    a.provider === b.provider && a.status === b.status && a.capUsd === b.capUsd
+  );
+}
+
 /** Structural equality for `JarvisAvailability` — `distinctUntilChanged`'s
  * default `===` never matches two freshly-parsed objects, even when their
  * contents are identical (every `JARVIS_AVAILABILITY` push builds a new
@@ -564,7 +632,9 @@ function jarvisAvailabilityEquals(
     }) &&
     a.demo === b.demo &&
     jarvisAvailabilityGateEquals(a.gate, b.gate) &&
-    jarvisBudgetEquals(a.budget, b.budget)
+    jarvisBudgetEquals(a.budget, b.budget) &&
+    jarvisBudgetEquals(a.ownBudget, b.ownBudget) &&
+    jarvisOwnKeyEquals(a.ownKey, b.ownKey)
   );
 }
 
@@ -582,6 +652,7 @@ function jarvisAvailabilityEquals(
  * caller unsubscribes. */
 function createConnectionAvailabilityStream(
   ws: IWsAdapter,
+  sendRememberedKey: () => void,
 ): Observable<JarvisAvailability> {
   return new Observable<JarvisAvailability>((subscriber) => {
     let answered = false;
@@ -596,6 +667,10 @@ function createConnectionAvailabilityStream(
       clearTimeout(timer);
       subscriber.next(parseAvailability(payload as JarvisAvailabilityPayload));
     });
+    // The key goes first so the availability reply already reflects it. It
+    // goes through `sendIfOpen`, which never queues: a key frame must not sit
+    // in the send queue, and this connect has already opened the socket.
+    sendRememberedKey();
     ws.send(CLIENT_MSG.JARVIS_SUBSCRIBE);
 
     return (): void => {
@@ -622,7 +697,33 @@ export class WsJarvisAdapter implements JarvisPort {
     return [];
   };
 
+  /** The person's own key as last handed to `setOwnKey`, re-sent on every
+   * connect: the server keeps it per connection, so a new socket starts
+   * without it. Memory only; it is never queued, logged or persisted here. */
+  private ownKey: JarvisOwnKeySetting | null = null;
+
   constructor(private readonly ws: IWsAdapter) {}
+
+  /** Remembers the key (or its removal) and sends it if the socket is open.
+   * A closed socket drops the frame instead of queueing it; the next connect
+   * sends the remembered key. */
+  setOwnKey(setting: JarvisOwnKeySetting | null): void {
+    this.ownKey = setting;
+    this.sendOwnKey();
+  }
+
+  private sendOwnKey(): void {
+    const payload: JarvisKeyPayload =
+      this.ownKey === null
+        ? { action: "clear" }
+        : {
+            action: "set",
+            provider: this.ownKey.provider,
+            key: this.ownKey.key,
+            capUsd: this.ownKey.capUsd,
+          };
+    this.ws.sendIfOpen(CLIENT_MSG.JARVIS_KEY, payload);
+  }
 
   /** Injects the live history snapshot source. See the field doc above for
    * why this is a setter rather than a constructor parameter. */
@@ -682,7 +783,11 @@ export class WsJarvisAdapter implements JarvisPort {
         return event.type === "gatewayConnected";
       }),
       switchMap(() => {
-        return createConnectionAvailabilityStream(this.ws);
+        return createConnectionAvailabilityStream(this.ws, () => {
+          if (this.ownKey !== null) {
+            this.sendOwnKey();
+          }
+        });
       }),
       distinctUntilChanged(jarvisAvailabilityEquals),
     );

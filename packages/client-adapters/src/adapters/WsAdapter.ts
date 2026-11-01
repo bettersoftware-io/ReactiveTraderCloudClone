@@ -338,6 +338,22 @@ export class WsAdapter implements IWsAdapter {
     }
   }
 
+  sendIfOpen(type: string, payload?: unknown): boolean {
+    const socket = this.ws;
+
+    if (
+      this.disposed ||
+      socket === null ||
+      socket.readyState !== WebSocket.OPEN
+    ) {
+      return false;
+    }
+
+    const msg: WsMessage = { type, payload };
+    socket.send(JSON.stringify(msg));
+    return true;
+  }
+
   private flushSendQueue(): void {
     if (this.ws?.readyState !== WebSocket.OPEN) {
       return;

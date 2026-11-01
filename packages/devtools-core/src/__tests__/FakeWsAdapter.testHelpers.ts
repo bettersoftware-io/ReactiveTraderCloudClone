@@ -26,6 +26,11 @@ export class FakeWsAdapter implements WsAdapterLike {
     this.sent.push({ type, payload });
   }
 
+  sendIfOpen(type: string, payload?: unknown): boolean {
+    this.sent.push({ type, payload });
+    return true;
+  }
+
   rpc(type: string, payload?: unknown): Promise<unknown> {
     return Promise.resolve({ type, payload, ok: true });
   }

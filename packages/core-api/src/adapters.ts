@@ -192,6 +192,11 @@ export type MessageHandler = (payload: unknown) => void;
 export interface IWsAdapter {
   on(type: string, handler: MessageHandler): () => void;
   send(type: string, payload?: unknown): void;
+  /** Sends only when the socket is open right now, and reports whether it
+   * did. Unlike `send`, a closed socket does not queue the frame: for a
+   * frame that must never sit in a buffer (a person's own key), where the
+   * caller re-sends on its own after the next connect. */
+  sendIfOpen(type: string, payload?: unknown): boolean;
   rpc(type: string, payload?: unknown): Promise<unknown>;
   /**
    * Observable of gateway lifecycle events.

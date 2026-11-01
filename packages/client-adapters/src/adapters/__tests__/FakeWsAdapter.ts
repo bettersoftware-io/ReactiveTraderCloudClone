@@ -34,6 +34,8 @@ export class FakeWsAdapter implements IWsAdapter {
 
   private readonly sessionEnded$ = new Subject<void>();
 
+  private open = true;
+
   private _idleClosed = false;
 
   private _disposed = false;
@@ -52,6 +54,17 @@ export class FakeWsAdapter implements IWsAdapter {
 
   send(type: string, payload?: unknown): void {
     this.sent.push({ type, payload });
+  }
+
+  /** Mirrors `WsAdapter.sendIfOpen`: nothing is recorded, and `false` is
+   * returned, while `setOpen(false)` has the socket closed. */
+  sendIfOpen(type: string, payload?: unknown): boolean {
+    if (!this.open) {
+      return false;
+    }
+
+    this.sent.push({ type, payload });
+    return true;
   }
 
   rpc(type: string, payload?: unknown): Promise<unknown> {
@@ -115,6 +128,11 @@ export class FakeWsAdapter implements IWsAdapter {
   }
 
   // ── Test-only API ─────────────────────────────────────────
+
+  /** Whether `sendIfOpen` finds the socket open (default: yes). */
+  setOpen(open: boolean): void {
+    this.open = open;
+  }
 
   /** Drive a fake server frame to all subscribers of `type`. Snapshots the
    * listener set before iterating — mirrors `WsAdapter`'s dispatch loop, so

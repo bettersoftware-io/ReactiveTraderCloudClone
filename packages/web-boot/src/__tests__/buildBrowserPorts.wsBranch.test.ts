@@ -7,6 +7,7 @@ import {
   nextConnectionStatus,
 } from "@rtc/domain";
 
+import { BrowserOwnKeyStore } from "#/adapters/BrowserOwnKeyStore";
 import { LocalStoragePreferencesAdapter } from "#/adapters/LocalStoragePreferencesAdapter";
 import { LocalStorageSessionStore } from "#/adapters/LocalStorageSessionStore";
 import { buildBrowserPorts } from "#/buildBrowserPorts";
@@ -230,6 +231,42 @@ describe("buildBrowserPorts dev-auth parsing (simulator branch)", () => {
 
     expect(loginOutcome(raw).ok).toBe(true);
   });
+});
+
+describe("buildBrowserPorts (own key)", () => {
+  it("the live branch supplies a BrowserOwnKeyStore; the simulator branch none", () => {
+    expect(
+      buildBrowserPorts(createPortsOptions({ serverUrl: WS_URL })).ownKeyStore,
+    ).toBeInstanceOf(BrowserOwnKeyStore);
+    expect(buildBrowserPorts(createPortsOptions()).ownKeyStore).toBeUndefined();
+  });
+
+  it("the hub sees a redacted jarvis.key frame, and the socket sees the real one", () => {
+    const options = createPortsOptions({ serverUrl: WS_URL });
+    const wireOut = vi.spyOn(options.devtoolsHub, "wireOut");
+    const socket = vi.spyOn(WsAdapter.prototype, "sendIfOpen");
+    const ports = buildBrowserPorts(options);
+
+    ports.jarvis.setOwnKey?.({
+      provider: "anthropic",
+      key: "sk-ant-SECRET",
+      capUsd: 3,
+    });
+
+    expect(socket).toHaveBeenCalledWith("jarvis.key", {
+      action: "set",
+      provider: "anthropic",
+      key: "sk-ant-SECRET",
+      capUsd: 3,
+    });
+    expect(wireOut).toHaveBeenCalledWith("jarvis.key", {
+      action: "set",
+      redacted: true,
+    });
+    expect(JSON.stringify(wireOut.mock.calls)).not.toContain("SECRET");
+  });
+
+  const WS_URL = "ws://localhost:4000";
 });
 
 interface LoginProbe {
