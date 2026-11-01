@@ -765,7 +765,8 @@ describe("JarvisBudgetService", () => {
     });
 
     it("no limit is never exhausted, and spend is still recorded", async () => {
-      const service = createService(createInMemorySpendStore());
+      const store = createInMemorySpendStore();
+      const service = createService(store);
 
       await service.ownStateFor(MEMBER, null);
 
@@ -781,6 +782,12 @@ describe("JarvisBudgetService", () => {
         limitUsd: null,
         exhausted: null,
         resetsAtMs: NEXT_MIDNIGHT,
+      });
+      // The store holds it too: the figure above could be the in-process
+      // copy alone.
+      expect(await store.read("account:a", TODAY, "own")).toEqual({
+        ownerUsd: 2,
+        houseUsd: 0,
       });
     });
 
@@ -862,6 +869,95 @@ describe("JarvisBudgetService", () => {
 
       expect(state.spentUsd).toBe(0.4);
       expect(state.exhausted).toBe("user");
+    });
+
+    it("an own request in flight is not house spend, before or after the store answers", async () => {
+      const store = createDelayedStore([]);
+      const service = createService(store);
+      const loaded = service.ownStateFor(MEMBER, null);
+
+      await vi.advanceTimersByTimeAsync(STORE_DELAY_MS);
+      await loaded;
+
+      service
+        .ownMeterFor(MEMBER, null)
+        .record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+
+      expect(service.houseToday().spentUsd).toBe(0);
+
+      await vi.advanceTimersByTimeAsync(STORE_DELAY_MS);
+
+      expect(service.houseToday().spentUsd).toBe(0);
+    });
+
+    it("an own write the store refused is not house spend, nor is its resend", async () => {
+      const switchable = createSwitchableStore();
+      const service = createService(switchable.store);
+
+      await service.ownStateFor(MEMBER, null);
+      switchable.setDown(true);
+      service
+        .ownMeterFor(MEMBER, null)
+        .record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      await settle();
+
+      expect(service.houseToday().spentUsd).toBe(0);
+
+      switchable.setDown(false);
+      await service.ownStateFor(MEMBER, null);
+      await settle();
+
+      expect(service.houseToday().spentUsd).toBe(0);
+    });
+
+    it("one person's own request in flight does not count against their house budget, nor the reverse", async () => {
+      const service = createService(createInMemorySpendStore(), {
+        userDailyUsd: 0.05,
+      });
+
+      await service.stateFor(MEMBER, "member");
+      await service.ownStateFor(MEMBER, 0.05);
+
+      const houseMeter = service.meterFor(MEMBER, "member");
+      const ownMeter = service.ownMeterFor(MEMBER, 0.05);
+
+      // A Sonnet worst case ($0.07096) is over either $0.05 budget.
+      ownMeter.beginRequest("own:anthropic:claude-sonnet-5", SONNET_CEILING);
+
+      expect(houseMeter.exhausted()).toBe(false);
+
+      ownMeter.endRequest();
+      houseMeter.beginRequest("claude-sonnet-5", SONNET_CEILING);
+
+      expect(ownMeter.exhausted()).toBe(false);
+    });
+
+    it("a slow own write does not hold up the same person's house calls", async () => {
+      const calls: string[] = [];
+      const service = createService(createDelayedStore(calls));
+      const loaded = service.ownStateFor(MEMBER, null);
+
+      await vi.advanceTimersByTimeAsync(STORE_DELAY_MS);
+      await loaded;
+
+      service
+        .ownMeterFor(MEMBER, null)
+        .record("own:anthropic:claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+
+      const houseState = service.stateFor(MEMBER, "member");
+
+      await vi.advanceTimersByTimeAsync(0);
+
+      // The house read started while the own write was still out.
+      expect(calls).toEqual([
+        "read start",
+        "read end",
+        "record start",
+        "read start",
+      ]);
+
+      await vi.advanceTimersByTimeAsync(STORE_DELAY_MS);
+      await houseState;
     });
 
     it("keeps the house and own copies of one person apart", async () => {

@@ -231,6 +231,51 @@ export class JarvisBudgetService {
    * owner's spend as zero. */
   meterFor(caller: Caller, tier: JarvisTier): TurnMeter {
     const slot = slotOf(spendOwnerOf(caller), "house");
+
+    return this.meterOver(slot, (reservedUsd: number): boolean => {
+      const limitUsd = tier === "member" ? this.config.userDailyUsd : null;
+      const othersOfOwnerUsd =
+        (this.ownerReservedUsd.get(slot.key) ?? 0) - reservedUsd;
+      const othersOfHouseUsd = this.houseReservedUsd - reservedUsd;
+
+      return (
+        this.exhaustionOf(
+          roundUsd(ownerSpentUsd(this.copyFor(slot)) + othersOfOwnerUsd),
+          limitUsd,
+          roundUsd(this.houseSpentUsd() + othersOfHouseUsd),
+        ) !== null
+      );
+    });
+  }
+
+  /** A meter for one own-key turn, under the caller's cap (null: no limit).
+   * Same precondition as `meterFor`: `ownStateFor` was awaited today.
+   * Reservations are the owner's own-key ones alone; nothing here touches
+   * the house total or its reservations, and `forceExhausted` does not
+   * apply. */
+  ownMeterFor(caller: Caller, capUsd: number | null): TurnMeter {
+    const slot = slotOf(spendOwnerOf(caller), "own");
+
+    return this.meterOver(slot, (reservedUsd: number): boolean => {
+      const othersUsd =
+        (this.ownerReservedUsd.get(slot.key) ?? 0) - reservedUsd;
+
+      return (
+        this.ownExhaustionOf(
+          roundUsd(ownerSpentUsd(this.copyFor(slot)) + othersUsd),
+          capUsd,
+        ) !== null
+      );
+    });
+  }
+
+  /** The reserve / book / release lifecycle every meter shares, over one
+   * slot. `isExhausted` gets this meter's own open reservation, which it
+   * must leave out of what it counts against the caller. */
+  private meterOver(
+    slot: Slot,
+    isExhausted: (reservedUsd: number) => boolean,
+  ): TurnMeter {
     // This meter's open reservation; 0 when none.
     let reservedUsd = 0;
 
@@ -265,70 +310,7 @@ export class JarvisBudgetService {
       exhausted: (): boolean => {
         this.rollCopyToToday();
 
-        const copy = this.copyFor(slot);
-        const limitUsd = tier === "member" ? this.config.userDailyUsd : null;
-        const othersOfOwnerUsd =
-          (this.ownerReservedUsd.get(slot.key) ?? 0) - reservedUsd;
-        const othersOfHouseUsd = this.houseReservedUsd - reservedUsd;
-
-        return (
-          this.exhaustionOf(
-            roundUsd(ownerSpentUsd(copy) + othersOfOwnerUsd),
-            limitUsd,
-            roundUsd(this.houseSpentUsd() + othersOfHouseUsd),
-          ) !== null
-        );
-      },
-    };
-  }
-
-  /** A meter for one own-key turn, under the caller's cap (null: no limit).
-   * Same precondition as `meterFor`: `ownStateFor` was awaited today.
-   * Reservations are the owner's own-key ones alone; nothing here touches
-   * the house total or its reservations, and `forceExhausted` does not
-   * apply. */
-  ownMeterFor(caller: Caller, capUsd: number | null): TurnMeter {
-    const slot = slotOf(spendOwnerOf(caller), "own");
-    let reservedUsd = 0;
-
-    const releaseReservation = (): void => {
-      if (reservedUsd > 0) {
-        this.adjustReservation(slot, -reservedUsd);
-        reservedUsd = 0;
-      }
-    };
-
-    return {
-      beginRequest: (
-        brain: JarvisLiveBrain,
-        ceiling: JarvisTokenUsage,
-      ): void => {
-        releaseReservation();
-
-        const usd = estimateUsageCostUsd(brain, ceiling);
-
-        if (Number.isFinite(usd) && usd > 0) {
-          reservedUsd = usd;
-          this.adjustReservation(slot, usd);
-        }
-      },
-      record: (brain: JarvisLiveBrain, usage: JarvisTokenUsage): void => {
-        releaseReservation();
-        this.recordSpend(slot, brain, usage);
-      },
-      endRequest: releaseReservation,
-      exhausted: (): boolean => {
-        this.rollCopyToToday();
-
-        const othersUsd =
-          (this.ownerReservedUsd.get(slot.key) ?? 0) - reservedUsd;
-
-        return (
-          this.ownExhaustionOf(
-            roundUsd(ownerSpentUsd(this.copyFor(slot)) + othersUsd),
-            capUsd,
-          ) !== null
-        );
+        return isExhausted(reservedUsd);
       },
     };
   }
