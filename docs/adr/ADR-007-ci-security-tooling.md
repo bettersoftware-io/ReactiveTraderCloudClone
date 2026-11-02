@@ -211,6 +211,21 @@ builders validate this repo's own config. The exception ends when the CLI moves
 them to zod >=4.6.6. Dependabot alert 40 for it was dismissed as tolerable risk on
 2026-10-25, after checking that vercel 65.2.0 still pins zod 3.22.4.
 
+**A second exception since 2026-11-02: minimatch 3.** GHSA-g3hv-75wg-m249
+(moderate) covers `minimatch <11.0.1`, so every 3.x and 10.x copy, and the
+companion GHSA-3g3m-2fjr-6pw4 (moderate) covers `glob` 9.0.0–14.0.1. The
+`glob@13` → 14.0.3 and `minimatch@10` → 11.0.3 overrides clear glob and the two
+10.x copies (glob's own and `@vercel/python-analysis`'s exact 10.1.1). They
+were smoke-tested against their callers, `@vercel/nft`'s `glob()` and
+`python-analysis`'s `match()`. The 3.1.5 copy under `@ts-morph/common` 0.11 is
+left alone. ts-morph 12 pins that version, and nine CLI packages pin ts-morph
+12, still true at vercel 65.9.0. minimatch 3 has no patched release, and
+minimatch 11 has no default export, which is what `@ts-morph/common` calls, so
+forcing it breaks every glob match ts-morph makes. `npm audit` reports it as
+**14 moderate**, one per package that inherits it. Only this repo's own
+deploy config supplies its patterns. The exception ends when the CLI moves off
+ts-morph 12.
+
 The same 2026-10-24 pass added range-scoped overrides for `undici` 6 and 7
 (→ 6.29.1 / 7.30.1, GHSA-xjj6-f33q-929c and two moderates) and `fast-uri` 3
 (→ 3.1.9). The `undici` key widened from `<6.28.0` to `<6.29.1`, so it still
@@ -353,8 +368,9 @@ lighter-weight first try).
 - **The `overrides` in `scripts/ci-tooling/vercel/package.json` are debt with an
   exit**: delete each one when the Vercel CLI ships the patched dependency
   itself, and re-run `npm audit --package-lock-only` there after any bump. It
-  should report only the zod 3 exception above until the CLI's builders move
-  to zod >=4.6.6.
+  should report only the two exceptions above, zod 3 (until the CLI's
+  builders move to zod >=4.6.6) and minimatch 3 (until they move off
+  ts-morph 12).
 
 ## Open items
 
