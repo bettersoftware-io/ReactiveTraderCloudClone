@@ -1,20 +1,26 @@
-import { type ChangeEvent, type ReactElement, useState } from "react";
+import {
+  type ChangeEvent,
+  type KeyboardEvent,
+  type ReactElement,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import type { JarvisState, OwnKeyInput, SavedOwnKey } from "@rtc/core-api";
 import {
   describeOwnKeyStatus,
-  formatUsd,
+  isOwnKeyTroubled,
   OWN_KEY_EXPLANATION,
   OWN_KEY_LIMIT_NOTE,
+  parseOwnKeyCap,
 } from "@rtc/core-logic";
 import {
   isJarvisProvider,
   JARVIS_KEY_MAX_CHARS,
   JARVIS_OWN_CAP_DEFAULT_USD,
-  JARVIS_OWN_CAP_MAX_USD,
   JARVIS_OWN_PROVIDERS,
   JARVIS_PROVIDER_NAMES,
-  type JarvisOwnKeyStatus,
   type JarvisProvider,
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
@@ -27,30 +33,39 @@ import styles from "./PreferencesContent.module.css";
  * Renders nothing while Jarvis is unavailable or in the scripted demo, which
  * has no server to hold a key.
  *
- * The raw key lives only in the form's local state: it is handed to `save` as
- * an `OwnKeyInput` and emptied there, and the form unmounts (taking the state
- * with it) the moment a key is saved, the section is replaced into, or the
- * section hides. What the rest of the page reads back is the masked form.
+ * The raw key lives only in the form's key field, an UNCONTROLLED input: a
+ * controlled `value` is mirrored into the `value` attribute by React, which
+ * would put the key in the serialised markup (and any devtools inspector) from
+ * the first keystroke. The form reads it once, on Save, and empties the field;
+ * it unmounts when a key is saved, so nothing outlives it. What the rest of the
+ * page reads back is the masked form.
+ *
+ * Save, Replace and Remove each remove the button that was focused, so focus is
+ * handed on explicitly (`FocusNext`) rather than dropped to the page.
  */
 export function OwnKeySection(): ReactElement | null {
   const { useJarvis, useJarvisOwnKey } = useViewModel();
   const { state } = useJarvis();
-  const { saved, save, remove } = useJarvisOwnKey();
+  const { saved, save, setCap, remove } = useJarvisOwnKey();
   const [replacing, setReplacing] = useState(false);
+  const [focusNext, setFocusNext] = useState<FocusNext>(null);
 
   if (!state.available || state.demo) {
     return null;
   }
 
   function startReplacing(): void {
+    setFocusNext("input");
     setReplacing(true);
   }
 
   function stopReplacing(): void {
+    setFocusNext("replace");
     setReplacing(false);
   }
 
   function removeKey(): void {
+    setFocusNext("input");
     setReplacing(false);
     remove();
   }
@@ -63,31 +78,33 @@ export function OwnKeySection(): ReactElement | null {
         <SavedKeyReadout
           saved={saved}
           ownKey={state.ownKey}
+          setCap={setCap}
+          focusOnMount={focusNext === "replace"}
           onReplace={startReplacing}
           onRemove={removeKey}
         />
       ) : (
         <KeyForm
-          replacing={saved !== null}
+          seed={saved}
           save={save}
           remove={remove}
+          focusOnMount={focusNext === "input"}
           onSaved={stopReplacing}
+          onCancel={stopReplacing}
         />
       )}
     </div>
   );
 }
 
-/** The statuses that say the key is not working, drawn in the aware colour. */
-const TROUBLED_STATUSES: ReadonlySet<JarvisOwnKeyStatus> = new Set([
-  "refused",
-  "unreachable",
-  "limited",
-]);
+/** Which control takes focus when the one the person pressed goes away. */
+type FocusNext = "input" | "replace" | null;
 
 interface SavedKeyReadoutProps {
   saved: SavedOwnKey;
   ownKey: JarvisState["ownKey"];
+  setCap: (capUsd: number | null) => void;
+  focusOnMount: boolean;
   onReplace: () => void;
   onRemove: () => void;
 }
@@ -95,11 +112,62 @@ interface SavedKeyReadoutProps {
 function SavedKeyReadout({
   saved,
   ownKey,
+  setCap,
+  focusOnMount,
   onReplace,
   onRemove,
 }: SavedKeyReadoutProps): ReactElement {
-  const status = describeOwnKeyStatus(ownKey, saved.provider);
-  const trouble = ownKey !== null && TROUBLED_STATUSES.has(ownKey.status);
+  // What the person has typed into the limit and not yet committed, or `null`.
+  const [draftCap, setDraftCap] = useState<string | null>(null);
+  // The last amount the limit had, so clearing "No limit" restores it.
+  const [lastCap, setLastCap] = useState(
+    saved.capUsd ?? JARVIS_OWN_CAP_DEFAULT_USD,
+  );
+  const replaceRef = useRef<HTMLButtonElement>(null);
+  const noLimit = saved.capUsd === null;
+  const shownCap = draftCap ?? String(saved.capUsd ?? lastCap);
+
+  useEffect(() => {
+    if (focusOnMount) {
+      replaceRef.current?.focus();
+    }
+  }, [focusOnMount]);
+
+  function changeCap(event: ChangeEvent<HTMLInputElement>): void {
+    setDraftCap(event.target.value);
+  }
+
+  function commitCap(): void {
+    if (draftCap === null) {
+      return;
+    }
+
+    const amount = parseOwnKeyCap(draftCap);
+    setDraftCap(null);
+
+    if (amount !== null && amount !== saved.capUsd) {
+      setLastCap(amount);
+      setCap(amount);
+    }
+  }
+
+  function commitCapOnEnter(event: KeyboardEvent<HTMLInputElement>): void {
+    if (event.key === "Enter") {
+      commitCap();
+    }
+  }
+
+  function toggleNoLimit(): void {
+    setDraftCap(null);
+
+    if (saved.capUsd === null) {
+      setCap(lastCap);
+      return;
+    }
+
+    setLastCap(saved.capUsd);
+    setCap(null);
+  }
 
   return (
     <div className={styles.keyReadout}>
@@ -108,19 +176,42 @@ function SavedKeyReadout({
       </span>
       <span
         className={styles.keyStatus}
+        role="status"
         data-testid="jarvis-key-status"
-        data-tone={trouble ? "warn" : "calm"}
+        data-tone={isOwnKeyTroubled(ownKey) ? "warn" : "calm"}
       >
-        {status}
+        {describeOwnKeyStatus(ownKey, saved.provider)}
       </span>
-      <span className={styles.keyStatus} data-testid="jarvis-key-limit">
-        {saved.capUsd === null
-          ? "No limit"
-          : `${formatUsd(saved.capUsd)} a day`}
-      </span>
+      <div className={styles.keyLine}>
+        <label className={styles.keyCheck}>
+          Daily limit ($)
+          <input
+            className={`${styles.keyField} ${styles.keyAmount}`}
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
+            disabled={noLimit}
+            value={shownCap}
+            onChange={changeCap}
+            onBlur={commitCap}
+            onKeyDown={commitCapOnEnter}
+            data-testid="jarvis-key-cap"
+          />
+        </label>
+        <label className={styles.keyCheck}>
+          <input
+            type="checkbox"
+            checked={noLimit}
+            onChange={toggleNoLimit}
+            data-testid="jarvis-key-no-limit"
+          />
+          No limit
+        </label>
+      </div>
       <span className={styles.keyNote}>{OWN_KEY_LIMIT_NOTE}</span>
       <div className={styles.keyActions}>
         <button
+          ref={replaceRef}
           type="button"
           className={styles.actionButton}
           data-testid="jarvis-key-replace"
@@ -142,36 +233,46 @@ function SavedKeyReadout({
 }
 
 interface KeyFormProps {
-  /** A key is saved already: Save removes it first, so the new one is checked
-   * afresh (a refused key stays refused on its connection otherwise). */
-  replacing: boolean;
+  /** The key being replaced, or `null` for a first key. Its provider, limit and
+   * Remember seed the form (they are the person's, not the key's), Save removes
+   * it first so the new one is checked afresh (a refused key stays refused on
+   * its connection otherwise), and Cancel goes back to it. */
+  seed: SavedOwnKey | null;
   save: (input: OwnKeyInput) => void;
   remove: () => void;
+  focusOnMount: boolean;
   onSaved: () => void;
+  onCancel: () => void;
 }
 
 function KeyForm({
-  replacing,
+  seed,
   save,
   remove,
+  focusOnMount,
   onSaved,
+  onCancel,
 }: KeyFormProps): ReactElement {
   const [provider, setProvider] = useState<JarvisProvider>(
-    JARVIS_OWN_PROVIDERS[0] ?? "anthropic",
+    seed?.provider ?? JARVIS_OWN_PROVIDERS[0] ?? "anthropic",
   );
-  const [draft, setDraft] = useState("");
-  const [remember, setRemember] = useState(false);
-  const [capText, setCapText] = useState(String(JARVIS_OWN_CAP_DEFAULT_USD));
-  const [noLimit, setNoLimit] = useState(false);
+  // Only whether a key was typed is state; the key itself stays in the field.
+  const [hasKey, setHasKey] = useState(false);
+  const [remember, setRemember] = useState(seed?.remember ?? false);
+  const [capText, setCapText] = useState(
+    String(seed?.capUsd ?? JARVIS_OWN_CAP_DEFAULT_USD),
+  );
+  const [noLimit, setNoLimit] = useState(seed !== null && seed.capUsd === null);
+  const keyRef = useRef<HTMLInputElement>(null);
 
-  const key = draft.trim();
-  const cap = Number(capText);
-  const capValid =
-    capText.trim() !== "" &&
-    Number.isFinite(cap) &&
-    cap > 0 &&
-    cap <= JARVIS_OWN_CAP_MAX_USD;
-  const canSave = key !== "" && (noLimit || capValid);
+  const cap = parseOwnKeyCap(capText);
+  const canSave = hasKey && (noLimit || cap !== null);
+
+  useEffect(() => {
+    if (focusOnMount) {
+      keyRef.current?.focus();
+    }
+  }, [focusOnMount]);
 
   function chooseProvider(event: ChangeEvent<HTMLSelectElement>): void {
     if (isJarvisProvider(event.target.value)) {
@@ -179,8 +280,8 @@ function KeyForm({
     }
   }
 
-  function changeDraft(event: ChangeEvent<HTMLInputElement>): void {
-    setDraft(event.target.value);
+  function noteKeyTyped(): void {
+    setHasKey((keyRef.current?.value.trim() ?? "") !== "");
   }
 
   function toggleRemember(): void {
@@ -200,7 +301,10 @@ function KeyForm({
   }
 
   function saveKey(): void {
-    if (!canSave) {
+    const field = keyRef.current;
+    const key = field?.value.trim() ?? "";
+
+    if (field === null || key === "" || !(noLimit || cap !== null)) {
       return;
     }
 
@@ -211,9 +315,10 @@ function KeyForm({
       remember,
     };
 
-    setDraft("");
+    field.value = "";
+    setHasKey(false);
 
-    if (replacing) {
+    if (seed !== null) {
       remove();
     }
 
@@ -240,6 +345,7 @@ function KeyForm({
           })}
         </select>
         <input
+          ref={keyRef}
           className={`${styles.keyField} ${styles.keySecret}`}
           type="password"
           autoComplete="off"
@@ -248,8 +354,7 @@ function KeyForm({
           maxLength={JARVIS_KEY_MAX_CHARS}
           aria-label="API key"
           placeholder="Paste your API key"
-          value={draft}
-          onChange={changeDraft}
+          onInput={noteKeyTyped}
           data-testid="jarvis-key-input"
         />
       </div>
@@ -297,6 +402,16 @@ function KeyForm({
         >
           SAVE
         </button>
+        {seed !== null ? (
+          <button
+            type="button"
+            className={styles.actionButton}
+            data-testid="jarvis-key-cancel"
+            onClick={onCancel}
+          >
+            CANCEL
+          </button>
+        ) : null}
       </div>
     </div>
   );

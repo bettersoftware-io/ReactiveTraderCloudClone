@@ -239,8 +239,23 @@ describe("describeBrainReadout — an own key", () => {
     });
   });
 
+  it("a person who chose Scripted is not told their own limit moved them", () => {
+    const state = aState("scripted", aBudget(), {
+      preferredBrain: "scripted",
+      ownBudget: anOwnBudget({ spentUsd: 1, exhausted: "user" }),
+      ownKey: anOwnKey(),
+    });
+
+    expect(describeBrainReadout(state)).toEqual({
+      text: "Scripted",
+      tone: "normal",
+      meterFraction: null,
+    });
+  });
+
   it("cap spent: scripted, naming the person's own daily limit", () => {
     const state = aState("scripted", aBudget(), {
+      preferredBrain: OWN_SONNET,
       ownBudget: anOwnBudget({ spentUsd: 1, exhausted: "user" }),
       ownKey: anOwnKey(),
     });
@@ -254,6 +269,7 @@ describe("describeBrainReadout — an own key", () => {
 
   it("store unreachable, with a cap: scripted, budget unavailable", () => {
     const state = aState("scripted", aBudget(), {
+      preferredBrain: OWN_SONNET,
       ownBudget: anOwnBudget({ exhausted: "unavailable" }),
       ownKey: anOwnKey(),
     });

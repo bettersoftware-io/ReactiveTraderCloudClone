@@ -43,7 +43,11 @@ export function JarvisBrainPill(): ReactElement {
   const offeredOwn = JARVIS_OWN_MODELS.map((model) => {
     return model.brain;
   }).filter((brain) => {
-    return state.brains.includes(brain);
+    // A spent own cap moves the own brains from `brains` into the gate: they
+    // stay listed, disabled.
+    return (
+      state.brains.includes(brain) || state.gate?.gated.includes(brain) === true
+    );
   });
   const grouped = offeredOwn.length > 0;
 

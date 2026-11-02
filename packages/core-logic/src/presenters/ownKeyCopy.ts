@@ -3,7 +3,9 @@
  * promise about the key is one string, not two that can drift apart.
  */
 import {
+  JARVIS_OWN_CAP_MAX_USD,
   JARVIS_PROVIDER_NAMES,
+  type JarvisOwnKeyStatus,
   type JarvisOwnKeyView,
   type JarvisProvider,
 } from "@rtc/domain";
@@ -37,4 +39,33 @@ export function describeOwnKeyStatus(
     case "limited":
       return "Too many checks. Try again later.";
   }
+}
+
+const TROUBLED_STATUSES: ReadonlySet<JarvisOwnKeyStatus> = new Set([
+  "refused",
+  "unreachable",
+  "limited",
+]);
+
+/** Whether the server's reading says the key is not working (refused, not
+ * reachable, rate limited): drawn as a warning. A key still being checked, or
+ * not reported on yet, is not. */
+export function isOwnKeyTroubled(ownKey: JarvisOwnKeyView | null): boolean {
+  return ownKey !== null && TROUBLED_STATUSES.has(ownKey.status);
+}
+
+/** A daily limit typed in dollars, or `null` when it is not an amount the
+ * server takes: empty, not a number, not above zero, or over the largest cap. */
+export function parseOwnKeyCap(text: string): number | null {
+  if (text.trim() === "") {
+    return null;
+  }
+
+  const amount = Number(text);
+
+  return Number.isFinite(amount) &&
+    amount > 0 &&
+    amount <= JARVIS_OWN_CAP_MAX_USD
+    ? amount
+    : null;
 }

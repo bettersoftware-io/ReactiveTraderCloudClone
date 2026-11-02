@@ -77,12 +77,51 @@ export class OwnKeySectionPage extends MountedComponent<Record<string, never>> {
     );
   }
 
-  /** The saved key's daily limit as shown, or `null` when none is rendered. */
-  limitText(): string | null {
+  /** The status line's ARIA role (a live region announces a refusal). */
+  statusRole(): string | null {
     return (
-      within(this.section()).queryByTestId("jarvis-key-limit")?.textContent ??
-      null
+      within(this.section())
+        .queryByTestId("jarvis-key-status")
+        ?.getAttribute("role") ?? null
     );
+  }
+
+  /** The test id of the focused control inside the section, or `null`. */
+  focusedControl(): string | null {
+    const active = document.activeElement;
+
+    if (!(active instanceof HTMLElement) || !this.section().contains(active)) {
+      return null;
+    }
+
+    return active.getAttribute("data-testid");
+  }
+
+  /** The key field's `value` ATTRIBUTE (not the property): what outerHTML
+   * would carry. */
+  keyFieldValueAttribute(): string | null {
+    return this.control("jarvis-key-input").getAttribute("value");
+  }
+
+  /** True when `secret` is in the serialised markup (any attribute). */
+  markupHolds(secret: string): boolean {
+    return document.documentElement.outerHTML.includes(secret);
+  }
+
+  async pressEnterInCap(): Promise<void> {
+    await this.user.type(this.control("jarvis-key-cap"), "{Enter}");
+  }
+
+  async blurCap(): Promise<void> {
+    await this.user.tab();
+  }
+
+  hasCancel(): boolean {
+    return within(this.section()).queryByTestId("jarvis-key-cancel") !== null;
+  }
+
+  async cancel(): Promise<void> {
+    await this.user.click(this.control("jarvis-key-cancel"));
   }
 
   /** The key field's attributes, for what a browser may do with it. */

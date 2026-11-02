@@ -173,7 +173,9 @@
   margin: 4px 0 10px;
   font-size: 11px;
   line-height: 1.45;
-  color: var(--text-muted);
+  /* --text-muted is 2.3 to 3.1:1 on the modal in the light skins; this is copy
+   * the person must read, so it takes --text-secondary (4.4 to 6.9:1). */
+  color: var(--text-secondary);
 }
 
 .keyForm {
@@ -254,11 +256,20 @@
   color: var(--text-secondary);
 }
 
+/* The refusal signal. --accent-aware as text is 2.8 to 3.6:1 on the light
+ * skins, so the colour moves to the border and the text takes the readout's
+ * chip treatment (--text-primary on --panel, 13 to 18:1): the shape, not the
+ * hue, carries it. */
 .keyStatus[data-tone="warn"] {
-  color: var(--accent-aware);
+  align-self: flex-start;
+  padding: 2px 8px;
+  color: var(--text-primary);
+  background: var(--panel);
+  border: 1px solid var(--accent-aware);
+  border-radius: 3px;
 }
 
 .keyNote {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }

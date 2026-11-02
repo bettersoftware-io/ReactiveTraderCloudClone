@@ -1,20 +1,27 @@
-import { createSignal, For, type JSX, Show } from "solid-js";
+import {
+  type Accessor,
+  createSignal,
+  For,
+  type JSX,
+  onMount,
+  Show,
+  untrack,
+} from "solid-js";
 
 import type { JarvisState, OwnKeyInput, SavedOwnKey } from "@rtc/core-api";
 import {
   describeOwnKeyStatus,
-  formatUsd,
+  isOwnKeyTroubled,
   OWN_KEY_EXPLANATION,
   OWN_KEY_LIMIT_NOTE,
+  parseOwnKeyCap,
 } from "@rtc/core-logic";
 import {
   isJarvisProvider,
   JARVIS_KEY_MAX_CHARS,
   JARVIS_OWN_CAP_DEFAULT_USD,
-  JARVIS_OWN_CAP_MAX_USD,
   JARVIS_OWN_PROVIDERS,
   JARVIS_PROVIDER_NAMES,
-  type JarvisOwnKeyStatus,
   type JarvisProvider,
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -27,26 +34,34 @@ import styles from "./PreferencesContent.module.css";
  * Renders nothing while Jarvis is unavailable or in the scripted demo, which
  * has no server to hold a key.
  *
- * The raw key lives only in the form's local state: it is handed to `save` as
- * an `OwnKeyInput` and emptied there, and the form is disposed (taking the
- * state with it) the moment a key is saved, the section is replaced into, or
- * the section hides. What the rest of the page reads back is the masked form.
+ * The raw key lives only in the form's key field, an input with no bound
+ * `value` (the same shape as the React client, where a controlled value would
+ * be mirrored into the markup). The form reads it once, on Save, and empties
+ * the field; it is disposed when a key is saved, so nothing outlives it. What
+ * the rest of the page reads back is the masked form.
+ *
+ * Save, Replace and Remove each remove the button that was focused, so focus is
+ * handed on explicitly (`FocusNext`) rather than dropped to the page.
  */
 export function OwnKeySection(): JSX.Element {
   const { useJarvis, useJarvisOwnKey } = useViewModel();
   const { state } = useJarvis();
-  const { saved, save, remove } = useJarvisOwnKey();
+  const { saved, save, setCap, remove } = useJarvisOwnKey();
   const [replacing, setReplacing] = createSignal(false);
+  const [focusNext, setFocusNext] = createSignal<FocusNext>(null);
 
   function startReplacing(): void {
+    setFocusNext("input");
     setReplacing(true);
   }
 
   function stopReplacing(): void {
+    setFocusNext("replace");
     setReplacing(false);
   }
 
   function removeKey(): void {
+    setFocusNext("input");
     setReplacing(false);
     remove();
   }
@@ -62,21 +77,24 @@ export function OwnKeySection(): JSX.Element {
         <p class={styles.keyExplain}>{OWN_KEY_EXPLANATION}</p>
         <Show
           when={readoutKey()}
-          keyed
           fallback={
             <KeyForm
-              replacing={saved() !== null}
+              seed={saved()}
               save={save}
               remove={remove}
+              focusOnMount={focusNext() === "input"}
               onSaved={stopReplacing}
+              onCancel={stopReplacing}
             />
           }
         >
-          {(key: SavedOwnKey) => {
+          {(key: Accessor<SavedOwnKey>) => {
             return (
               <SavedKeyReadout
-                saved={key}
+                saved={key()}
                 ownKey={state().ownKey}
+                setCap={setCap}
+                focusOnMount={focusNext() === "replace"}
                 onReplace={startReplacing}
                 onRemove={removeKey}
               />
@@ -88,24 +106,84 @@ export function OwnKeySection(): JSX.Element {
   );
 }
 
-/** The statuses that say the key is not working, drawn in the aware colour. */
-const TROUBLED_STATUSES: ReadonlySet<JarvisOwnKeyStatus> = new Set([
-  "refused",
-  "unreachable",
-  "limited",
-]);
+/** Which control takes focus when the one the person pressed goes away. */
+type FocusNext = "input" | "replace" | null;
+
+type FieldInput = InputEvent & { currentTarget: HTMLInputElement };
+type FieldKey = KeyboardEvent & { currentTarget: HTMLInputElement };
+type SelectChange = Event & { currentTarget: HTMLSelectElement };
 
 interface SavedKeyReadoutProps {
   saved: SavedOwnKey;
   ownKey: JarvisState["ownKey"];
+  setCap: (capUsd: number | null) => void;
+  focusOnMount: boolean;
   onReplace: () => void;
   onRemove: () => void;
 }
 
 function SavedKeyReadout(props: SavedKeyReadoutProps): JSX.Element {
-  function trouble(): boolean {
-    const ownKey = props.ownKey;
-    return ownKey !== null && TROUBLED_STATUSES.has(ownKey.status);
+  // What the person has typed into the limit and not yet committed, or `null`.
+  const [draftCap, setDraftCap] = createSignal<string | null>(null);
+  // The last amount the limit had, so clearing "No limit" restores it.
+  const [lastCap, setLastCap] = createSignal(
+    untrack(() => {
+      return props.saved.capUsd ?? JARVIS_OWN_CAP_DEFAULT_USD;
+    }),
+  );
+  let replaceRef: HTMLButtonElement | undefined;
+
+  onMount(() => {
+    if (props.focusOnMount) {
+      replaceRef?.focus();
+    }
+  });
+
+  function noLimit(): boolean {
+    return props.saved.capUsd === null;
+  }
+
+  function shownCap(): string {
+    return draftCap() ?? String(props.saved.capUsd ?? lastCap());
+  }
+
+  function changeCap(event: FieldInput): void {
+    setDraftCap(event.currentTarget.value);
+  }
+
+  function commitCap(): void {
+    const text = draftCap();
+
+    if (text === null) {
+      return;
+    }
+
+    const amount = parseOwnKeyCap(text);
+    setDraftCap(null);
+
+    if (amount !== null && amount !== props.saved.capUsd) {
+      setLastCap(amount);
+      props.setCap(amount);
+    }
+  }
+
+  function commitCapOnEnter(event: FieldKey): void {
+    if (event.key === "Enter") {
+      commitCap();
+    }
+  }
+
+  function toggleNoLimit(): void {
+    setDraftCap(null);
+    const current = props.saved.capUsd;
+
+    if (current === null) {
+      props.setCap(lastCap());
+      return;
+    }
+
+    setLastCap(current);
+    props.setCap(null);
   }
 
   function requestReplace(): void {
@@ -116,11 +194,6 @@ function SavedKeyReadout(props: SavedKeyReadoutProps): JSX.Element {
     props.onRemove();
   }
 
-  function limit(): string {
-    const capUsd = props.saved.capUsd;
-    return capUsd === null ? "No limit" : `${formatUsd(capUsd)} a day`;
-  }
-
   return (
     <div class={styles.keyReadout}>
       <span class={styles.keyMasked} data-testid="jarvis-key-masked">
@@ -128,17 +201,42 @@ function SavedKeyReadout(props: SavedKeyReadoutProps): JSX.Element {
       </span>
       <span
         class={styles.keyStatus}
+        role="status"
         data-testid="jarvis-key-status"
-        data-tone={trouble() ? "warn" : "calm"}
+        data-tone={isOwnKeyTroubled(props.ownKey) ? "warn" : "calm"}
       >
         {describeOwnKeyStatus(props.ownKey, props.saved.provider)}
       </span>
-      <span class={styles.keyStatus} data-testid="jarvis-key-limit">
-        {limit()}
-      </span>
+      <div class={styles.keyLine}>
+        <label class={styles.keyCheck}>
+          Daily limit ($)
+          <input
+            class={`${styles.keyField} ${styles.keyAmount}`}
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            disabled={noLimit()}
+            value={shownCap()}
+            onInput={changeCap}
+            onBlur={commitCap}
+            onKeyDown={commitCapOnEnter}
+            data-testid="jarvis-key-cap"
+          />
+        </label>
+        <label class={styles.keyCheck}>
+          <input
+            type="checkbox"
+            checked={noLimit()}
+            onChange={toggleNoLimit}
+            data-testid="jarvis-key-no-limit"
+          />
+          No limit
+        </label>
+      </div>
       <span class={styles.keyNote}>{OWN_KEY_LIMIT_NOTE}</span>
       <div class={styles.keyActions}>
         <button
+          ref={replaceRef}
           type="button"
           class={styles.actionButton}
           data-testid="jarvis-key-replace"
@@ -159,45 +257,48 @@ function SavedKeyReadout(props: SavedKeyReadoutProps): JSX.Element {
   );
 }
 
-type SelectChange = Event & { currentTarget: HTMLSelectElement };
-type FieldInput = InputEvent & { currentTarget: HTMLInputElement };
-
 interface KeyFormProps {
-  /** A key is saved already: Save removes it first, so the new one is checked
-   * afresh (a refused key stays refused on its connection otherwise). */
-  replacing: boolean;
+  /** The key being replaced, or `null` for a first key. Its provider, limit and
+   * Remember seed the form (they are the person's, not the key's), Save removes
+   * it first so the new one is checked afresh (a refused key stays refused on
+   * its connection otherwise), and Cancel goes back to it. */
+  seed: SavedOwnKey | null;
   save: (input: OwnKeyInput) => void;
   remove: () => void;
+  focusOnMount: boolean;
   onSaved: () => void;
+  onCancel: () => void;
 }
 
 function KeyForm(props: KeyFormProps): JSX.Element {
+  // The form is seeded once, when it is created.
+  const seed = untrack(() => {
+    return props.seed;
+  });
+
   const [provider, setProvider] = createSignal<JarvisProvider>(
-    JARVIS_OWN_PROVIDERS[0] ?? "anthropic",
+    seed?.provider ?? JARVIS_OWN_PROVIDERS[0] ?? "anthropic",
   );
-  const [draft, setDraft] = createSignal("");
-  const [remember, setRemember] = createSignal(false);
+  // Only whether a key was typed is state; the key itself stays in the field.
+  const [hasKey, setHasKey] = createSignal(false);
+  const [remember, setRemember] = createSignal(seed?.remember ?? false);
   const [capText, setCapText] = createSignal(
-    String(JARVIS_OWN_CAP_DEFAULT_USD),
+    String(seed?.capUsd ?? JARVIS_OWN_CAP_DEFAULT_USD),
   );
-  const [noLimit, setNoLimit] = createSignal(false);
 
-  function key(): string {
-    return draft().trim();
-  }
+  const [noLimit, setNoLimit] = createSignal(
+    seed !== null && seed.capUsd === null,
+  );
+  let keyRef: HTMLInputElement | undefined;
 
-  function capValid(): boolean {
-    const cap = Number(capText());
-    return (
-      capText().trim() !== "" &&
-      Number.isFinite(cap) &&
-      cap > 0 &&
-      cap <= JARVIS_OWN_CAP_MAX_USD
-    );
-  }
+  onMount(() => {
+    if (props.focusOnMount) {
+      keyRef?.focus();
+    }
+  });
 
   function canSave(): boolean {
-    return key() !== "" && (noLimit() || capValid());
+    return hasKey() && (noLimit() || parseOwnKeyCap(capText()) !== null);
   }
 
   function chooseProvider(event: SelectChange): void {
@@ -208,8 +309,8 @@ function KeyForm(props: KeyFormProps): JSX.Element {
     }
   }
 
-  function changeDraft(event: FieldInput): void {
-    setDraft(event.currentTarget.value);
+  function noteKeyTyped(): void {
+    setHasKey((keyRef?.value.trim() ?? "") !== "");
   }
 
   function toggleRemember(): void {
@@ -229,25 +330,32 @@ function KeyForm(props: KeyFormProps): JSX.Element {
   }
 
   function saveKey(): void {
-    if (!canSave()) {
+    const key = keyRef?.value.trim() ?? "";
+
+    if (keyRef === undefined || key === "" || !canSave()) {
       return;
     }
 
     const input: OwnKeyInput = {
       provider: provider(),
-      key: key(),
-      capUsd: noLimit() ? null : Number(capText()),
+      key,
+      capUsd: noLimit() ? null : parseOwnKeyCap(capText()),
       remember: remember(),
     };
 
-    setDraft("");
+    keyRef.value = "";
+    setHasKey(false);
 
-    if (props.replacing) {
+    if (props.seed !== null) {
       props.remove();
     }
 
     props.save(input);
     props.onSaved();
+  }
+
+  function cancelReplacing(): void {
+    props.onCancel();
   }
 
   return (
@@ -270,6 +378,7 @@ function KeyForm(props: KeyFormProps): JSX.Element {
           </For>
         </select>
         <input
+          ref={keyRef}
           class={`${styles.keyField} ${styles.keySecret}`}
           type="password"
           autocomplete="off"
@@ -278,8 +387,7 @@ function KeyForm(props: KeyFormProps): JSX.Element {
           maxLength={JARVIS_KEY_MAX_CHARS}
           aria-label="API key"
           placeholder="Paste your API key"
-          value={draft()}
-          onInput={changeDraft}
+          onInput={noteKeyTyped}
           data-testid="jarvis-key-input"
         />
       </div>
@@ -327,6 +435,16 @@ function KeyForm(props: KeyFormProps): JSX.Element {
         >
           SAVE
         </button>
+        <Show when={seed !== null}>
+          <button
+            type="button"
+            class={styles.actionButton}
+            data-testid="jarvis-key-cancel"
+            onClick={cancelReplacing}
+          >
+            CANCEL
+          </button>
+        </Show>
       </div>
     </div>
   );

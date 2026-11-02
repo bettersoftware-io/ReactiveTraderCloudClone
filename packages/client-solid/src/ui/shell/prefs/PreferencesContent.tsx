@@ -190,8 +190,14 @@ export function PreferencesContent(): JSX.Element {
   // offers any of them (a key is held and accepted). Each is disabled the same
   // way a house brain is — not offered, or removed by the active gate.
   function ownBrainsOffered(): boolean {
+    // A spent own cap removes the own brains from `brains` and lists them in
+    // the gate instead, so a gated own brain counts as present: the row stays,
+    // its options disabled with the reset hint.
     return JARVIS_OWN_MODELS.some((model) => {
-      return jarvisState().brains.includes(model.brain);
+      return (
+        jarvisState().brains.includes(model.brain) ||
+        gate()?.gated.includes(model.brain) === true
+      );
     });
   }
 

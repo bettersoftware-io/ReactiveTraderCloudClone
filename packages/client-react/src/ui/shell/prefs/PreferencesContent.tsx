@@ -160,8 +160,14 @@ export function PreferencesContent(): ReactElement {
   // The "Your key" row: the curated own-key models, offered once the server
   // offers any of them (a key is held and accepted). Each is disabled the same
   // way a house brain is — not offered, or removed by the active gate.
+  // A spent own cap removes the own brains from `brains` and lists them in the
+  // gate instead, so a gated own brain counts as present: the row stays, its
+  // options disabled with the reset hint.
   const ownBrainsOffered = JARVIS_OWN_MODELS.some((model) => {
-    return jarvisState.brains.includes(model.brain);
+    return (
+      jarvisState.brains.includes(model.brain) ||
+      gate?.gated.includes(model.brain) === true
+    );
   });
 
   const jarvisOwnBrainOptions: readonly PrefSegmentOption[] =

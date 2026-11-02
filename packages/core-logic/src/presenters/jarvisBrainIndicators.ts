@@ -213,15 +213,10 @@ export function describeBrainReadout(
   }
 
   if (state.effectiveBrain === "scripted") {
-    // A person whose own cap is spent was moved here by it.
-    const ownExhausted =
-      state.ownBudget === null
-        ? null
-        : describeExhausted(state.ownBudget, true);
-
-    return (
-      ownExhausted ?? { text: "Scripted", tone: "normal", meterFraction: null }
-    );
+    // A spent own cap is not mentioned here: a person whose preference is an
+    // own brain was answered above (`describeOwnPreferenceUnmet`), and anyone
+    // else chose Scripted or runs on the house, so the cap moved nobody.
+    return { text: "Scripted", tone: "normal", meterFraction: null };
   }
 
   return describeLiveBudget(

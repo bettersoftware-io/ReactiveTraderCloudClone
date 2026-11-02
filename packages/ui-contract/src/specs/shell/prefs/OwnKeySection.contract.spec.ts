@@ -19,7 +19,11 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { JarvisAvailability } from "@rtc/core-api";
-import { OWN_KEY_EXPLANATION, OWN_KEY_LIMIT_NOTE } from "@rtc/core-logic";
+import {
+  formatGateHint,
+  OWN_KEY_EXPLANATION,
+  OWN_KEY_LIMIT_NOTE,
+} from "@rtc/core-logic";
 import {
   DEFAULT_JARVIS_INDICATORS,
   JARVIS_BRAINS,
@@ -191,14 +195,136 @@ describe("OwnKeySection", () => {
         },
       },
     ]);
-    expect(page.limitText()).toBe("No limit");
+    expect(page.noLimitChecked()).toBe(true);
+    expect(page.capDisabled()).toBe(true);
   });
 
   it("shows a saved key's limit as an estimate", () => {
     const page = mount(OwnKeySection, { jarvisOwnKeySaved: SAVED });
 
-    expect(page.limitText()).toBe("$2.00 a day");
+    expect(page.capValue()).toBe("2");
     expect(page.text()).toContain(OWN_KEY_LIMIT_NOTE);
+  });
+
+  it("a saved key's limit is adjustable, committed on blur through setCap", async () => {
+    const page = mount(OwnKeySection, { jarvisOwnKeySaved: SAVED });
+    expect(page.capValue()).toBe("2");
+    expect(page.capDisabled()).toBe(false);
+
+    await page.typeCap("3.5");
+    expect(page.calls()).toEqual([]);
+    await page.blurCap();
+
+    expect(page.calls()).toEqual([{ kind: "setCap", capUsd: 3.5 }]);
+    expect(page.capValue()).toBe("3.5");
+  });
+
+  it("a saved key's limit is committed on Enter", async () => {
+    const page = mount(OwnKeySection, { jarvisOwnKeySaved: SAVED });
+
+    await page.typeCap("4");
+    await page.pressEnterInCap();
+
+    expect(page.calls()).toEqual([{ kind: "setCap", capUsd: 4 }]);
+  });
+
+  it("an unchanged or invalid limit commits nothing and reverts", async () => {
+    const page = mount(OwnKeySection, { jarvisOwnKeySaved: SAVED });
+
+    await page.typeCap("2");
+    await page.blurCap();
+    expect(page.calls()).toEqual([]);
+
+    await page.typeCap("0");
+    await page.blurCap();
+    expect(page.calls()).toEqual([]);
+    expect(page.capValue()).toBe("2");
+  });
+
+  it("No limit on a saved key commits null, and clearing it restores the amount", async () => {
+    const page = mount(OwnKeySection, { jarvisOwnKeySaved: SAVED });
+
+    await page.toggleNoLimit();
+
+    expect(page.calls()).toEqual([{ kind: "setCap", capUsd: null }]);
+    expect(page.noLimitChecked()).toBe(true);
+    expect(page.capDisabled()).toBe(true);
+
+    await page.toggleNoLimit();
+
+    expect(page.calls()).toEqual([
+      { kind: "setCap", capUsd: null },
+      { kind: "setCap", capUsd: 2 },
+    ]);
+    expect(page.noLimitChecked()).toBe(false);
+  });
+
+  it("keeps the key out of the markup while it is being typed", async () => {
+    const page = mount(OwnKeySection, {});
+
+    await page.typeKey(RAW_KEY);
+
+    expect(page.keyFieldValue()).toBe(RAW_KEY);
+    expect(page.keyFieldValueAttribute()).toBeNull();
+    expect(page.markupHolds(RAW_KEY)).toBe(false);
+    expect(page.saveDisabled()).toBe(false);
+  });
+
+  it("Replace starts from the saved key's settings, and Cancel goes back", async () => {
+    const remembered = {
+      ...SAVED,
+      capUsd: 5,
+      remember: true,
+    } as const;
+    const page = mount(OwnKeySection, { jarvisOwnKeySaved: remembered });
+
+    await page.replace();
+
+    expect(page.capValue()).toBe("5");
+    expect(page.rememberChecked()).toBe(true);
+
+    await page.cancel();
+
+    expect(page.showsMasked()).toBe(true);
+    expect(page.showsForm()).toBe(false);
+    expect(page.calls()).toEqual([]);
+    expect(page.focusedControl()).toBe("jarvis-key-replace");
+
+    cleanupMounted();
+
+    const unlimited = mount(OwnKeySection, {
+      jarvisOwnKeySaved: { ...SAVED, capUsd: null },
+    });
+    await unlimited.replace();
+
+    expect(unlimited.noLimitChecked()).toBe(true);
+    expect(unlimited.capDisabled()).toBe(true);
+  });
+
+  it("announces the status, and says nothing of Cancel without a key to go back to", () => {
+    const page = mount(OwnKeySection, {
+      jarvisOwnKeySaved: SAVED,
+      jarvisAvailability: withOwnKey("refused"),
+    });
+
+    expect(page.statusRole()).toBe("status");
+
+    const empty = mount(OwnKeySection, {});
+    expect(empty.hasCancel()).toBe(false);
+  });
+
+  it("moves focus to where the removed control's job continues", async () => {
+    const page = mount(OwnKeySection, { jarvisOwnKeySaved: SAVED });
+
+    await page.replace();
+    expect(page.focusedControl()).toBe("jarvis-key-input");
+
+    await page.typeKey(RAW_KEY);
+    await page.save();
+    expect(page.focusedControl()).toBe("jarvis-key-replace");
+
+    await page.remove();
+    expect(page.focusedControl()).toBe("jarvis-key-input");
   });
 
   it("each status renders its copy", () => {
@@ -248,6 +374,48 @@ describe("the brain pickers with a key set", () => {
       page.segmentActive("jarvisOwnBrain", "own:anthropic:claude-sonnet-5"),
     ).toBe(true);
     expect(page.segmentActive("jarvisBrain", "claude-haiku-4-5")).toBe(false);
+  });
+
+  it("keeps the Your key row, disabled with the reset hint, while the own cap is spent", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      jarvisAvailability: spentOwnCap(),
+      jarvisOwnKeySaved: SAVED,
+    });
+
+    for (const brain of OWN_BRAINS) {
+      expect(page.hasSegmentOption("jarvisOwnBrain", brain)).toBe(true);
+      expect(page.segmentDisabled("jarvisOwnBrain", brain)).toBe(true);
+      expect(page.segmentTitle("jarvisOwnBrain", brain)).toBe(
+        formatGateHint(1_754_000_000_000),
+      );
+    }
+  });
+
+  it("keeps the pill menu's Your key group, disabled, while the own cap is spent", async () => {
+    const overlay = mountWith(
+      createWorld({
+        jarvisAvailability: spentOwnCap(),
+        jarvisIndicators: { ...DEFAULT_JARVIS_INDICATORS, brainPill: true },
+      }),
+      JarvisOverlay,
+    );
+    await overlay.pressHotkey();
+    await overlay.clickBrainPill();
+
+    expect(overlay.brainGroupLabels()).toEqual([
+      ["house", "House key"],
+      ["own", "Your key"],
+    ]);
+    expect(
+      overlay.brainOptionViews().filter((view) => {
+        return view.brain.startsWith("own:");
+      }),
+    ).toEqual(
+      OWN_BRAINS.map((brain) => {
+        return { brain, checked: false, disabled: true };
+      }),
+    );
   });
 
   it("has no Your key row while no own brain is offered", () => {
@@ -396,3 +564,24 @@ const SAVED = {
   capUsd: 2,
   remember: false,
 } as const;
+
+/** An accepted key whose own daily cap is spent: the gate removes the own
+ * brains from the offer, though the key is fine. */
+function spentOwnCap(): JarvisAvailability {
+  return availability({
+    brains: [...JARVIS_BRAINS],
+    gate: {
+      level: "soft",
+      resetsAtMs: 1_754_000_000_000,
+      gated: [...OWN_BRAINS],
+    },
+    ownBudget: {
+      keyKind: "own",
+      spentUsd: 1.2,
+      limitUsd: 1,
+      exhausted: "user",
+      resetsAtMs: 1_754_000_000_000,
+    },
+    ownKey: keyView("accepted"),
+  });
+}
