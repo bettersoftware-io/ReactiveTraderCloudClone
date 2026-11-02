@@ -1132,6 +1132,16 @@ sequenceDiagram
 | Unblock | **No.** Tokens issued before the block stay ended after an unblock |
 | Delete | The row is removed, so the account is missing |
 
+**The administrator's delete, in order.** Block the account and end its
+sessions (cache invalidated, sockets closed), then delete its Jarvis spend
+rows (`SpendStore.deleteOwner`, every day and both key kinds), then delete
+the account. Each step that answers `unavailable` stops the delete there and
+answers `unavailable`, so a part-way failure leaves the account **blocked**,
+not active, and the administrator retries: blocking an already-blocked account
+is a plain `ok`, and an unknown account answers `not_found` before any spend
+is touched. The block comes first so an account that survives a failed delete
+cannot run turns on a freshly emptied daily allowance.
+
 **Order, the ledger and its residual.** The reset's reply never waits on
 ending sessions: `/reset-password` answers `changed` as soon as Supabase's
 verify answers. When that response carried the account id, the server
