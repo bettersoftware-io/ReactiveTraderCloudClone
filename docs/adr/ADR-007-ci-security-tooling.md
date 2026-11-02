@@ -224,7 +224,8 @@ minimatch 11 has no default export, which is what `@ts-morph/common` calls, so
 forcing it breaks every glob match ts-morph makes. `npm audit` reports it as
 **14 moderate**, one per package that inherits it. Only this repo's own
 deploy config supplies its patterns. The exception ends when the CLI moves off
-ts-morph 12.
+ts-morph 12. Dependabot alert 42 for it was dismissed as tolerable risk on
+2026-11-02; alert 41 (glob) closed as fixed.
 
 The same 2026-10-24 pass added range-scoped overrides for `undici` 6 and 7
 (→ 6.29.1 / 7.30.1, GHSA-xjj6-f33q-929c and two moderates) and `fast-uri` 3
