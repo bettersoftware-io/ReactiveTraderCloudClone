@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { parseSseChunks } from "./openAiSse.js";
 
@@ -145,8 +145,8 @@ describe("parseSseChunks", () => {
     ).rejects.toThrow(RangeError);
   });
 
-  it("a line just under the cap, in many small reads, parses in linear time", async () => {
-    const value = "a".repeat(SSE_CAP_CHARS - 1_000);
+  it("a long line in many small reads is scanned once: the work grows with its length, not its square", async () => {
+    const value = "a".repeat(200_000);
     const text = `data: ${JSON.stringify(value)}\n\n`;
     const parts: string[] = [];
 
@@ -154,11 +154,16 @@ describe("parseSseChunks", () => {
       parts.push(text.slice(at, at + 40));
     }
 
-    // ~26,000 reads: rescanning the line so far on each one is ~1.3e10
-    // character visits, far past the test's timeout.
-    const chunks = await collectChunks(parts);
+    // Counted, not timed: the splitter visits characters through
+    // `charCodeAt`. Rescanning the line so far on each of ~5,000 reads
+    // would visit ~5e8 of them.
+    const budget = 2 * text.length;
+    const scanned = await countCharCodeAtCalls(budget, () => {
+      return collectChunks(parts);
+    });
 
-    expect(chunks).toEqual([value]);
+    expect(scanned.result).toEqual([value]);
+    expect(scanned.calls).toBeLessThanOrEqual(budget);
   });
 
   it("an already aborted signal reads nothing", async () => {
@@ -214,6 +219,39 @@ function collectChunks(parts: readonly string[]): Promise<unknown[]> {
 
 function collectByteChunks(parts: readonly Uint8Array[]): Promise<unknown[]> {
   return collectFrom(createByteBody(parts), new AbortController().signal);
+}
+
+interface CountedRun<T> {
+  readonly result: T;
+  readonly calls: number;
+}
+
+/** Runs `run`, counting every `String.prototype.charCodeAt` call made while
+ * it runs. Past `budget` calls the next one throws, so a scan gone quadratic
+ * fails at once instead of running for minutes. */
+async function countCharCodeAtCalls<T>(
+  budget: number,
+  run: () => Promise<T>,
+): Promise<CountedRun<T>> {
+  const original = String.prototype.charCodeAt;
+  let calls = 0;
+  const spy = vi
+    .spyOn(String.prototype, "charCodeAt")
+    .mockImplementation(function countCall(this: string, index: number) {
+      calls += 1;
+
+      if (calls > budget) {
+        throw new RangeError(`more than ${budget} characters scanned`);
+      }
+
+      return original.call(this, index);
+    });
+
+  try {
+    return { result: await run(), calls };
+  } finally {
+    spy.mockRestore();
+  }
 }
 
 interface RunawayBody {

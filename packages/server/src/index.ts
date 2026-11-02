@@ -29,6 +29,7 @@ import { createSessionRegistry } from "./accounts/sessionRegistry.js";
 import { startUnconfirmedPurge } from "./accounts/unconfirmedPurge.js";
 import { AnthropicAgentLoop } from "./agent/AnthropicAgentLoop.js";
 import { type AgentLoop, createJarvisLoops } from "./agent/agentLoop.js";
+import { createOwnKeyLoopBuilder } from "./agent/ownKeyLoops.js";
 import { ScriptedAgentLoop } from "./agent/ScriptedAgentLoop.js";
 import { AuthService, parseAuthUsers } from "./auth/AuthService.js";
 import { createBanList } from "./auth/banList.js";
@@ -128,31 +129,30 @@ function buildJarvisToolsFor(
   });
 }
 
-/** A real `AnthropicAgentLoop` on one key, wiring each session's own
+// render_panel's roster check (LIVE brains only) — the same static roster the
+// desk tools' own reads ultimately source from
+// (`ReferenceDataSimulator.getCurrencyPairs()` is just this constant wrapped
+// in a delayed Observable), taken directly here since tool-list construction
+// is synchronous and this constant never changes at runtime.
+const KNOWN_SYMBOLS: readonly string[] = KNOWN_CURRENCY_PAIRS.map((pair) => {
+  return pair.symbol;
+});
+
+/** The house key's real `AnthropicAgentLoop`, wiring each session's own
  * `buildJarvisTools` call (see `AnthropicAgentLoopOptions.buildTools`'s doc
  * comment for why that must happen per session, not once here). Token usage
  * reaches the budget and the ops usage dock through each turn's meter
  * (`jarvis.effects.ts`). */
-function buildAnthropicLoopOn(
+function buildHouseAnthropicLoop(
   apiKey: string,
-  ownKey: boolean,
   services: ServiceContainer,
 ): AgentLoop {
   return new AnthropicAgentLoop({
     apiKey,
-    ownKey,
     buildTools: (confirmTrade: ConfirmGate) => {
       return buildJarvisToolsFor(services, confirmTrade);
     },
-    // render_panel's roster check (LIVE brains only) — the same static
-    // roster the desk tools' own reads ultimately source from
-    // (`ReferenceDataSimulator.getCurrencyPairs()` is just this constant
-    // wrapped in a delayed Observable), taken directly here since tool-list
-    // construction is synchronous and this constant never changes at
-    // runtime.
-    knownSymbols: KNOWN_CURRENCY_PAIRS.map((pair) => {
-      return pair.symbol;
-    }),
+    knownSymbols: KNOWN_SYMBOLS,
   });
 }
 
@@ -166,7 +166,7 @@ function buildAnthropicLoop(
   env: NodeJS.ProcessEnv,
   services: ServiceContainer,
 ): AgentLoop {
-  return buildAnthropicLoopOn(env.ANTHROPIC_API_KEY ?? "", false, services);
+  return buildHouseAnthropicLoop(env.ANTHROPIC_API_KEY ?? "", services);
 }
 
 const auth = new AuthService({
@@ -240,14 +240,22 @@ const jarvisLoops = createJarvisLoops(
   buildAnthropicLoop,
 );
 
+/** Routes an accepted own key to its provider's loop: Anthropic's to
+ * `AnthropicAgentLoop`, OpenRouter's and OpenAI's to
+ * `OpenAiCompatibleAgentLoop` on their fixed host (`ownKeyLoops.ts`). */
+const buildProviderLoop = createOwnKeyLoopBuilder({
+  buildTools: (confirmTrade: ConfirmGate) => {
+    return buildJarvisToolsFor(services, confirmTrade);
+  },
+  knownSymbols: KNOWN_SYMBOLS,
+});
+
 /** One accepted own key's loop, built per connection: the client it owns
- * holds the person's key, so it is never shared (D16). The closed provider
- * set at the `jarvis.key` seam is Anthropic alone until the OpenAI-compatible
- * loop lands. */
-function buildOwnKeyLoop(_provider: JarvisProvider, key: string): AgentLoop {
+ * holds the person's key, so it is never shared (D16). */
+function buildOwnKeyLoop(provider: JarvisProvider, key: string): AgentLoop {
   return jarvisFake
     ? new ScriptedAgentLoop(services)
-    : buildAnthropicLoopOn(key, true, services);
+    : buildProviderLoop(provider, key);
 }
 
 // One merged effect for the process; a listener is built PER CONNECTION

@@ -49,6 +49,7 @@ function clearedEnvHeaders(env: NodeJS.ProcessEnv): Record<string, null> {
 function ownKeyClientOptions(
   apiKey: string,
   env: NodeJS.ProcessEnv,
+  fetchFn: typeof fetch | undefined,
 ): ClientOptions {
   return {
     apiKey,
@@ -57,6 +58,7 @@ function ownKeyClientOptions(
     defaultHeaders: clearedEnvHeaders(env),
     fetchOptions: { redirect: "error" },
     logLevel: "off",
+    ...(fetchFn === undefined ? {} : { fetch: fetchFn }),
   };
 }
 
@@ -65,6 +67,9 @@ export interface AnthropicAgentLoopOptions {
   /** The key is a person's own, not the deployment's: see
    * `ownKeyClientOptions`. */
   readonly ownKey?: boolean;
+  /** Test and probe seam for an own key's client: what it sends requests
+   * through, in place of the global `fetch`. The host stays Anthropic's. */
+  readonly fetchFn?: typeof fetch;
   /**
    * Builds ONE session's `JarvisToolDefinition` set, given THAT session's own
    * `confirmTrade` gate. A flat, loop-level `JarvisToolDefinition[]` can't
@@ -130,7 +135,7 @@ export class AnthropicAgentLoop implements AgentLoop {
       buildDefaultRunnerFactory(
         new Anthropic(
           options.ownKey
-            ? ownKeyClientOptions(options.apiKey, process.env)
+            ? ownKeyClientOptions(options.apiKey, process.env, options.fetchFn)
             : { apiKey: options.apiKey },
         ),
       );

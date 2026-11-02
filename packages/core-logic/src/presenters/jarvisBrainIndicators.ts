@@ -7,6 +7,7 @@ import {
   type JarvisBudgetView,
   jarvisBrainLabel,
   jarvisBrainName,
+  ownModelOf,
 } from "@rtc/domain";
 
 import { formatGateResetTimeUtc } from "./jarvisController.js";
@@ -150,8 +151,9 @@ function warning(text: string): BrainReadout {
 }
 
 /** The readout for a person who prefers an own brain but is running scripted:
- * a spent cap, a key that is not set, or one that could not be checked. `null`
- * when none of those explains it. */
+ * a spent cap, a key that is not set, a key for another provider than the
+ * brain's, or one that could not be checked. `null` when none of those
+ * explains it. */
 function describeOwnPreferenceUnmet(
   state: BrainIndicatorState,
 ): BrainReadout | null {
@@ -165,6 +167,15 @@ function describeOwnPreferenceUnmet(
 
   if (ownKey === null) {
     return warning("Scripted · your key isn't set");
+  }
+
+  // The server runs an own brain only on a key of that brain's provider.
+  const brainProvider = ownModelOf(state.preferredBrain)?.provider;
+
+  if (brainProvider !== undefined && brainProvider !== ownKey.provider) {
+    return warning(
+      `Scripted · your key is for ${JARVIS_PROVIDER_NAMES[ownKey.provider]}`,
+    );
   }
 
   if (ownKey.status === "unreachable") {

@@ -29,9 +29,10 @@ import {
   JARVIS_BRAINS,
   JARVIS_KEY_MAX_CHARS,
   JARVIS_OWN_CAP_DEFAULT_USD,
-  JARVIS_OWN_MODELS,
   type JarvisOwnKeyStatus,
   type JarvisOwnKeyView,
+  type JarvisProvider,
+  ownModelsFor,
 } from "@rtc/domain";
 
 afterEach(() => {
@@ -49,7 +50,7 @@ describe("OwnKeySection", () => {
   it("offers the providers and a key field a browser will not remember", () => {
     const page = mount(OwnKeySection, {});
 
-    expect(page.providers()).toEqual(["anthropic"]);
+    expect(page.providers()).toEqual(["anthropic", "openrouter", "openai"]);
     expect(page.keyFieldAttributes()).toEqual({
       type: "password",
       autocomplete: "new-password",
@@ -107,6 +108,26 @@ describe("OwnKeySection", () => {
           key: RAW_KEY,
           capUsd: 2.5,
           remember: true,
+        },
+      },
+    ]);
+  });
+
+  it("saves the key under the provider chosen", async () => {
+    const page = mount(OwnKeySection, {});
+
+    await page.chooseProvider("openrouter");
+    await page.typeKey(RAW_KEY);
+    await page.save();
+
+    expect(page.calls()).toEqual([
+      {
+        kind: "save",
+        input: {
+          provider: "openrouter",
+          key: RAW_KEY,
+          capUsd: JARVIS_OWN_CAP_DEFAULT_USD,
+          remember: false,
         },
       },
     ]);
@@ -477,6 +498,27 @@ describe("the brain pickers with a key set", () => {
     );
   });
 
+  it("lists only the models of the provider the key is for", () => {
+    const openaiBrains = ownModelsFor("openai").map((model) => {
+      return model.brain;
+    });
+
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      jarvisAvailability: withOwnKey("accepted", "openai"),
+      jarvisOwnKeySaved: { ...SAVED, provider: "openai" },
+    });
+
+    for (const brain of openaiBrains) {
+      expect(page.hasSegmentOption("jarvisOwnBrain", brain)).toBe(true);
+      expect(page.segmentDisabled("jarvisOwnBrain", brain)).toBe(false);
+    }
+
+    for (const brain of OWN_BRAINS) {
+      expect(page.hasSegmentOption("jarvisOwnBrain", brain)).toBe(false);
+    }
+  });
+
   it("has no Your key row while no own brain is offered", () => {
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },
@@ -579,7 +621,8 @@ describe("the brain pickers with a key set", () => {
   });
 });
 
-const OWN_BRAINS = JARVIS_OWN_MODELS.map((model) => {
+/** The brains an accepted Anthropic key offers. */
+const OWN_BRAINS = ownModelsFor("anthropic").map((model) => {
   return model.brain;
 });
 
@@ -587,8 +630,11 @@ const RAW_KEY = "sk-ant-api03-SECRETSECRETSECRET-4321";
 
 const MASKED_KEY = "sk-ant-…4321";
 
-function keyView(status: JarvisOwnKeyStatus): JarvisOwnKeyView {
-  return { provider: "anthropic", status, capUsd: 1 };
+function keyView(
+  status: JarvisOwnKeyStatus,
+  provider: JarvisProvider = "anthropic",
+): JarvisOwnKeyView {
+  return { provider, status, capUsd: 1 };
 }
 
 function availability(
@@ -607,13 +653,20 @@ function availability(
   };
 }
 
-/** What an accepted key offers: every house brain and every own brain. */
+/** What an accepted key offers: every house brain and the own brains of
+ * the key's provider. */
 function withOwnKey(
   status: JarvisOwnKeyStatus = "accepted",
+  provider: JarvisProvider = "anthropic",
 ): JarvisAvailability {
   return availability({
-    brains: [...JARVIS_BRAINS, ...OWN_BRAINS],
-    ownKey: keyView(status),
+    brains: [
+      ...JARVIS_BRAINS,
+      ...ownModelsFor(provider).map((model) => {
+        return model.brain;
+      }),
+    ],
+    ownKey: keyView(status, provider),
   });
 }
 

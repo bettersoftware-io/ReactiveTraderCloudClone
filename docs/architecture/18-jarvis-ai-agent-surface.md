@@ -1597,9 +1597,12 @@ connection's `ConnectionOwnKey`; nothing else holds it. Its path:
    refused key's turn can say why); an `unreachable` or `limited` key offers
    none. The key text is in no frame.
 3. A turn on an own brain builds its loop per connection through
-   `buildOwnKeyLoop` in `index.ts` (an Anthropic client on that key; under
-   `RTC_JARVIS_FAKE=1` a `ScriptedAgentLoop`, and `fakeVerifyOwnKey` accepts a
-   key starting `fake-good`). The loop is never shared between connections.
+   `buildOwnKeyLoop` in `index.ts`, which calls `createOwnKeyLoopBuilder`
+   (`agent/ownKeyLoops.ts`): an Anthropic key gets an `AnthropicAgentLoop` on
+   that key, an OpenRouter or OpenAI key an `OpenAiCompatibleAgentLoop` (below).
+   Under `RTC_JARVIS_FAKE=1` it is a `ScriptedAgentLoop`, and
+   `fakeVerifyOwnKey` accepts a key starting `fake-good`. The loop is never
+   shared between connections.
 4. The key goes when the connection's scope is disposed (socket close), on
    `clear`, or on a replacement key, which retires the session built on the
    old one. It is never stored and never logged: the malformed-frame log line
@@ -1619,6 +1622,37 @@ An own turn can never reach a house loop, so a person's missing, spent or
 refused key never spends the house key. With no `ANTHROPIC_API_KEY` (or the
 house amounts at `0`) Jarvis is still available, on the scripted brain plus
 any accepted own key (D16).
+
+### Own keys at OpenRouter and OpenAI (B3c)
+
+`OpenAiCompatibleAgentLoop` runs a person's OpenRouter or OpenAI key over the
+streamed chat-completions API with plain `fetch`, no SDK. Its session,
+`OpenAiCompatibleAgentSession`, does what `AnthropicAgentSession` does for a
+person: the same desk tools through its own `LiveSessionDesk` (the confirm gate
+on `execute_trade`, `render_panel`, `drive_app`), the same copy, the iteration
+cap, cancel, and the budget asked before every request. It runs the tool loop
+itself, since there is no SDK runner. The stream is read by `parseSseChunks`
+(`openAiSse.ts`), which caps a line and an event and scans each read once.
+
+Each provider's request shape is a config in `OWN_KEY_CHAT_CONFIGS`: its fixed
+host, its token-limit field (`max_completion_tokens` at OpenAI, `max_tokens` at
+OpenRouter) and extra fields. Both switch reasoning off: OpenAI's Chat
+Completions takes function tools only that way on its current models, and with
+reasoning off a cancelled request, booked from the characters it streamed,
+misses no hidden tokens. That is why the curated list names no model that must
+reason. OpenRouter also asks for the reply's cost, which the turn books in
+place of the listed price (clamped to a multiple of the request's listed worst
+case), and routes only to providers that honour every field sent.
+
+A 401, 402 or 403, or OpenAI's 429 for a key out of credit, refuses the key
+through the turn's `keyFailure`, as on Anthropic: the turn says
+`<Provider> refused your key.` and the key reads refused. Any other failure is
+the sanitized desk-link copy; no provider message reaches a log or the client.
+
+`own-key:probe` (`agent/ownKeyProbe.ts`, run by hand with a real key) drives
+one tool-calling turn per listed model through the same builder and config,
+and is how a model gets on the list
+([running-real-jarvis.md](../running-real-jarvis.md#bring-your-own-key-b3c)).
 
 ### Own keys in the clients (B3c)
 
@@ -1642,17 +1676,19 @@ What a person sees:
   state or markup.
 - **The brain picker.** House brains and the curated own-key brains sit in two
   groups, "House key" and "Your key". The own group appears once the server
-  offers it. A brain the active gate removed is shown disabled.
+  offers it, and lists the models of the key's provider only. A brain the
+  active gate removed is shown disabled.
 - **The readout and reply tags.** A reply is tagged with the brain that ran
   it. A preferred own brain that cannot run reads as `Scripted` with the
-  reason (refused, couldn't reach the provider, too many key checks, limit
-  used). A stored own brain whose model left the list reads as scripted, never
+  reason (refused, the key is for another provider, couldn't reach the
+  provider, too many key checks, limit used). A stored own brain whose model left the list reads as scripted, never
   as the house default.
 
-The full-stack browser case in `tests/fullstack/browser/fullstack.spec.ts`
-drives the whole path on React and Solid with a fake key: save it, see
-`Accepted`, reload, pick an own brain, get a tagged reply, sign out, and find
-nothing in either storage. Rulings: [the B3c rulings](../superpowers/plans/2026-11-01-b3c-byo-keys-rulings.md).
+Two full-stack browser cases in `tests/fullstack/browser/fullstack.spec.ts`
+drive the whole path on React and Solid with a fake key: one saves it, sees
+`Accepted` and finds it accepted again after a reload; the other saves it,
+picks an own brain, gets a tagged reply, signs out, and finds nothing in
+either storage. Rulings: [the B3c rulings](../superpowers/plans/2026-11-01-b3c-byo-keys-rulings.md).
 
 ## 18.16 The generative-UI surface (round 1)
 

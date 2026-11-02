@@ -80,6 +80,50 @@ describe("verifyOwnKey", () => {
     expect(headers.get("anthropic-version")).toBe("2023-06-01");
   });
 
+  it("OpenRouter's check does not use the public models list", async () => {
+    // OpenRouter as it answers: its models list is public, so any key reads
+    // 200 there; only the key-info route judges the key.
+    const fetchFn = vi.fn<typeof fetch>((input, init) => {
+      const url = new URL(String(input));
+      const authorized =
+        new Headers(init?.headers).get("authorization") === "Bearer good";
+
+      if (url.pathname === "/api/v1/models") {
+        return Promise.resolve(new Response("{}", { status: 200 }));
+      }
+
+      return Promise.resolve(
+        new Response("{}", {
+          status: url.pathname === "/api/v1/key" && authorized ? 200 : 401,
+        }),
+      );
+    });
+    const signal = new AbortController().signal;
+
+    expect(await verifyOwnKey("openrouter", "bad", signal, fetchFn)).toBe(
+      "refused",
+    );
+    expect(await verifyOwnKey("openrouter", "good", signal, fetchFn)).toBe(
+      "accepted",
+    );
+    expect(
+      vi.mocked(fetchFn).mock.calls.map(([input]) => {
+        return new URL(String(input)).pathname;
+      }),
+    ).toEqual(["/api/v1/key", "/api/v1/key"]);
+  });
+
+  it("OpenAI's check lists the models with the key as a bearer token", async () => {
+    const fetchFn = replying(200);
+
+    await verifyOwnKey("openai", "k3", new AbortController().signal, fetchFn);
+
+    const [url, init] = vi.mocked(fetchFn).mock.calls[0] ?? [];
+
+    expect(url).toBe("https://api.openai.com/v1/models");
+    expect(new Headers(init?.headers).get("authorization")).toBe("Bearer k3");
+  });
+
   it("logs neither the key, the URL nor an error message", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const error = vi.spyOn(console, "error").mockImplementation(() => {});

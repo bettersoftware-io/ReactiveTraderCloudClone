@@ -15,6 +15,7 @@ import {
   isJarvisOwnBrain,
   isJarvisProvider,
   JARVIS_OWN_MODELS,
+  JARVIS_OWN_PROVIDERS,
   JARVIS_PROVIDERS,
   ownModelOf,
   ownModelsFor,
@@ -82,8 +83,8 @@ describe("jarvisOwnModels", () => {
     }
   });
 
-  it("an own model carries the name and label of the house model it mirrors", () => {
-    for (const model of JARVIS_OWN_MODELS) {
+  it("an Anthropic own model carries the name and label of the house model it mirrors", () => {
+    for (const model of ownModelsFor("anthropic")) {
       expect(model.name).toBe(
         JARVIS_BRAIN_NAMES[model.modelId as keyof typeof JARVIS_BRAIN_NAMES],
       );
@@ -95,7 +96,40 @@ describe("jarvisOwnModels", () => {
 
   it("ownModelsFor lists a provider's models only", () => {
     expect(ownModelsFor("anthropic")).toHaveLength(3);
-    expect(ownModelsFor("openai")).toEqual([]);
+
+    for (const provider of JARVIS_PROVIDERS) {
+      for (const model of ownModelsFor(provider)) {
+        expect(model.provider).toBe(provider);
+      }
+    }
+  });
+
+  it("offers all three providers, each with a cheap and a strong model besides Anthropic's three", () => {
+    expect(JARVIS_OWN_PROVIDERS).toEqual(["anthropic", "openrouter", "openai"]);
+    expect(ownModelsFor("openrouter")).toHaveLength(2);
+    expect(ownModelsFor("openai")).toHaveLength(2);
+
+    for (const provider of ["openrouter", "openai"] as const) {
+      const [cheap, strong] = ownModelsFor(provider);
+
+      expect(cheap?.outputUsdPerMtok).toBeLessThan(
+        strong?.outputUsdPerMtok ?? 0,
+      );
+    }
+  });
+
+  it("every listed model has a name and a label of its own", () => {
+    const brains = new Set<string>();
+
+    for (const model of JARVIS_OWN_MODELS) {
+      expect(model.name.length).toBeGreaterThan(0);
+      expect(model.label.length).toBeGreaterThan(0);
+      expect(jarvisBrainName(model.brain)).toBe(model.name);
+      expect(jarvisBrainLabel(model.brain)).toBe(model.label);
+      brains.add(model.brain);
+    }
+
+    expect(brains.size).toBe(JARVIS_OWN_MODELS.length);
   });
 
   it("isJarvisOwnBrain checks the shape, not the list", () => {

@@ -1,7 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { JARVIS_OWN_MODELS } from "@rtc/domain";
+import { ownModelsFor } from "@rtc/domain";
 
 import {
   estimateUsageCostUsd,
@@ -303,7 +303,9 @@ describe("estimateUsageCostUsd", () => {
   });
 
   it("prices each own Anthropic model exactly like its house table row", () => {
-    for (const model of JARVIS_OWN_MODELS) {
+    // The house table is Anthropic's; other providers' models have prices
+    // of their own.
+    for (const model of ownModelsFor("anthropic")) {
       const houseRow =
         JARVIS_PRICE_TABLE[model.modelId as keyof typeof JARVIS_PRICE_TABLE];
 

@@ -307,6 +307,30 @@ describe("describeBrainReadout — an own key", () => {
     });
   });
 
+  it("a key for another provider: names the provider the key is for", () => {
+    const state = aState("scripted", null, {
+      preferredBrain: OWN_SONNET,
+      ownKey: { ...anOwnKey(), provider: "openai" },
+    });
+
+    expect(describeBrainReadout(state)).toEqual({
+      text: "Scripted · your key is for OpenAI",
+      tone: "warning",
+      meterFraction: null,
+    });
+  });
+
+  it("a key for another provider outranks that key's own trouble", () => {
+    const state = aState("scripted", null, {
+      preferredBrain: OWN_SONNET,
+      ownKey: { ...anOwnKey("unreachable"), provider: "openrouter" },
+    });
+
+    expect(describeBrainReadout(state)?.text).toBe(
+      "Scripted · your key is for OpenRouter",
+    );
+  });
+
   it("key checks limited: says too many key checks", () => {
     const state = aState("scripted", null, {
       preferredBrain: OWN_SONNET,
