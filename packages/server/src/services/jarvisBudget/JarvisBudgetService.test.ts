@@ -995,6 +995,92 @@ describe("JarvisBudgetService", () => {
   });
 
   describe("forgetOwner", () => {
+    it("reads a forgotten owner as exhausted, house and own", async () => {
+      const service = createService(createInMemorySpendStore());
+
+      await service.stateFor(MEMBER, "member");
+      await service.forgetOwner("account:a");
+
+      await expect(service.stateFor(MEMBER, "member")).resolves.toMatchObject({
+        exhausted: "unavailable",
+      });
+      await expect(service.stateFor(MEMBER, "operator")).resolves.toMatchObject(
+        { exhausted: "unavailable" },
+      );
+      await expect(service.ownStateFor(MEMBER, null)).resolves.toMatchObject({
+        exhausted: "unavailable",
+      });
+      await expect(service.ownStateFor(MEMBER, 5)).resolves.toMatchObject({
+        exhausted: "unavailable",
+      });
+    });
+
+    it("refuses a forgotten owner's meters, house and own", async () => {
+      const service = createService(createInMemorySpendStore());
+
+      await service.stateFor(MEMBER, "member");
+      await service.forgetOwner("account:a");
+
+      expect(service.meterFor(MEMBER, "member").exhausted()).toBe(true);
+      expect(service.meterFor(MEMBER, "operator").exhausted()).toBe(true);
+      expect(service.ownMeterFor(MEMBER, capOf(null)).exhausted()).toBe(true);
+      expect(service.ownMeterFor(MEMBER, capOf(5)).exhausted()).toBe(true);
+    });
+
+    it("gives an owner unblocked after a half-done delete no model turn, even a day later", async () => {
+      const service = createService(createInMemorySpendStore());
+
+      await service.stateFor(MEMBER, "member");
+      await service.forgetOwner("account:a");
+      await vi.advanceTimersByTimeAsync(DAY_MS);
+
+      await expect(service.stateFor(MEMBER, "member")).resolves.toMatchObject({
+        spentUsd: 0,
+        exhausted: "unavailable",
+      });
+      expect(service.meterFor(MEMBER, "member").exhausted()).toBe(true);
+      expect(service.ownMeterFor(MEMBER, capOf(null)).exhausted()).toBe(true);
+      // Other owners are not affected.
+      await expect(
+        service.stateFor({ ...MEMBER, accountId: "b" }, "member"),
+      ).resolves.toMatchObject({ exhausted: null });
+    });
+
+    it("leaves the house totals unchanged when the owner is forgotten while its rewrite is in flight", async () => {
+      const inner = createInMemorySpendStore();
+      const manual = createManualStore(inner);
+      const service = createService(manual.store);
+      const other: Caller = { ...MEMBER, accountId: "b" };
+
+      await loadBoth(service, manual, other);
+      service
+        .meterFor(other, "member")
+        .record("claude-haiku-4-5", ONE_CENT_ON_HAIKU);
+      await manual.release("account:b");
+      manual.setDown(true);
+      service
+        .meterFor(MEMBER, "member")
+        .record("claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      await manual.release("account:a");
+      manual.setDown(false);
+
+      // B's read lifts the outage, which sends A's unrecorded amount again.
+      const lift = service.stateFor(other, "member");
+
+      await manual.release("account:b");
+      await lift;
+      await settle();
+
+      const forgetting = service.forgetOwner("account:a");
+
+      expect(service.houseToday().spentUsd).toBe(0.01);
+
+      await manual.release("account:a");
+      await forgetting;
+
+      expect(service.houseToday().spentUsd).toBe(0.01);
+    });
+
     it("does not send an unrecorded amount again once the owner is forgotten", async () => {
       const switchable = createSwitchableStore();
       const record = vi.spyOn(switchable.store, "record");

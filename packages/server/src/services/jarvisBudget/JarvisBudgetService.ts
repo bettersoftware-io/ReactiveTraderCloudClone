@@ -245,6 +245,7 @@ export class JarvisBudgetService {
 
       return (
         this.exhaustionOf(
+          slot,
           roundUsd(ownerSpentUsd(this.copyFor(slot)) + othersOfOwnerUsd),
           limitUsd,
           roundUsd(this.houseSpentUsd() + othersOfHouseUsd),
@@ -268,6 +269,7 @@ export class JarvisBudgetService {
 
       return (
         this.ownExhaustionOf(
+          slot,
           roundUsd(ownerSpentUsd(this.copyFor(slot)) + othersUsd),
           readCapUsd(),
         ) !== null
@@ -347,9 +349,13 @@ export class JarvisBudgetService {
       const copy = this.owners.get(key);
 
       if (copy !== undefined && keyKind === "house") {
-        this.housePendingUsd = roundUsd(this.housePendingUsd - copy.pendingUsd);
-        this.houseUnrecordedUsd = roundUsd(
-          this.houseUnrecordedUsd - copy.unrecordedUsd,
+        this.housePendingUsd = Math.max(
+          0,
+          roundUsd(this.housePendingUsd - copy.pendingUsd),
+        );
+        this.houseUnrecordedUsd = Math.max(
+          0,
+          roundUsd(this.houseUnrecordedUsd - copy.unrecordedUsd),
         );
       }
 
@@ -385,15 +391,22 @@ export class JarvisBudgetService {
     return {
       spentUsd,
       limitUsd: capUsd,
-      exhausted: this.ownExhaustionOf(spentUsd, capUsd),
+      exhausted: this.ownExhaustionOf(slot, spentUsd, capUsd),
       resetsAtMs: nextUtcMidnightMs(this.now()),
     };
   }
 
   private ownExhaustionOf(
+    slot: Slot,
     spentUsd: number,
     capUsd: number | null,
   ): "user" | "unavailable" | null {
+    // A forgotten owner (account deleted, or half-deleted and unblocked) has
+    // no spend figure to trust: closed, whatever its cap, until a restart.
+    if (this.forgottenOwners.has(slot.owner)) {
+      return "unavailable";
+    }
+
     // No limit: the turn runs whatever the store says (D15).
     if (capUsd === null) {
       return null;
@@ -417,12 +430,13 @@ export class JarvisBudgetService {
       limitUsd,
       houseSpentUsd,
       houseLimitUsd: this.config.houseDailyUsd,
-      exhausted: this.exhaustionOf(spentUsd, limitUsd, houseSpentUsd),
+      exhausted: this.exhaustionOf(slot, spentUsd, limitUsd, houseSpentUsd),
       resetsAtMs: nextUtcMidnightMs(this.now()),
     };
   }
 
   private exhaustionOf(
+    slot: Slot,
     spentUsd: number,
     limitUsd: number | null,
     houseSpentUsd: number,
@@ -431,8 +445,9 @@ export class JarvisBudgetService {
       return "forced";
     }
 
-    // Fail closed: numbers the store could not confirm are not trusted.
-    if (!this.storeAvailable) {
+    // Fail closed: numbers the store could not confirm are not trusted, and
+    // a forgotten owner's are gone (until a restart re-reads the store).
+    if (!this.storeAvailable || this.forgottenOwners.has(slot.owner)) {
       return "unavailable";
     }
 
@@ -539,7 +554,7 @@ export class JarvisBudgetService {
       copy.pendingUsd -= usd;
 
       if (slot.keyKind === "house") {
-        this.housePendingUsd -= usd;
+        this.housePendingUsd = Math.max(0, this.housePendingUsd - usd);
       }
 
       if (answer === "unavailable") {
@@ -590,6 +605,14 @@ export class JarvisBudgetService {
       return this.store.record(slot.owner, day, slot.keyKind, usd);
     });
 
+    // Forgotten while the write was in flight: forgetOwner already took the
+    // amount out of the house figures.
+    if (this.forgottenOwners.has(slot.owner)) {
+      this.noteStoreAnswer(answer, seq);
+
+      return;
+    }
+
     // A success that answers after midnight is not applied: midnight dropped
     // the copy the amount was kept in, and the new day's never counted it.
     if (answer !== "unavailable" && day === this.rollCopyToToday()) {
@@ -597,7 +620,10 @@ export class JarvisBudgetService {
       copy.unrecordedUsd = roundUsd(copy.unrecordedUsd - usd);
 
       if (slot.keyKind === "house") {
-        this.houseUnrecordedUsd = roundUsd(this.houseUnrecordedUsd - usd);
+        this.houseUnrecordedUsd = Math.max(
+          0,
+          roundUsd(this.houseUnrecordedUsd - usd),
+        );
       }
 
       this.applyTotals(copy, answer);
