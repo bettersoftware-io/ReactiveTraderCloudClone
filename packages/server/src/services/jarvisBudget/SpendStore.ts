@@ -13,7 +13,7 @@ export interface SpendTotals {
 }
 
 /**
- * Durable per-day Jarvis spend. Either call answers `"unavailable"` when the
+ * Durable per-day Jarvis spend. Any call answers `"unavailable"` when the
  * store cannot be reached or answers nonsense; the caller fails closed on it.
  */
 export interface SpendStore {
@@ -30,4 +30,8 @@ export interface SpendStore {
     keyKind: KeyKind,
     usd: number,
   ): Promise<SpendTotals | "unavailable">;
+  /** Removes every row of the owner: every day, both key kinds. The house
+   * total's own rows stay. Answers `"deleted"` also when there was nothing
+   * to remove. */
+  deleteOwner(owner: SpendOwner): Promise<"deleted" | "unavailable">;
 }

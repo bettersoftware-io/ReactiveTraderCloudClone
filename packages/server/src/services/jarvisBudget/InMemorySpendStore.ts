@@ -50,6 +50,16 @@ export function createInMemorySpendStore(): SpendStore {
     totals.set(key, roundUsd((totals.get(key) ?? 0) + usd));
   }
 
+  function deleteRowsOf(owner: SpendOwner): void {
+    for (const key of [...totals.keys()]) {
+      const [rowOwner] = JSON.parse(key) as [string, string, string];
+
+      if (rowOwner === owner) {
+        totals.delete(key);
+      }
+    }
+  }
+
   return {
     kind: "in-memory",
     read(
@@ -72,6 +82,11 @@ export function createInMemorySpendStore(): SpendStore {
       }
 
       return Promise.resolve(totalsFor(owner, day, keyKind));
+    },
+    deleteOwner(owner: SpendOwner): Promise<"deleted"> {
+      deleteRowsOf(owner);
+
+      return Promise.resolve("deleted");
     },
   };
 }

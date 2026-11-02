@@ -12,6 +12,11 @@ import type { DevAccountSeed } from "#/accounts/devAccounts";
 import { createInMemoryAccountDirectory } from "#/accounts/InMemoryAccountDirectory";
 import { createRevocationLedger } from "#/accounts/revocationLedger";
 import type { SessionRegistry } from "#/accounts/sessionRegistry";
+import { createInMemorySpendStore } from "#/services/jarvisBudget/InMemorySpendStore";
+import type {
+  SpendOwner,
+  SpendStore,
+} from "#/services/jarvisBudget/SpendStore";
 import type { Caller } from "#/services/serviceContainer";
 
 describe("AccountAdminService", () => {
@@ -309,6 +314,167 @@ describe("AccountAdminService", () => {
       expect(cache.invalidate).toHaveBeenCalledWith(OTHER_ID);
       expect(sessions.closeAll).toHaveBeenCalledWith(OTHER_ID);
     });
+
+    describe("delete and the account's spend rows", () => {
+      it("deletes the spend rows of that account only", async () => {
+        const { service, spend } = createFixture();
+        await seedSpend(spend);
+
+        await service.act(createCaller(ADMIN_ID), OTHER_ID, REMOVE);
+
+        expect(
+          await spend.read(`account:${OTHER_ID}`, "2026-10-25", "house"),
+        ).toMatchObject({ ownerUsd: 0 });
+        expect(
+          await spend.read(`account:${OTHER_ID}`, "2026-10-26", "own"),
+        ).toMatchObject({ ownerUsd: 0 });
+        expect(
+          await spend.read(`account:${ADMIN_ID}`, "2026-10-25", "house"),
+        ).toMatchObject({ ownerUsd: 0.3 });
+      });
+
+      it("blocks, forgets the owner in the budget, deletes the spend rows, then the account", async () => {
+        const { service, steps } = createFixture();
+
+        await service.act(createCaller(ADMIN_ID), OTHER_ID, REMOVE);
+
+        expect(
+          steps.filter((step) => {
+            return (
+              step.startsWith("account ") ||
+              step.startsWith("spend ") ||
+              step.startsWith("owner ")
+            );
+          }),
+        ).toEqual([
+          "account blocked",
+          `owner forgotten account:${OTHER_ID}`,
+          "spend deleted",
+          "account deleted",
+        ]);
+      });
+
+      it("ends the open sessions as soon as the block lands", async () => {
+        const { service, sessions, cache } = createFixture({
+          spendDown: true,
+        });
+
+        await service.act(createCaller(ADMIN_ID), OTHER_ID, REMOVE);
+
+        expect(sessions.closeAll).toHaveBeenCalledWith(OTHER_ID);
+        expect(cache.invalidate).toHaveBeenCalledWith(OTHER_ID);
+      });
+
+      it("does not forget the owner when the block is unavailable", async () => {
+        const { service, budget } = createFixture({ blockDown: true });
+
+        await service.act(createCaller(ADMIN_ID), OTHER_ID, REMOVE);
+
+        expect(budget.forgetOwner).not.toHaveBeenCalled();
+      });
+
+      it("does nothing else when the block is unavailable", async () => {
+        const { service, directory, spend, steps } = createFixture({
+          blockDown: true,
+        });
+        await seedSpend(spend);
+
+        expect(
+          await service.act(createCaller(ADMIN_ID), OTHER_ID, REMOVE),
+        ).toEqual({ ok: false, refusal: "unavailable" });
+        expect(steps).not.toContain("spend deleted");
+        expect(steps).not.toContain("account deleted");
+        expect(await directory.findAccount(OTHER_ID)).toMatchObject({
+          account: { status: "pending" },
+        });
+      });
+
+      it("leaves the account blocked, not deleted, when the spend delete is unavailable", async () => {
+        const { service, directory, spend, steps } = createFixture({
+          spendDown: true,
+        });
+        await seedSpend(spend);
+
+        expect(
+          await service.act(createCaller(ADMIN_ID), OTHER_ID, REMOVE),
+        ).toEqual({ ok: false, refusal: "unavailable" });
+        expect(steps).not.toContain("account deleted");
+        expect(await directory.findAccount(OTHER_ID)).toMatchObject({
+          account: { status: "blocked" },
+        });
+        expect(
+          await spend.read(`account:${OTHER_ID}`, "2026-10-25", "house"),
+        ).toMatchObject({ ownerUsd: 0.1 });
+      });
+
+      it("leaves the account blocked with its spend gone when the account delete is unavailable", async () => {
+        const { service, directory, spend } = createFixture({
+          accountDeleteDown: true,
+        });
+        await seedSpend(spend);
+
+        expect(
+          await service.act(createCaller(ADMIN_ID), OTHER_ID, REMOVE),
+        ).toEqual({ ok: false, refusal: "unavailable" });
+        expect(await directory.findAccount(OTHER_ID)).toMatchObject({
+          account: { status: "blocked" },
+        });
+        expect(
+          await spend.read(`account:${OTHER_ID}`, "2026-10-25", "house"),
+        ).toMatchObject({ ownerUsd: 0 });
+      });
+
+      it.each<[string, keyof Outages]>([
+        ["block", "block"],
+        ["spend delete", "spend"],
+        ["account delete", "account"],
+      ])(
+        "finishes the delete on a retry after the %s failed",
+        async (_name, step) => {
+          const { service, directory, outages } = createFixture({
+            blockDown: step === "block",
+            spendDown: step === "spend",
+            accountDeleteDown: step === "account",
+          });
+
+          expect(
+            await service.act(createCaller(ADMIN_ID), OTHER_ID, REMOVE),
+          ).toEqual({ ok: false, refusal: "unavailable" });
+
+          outages[step] = false;
+
+          expect(
+            await service.act(createCaller(ADMIN_ID), OTHER_ID, REMOVE),
+          ).toEqual({ ok: true, value: undefined });
+          expect(await directory.findAccount(OTHER_ID)).toEqual({
+            outcome: "missing",
+          });
+        },
+      );
+
+      it("answers not_found for an unknown account without touching spend", async () => {
+        const { service, steps } = createFixture();
+
+        expect(
+          await service.act(createCaller(ADMIN_ID), MISSING_ID, REMOVE),
+        ).toEqual({ ok: false, refusal: "not_found" });
+        expect(steps).not.toContain("spend deleted");
+      });
+
+      it("leaves the account's spend rows alone for every other action", async () => {
+        const { service, spend, steps } = createFixture();
+        await seedSpend(spend);
+
+        await service.act(createCaller(ADMIN_ID), OTHER_ID, {
+          kind: "block",
+        });
+
+        expect(steps).not.toContain("spend deleted");
+        expect(
+          await spend.read(`account:${OTHER_ID}`, "2026-10-25", "house"),
+        ).toMatchObject({ ownerUsd: 0.1 });
+      });
+    });
   });
 
   describe("list", () => {
@@ -365,6 +531,14 @@ describe("AccountAdminService", () => {
 
 const LIST_LIMIT = 77;
 
+const REMOVE = { kind: "delete" } as const;
+
+async function seedSpend(spend: SpendStore): Promise<void> {
+  await spend.record(`account:${OTHER_ID}`, "2026-10-25", "house", 0.1);
+  await spend.record(`account:${OTHER_ID}`, "2026-10-26", "own", 0.2);
+  await spend.record(`account:${ADMIN_ID}`, "2026-10-25", "house", 0.3);
+}
+
 interface ForbiddenAnswer {
   readonly ok: false;
   readonly refusal: "forbidden";
@@ -382,6 +556,16 @@ interface FixtureOptions {
   readonly down?: boolean;
   readonly writesDown?: boolean;
   readonly listingDown?: boolean;
+  readonly spendDown?: boolean;
+  readonly blockDown?: boolean;
+  readonly accountDeleteDown?: boolean;
+}
+
+/** Which delete step answers `unavailable`; flip to let a retry through. */
+interface Outages {
+  block: boolean;
+  spend: boolean;
+  account: boolean;
 }
 
 interface Fixture {
@@ -396,6 +580,10 @@ interface Fixture {
   readonly writes: ReturnType<typeof vi.fn>;
   readonly listAccounts: ReturnType<typeof vi.fn>;
   readonly order: string[];
+  readonly steps: string[];
+  readonly spend: SpendStore;
+  readonly outages: Outages;
+  readonly budget: { forgetOwner: ReturnType<typeof vi.fn> };
 }
 
 function createFixture(options: FixtureOptions = {}): Fixture {
@@ -406,6 +594,32 @@ function createFixture(options: FixtureOptions = {}): Fixture {
     createSeed(BLOCKED_ADMIN_ID, "admin", "blocked"),
   ];
   const base = createInMemoryAccountDirectory({ now: fixedNow, seeds });
+  const order: string[] = [];
+  const steps: string[] = [];
+  const outages: Outages = {
+    block: options.blockDown === true,
+    spend: options.spendDown === true,
+    account: options.accountDeleteDown === true,
+  };
+  const memorySpend = createInMemorySpendStore();
+  const budget = {
+    forgetOwner: vi.fn((owner: SpendOwner): Promise<void> => {
+      steps.push(`owner forgotten ${owner}`);
+
+      return Promise.resolve();
+    }),
+  };
+
+  const spend: SpendStore = {
+    ...memorySpend,
+    deleteOwner: (owner: SpendOwner) => {
+      steps.push("spend deleted");
+
+      return outages.spend
+        ? Promise.resolve("unavailable" as const)
+        : memorySpend.deleteOwner(owner);
+    },
+  };
   const writes = vi.fn();
   const listAccounts = vi.fn((limit: number) => {
     return options.listingDown === true
@@ -434,11 +648,23 @@ function createFixture(options: FixtureOptions = {}): Fixture {
     },
     listAccounts,
     setApproved: writeThrough(base.setApproved),
-    setBlocked: writeThrough(base.setBlocked),
+    setBlocked: (...args: Parameters<AccountDirectory["setBlocked"]>) => {
+      steps.push(args[1] ? "account blocked" : "account unblocked");
+
+      return outages.block
+        ? Promise.resolve("unavailable" as const)
+        : writeThrough(base.setBlocked)(...args);
+    },
     rename: writeThrough(base.rename),
-    deleteAccount: writeThrough(base.deleteAccount),
+    deleteAccount: (id: string) => {
+      steps.push("account deleted");
+
+      return outages.account
+        ? Promise.resolve("unavailable" as const)
+        : writeThrough(base.deleteAccount)(id);
+    },
   };
-  const order: string[] = [];
+
   const cache = {
     read: vi.fn(),
     invalidate: vi.fn(() => {
@@ -463,6 +689,8 @@ function createFixture(options: FixtureOptions = {}): Fixture {
       statusCache: cache,
       sessions,
       revocations,
+      spend,
+      budget,
       now: fixedNow,
       listLimit: LIST_LIMIT,
     }),
@@ -473,6 +701,10 @@ function createFixture(options: FixtureOptions = {}): Fixture {
     writes,
     listAccounts,
     order,
+    steps,
+    spend,
+    outages,
+    budget,
   };
 }
 

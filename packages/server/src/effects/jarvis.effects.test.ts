@@ -1597,6 +1597,9 @@ describe("per-caller offers and the daily budget", () => {
       record: (): Promise<"unavailable"> => {
         return Promise.resolve("unavailable");
       },
+      deleteOwner: (): Promise<"deleted"> => {
+        return Promise.resolve("deleted");
+      },
     };
     const services = createBudgetServices({}, unreachableStore);
     const { anthropicSpy, scriptedSpy, messages$, sent } = wireSpySocket(
@@ -1803,6 +1806,9 @@ describe("per-caller offers and the daily budget", () => {
       },
       record: (): Promise<SpendTotals> => {
         return Promise.resolve({ ownerUsd: 0, houseUsd: 0 });
+      },
+      deleteOwner: (): Promise<"deleted"> => {
+        return Promise.resolve("deleted");
       },
     };
     const services = createBudgetServices({}, slowStore);
@@ -2428,6 +2434,9 @@ describe("a person's own key", () => {
           },
           record: () => {
             return Promise.resolve("unavailable");
+          },
+          deleteOwner: (): Promise<"deleted"> => {
+            return Promise.resolve("deleted");
           },
         };
         const services = createBudgetServices({}, store);

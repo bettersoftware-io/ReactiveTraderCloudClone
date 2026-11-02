@@ -295,6 +295,8 @@ const accountAdmin = createAccountAdminService({
   statusCache: accountStatus,
   sessions: sessionRegistry,
   revocations,
+  spend: spendStore,
+  budget: services.jarvisBudget,
   now: readClock,
   listLimit: ADMIN_ACCOUNT_LIST_MAX,
 });

@@ -6,6 +6,8 @@ import {
   normalizeDisplayName,
 } from "@rtc/domain";
 
+import type { JarvisBudgetService } from "../services/jarvisBudget/JarvisBudgetService.js";
+import type { SpendStore } from "../services/jarvisBudget/SpendStore.js";
 import type { Caller } from "../services/serviceContainer.js";
 import type {
   AccountDirectory,
@@ -22,6 +24,11 @@ export interface AccountAdminServiceDeps {
   readonly statusCache: AccountStatusCache;
   readonly sessions: SessionRegistry;
   readonly revocations: RevocationLedger;
+  /** Deleting an account takes its Jarvis spend rows with it. */
+  readonly spend: SpendStore;
+  /** Told to forget the owner before the spend rows are deleted, so nothing
+   * it still holds is written back. */
+  readonly budget: Pick<JarvisBudgetService, "forgetOwner">;
   readonly now: () => number;
   /** `ADMIN_ACCOUNT_LIST_MAX`. */
   readonly listLimit: number;
@@ -111,7 +118,7 @@ export function createAccountAdminService(
     };
   }
 
-  function write(
+  async function write(
     accountId: string,
     action: AccountAdminAction,
     displayName: string,
@@ -134,6 +141,35 @@ export function createAccountAdminService(
       }
 
       case "delete": {
+        // Block, then spend rows, then the account. The block comes first so
+        // a part-way failure never leaves an ACTIVE account with a reset
+        // daily allowance: a blocked account cannot run turns, whatever its
+        // spend says, and the administrator retries the delete (blocking an
+        // already-blocked account is a plain "ok").
+        const blocked = await deps.directory.setBlocked(
+          accountId,
+          true,
+          deps.now(),
+        );
+
+        if (blocked !== "ok") {
+          return blocked;
+        }
+
+        // The block ends its sessions now, not only if the delete finishes.
+        deps.statusCache.invalidate(accountId);
+        deps.sessions.closeAll(accountId);
+
+        const owner = `account:${accountId}` as const;
+
+        await deps.budget.forgetOwner(owner);
+
+        const spent = await deps.spend.deleteOwner(owner);
+
+        if (spent === "unavailable") {
+          return "unavailable";
+        }
+
         return deps.directory.deleteAccount(accountId);
       }
     }

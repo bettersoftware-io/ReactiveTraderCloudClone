@@ -92,6 +92,17 @@ export function createSupabaseSpendStore(
 
       return toTotals(reply.body[0]);
     },
+
+    async deleteOwner(owner: SpendOwner): Promise<"deleted" | "unavailable"> {
+      // The top-level filter takes a plainly percent-encoded value; quoting it
+      // with %22 here would match nothing and delete nothing, silently.
+      const reply = await call({
+        method: "DELETE",
+        path: `/rest/v1/jarvis_spend_daily?owner=eq.${encodeURIComponent(owner)}`,
+      });
+
+      return reply.kind === "ok" ? "deleted" : "unavailable";
+    },
   };
 }
 

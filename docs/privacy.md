@@ -12,7 +12,7 @@ nothing about you. This notice covers **registered accounts** only.
 | When the account was created, and whether it is confirmed, approved or blocked | To run the approval step |
 | A hash of your password | Held by Supabase Auth. The password is chosen when you enter the emailed code; the project's own code passes it to Supabase in that one request and never stores or logs it |
 | A record of each sign-in session | Kept by Supabase Auth, which stores it with an IP address and a client identification. The client is the project's server, not your browser: the server forwards your IP address but not your browser's identification |
-| A daily spend figure and turn count for the assistant, per account, one for the house key and one for your own key | To apply the daily limits. It holds amounts and counts, never what was said |
+| A daily spend figure and turn count for the assistant, per account, one for the house key and one for your own key | To apply the daily limits. It holds amounts and counts, never what was said. It is deleted with the account |
 
 The create-account form links this notice before you submit it.
 
@@ -61,8 +61,8 @@ rather not email, open an issue at
 <https://github.com/bettersoftware-io/ReactiveTraderCloudClone/issues>
 asking for account deletion **without naming your address** (issues are
 public); the maintainer will ask you to confirm from the account's address.
-Deletion removes the account and its profile. The daily spend figures stay,
-under an account identifier that no longer leads to anyone. An account whose
+Deletion removes the account, its profile and its daily spend figures. The
+house-wide daily total keeps its own row, which names nobody. An account whose
 address is never confirmed is deleted after 48 hours.
 
 ## Logs
