@@ -9,6 +9,7 @@ import {
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it, vi } from "vitest";
 
+import { JARVIS_INITIAL_STATE } from "@rtc/core-logic";
 import {
   type AnomalyDetectorConfig,
   type CurrencyPair,
@@ -300,6 +301,9 @@ describe("createNarratorMachine — error guard", () => {
           },
           narrate,
           preference$: of("on"),
+          jarvisStateNow: () => {
+            return JARVIS_INITIAL_STATE;
+          },
           scheduler: ts,
           config: CFG,
         });
@@ -370,6 +374,9 @@ describe("createNarratorMachine — shared tick source (no double subscription)"
         priceFor: registry.priceFor,
         narrate,
         preference$: of("on"),
+        jarvisStateNow: () => {
+          return JARVIS_INITIAL_STATE;
+        },
         scheduler: ts,
         config: CFG,
       };
@@ -614,6 +621,9 @@ function createRig(
     priceFor: registry.priceFor,
     narrate,
     preference$,
+    jarvisStateNow: () => {
+      return JARVIS_INITIAL_STATE;
+    },
     scheduler: ts,
     config: CFG,
   };

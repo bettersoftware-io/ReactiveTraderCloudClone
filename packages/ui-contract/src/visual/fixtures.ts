@@ -35,6 +35,7 @@ import {
   type Instrument,
   JARVIS_BRAINS,
   JARVIS_GREETING,
+  JARVIS_OWN_MODELS,
   type JarvisBrain,
   type JarvisBudgetView,
   type JarvisUsage,
@@ -2372,8 +2373,11 @@ const jarvisStateIdle: JarvisState = {
   // and pill all read live Haiku.
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
+  preferredBrain: DEFAULT_JARVIS_BRAIN,
   gate: null,
   budget: jarvisBudgetHouseLive,
+  ownBudget: null,
+  ownKey: null,
   demo: false,
   // 1, not 0: these fixtures render the overlay open, so the goldens must
   // show the seed-1 chip set rather than the machine's true closed-session
@@ -2484,6 +2488,7 @@ function jarvisStateScripted(
     entries: jarvisExhaustedEntries(exhausted),
     brains: ["scripted"],
     effectiveBrain: "scripted",
+    preferredBrain: "scripted",
     gate: {
       level: "hard",
       resetsAtMs: JARVIS_RESETS_AT_MS,
@@ -2507,7 +2512,10 @@ fixtures["jarvis-indicators-no-limit"] = makeAppData({
     ...jarvisStateChat,
     entries: jarvisLiveEntries("claude-opus-5"),
     effectiveBrain: "claude-opus-5",
+    preferredBrain: "claude-opus-5",
     budget: { ...jarvisBudgetHouseLive, spentUsd: 1.37, limitUsd: null },
+    ownBudget: null,
+    ownKey: null,
   },
 });
 fixtures["jarvis-indicators-spent"] = makeAppData({
@@ -2524,7 +2532,10 @@ fixtures["jarvis-indicators-demo"] = makeAppData({
     ...jarvisStateChat,
     entries: jarvisLiveEntries("scripted"),
     effectiveBrain: "scripted",
+    preferredBrain: "scripted",
     budget: null,
+    ownBudget: null,
+    ownKey: null,
     demo: true,
   },
 });
@@ -2544,6 +2555,68 @@ fixtures["jarvis-indicators-tags-off"] = makeAppData({
 });
 fixtures["jarvis-indicators-pill"] = makeAppData({
   jarvis: jarvisStateChat,
+  jarvisIndicators: { readout: true, replyTags: true, brainPill: true },
+});
+
+// ── B3c: the person's own key ──────────────────────────────────────────────
+// prefs/own-key-*: the Preferences "Your key" section alone, over a live
+// Jarvis. Empty is the form; accepted and refused are the masked readout with
+// the status line the server's frame reports. The saved key is the masked form
+// only, as a presenter shows it.
+const OWN_BRAINS: readonly JarvisBrain[] = JARVIS_OWN_MODELS.map((model) => {
+  return model.brain;
+});
+const OWN_SONNET: JarvisBrain = "own:anthropic:claude-sonnet-5";
+
+const jarvisStateOwnKeyAccepted: JarvisState = {
+  ...jarvisStateIdle,
+  brains: [...JARVIS_BRAINS, ...OWN_BRAINS],
+  ownKey: { provider: "anthropic", status: "accepted", capUsd: 1 },
+};
+
+const ownKeySaved = {
+  provider: "anthropic",
+  masked: "sk-ant-\u20261234",
+  capUsd: 1,
+  remember: false,
+} as const;
+
+fixtures["own-key-empty"] = makeAppData({ jarvis: jarvisStateIdle });
+fixtures["own-key-accepted"] = makeAppData({
+  jarvis: jarvisStateOwnKeyAccepted,
+  jarvisOwnKeySaved: ownKeySaved,
+});
+fixtures["own-key-refused"] = makeAppData({
+  jarvis: {
+    ...jarvisStateIdle,
+    ownKey: { provider: "anthropic", status: "refused", capUsd: 1 },
+  },
+  jarvisOwnKeySaved: ownKeySaved,
+});
+
+// jarvis/indicators-own-key-readout: running Sonnet 5 on the person's key, $0.42
+// spent of a $1.00 daily limit; the reply tags name the brain. The pill-menu
+// twin turns the pill on and opens the menu: House key and Your key groups.
+const jarvisStateOwnLive: JarvisState = {
+  ...jarvisStateChat,
+  entries: jarvisLiveEntries(OWN_SONNET),
+  brains: [...JARVIS_BRAINS, ...OWN_BRAINS],
+  effectiveBrain: OWN_SONNET,
+  preferredBrain: OWN_SONNET,
+  ownBudget: {
+    keyKind: "own",
+    spentUsd: 0.42,
+    limitUsd: 1,
+    exhausted: null,
+    resetsAtMs: JARVIS_RESETS_AT_MS,
+  },
+  ownKey: { provider: "anthropic", status: "accepted", capUsd: 1 },
+};
+fixtures["jarvis-indicators-own-key"] = makeAppData({
+  jarvis: jarvisStateOwnLive,
+});
+fixtures["jarvis-indicators-own-pill"] = makeAppData({
+  jarvis: jarvisStateOwnLive,
   jarvisIndicators: { readout: true, replyTags: true, brainPill: true },
 });
 

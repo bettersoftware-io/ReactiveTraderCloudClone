@@ -3,6 +3,7 @@ import * as equitiesChart from "#/browser/scenarios/equitiesChart.js";
 import * as equitiesWatchlist from "#/browser/scenarios/equitiesWatchlist.js";
 import * as fxLiveRates from "#/browser/scenarios/fxLiveRates.js";
 import * as jarvis from "#/browser/scenarios/jarvis.js";
+import * as jarvisOwnKey from "#/browser/scenarios/jarvisOwnKey.js";
 
 import { test } from "./_context.js";
 
@@ -111,5 +112,41 @@ test.describe("full-stack: jarvis chat + confirm-gated execution over the real w
       "the trade is on your blotter",
       20,
     );
+  });
+});
+
+/**
+ * A person's own key across a real browser and a real server. The server
+ * runs with RTC_JARVIS_FAKE=1: a key starting `fake-good` is accepted, any
+ * other is refused, and the own loop is the scripted one, so no provider is
+ * ever called. This is the only test that drives the whole path: the
+ * Preferences form, `useJarvisOwnKey`, the presenter, the adapter's
+ * `jarvis.key` frame, the server's check, the offered own brains, a turn run
+ * on that key, the browser store, and the wipe at sign-out.
+ */
+test.describe("full-stack: a person's own key over the real wire", () => {
+  test("accepts a key, keeps it across a reload, runs a turn on it, and leaves none in the browser after sign-out", async ({
+    ctx,
+  }) => {
+    // Obviously fake, and never a real key.
+    const fakeKey = "fake-good-e2e-not-a-real-key";
+    const ownBrain = "own:anthropic:claude-haiku-4-5";
+
+    await common.openWorkspace(ctx);
+    await jarvis.expectOrbVisibleWithin(ctx, 20);
+
+    await jarvisOwnKey.openPreferences(ctx);
+    await jarvisOwnKey.saveKeyAndExpectAccepted(ctx, fakeKey);
+    await jarvisOwnKey.closePreferences(ctx);
+
+    await jarvisOwnKey.reloadWorkspace(ctx);
+    await jarvisOwnKey.openPreferences(ctx);
+    await jarvisOwnKey.expectKeyRestoredAndAccepted(ctx);
+    await jarvisOwnKey.chooseOwnBrain(ctx, ownBrain);
+    await jarvisOwnKey.closePreferences(ctx);
+
+    await jarvisOwnKey.expectReplyRanOnBrain(ctx, "Claude Haiku 4.5");
+
+    await jarvisOwnKey.signOutAndExpectNoKeyInStorage(ctx);
   });
 });

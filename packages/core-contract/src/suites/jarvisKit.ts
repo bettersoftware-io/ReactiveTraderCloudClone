@@ -77,6 +77,8 @@ export function createAvailability(
     defaultBrain: "scripted",
     gate: null,
     budget: null,
+    ownBudget: null,
+    ownKey: null,
     demo: false,
     ...overrides,
   };

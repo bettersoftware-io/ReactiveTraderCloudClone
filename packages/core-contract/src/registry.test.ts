@@ -99,6 +99,7 @@ describe("core-contract registry", () => {
     for (const member of [
       "presenters.jarvis",
       "presenters.jarvisUsage",
+      "presenters.jarvisOwnKey",
       "presenters.jarvisDriver",
       "presenters.jarvisDemo",
       "presenters.jarvisPanels",

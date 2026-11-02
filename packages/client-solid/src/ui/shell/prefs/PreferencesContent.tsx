@@ -16,10 +16,12 @@ import {
   JARVIS_BRAINS,
   JARVIS_EFFORTS,
   JARVIS_NARRATOR_PREFERENCES,
+  JARVIS_OWN_MODELS,
   type JarvisBrain,
   type JarvisEffort,
   type JarvisIndicators,
   type JarvisNarratorPreference,
+  jarvisBrainTakesEffort,
   type LayoutEngine,
   type LoginWaitDelay,
   type LoginWaitStyle,
@@ -27,6 +29,7 @@ import {
 } from "@rtc/domain";
 import { type CoreSelectionView, useViewModel } from "@rtc/solid-bindings";
 
+import { OwnKeySection } from "./OwnKeySection";
 import { PrefAction } from "./PrefAction";
 import { PrefSegment, type PrefSegmentOption } from "./PrefSegment";
 import { PrefToggle } from "./PrefToggle";
@@ -151,7 +154,12 @@ export function PreferencesContent(): JSX.Element {
   });
 
   const brainHint = createMemo((): string | undefined => {
-    return formatBrainHint(gate(), jarvisBrain(), jarvisState().effectiveBrain);
+    return formatBrainHint(
+      gate(),
+      jarvisBrain(),
+      jarvisState().effectiveBrain,
+      jarvisState(),
+    );
   });
 
   // Real (non-"scripted") brain options are disabled when the server isn't
@@ -173,6 +181,34 @@ export function PreferencesContent(): JSX.Element {
         disabled:
           gated ||
           (brain !== "scripted" && !jarvisState().brains.includes(brain)),
+        title: gated ? gateHint() : undefined,
+      };
+    });
+  }
+
+  // The "Your key" row: the curated own-key models, offered once the server
+  // offers any of them (a key is held and accepted). Each is disabled the same
+  // way a house brain is — not offered, or removed by the active gate.
+  function ownBrainsOffered(): boolean {
+    // A spent own cap removes the own brains from `brains` and lists them in
+    // the gate instead, so a gated own brain counts as present: the row stays,
+    // its options disabled with the reset hint.
+    return JARVIS_OWN_MODELS.some((model) => {
+      return (
+        jarvisState().brains.includes(model.brain) ||
+        gate()?.gated.includes(model.brain) === true
+      );
+    });
+  }
+
+  function jarvisOwnBrainOptions(): readonly PrefSegmentOption[] {
+    const g = gate();
+    return JARVIS_OWN_MODELS.map((model): PrefSegmentOption => {
+      const gated = g?.gated.includes(model.brain) ?? false;
+      return {
+        value: model.brain,
+        label: model.label,
+        disabled: gated || !jarvisState().brains.includes(model.brain),
         title: gated ? gateHint() : undefined,
       };
     });
@@ -409,16 +445,26 @@ export function PreferencesContent(): JSX.Element {
             {brainHint()}
           </div>
         </Show>
+        <Show when={ownBrainsOffered()}>
+          <PrefSegment
+            label="Your key"
+            description="Run on your own key instead of the house's."
+            options={jarvisOwnBrainOptions()}
+            value={jarvisBrain()}
+            onChange={changeJarvisBrain}
+            testid="pref-segment-jarvisOwnBrain"
+          />
+        </Show>
         <PrefSegment
           label="Effort"
-          description="Thinking-effort budget for a live brain. No effect on scripted."
+          description="Thinking-effort budget for Sonnet and Opus. No effect on Haiku or scripted."
           options={JARVIS_EFFORT_OPTIONS}
           value={jarvisEffort()}
           onChange={changeJarvisEffort}
           testid="pref-segment-jarvisEffort"
           disabled={
-            jarvisBrain() === "scripted" ||
-            jarvisState().effectiveBrain === "scripted"
+            !jarvisBrainTakesEffort(jarvisBrain()) ||
+            !jarvisBrainTakesEffort(jarvisState().effectiveBrain)
           }
         />
         <PrefSegment
@@ -450,6 +496,7 @@ export function PreferencesContent(): JSX.Element {
           onToggle={toggleJarvisIndicator("brainPill")}
           testid="pref-toggle-jarvisBrainPill"
         />
+        <OwnKeySection />
       </div>
     </div>
   );

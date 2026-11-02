@@ -107,6 +107,7 @@ import {
   ForceBootAnimationPresenter,
   InstrumentsPresenter,
   type JarvisDriverDeps,
+  JarvisOwnKeyPresenter,
   JarvisPanelsPresenter,
   JarvisPreferencesPresenter,
   JarvisUsagePresenter,
@@ -418,6 +419,16 @@ export function createApp(givenPorts: AppPorts): App {
     undefined,
     authDeps.cycle,
   );
+
+  // The own-key fold is the composition's, from here until `app.dispose()`,
+  // and not a subscriber's: the transport remembers a key with no owner check
+  // of its own, so the fold follows `auth` ahead of the transport gate below
+  // and a key change lands before the socket opens or closes.
+  const jarvisOwnKey = new JarvisOwnKeyPresenter(
+    ports.jarvis,
+    ports.ownKeyStore,
+  );
+  held.add(jarvisOwnKey.followAuth(auth.state$));
 
   // Hoisted (rather than built inline in the `presenters` literal below,
   // unlike eqWorkspace) so JarvisDriverMachine — composed here beside
@@ -811,6 +822,7 @@ export function createApp(givenPorts: AppPorts): App {
       jarvis.intents.narrate(prompt);
     },
     preference$: jarvisPreferences.narrator$,
+    jarvisStateNow: jarvis.stateNow,
     config: ports.narratorConfig,
   });
 
@@ -916,6 +928,7 @@ export function createApp(givenPorts: AppPorts): App {
     ),
     jarvis,
     jarvisUsage: new JarvisUsagePresenter(ports.jarvisUsage, disposed$),
+    jarvisOwnKey,
     jarvisPanels,
     dockPanel: workspaceDock.dockPanel,
     dockedPanelIdsFor,
@@ -930,12 +943,15 @@ export function createApp(givenPorts: AppPorts): App {
 
   wireJarvisHistorySource(ports.jarvis, presenters.jarvis);
 
-  held.add(gateTransportOnAuth(ports.transport, presenters.auth));
-  // The server ended this session (a 4401 close, reported by the transport
-  // itself — not on `connectionEvents`, whose one subscriber is the status
-  // fold): the auth presenter signs out with the reason, and the gate above
-  // then disconnects. Subscribed once, here; a throw from `endSession` is
-  // not swallowed.
+  // The session ended (a 4401 close, or a socket whose account the shared
+  // session store no longer holds — reported by the transport itself, not on
+  // `connectionEvents`, whose one subscriber is the status fold): the auth
+  // presenter signs out with the reason, and the gate below then disconnects.
+  // Subscribed once, and BEFORE the gate: the gate's first connect() can end
+  // the session from inside the call (a hot swap after another tab switched
+  // account), and `sessionEnded()` is hot, so a later subscriber would miss
+  // it and leave this composition signed in over a closed socket. A throw from
+  // `endSession` is not swallowed.
   const sessionEnded$ = ports.transport?.sessionEnded();
 
   if (sessionEnded$ !== undefined) {
@@ -945,6 +961,8 @@ export function createApp(givenPorts: AppPorts): App {
       }),
     );
   }
+
+  held.add(gateTransportOnAuth(ports.transport, presenters.auth));
 
   const commands: AppCommands = {
     reconnect: () => {

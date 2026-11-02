@@ -31,6 +31,7 @@ export * from "#/presenters/InstrumentsPresenter";
 export * from "#/presenters/JarvisDemoMachine";
 export * from "#/presenters/JarvisDriverMachine";
 export * from "#/presenters/JarvisMachine";
+export * from "#/presenters/JarvisOwnKeyPresenter";
 export * from "#/presenters/JarvisPanelsMachine";
 export * from "#/presenters/JarvisPanelsPresenter";
 export * from "#/presenters/JarvisPreferencesPresenter";

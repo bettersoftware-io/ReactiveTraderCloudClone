@@ -883,6 +883,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: "claude-haiku-4-5",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -909,6 +911,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: "claude-haiku-4-5",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -931,6 +935,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -953,6 +959,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -993,6 +1001,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -1011,6 +1021,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       {
@@ -1019,6 +1031,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -1052,6 +1066,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       {
@@ -1060,6 +1076,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -1089,6 +1107,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       {
@@ -1097,6 +1117,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: DEFAULT_JARVIS_BRAIN,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -1134,6 +1156,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -1211,6 +1235,8 @@ describe("WsJarvisAdapter.availability$()", () => {
           gated: ["claude-opus-5"],
         },
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -1255,6 +1281,8 @@ describe("WsJarvisAdapter.availability$()", () => {
           defaultBrain: "claude-haiku-4-5",
           gate: null,
           budget: null,
+          ownBudget: null,
+          ownKey: null,
           demo: false,
         },
       ]);
@@ -1323,6 +1351,8 @@ describe("WsJarvisAdapter.availability$()", () => {
         defaultBrain: "scripted",
         gate: { level: "soft", resetsAtMs: 100, gated: ["claude-opus-5"] },
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     ]);
@@ -1424,7 +1454,7 @@ describe("WsJarvisAdapter.availability$()", () => {
     ["an unknown exhausted reason", { exhausted: "bored" }],
     ["a non-numeric limitUsd", { limitUsd: "none" }],
     ["a non-numeric resetsAtMs", { resetsAtMs: "soon" }],
-    ["an unknown keyKind", { keyKind: "own" }],
+    ["an unknown keyKind", { keyKind: "shared" }],
   ])(
     "a malformed budget (%s) gives budget: null, not a throw",
     (_name, patch) => {
@@ -1473,11 +1503,15 @@ describe("WsJarvisAdapter.availability$()", () => {
     ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
       available: true,
       budget: { ...budget, spentUsd: 0.15 },
+      ownBudget: null,
+      ownKey: null,
     });
     // Same contents again: deduped.
     ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
       available: true,
       budget: { ...budget, spentUsd: 0.15 },
+      ownBudget: null,
+      ownKey: null,
     });
 
     expect(
@@ -1488,6 +1522,230 @@ describe("WsJarvisAdapter.availability$()", () => {
   });
 });
 
+describe("WsJarvisAdapter own key", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("setOwnKey sends the mapped jarvis.key frame, and null sends a clear", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+
+    adapter.setOwnKey(setting);
+    adapter.setOwnKey(null);
+
+    expect(ws.sentMessages()).toEqual([
+      keyFrame,
+      { type: CLIENT_MSG.JARVIS_KEY, payload: { action: "clear" } },
+    ]);
+  });
+
+  it("the key frame goes out before jarvis.subscribe on every connect", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = subscribed(ws);
+    adapter.setOwnKey(setting);
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emitConnectionEvent("gatewayConnected");
+
+    expect(ws.sentMessages()).toEqual([
+      keyFrame,
+      keyFrame,
+      subscribeFrame,
+      keyFrame,
+      subscribeFrame,
+    ]);
+  });
+
+  it("a key set while closed queues nothing, and is sent once on the next connect", () => {
+    const ws = new FakeWsAdapter();
+    const send = vi.spyOn(ws, "send");
+    const adapter = subscribed(ws);
+    ws.setOpen(false);
+
+    adapter.setOwnKey(setting);
+
+    expect(ws.sentMessages()).toEqual([]);
+
+    ws.setOpen(true);
+    ws.emitConnectionEvent("gatewayConnected");
+
+    expect(ws.sentMessages()).toEqual([keyFrame, subscribeFrame]);
+    // The key never went through the queueing send().
+    expect(
+      send.mock.calls.filter(([type]) => {
+        return type === CLIENT_MSG.JARVIS_KEY;
+      }),
+    ).toEqual([]);
+  });
+
+  it("after clear, a reconnect sends no key", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = subscribed(ws);
+    adapter.setOwnKey(setting);
+    adapter.setOwnKey(null);
+    ws.emitConnectionEvent("gatewayConnected");
+
+    expect(ws.sentMessages()).toEqual([
+      keyFrame,
+      { type: CLIENT_MSG.JARVIS_KEY, payload: { action: "clear" } },
+      subscribeFrame,
+    ]);
+  });
+
+  describe("availability: ownBudget and ownKey", () => {
+    it("an own budget and own key parse; a malformed one is dropped alone", () => {
+      expect(firstAvailability({ ownBudget, ownKey })).toMatchObject({
+        ownBudget,
+        ownKey,
+        budget: null,
+      });
+
+      expect(
+        firstAvailability({
+          ownBudget: { ...ownBudget, keyKind: "x" },
+          ownKey,
+        }),
+      ).toMatchObject({ ownBudget: null, ownKey });
+      expect(
+        firstAvailability({
+          ownBudget,
+          ownKey: { ...ownKey, status: "bogus" },
+        }),
+      ).toMatchObject({ ownBudget, ownKey: null });
+      expect(
+        firstAvailability({ ownBudget, ownKey: { ...ownKey, provider: 3 } }),
+      ).toMatchObject({ ownBudget, ownKey: null });
+      expect(
+        firstAvailability({
+          ownBudget,
+          ownKey: { ...ownKey, provider: "acme" },
+        }),
+      ).toMatchObject({ ownBudget, ownKey: null });
+      expect(
+        firstAvailability({ ownBudget, ownKey: { ...ownKey, capUsd: "2" } }),
+      ).toMatchObject({ ownBudget, ownKey: null });
+    });
+
+    it("a budget is pinned to its slot: an own budget in budget, or a house budget in ownBudget, is dropped alone", () => {
+      expect(
+        firstAvailability({ budget: ownBudget, ownBudget, ownKey }),
+      ).toMatchObject({ budget: null, ownBudget, ownKey });
+      expect(
+        firstAvailability({
+          budget: { ...ownBudget, keyKind: "house" },
+          ownBudget: { ...ownBudget, keyKind: "house" },
+          ownKey,
+        }),
+      ).toMatchObject({
+        budget: { ...ownBudget, keyKind: "house" },
+        ownBudget: null,
+        ownKey,
+      });
+    });
+
+    it("a null cap on the own key is kept", () => {
+      expect(
+        firstAvailability({ ownKey: { ...ownKey, capUsd: null } }),
+      ).toMatchObject({ ownKey: { ...ownKey, capUsd: null } });
+    });
+
+    it("distinctUntilChanged: frames differing only in ownBudget or ownKey both emit", () => {
+      const ws = new FakeWsAdapter();
+      const received: JarvisAvailability[] = [];
+      new WsJarvisAdapter(ws).availability$().subscribe((a) => {
+        received.push(a);
+      });
+      ws.emitConnectionEvent("gatewayConnected");
+      ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+        available: true,
+        ownBudget,
+        ownKey,
+      });
+      ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+        available: true,
+        ownBudget,
+        ownKey,
+      });
+      ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+        available: true,
+        ownBudget: { ...ownBudget, spentUsd: 0.6 },
+        ownKey,
+      });
+      ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+        available: true,
+        ownBudget: { ...ownBudget, spentUsd: 0.6 },
+        ownKey: { ...ownKey, status: "limited" },
+      });
+      ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+        available: true,
+        ownBudget: { ...ownBudget, spentUsd: 0.6 },
+      });
+
+      expect(received).toHaveLength(4);
+    });
+
+    const ownBudget = {
+      keyKind: "own",
+      spentUsd: 0.5,
+      limitUsd: 2,
+      exhausted: null,
+      resetsAtMs: 9,
+    };
+
+    const ownKey = { provider: "anthropic", status: "accepted", capUsd: 2 };
+
+    function firstAvailability(
+      extra: Record<string, unknown>,
+    ): JarvisAvailability {
+      const ws = new FakeWsAdapter();
+      const received: JarvisAvailability[] = [];
+      new WsJarvisAdapter(ws).availability$().subscribe((a) => {
+        received.push(a);
+      });
+      ws.emitConnectionEvent("gatewayConnected");
+      ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true, ...extra });
+      const first = received[0];
+
+      if (!first) {
+        throw new Error("no availability emitted");
+      }
+
+      return first;
+    }
+  });
+
+  const setting = {
+    provider: "anthropic",
+    key: "sk-ant-SECRET",
+    capUsd: 2,
+  } as const;
+
+  const keyFrame = {
+    type: CLIENT_MSG.JARVIS_KEY,
+    payload: {
+      action: "set",
+      provider: "anthropic",
+      key: "sk-ant-SECRET",
+      capUsd: 2,
+    },
+  };
+
+  const subscribeFrame = {
+    type: CLIENT_MSG.JARVIS_SUBSCRIBE,
+    payload: undefined,
+  };
+
+  function subscribed(ws: FakeWsAdapter): WsJarvisAdapter {
+    const adapter = new WsJarvisAdapter(ws);
+    adapter.availability$().subscribe();
+    return adapter;
+  }
+});
+
 // A named tag (rather than an inline `{ type: "confirmRequest" }` literal)
 // so `Extract<JarvisEvent, ...>` never takes an inline object type argument —
 // the repo's `no-restricted-syntax` bans that even inside a type alias (see
@@ -1495,6 +1753,7 @@ describe("WsJarvisAdapter.availability$()", () => {
 interface ConfirmRequestTag {
   readonly type: "confirmRequest";
 }
+
 type ConfirmRequestPayload = Omit<
   Extract<JarvisEvent, ConfirmRequestTag>,
   "type"

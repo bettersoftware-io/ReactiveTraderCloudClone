@@ -77,3 +77,23 @@
   width: 10px;
   flex: none;
 }
+
+/* The "House key" / "Your key" group labels, shown only when the menu offers
+ * both kinds of brain. */
+.group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.groupLabel {
+  padding: 7px 10px 3px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}

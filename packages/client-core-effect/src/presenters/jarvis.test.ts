@@ -75,6 +75,8 @@ describe("createJarvisMachine (Effect core)", () => {
         defaultBrain: "scripted" as const,
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       }),
       preferredBrain$: brain$,

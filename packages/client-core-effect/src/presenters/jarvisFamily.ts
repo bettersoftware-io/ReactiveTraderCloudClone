@@ -148,6 +148,7 @@ export function createJarvisFamily(
       jarvis.handle.intents.narrate(prompt);
     },
     preference$: deps.jarvisPreferences.narrator$,
+    jarvisStateNow: jarvis.stateNow,
     config: ports.narratorConfig,
   });
   wireJarvisHistorySource(ports.jarvis, jarvis);

@@ -1829,6 +1829,15 @@ export function reactViewModel(world: World): ViewModel {
         },
       };
     },
+    // The person's own model key (B3c): the masked saved form off
+    // World.jarvisOwnKeySaved, the intents the World's fake presenter records
+    // (`commands.jarvisOwnKeyCalls`) and applies — masking as the real one does.
+    useJarvisOwnKey: () => {
+      return {
+        saved: useSubject(world.jarvisOwnKeySaved),
+        ...world.jarvisOwnKeyIntents,
+      };
+    },
     // Jarvis token-usage/cost telemetry (Task 10): reactive view backed by
     // the World subject, mirroring useTopology.
     useJarvisUsage: () => {

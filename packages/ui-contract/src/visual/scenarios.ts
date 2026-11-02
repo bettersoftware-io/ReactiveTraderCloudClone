@@ -1160,6 +1160,29 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "JarvisOverlay",
     fixtureKey: "jarvis-indicators-pill",
   },
+  // B3c: a person's own key. The Preferences "Your key" section alone (empty
+  // form, accepted key, refused key), then the overlay on an own brain: the
+  // readout and tags, and the pill menu grouping House key and Your key.
+  "prefs/own-key-empty": {
+    componentKey: "OwnKeySection",
+    fixtureKey: "own-key-empty",
+  },
+  "prefs/own-key-accepted": {
+    componentKey: "OwnKeySection",
+    fixtureKey: "own-key-accepted",
+  },
+  "prefs/own-key-refused": {
+    componentKey: "OwnKeySection",
+    fixtureKey: "own-key-refused",
+  },
+  "jarvis/indicators-own-key-readout": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-own-key",
+  },
+  "jarvis/indicators-pill-menu-own": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-indicators-own-pill",
+  },
   // Task 10 (Phase 3, brain picker): the footer status chip, reused off the
   // full StatusBar component (there's no standalone chip token) — the
   // scripted vs. default-brain (haiku) label is the only visible delta.

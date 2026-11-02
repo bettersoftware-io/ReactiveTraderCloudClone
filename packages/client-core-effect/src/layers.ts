@@ -30,6 +30,7 @@ import type {
   IncidentIntents,
   IncidentState,
   InstrumentsPresenter,
+  JarvisOwnKeyPresenter,
   JarvisPreferencesPresenter,
   LatencyPresenter,
   LayoutEnginePresenter,
@@ -78,6 +79,7 @@ import {
   createJarvisPreferencesPresenter,
   createLoginWaitPreferencesPresenter,
 } from "#/presenters/groupedPreferences";
+import { createJarvisOwnKeyPresenter } from "#/presenters/jarvisOwnKey";
 import {
   createEventLogPresenter,
   createMetricWindowPresenter,
@@ -286,6 +288,10 @@ const AccountListTag = Context.GenericTag<AccountListPresenter>(
   "@rtc/client-core-effect/accountList",
 );
 
+const JarvisOwnKeyTag = Context.GenericTag<JarvisOwnKeyPresenter>(
+  "@rtc/client-core-effect/jarvisOwnKey",
+);
+
 const AnimationDirectorTag = Context.GenericTag<AnimationDirector>(
   "@rtc/client-core-effect/animationDirector",
 );
@@ -344,6 +350,7 @@ export type NativeServices =
   | BootGatePresenter
   | EndableAuthPresenter
   | AccountListPresenter
+  | JarvisOwnKeyPresenter
   | AnimationDirector;
 
 // Presenters that need only the host and the ports.
@@ -574,6 +581,24 @@ const AccountListLive = Layer.effect(
   }),
 ).pipe(Layer.provide(AuthLive));
 
+/** Resolved in the one `runSync`, so the fold follows `auth` from composition,
+ * ahead of the transport gate `composeApp` adds afterwards: a key change lands
+ * before the socket opens or closes. */
+const JarvisOwnKeyLive = Layer.effect(
+  JarvisOwnKeyTag,
+  Effect.gen(function* buildJarvisOwnKey() {
+    const host = yield* HostTag;
+    const ports = yield* AppPortsTag;
+    const auth = yield* AuthTag;
+    return createJarvisOwnKeyPresenter(
+      host,
+      ports.jarvis,
+      ports.ownKeyStore,
+      auth.state$,
+    );
+  }),
+).pipe(Layer.provide(AuthLive));
+
 /** The server ended this session (a 4401 close, reported by the transport's
  * `sessionEnded()` — not on `connectionEvents`, whose one subscriber is the
  * status fold): the auth presenter signs out with the reason, and the
@@ -757,6 +782,7 @@ export function buildAppLayer(ports: AppPorts): Layer.Layer<AppLayerServices> {
     BootGateLive,
     AuthLive,
     AccountListLive,
+    JarvisOwnKeyLive,
     SessionEndedLive,
   );
 
@@ -862,5 +888,6 @@ export const nativePresentersEffect: Effect.Effect<
   bootGate: BootGateTag,
   auth: AuthTag,
   accountList: AccountListTag,
+  jarvisOwnKey: JarvisOwnKeyTag,
   animationDirector: AnimationDirectorTag,
 });

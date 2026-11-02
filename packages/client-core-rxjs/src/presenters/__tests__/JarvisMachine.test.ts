@@ -51,8 +51,11 @@ describe("createJarvisMachine", () => {
         available: true,
         brains: ["scripted"],
         effectiveBrain: "scripted",
+        preferredBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: true,
         openCount: 0,
       });
@@ -628,6 +631,8 @@ describe("createJarvisMachine", () => {
               defaultBrain: "scripted",
               gate: null,
               budget: null,
+              ownBudget: null,
+              ownKey: null,
               demo: false,
             }),
             preferredBrain$: of<JarvisBrain>("claude-haiku-4-5"),
@@ -664,6 +669,8 @@ describe("createJarvisMachine", () => {
               defaultBrain: "scripted",
               gate: null,
               budget: null,
+              ownBudget: null,
+              ownKey: null,
               demo: false,
             }),
             preferredBrain$: of<JarvisBrain>("claude-haiku-4-5"),
@@ -730,6 +737,8 @@ describe("createJarvisMachine", () => {
                 defaultBrain: "scripted",
                 gate: null,
                 budget: null,
+                ownBudget: null,
+                ownKey: null,
                 demo: false,
               },
             }),
@@ -805,6 +814,8 @@ describe("createJarvisMachine", () => {
               defaultBrain: "scripted",
               gate: null,
               budget: null,
+              ownBudget: null,
+              ownKey: null,
               demo: false,
             }),
             preferredBrain$: of<JarvisBrain>("claude-haiku-4-5"),
@@ -855,6 +866,8 @@ describe("createJarvisMachine", () => {
               defaultBrain: "scripted",
               gate: null,
               budget: null,
+              ownBudget: null,
+              ownKey: null,
               demo: false,
             }),
             // Relative to ITS OWN subscribe at machine-construction time
@@ -1007,6 +1020,8 @@ describe("createJarvisMachine", () => {
               defaultBrain: "scripted",
               gate: null,
               budget: null,
+              ownBudget: null,
+              ownKey: null,
               demo: false,
             },
             t: {
@@ -1015,6 +1030,8 @@ describe("createJarvisMachine", () => {
               defaultBrain: "scripted",
               gate: null,
               budget: null,
+              ownBudget: null,
+              ownKey: null,
               demo: false,
             },
           }),
@@ -1051,6 +1068,8 @@ describe("createJarvisMachine", () => {
                 defaultBrain: "scripted",
                 gate: null,
                 budget: null,
+                ownBudget: null,
+                ownKey: null,
                 demo: false,
               },
             }),
@@ -1110,6 +1129,8 @@ describe("createJarvisMachine", () => {
                   defaultBrain: "scripted",
                   gate: null,
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
               },
@@ -1185,6 +1206,8 @@ describe("createJarvisMachine", () => {
             defaultBrain: "scripted",
             gate: null,
             budget: null,
+            ownBudget: null,
+            ownKey: null,
             demo: false,
           }),
           preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
@@ -1215,6 +1238,8 @@ describe("createJarvisMachine", () => {
             defaultBrain: "scripted",
             gate: null,
             budget: null,
+            ownBudget: null,
+            ownKey: null,
             demo: false,
           }),
           preferredBrain$: of<JarvisBrain>("claude-opus-5"),
@@ -1244,6 +1269,8 @@ describe("createJarvisMachine", () => {
             defaultBrain: "claude-haiku-4-5",
             gate: null,
             budget: null,
+            ownBudget: null,
+            ownKey: null,
             demo: false,
           }),
           preferredBrain$: of<JarvisBrain>("claude-opus-5"),
@@ -1318,6 +1345,8 @@ describe("createJarvisMachine", () => {
               defaultBrain: "scripted",
               gate: null,
               budget: null,
+              ownBudget: null,
+              ownKey: null,
               demo: false,
             },
             b: {
@@ -1326,6 +1355,8 @@ describe("createJarvisMachine", () => {
               defaultBrain: "scripted",
               gate: null,
               budget: null,
+              ownBudget: null,
+              ownKey: null,
               demo: false,
             },
           }),
@@ -1370,6 +1401,8 @@ describe("createJarvisMachine", () => {
               defaultBrain: "scripted",
               gate: null,
               budget: null,
+              ownBudget: null,
+              ownKey: null,
               demo: false,
             }),
             preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
@@ -1406,6 +1439,8 @@ describe("createJarvisMachine", () => {
               defaultBrain: "scripted",
               gate: null,
               budget: null,
+              ownBudget: null,
+              ownKey: null,
               demo: false,
             }),
             preferredBrain$: ts.createColdObservable<JarvisBrain>("a-b", {
@@ -1464,6 +1499,8 @@ describe("createJarvisMachine", () => {
               defaultBrain: "scripted",
               gate: null,
               budget: null,
+              ownBudget: null,
+              ownKey: null,
               demo: false,
             }),
             // Relative to ITS OWN subscribe at machine-construction time
@@ -1586,6 +1623,8 @@ describe("createJarvisMachine", () => {
               defaultBrain: "scripted",
               gate: null,
               budget: null,
+              ownBudget: null,
+              ownKey: null,
               demo: false,
             }),
             preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
@@ -1627,6 +1666,8 @@ describe("createJarvisMachine", () => {
                 defaultBrain: "scripted",
                 gate: null,
                 budget: null,
+                ownBudget: null,
+                ownKey: null,
                 demo: false,
               },
             }),
@@ -1984,6 +2025,8 @@ describe("createJarvisMachine", () => {
                   defaultBrain: "scripted",
                   gate: null,
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
                 b: {
@@ -1996,6 +2039,8 @@ describe("createJarvisMachine", () => {
                     gated: ["claude-sonnet-5", "claude-opus-5"],
                   },
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
               },
@@ -2056,6 +2101,8 @@ describe("createJarvisMachine", () => {
                   defaultBrain: "scripted",
                   gate: null,
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
                 b: {
@@ -2068,6 +2115,8 @@ describe("createJarvisMachine", () => {
                     gated: ["claude-sonnet-5", "claude-opus-5"],
                   },
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
               },
@@ -2119,6 +2168,8 @@ describe("createJarvisMachine", () => {
               defaultBrain: "scripted",
               gate: null,
               budget: null,
+              ownBudget: null,
+              ownKey: null,
               demo: false,
             },
             b: {
@@ -2131,6 +2182,8 @@ describe("createJarvisMachine", () => {
                 gated: ["claude-sonnet-5", "claude-opus-5"],
               },
               budget: null,
+              ownBudget: null,
+              ownKey: null,
               demo: false,
             },
           }),
@@ -2178,6 +2231,8 @@ describe("createJarvisMachine", () => {
                   defaultBrain: "scripted",
                   gate: null,
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
                 b: {
@@ -2194,6 +2249,8 @@ describe("createJarvisMachine", () => {
                     ],
                   },
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
               },
@@ -2251,6 +2308,8 @@ describe("createJarvisMachine", () => {
                   defaultBrain: "scripted",
                   gate: null,
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
                 b: {
@@ -2259,6 +2318,8 @@ describe("createJarvisMachine", () => {
                   defaultBrain: "claude-haiku-4-5",
                   gate,
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
                 c: {
@@ -2272,6 +2333,8 @@ describe("createJarvisMachine", () => {
                   defaultBrain: "scripted",
                   gate: null,
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
               },
@@ -2323,6 +2386,8 @@ describe("createJarvisMachine", () => {
                   defaultBrain: "scripted",
                   gate: null,
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
                 b: {
@@ -2339,6 +2404,8 @@ describe("createJarvisMachine", () => {
                     ],
                   },
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
               },
@@ -2399,6 +2466,8 @@ describe("createJarvisMachine", () => {
                   defaultBrain: "scripted",
                   gate: null,
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
                 g: {
@@ -2411,6 +2480,8 @@ describe("createJarvisMachine", () => {
                     gated: ["claude-sonnet-5", "claude-opus-5"],
                   },
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
               },
@@ -2545,6 +2616,8 @@ describe("createJarvisMachine", () => {
                   defaultBrain: "scripted",
                   gate: null,
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
                 b: {
@@ -2557,6 +2630,8 @@ describe("createJarvisMachine", () => {
                     gated: ["claude-sonnet-5", "claude-opus-5"],
                   },
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
                 c: {
@@ -2569,6 +2644,8 @@ describe("createJarvisMachine", () => {
                     gated: ["claude-sonnet-5", "claude-opus-5"],
                   },
                   budget: null,
+                  ownBudget: null,
+                  ownKey: null,
                   demo: false,
                 },
               },
@@ -2613,14 +2690,19 @@ describe("createJarvisMachine", () => {
   describe("formatBrainHint", () => {
     it("says nothing when ungated and the saved brain is the one running", () => {
       expect(
-        formatBrainHint(null, "claude-haiku-4-5", "claude-haiku-4-5"),
+        formatBrainHint(
+          null,
+          "claude-haiku-4-5",
+          "claude-haiku-4-5",
+          NO_BUDGETS,
+        ),
       ).toBeUndefined();
     });
 
     it("names the running brain when the saved one is not offered, with no gate", () => {
-      expect(formatBrainHint(null, "claude-haiku-4-5", "scripted")).toBe(
-        "Haiku 4.5 isn't available — using scripted",
-      );
+      expect(
+        formatBrainHint(null, "claude-haiku-4-5", "scripted", NO_BUDGETS),
+      ).toBe("Haiku 4.5 isn't available — using scripted");
     });
 
     it("is just the gate copy while the gate leaves the saved brain running", () => {
@@ -2629,6 +2711,7 @@ describe("createJarvisMachine", () => {
           { level: "soft", resetsAtMs, gated: ["claude-opus-5"] },
           "claude-haiku-4-5",
           "claude-haiku-4-5",
+          NO_BUDGETS,
         ),
       ).toBe(formatGateHint(resetsAtMs));
     });
@@ -2639,6 +2722,7 @@ describe("createJarvisMachine", () => {
           { level: "soft", resetsAtMs, gated: ["claude-opus-5"] },
           "claude-opus-5",
           "claude-haiku-4-5",
+          NO_BUDGETS,
         ),
       ).toBe(`${formatGateHint(resetsAtMs)} · Opus 5 paused, using Haiku 4.5`);
     });
@@ -2771,3 +2855,5 @@ interface FakeJarvisPort extends JarvisPort {
   readonly asks: string[];
   readonly askCalls: AskCall[];
 }
+
+const NO_BUDGETS = { budget: null, ownBudget: null };

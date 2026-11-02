@@ -6,6 +6,9 @@ import type {
   JarvisEffort,
   JarvisEvent,
   JarvisHistoryEntry,
+  JarvisOwnKeySetting,
+  JarvisOwnKeyView,
+  JarvisProvider,
   JarvisUsage,
   SessionUser,
 } from "@rtc/domain";
@@ -35,6 +38,26 @@ export interface StoredSession {
 export interface SessionStore {
   read(): StoredSession | null;
   write(session: StoredSession): void;
+  clear(): void;
+}
+
+/** A person's own model key as persisted on this device, tagged with the
+ * signed-in owner so it is never offered to a different account. The raw
+ * key lives here and passes through `JarvisPort.setOwnKey`, nowhere else. */
+export interface StoredOwnKey {
+  readonly owner: string;
+  readonly provider: JarvisProvider;
+  readonly key: string;
+  readonly capUsd: number | null;
+  /** `true` = survives a browser restart; `false` = this session only. */
+  readonly remember: boolean;
+}
+
+/** Per-device persistence for the person's own key. Optional on `AppPorts`:
+ * a platform without one keeps the key in memory for the session. */
+export interface OwnKeyStore {
+  read(): StoredOwnKey | null;
+  write(stored: StoredOwnKey): void;
   clear(): void;
 }
 
@@ -110,6 +133,10 @@ export interface JarvisPort {
    * Offered by the WS adapter only; a single slot, so exactly one core may
    * call it. */
   setHistorySource?(source: () => readonly JarvisHistoryEntry[]): void;
+  /** Hands the transport the person's own key (and daily cap), or `null` to
+   * clear it. Offered by the WS adapter only; a port without it has no
+   * server to give a key to. */
+  setOwnKey?(setting: JarvisOwnKeySetting | null): void;
 }
 
 /** Live availability of the Jarvis backend: whether a brain is reachable at
@@ -131,6 +158,12 @@ export interface JarvisAvailability {
    * pre-B3a server, or no signed-in caller). Required so tsc flags every
    * construction site. */
   readonly budget: JarvisBudgetView | null;
+  /** The caller's own-key budget for today, or `null` while no key is set
+   * (and from a server that predates own keys). */
+  readonly ownBudget: JarvisBudgetView | null;
+  /** What the server says about the caller's key, or `null` while none is
+   * set. Never carries the key itself. */
+  readonly ownKey: JarvisOwnKeyView | null;
   /** `true` only for the in-browser scripted brain (the demo login and every
    * simulator mode); a live server never sets it. */
   readonly demo: boolean;
@@ -159,6 +192,11 @@ export type MessageHandler = (payload: unknown) => void;
 export interface IWsAdapter {
   on(type: string, handler: MessageHandler): () => void;
   send(type: string, payload?: unknown): void;
+  /** Sends only when the socket is open right now, and reports whether it
+   * did. Unlike `send`, a closed socket does not queue the frame: for a
+   * frame that must never sit in a buffer (a person's own key), where the
+   * caller re-sends on its own after the next connect. */
+  sendIfOpen(type: string, payload?: unknown): boolean;
   rpc(type: string, payload?: unknown): Promise<unknown>;
   /**
    * Observable of gateway lifecycle events.
@@ -176,7 +214,8 @@ export interface IWsAdapter {
   /** Close the socket deliberately (sign-out) and suppress auto-reconnect,
    * leaving the adapter reusable via connect(). */
   disconnect(): void;
-  /** One emission per session the server ended (close `4401`) — see
+  /** One emission per ended session: the server ended it (close `4401`), or
+   * the shared session store moved on to another account or away — see
    * `AuthGatedTransport.sessionEnded`. */
   sessionEnded(): Stream<void>;
   dispose(): void;

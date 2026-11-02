@@ -25,6 +25,7 @@ import {
   type JarvisEvent,
   type JarvisHistoryEntry,
   type JarvisLiveBrain,
+  jarvisBrainTakesEffort,
   ownModelOf,
   type PanelSpecV1,
 } from "@rtc/domain";
@@ -42,7 +43,6 @@ import {
 import { buildDriveAppTool } from "./driveAppTool.js";
 import { JARVIS_SYSTEM_PROMPT } from "./jarvisPersona.js";
 import {
-  JARVIS_EFFORT_CAPABLE_BRAINS,
   JARVIS_HISTORY_MAX_MESSAGES,
   JARVIS_MAX_TOKENS_PER_TURN,
   JARVIS_MAX_TURNS_PER_SESSION,
@@ -924,7 +924,7 @@ export class AnthropicAgentSession implements AgentSession {
     // the brain, which on an own key is a different string.
     const brain: JarvisBrain = options?.brain ?? DEFAULT_JARVIS_BRAIN;
     const model = ownModelOf(brain)?.modelId ?? brain;
-    const takesEffort = JARVIS_EFFORT_CAPABLE_BRAINS.has(model);
+    const takesEffort = jarvisBrainTakesEffort(brain);
     // Set once the runner exists; the ledger reads its current conversation
     // to estimate a request cancelled before it reported its usage.
     let runner: AnthropicRunner | undefined;
@@ -943,7 +943,7 @@ export class AnthropicAgentSession implements AgentSession {
       max_tokens: JARVIS_MAX_TOKENS_PER_TURN,
       max_iterations: JARVIS_RUNNER_MAX_ITERATIONS,
       // Effort is omitted entirely (not just defaulted) for a brain outside
-      // `JARVIS_EFFORT_CAPABLE_BRAINS` — see that constant's doc comment for
+      // `jarvisBrainTakesEffort` — see that helper's doc comment for
       // why sending it there would be an unvalidated request shape, not a
       // harmless no-op. `DEFAULT_JARVIS_EFFORT` (`@rtc/domain` — the same
       // constant the preferences UI defaults to, so there is exactly one

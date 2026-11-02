@@ -21,10 +21,13 @@ import {
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_SKIN,
+  isJarvisOwnBrain,
   JARVIS_BRAINS,
   JARVIS_GREETING,
   JARVIS_NARRATION_PREFIX,
+  JARVIS_PROVIDER_NAMES,
   type JarvisBrain,
+  type JarvisBudgetView,
   type JarvisEffort,
   type JarvisEvent,
   type JarvisHistoryEntry,
@@ -69,8 +72,11 @@ export const JARVIS_INITIAL_STATE: JarvisState = {
   available: true,
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
+  preferredBrain: DEFAULT_JARVIS_BRAIN,
   gate: null,
   budget: null,
+  ownBudget: null,
+  ownKey: null,
   demo: false,
   openCount: 0,
 };
@@ -86,24 +92,64 @@ export const JARVIS_SIM_AVAILABILITY: JarvisAvailability = {
   defaultBrain: "scripted",
   gate: null,
   budget: null,
+  ownBudget: null,
+  ownKey: null,
   demo: true,
 };
 
 /** Resolves which brain a turn actually runs with: the preferred brain when
  * it's among the ones currently on offer, else the availability feed's own
  * default. `availability.brains` is trusted as-is — an empty array (nothing
- * offered) falls through to `defaultBrain` the same as any other
- * not-offered case; no separate check on `availability.available` is
- * needed here (see `JarvisAvailability`'s "key everything off `available`"
- * doc — that's a caution for CONSUMERS of `state.available`, not a
- * precondition this resolver needs to duplicate). */
+ * offered) falls through the same as any other not-offered case; no separate
+ * check on `availability.available` is needed here (see `JarvisAvailability`'s
+ * "key everything off `available`" doc — that's a caution for CONSUMERS of
+ * `state.available`, not a precondition this resolver needs to duplicate).
+ *
+ * An OWN brain that is not offered resolves to `"scripted"`, never to
+ * `defaultBrain`: the default is a house brain that spends the house's money,
+ * and a person who chose their own key must not be moved onto it silently
+ * when their key is gone, their cap is spent, or the check cannot be made. */
 function resolveEffectiveBrain(
   preferredBrain: JarvisBrain,
   availability: JarvisAvailability,
 ): JarvisBrain {
-  return availability.brains.includes(preferredBrain)
-    ? preferredBrain
+  if (availability.brains.includes(preferredBrain)) {
+    return preferredBrain;
+  }
+
+  return isJarvisOwnBrain(preferredBrain)
+    ? "scripted"
     : availability.defaultBrain;
+}
+
+/** The two budgets a gate can be about. */
+export type JarvisBudgets = Pick<JarvisState, "budget" | "ownBudget">;
+
+/** Why `brain` is spent: the OWN budget's reason for an own brain, the house
+ * budget's for any other. The server's single `gate` merges the two, so what
+ * a gate means for a brain is read here, from the budget that pays for it. */
+export function exhaustionFor(
+  budgets: JarvisBudgets,
+  brain: JarvisBrain,
+): JarvisBudgetView["exhausted"] {
+  const budget = isJarvisOwnBrain(brain) ? budgets.ownBudget : budgets.budget;
+  return budget?.exhausted ?? null;
+}
+
+/** Whether the active gate concerns `brain`. It does not when the OTHER
+ * budget is the spent one: a spent own cap says nothing about a house brain,
+ * nor a spent house budget about an own brain. A gate no budget explains (an
+ * older server, or a soft gate with every budget still open) applies to every
+ * brain, as it always did. */
+export function gateAppliesTo(
+  budgets: JarvisBudgets,
+  brain: JarvisBrain,
+): boolean {
+  const anySpent =
+    (budgets.budget?.exhausted ?? null) !== null ||
+    (budgets.ownBudget?.exhausted ?? null) !== null;
+
+  return !anySpent || exhaustionFor(budgets, brain) !== null;
 }
 
 /** Locale `HH:MM` rendering of a gate's `resetsAtMs` (e.g. the footer chip,
@@ -141,19 +187,43 @@ function untilClause(resetsAtMs: number): string {
   return ` until ${formatGateResetTimeUtc(resetsAtMs)}`;
 }
 
+/** Why a person's own key is not running, in the readout's words. */
+function describeOwnKeyProblem(ownKey: JarvisState["ownKey"]): string {
+  switch (ownKey?.status) {
+    case undefined:
+      return "Your key isn't set";
+    case "unreachable":
+      return `Couldn't reach ${JARVIS_PROVIDER_NAMES[ownKey.provider]}`;
+    case "limited":
+      return "Too many key checks";
+    default:
+      return "Your key isn't available";
+  }
+}
+
 /** The system line appended when a gate moves this session's brain (spec
  * §3.8, D5): reason-aware, naming the brain now running. A gate with no
  * `budget.exhausted` (an older server) reads as the caller's own budget. A
  * store that cannot be reached has no known reset, so it carries no clause. */
 function formatSwitchLine(
-  exhausted: NonNullable<JarvisAvailability["budget"]>["exhausted"],
+  exhausted: JarvisBudgetView["exhausted"],
   to: JarvisBrain,
   resetsAtMs: number,
+  own: boolean,
+  ownKey: JarvisState["ownKey"],
 ): string {
   const target = `switching to the ${jarvisBrainLabel(to)} brain`;
 
   if (exhausted === "unavailable") {
     return `The AI budget is unavailable — ${target}.`;
+  }
+
+  if (own && exhausted !== null) {
+    return `Your daily limit is used — ${target}${untilClause(resetsAtMs)}.`;
+  }
+
+  if (own) {
+    return `${describeOwnKeyProblem(ownKey)} — ${target}.`;
   }
 
   const subject =
@@ -199,10 +269,15 @@ export function formatBrainHint(
   gate: JarvisState["gate"],
   preferred: JarvisBrain,
   effective: JarvisBrain,
+  budgets: JarvisBudgets,
 ): string | undefined {
   const moved = preferred !== effective;
+  // The server's gate merges house and own exhaustion: show its copy only
+  // when the budget behind the PREFERRED brain is the spent one. The running
+  // brain is no guide: "scripted" is paid by nobody.
+  const gated = gate !== null && gateAppliesTo(budgets, preferred);
 
-  if (gate === null) {
+  if (gate === null || !gated) {
     return moved
       ? `${jarvisBrainLabel(preferred)} isn't available — using ${jarvisBrainLabel(effective)}`
       : undefined;
@@ -522,6 +597,8 @@ export function createJarvisController(): JarvisController {
     defaultBrain: DEFAULT_JARVIS_BRAIN,
     gate: null,
     budget: null,
+    ownBudget: null,
+    ownKey: null,
     demo: false,
   };
   let preferredBrain: JarvisBrain = DEFAULT_JARVIS_BRAIN;
@@ -642,16 +719,23 @@ export function createJarvisController(): JarvisController {
           brains: value.brains,
           gate,
           budget: value.budget,
+          ownBudget: value.ownBudget,
+          ownKey: value.ownKey,
           demo: value.demo,
           effectiveBrain: nextEffectiveBrain,
         };
 
-        // The line appends only when a gate is active (never on lift), it
-        // actually MOVED this session's effective brain (not for an
-        // unaffected user, nor a republished frame at the same level), and
-        // there is a conversation beyond the greeting to append it to.
+        // The line appends only when a gate is active (never on lift) or an
+        // own-key brain was left behind (its key dropped, with no gate to
+        // say so), it actually MOVED this session's effective brain (not for
+        // an unaffected user, nor a republished frame at the same level), and
+        // there is a conversation beyond the greeting to append it to. An
+        // unavailable reading says nothing about the key: the adapter
+        // synthesizes one when the server stays silent.
+        const leftOwnBrain = isJarvisOwnBrain(previousEffectiveBrain);
+
         if (
-          gate === null ||
+          (gate === null && (!leftOwnBrain || !value.available)) ||
           nextEffectiveBrain === previousEffectiveBrain ||
           s.entries.length <= 1
         ) {
@@ -661,10 +745,13 @@ export function createJarvisController(): JarvisController {
         const entry: JarvisEntry = {
           id: nextEntryId++,
           role: "jarvis",
+          // The brain the person was ON decides whose budget ran out.
           text: formatSwitchLine(
-            value.budget?.exhausted ?? null,
+            exhaustionFor(value, previousEffectiveBrain),
             nextEffectiveBrain,
-            gate.resetsAtMs,
+            gate?.resetsAtMs ?? 0,
+            leftOwnBrain,
+            value.ownKey,
           ),
           done: true,
           origin: "system",
@@ -681,7 +768,7 @@ export function createJarvisController(): JarvisController {
       effectiveBrain = resolveEffectiveBrain(preferredBrain, availability);
 
       return (s: JarvisState): JarvisState => {
-        return { ...s, effectiveBrain };
+        return { ...s, preferredBrain: brain, effectiveBrain };
       };
     },
 

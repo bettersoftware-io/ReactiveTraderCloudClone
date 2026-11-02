@@ -4,6 +4,7 @@ import type {
   JarvisBrain,
   JarvisBudgetView,
   JarvisEvent,
+  JarvisOwnKeyView,
   JarvisSkin,
 } from "@rtc/domain";
 
@@ -82,6 +83,11 @@ export interface JarvisState {
    * (an availability flip can un-offer the currently-preferred brain
    * mid-session). */
   readonly effectiveBrain: JarvisBrain;
+  /** The brain the person asked for (`JarvisDeps.preferredBrain$`), whether
+   * or not it is on offer. Differs from `effectiveBrain` when it is not: an
+   * own-key preference without its key, or with its cap spent, runs scripted
+   * and the indicators need to say why. */
+  readonly preferredBrain: JarvisBrain;
   /** The active usage-budget gate, mirrored verbatim from the live
    * `availability$` feed's own `gate` field on every emission (`null` when
    * none is active, including sim mode's always-`null` default). Distinct
@@ -94,6 +100,12 @@ export interface JarvisState {
   /** The caller's budget for today, mirrored from the live `availability$`
    * feed (`null` when none was sent, and in sim mode). */
   readonly budget: JarvisBudgetView | null;
+  /** The caller's own-key budget for today, mirrored from `availability$`
+   * (`null` while no key is set, and in sim mode). */
+  readonly ownBudget: JarvisBudgetView | null;
+  /** The server's view of the caller's own key, mirrored from
+   * `availability$` (`null` while none is set). Never the key. */
+  readonly ownKey: JarvisOwnKeyView | null;
   /** `true` in the in-browser scripted demo, mirrored from `availability$`. */
   readonly demo: boolean;
   /** Times the overlay has been opened this session — the chip-rotation

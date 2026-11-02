@@ -40,6 +40,7 @@ import { describeInstrumentsContract } from "#/suites/instruments";
 import { describeJarvisContract } from "#/suites/jarvis";
 import { describeJarvisDemoContract } from "#/suites/jarvisDemo";
 import { describeJarvisDriverContract } from "#/suites/jarvisDriver";
+import { describeJarvisOwnKeyContract } from "#/suites/jarvisOwnKey";
 import { describeJarvisPanelsContract } from "#/suites/jarvisPanels";
 import { describeJarvisPreferencesContract } from "#/suites/jarvisPreferences";
 import { describeJarvisUsageContract } from "#/suites/jarvisUsage";
@@ -154,6 +155,7 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.accountList": describeAccountListContract,
   "presenters.jarvis": describeJarvisContract,
   "presenters.jarvisUsage": describeJarvisUsageContract,
+  "presenters.jarvisOwnKey": describeJarvisOwnKeyContract,
   "presenters.jarvisPanels": describeJarvisPanelsContract,
   "presenters.dockPanel": describeDockPanelContract,
   "presenters.dockedPanelIdsFor": describeDockedPanelIdsForContract,

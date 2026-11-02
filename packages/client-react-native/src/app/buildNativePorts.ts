@@ -85,13 +85,9 @@ export function buildNativePorts(
     // the user is authenticated. Connecting here (at composition time) would
     // send a tokenless upgrade the server rejects, then retry it on a timer
     // behind the login screen.
-    const ws = new WsAdapter(
-      url,
-      () => {
-        return sessionStore.read()?.token;
-      },
-      { autoConnect: false },
-    );
+    // The session store itself, as the web clients pass it: one app instance
+    // here, but a hot swap still meets a socket the last composition left.
+    const ws = new WsAdapter(url, sessionStore, { autoConnect: false });
     const gateway = new WsConnectionEventsAdapter(ws);
     // Pairs THIS composition's own reconnect/incident intents with the
     // gateway events. `@rtc/core-api`'s `TransportPorts` omits

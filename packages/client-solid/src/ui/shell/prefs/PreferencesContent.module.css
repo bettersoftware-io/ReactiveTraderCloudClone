@@ -160,3 +160,116 @@
   color: var(--accent-primary);
   background-color: color-mix(in srgb, var(--accent-primary) 12%, transparent);
 }
+
+/* The JARVIS "Your key" section: the explanation, then either the key form or
+ * the saved key's readout. A block of its own (not a .row) because it is taller
+ * than a label beside a control. No transition or animation anywhere here. */
+.keyBlock {
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.keyExplain {
+  margin: 4px 0 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  /* --text-muted is 2.3 to 3.1:1 on the modal in the light skins; this is copy
+   * the person must read, so it takes --text-secondary (4.4 to 6.9:1). */
+  color: var(--text-secondary);
+}
+
+.keyForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.keyLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.keyField {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border-primary);
+  border-radius: 3px;
+  background-color: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.keyField:focus-visible {
+  outline: 1px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.keyField:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.keySecret {
+  flex: 1 1 180px;
+}
+
+.keyAmount {
+  width: 72px;
+}
+
+.keyCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.keyActions {
+  display: flex;
+  gap: 8px;
+}
+
+.keyActions .actionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.keyReadout {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.keyMasked {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.keyStatus {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* The refusal signal. --accent-aware as text is 2.8 to 3.6:1 on the light
+ * skins, so the colour moves to the border and the text takes the readout's
+ * chip treatment (--text-primary on --panel, 13 to 18:1): the shape, not the
+ * hue, carries it. */
+.keyStatus[data-tone="warn"] {
+  align-self: flex-start;
+  padding: 2px 8px;
+  color: var(--text-primary);
+  background: var(--panel);
+  border: 1px solid var(--accent-aware);
+  border-radius: 3px;
+}
+
+.keyNote {
+  font-size: 11px;
+  color: var(--text-secondary);
+}

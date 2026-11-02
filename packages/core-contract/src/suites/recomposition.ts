@@ -62,6 +62,36 @@ export function describeRecompositionContract(
       });
     });
 
+    it("a session the transport ends inside the next composition's first connect() signs that composition out", async () => {
+      await withFakeClock(async (clock) => {
+        vi.setSystemTime(NOW);
+        const h = makeHarness(SEED);
+
+        try {
+          await signIn(h.app, h.driver.resolveLogin, clock.settle);
+          // The socket the last composition left belongs to an account the
+          // shared store no longer holds: the next gate's connect() ends the
+          // session at once, before that call returns. The composition must
+          // already be listening, or it stays signed in over a closed socket.
+          h.driver.endSessionOnNextConnect();
+          const b = await h.recompose();
+          await clock.settle();
+          const auth = collect(b.presenters.auth.state$);
+          expect(auth.values.at(-1)?.status).toBe("unauthenticated");
+          expect(h.driver.storedSession()).toBe(null);
+          expect(h.driver.transportCalls()).toEqual([
+            "disconnect",
+            "connect",
+            "connect",
+            "disconnect",
+          ]);
+          auth.unsubscribe();
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
     it("app.ports is the ports object the composition was given, not a wrapper of it", async () => {
       // The host composes the next core over these same ports. A core that
       // wraps its ports for its own use must not hand the wrapper on.

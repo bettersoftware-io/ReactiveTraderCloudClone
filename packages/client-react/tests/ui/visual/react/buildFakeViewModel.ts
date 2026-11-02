@@ -60,10 +60,13 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
   // offered value keeps every existing golden pixel-identical.
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
+  preferredBrain: DEFAULT_JARVIS_BRAIN,
   // No fixture exercises a budget gate (Task 6/8 scenarios add that
   // separately) — every existing golden stays pixel-identical.
   gate: null,
   budget: null,
+  ownBudget: null,
+  ownKey: null,
   demo: false,
   // Matches INITIAL's own 0 (never-opened session) — no pre-Task-10
   // component reads it yet, so this keeps every existing golden
@@ -652,6 +655,16 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         setNarrator: noop,
         indicators: data.jarvisIndicators ?? DEFAULT_JARVIS_INDICATORS,
         setIndicators: noop,
+      };
+    },
+    // The person's own key: the masked saved form from the fixture, no-op
+    // intents (static screenshots never fire them).
+    useJarvisOwnKey: () => {
+      return {
+        saved: data.jarvisOwnKeySaved ?? null,
+        save: noop,
+        setCap: noop,
+        remove: noop,
       };
     },
     // Jarvis token-usage/cost telemetry (Task 10) — data-driven off

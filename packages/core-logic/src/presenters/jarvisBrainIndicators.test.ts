@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import type { JarvisBrain, JarvisBudgetView } from "@rtc/domain";
+import type {
+  JarvisBrain,
+  JarvisBudgetView,
+  JarvisOwnKeyView,
+} from "@rtc/domain";
 
 import {
   type BrainIndicatorState,
@@ -195,9 +199,208 @@ describe("formatUsd", () => {
   });
 });
 
+describe("describeBrainReadout — an own key", () => {
+  it("own, capped: the amount left of the cap, with a meter", () => {
+    const state = aState(OWN_SONNET, aBudget({ exhausted: null }), {
+      ownBudget: anOwnBudget(),
+      ownKey: anOwnKey(),
+    });
+
+    expect(describeBrainReadout(state)).toEqual({
+      text: "Sonnet 5 · your key · $0.60 of $1.00 left today",
+      tone: "normal",
+      meterFraction: 0.6,
+    });
+  });
+
+  it("own, no limit: says no limit", () => {
+    const state = aState(OWN_SONNET, null, {
+      ownBudget: anOwnBudget({ limitUsd: null }),
+      ownKey: anOwnKey(),
+    });
+
+    expect(describeBrainReadout(state)).toEqual({
+      text: "Sonnet 5 · your key · no limit",
+      tone: "normal",
+      meterFraction: null,
+    });
+  });
+
+  it("own key refused: a warning, while the own brain stays the effective one", () => {
+    const state = aState(OWN_SONNET, null, {
+      ownBudget: anOwnBudget(),
+      ownKey: anOwnKey("refused"),
+    });
+
+    expect(describeBrainReadout(state)).toEqual({
+      text: "Anthropic refused your key",
+      tone: "warning",
+      meterFraction: null,
+    });
+  });
+
+  it("a person who chose Scripted is not told their own limit moved them", () => {
+    const state = aState("scripted", aBudget(), {
+      preferredBrain: "scripted",
+      ownBudget: anOwnBudget({ spentUsd: 1, exhausted: "user" }),
+      ownKey: anOwnKey(),
+    });
+
+    expect(describeBrainReadout(state)).toEqual({
+      text: "Scripted",
+      tone: "normal",
+      meterFraction: null,
+    });
+  });
+
+  it("cap spent: scripted, naming the person's own daily limit", () => {
+    const state = aState("scripted", aBudget(), {
+      preferredBrain: OWN_SONNET,
+      ownBudget: anOwnBudget({ spentUsd: 1, exhausted: "user" }),
+      ownKey: anOwnKey(),
+    });
+
+    expect(describeBrainReadout(state)).toEqual({
+      text: "Scripted · your daily limit used · back at 00:00 UTC",
+      tone: "warning",
+      meterFraction: null,
+    });
+  });
+
+  it("store unreachable, with a cap: scripted, budget unavailable", () => {
+    const state = aState("scripted", aBudget(), {
+      preferredBrain: OWN_SONNET,
+      ownBudget: anOwnBudget({ exhausted: "unavailable" }),
+      ownKey: anOwnKey(),
+    });
+
+    expect(describeBrainReadout(state)).toEqual({
+      text: "Scripted · AI budget unavailable",
+      tone: "warning",
+      meterFraction: null,
+    });
+  });
+
+  it("key missing: the person prefers an own brain but no key is set", () => {
+    const state = aState("scripted", null, {
+      preferredBrain: OWN_SONNET,
+      ownKey: null,
+    });
+
+    expect(describeBrainReadout(state)).toEqual({
+      text: "Scripted · your key isn't set",
+      tone: "warning",
+      meterFraction: null,
+    });
+  });
+
+  it("key unreachable: names the provider that could not be reached", () => {
+    const state = aState("scripted", null, {
+      preferredBrain: OWN_SONNET,
+      ownKey: anOwnKey("unreachable"),
+    });
+
+    expect(describeBrainReadout(state)).toEqual({
+      text: "Scripted · couldn't reach Anthropic",
+      tone: "warning",
+      meterFraction: null,
+    });
+  });
+
+  it("key checks limited: says too many key checks", () => {
+    const state = aState("scripted", null, {
+      preferredBrain: OWN_SONNET,
+      ownKey: anOwnKey("limited"),
+    });
+
+    expect(describeBrainReadout(state)).toEqual({
+      text: "Scripted · too many key checks",
+      tone: "warning",
+      meterFraction: null,
+    });
+  });
+
+  it("a spent own cap keeps its own row for an own preference", () => {
+    const state = aState("scripted", null, {
+      preferredBrain: OWN_SONNET,
+      ownKey: anOwnKey(),
+      ownBudget: anOwnBudget({ exhausted: "user" }),
+    });
+
+    expect(describeBrainReadout(state)?.text).toBe(
+      "Scripted · your daily limit used · back at 00:00 UTC",
+    );
+  });
+
+  it("an own preference's missing key outranks a spent house budget", () => {
+    const state = aState("scripted", aBudget({ exhausted: "house" }), {
+      preferredBrain: OWN_SONNET,
+      ownKey: null,
+    });
+
+    expect(describeBrainReadout(state)?.text).toBe(
+      "Scripted · your key isn't set",
+    );
+  });
+
+  it("a house preference that is scripted never mentions a key", () => {
+    const state = aState("scripted", aBudget(), {
+      preferredBrain: "claude-haiku-4-5",
+      ownKey: null,
+    });
+
+    expect(describeBrainReadout(state)?.text).toBe("Scripted");
+  });
+
+  it("a spent HOUSE budget does not hide a working own key", () => {
+    const state = aState(OWN_SONNET, aBudget({ exhausted: "user" }), {
+      ownBudget: anOwnBudget(),
+      ownKey: anOwnKey(),
+    });
+
+    expect(describeBrainReadout(state)?.text).toBe(
+      "Sonnet 5 · your key · $0.60 of $1.00 left today",
+    );
+  });
+
+  it("a spent own cap does not change a house brain's readout", () => {
+    const state = aState("claude-haiku-4-5", aBudget(), {
+      ownBudget: anOwnBudget({ exhausted: "user" }),
+      ownKey: anOwnKey(),
+    });
+
+    expect(describeBrainReadout(state)?.text).toBe(
+      "Claude Haiku 4.5 · house key · $0.14 of $0.20 left today",
+    );
+  });
+});
+
+describe("describeBrainPill — an own key", () => {
+  it("shows the amount left of the person's own cap", () => {
+    const state = aState(OWN_SONNET, aBudget(), {
+      ownBudget: anOwnBudget(),
+      ownKey: anOwnKey(),
+    });
+
+    expect(describeBrainPill(state)).toBe("Sonnet 5 · $0.60");
+  });
+
+  it("is the bare label with no own limit", () => {
+    const state = aState(OWN_SONNET, aBudget(), {
+      ownBudget: anOwnBudget({ limitUsd: null }),
+      ownKey: anOwnKey(),
+    });
+
+    expect(describeBrainPill(state)).toBe("Sonnet 5");
+  });
+});
+
 interface StateOverrides {
   readonly available?: boolean;
   readonly demo?: boolean;
+  readonly ownBudget?: JarvisBudgetView | null;
+  readonly ownKey?: JarvisOwnKeyView | null;
+  readonly preferredBrain?: JarvisBrain;
 }
 
 function aBudget(overrides: Partial<JarvisBudgetView> = {}): JarvisBudgetView {
@@ -216,5 +419,35 @@ function aState(
   budget: JarvisBudgetView | null,
   overrides: StateOverrides = {},
 ): BrainIndicatorState {
-  return { available: true, demo: false, effectiveBrain, budget, ...overrides };
+  return {
+    available: true,
+    demo: false,
+    effectiveBrain,
+    preferredBrain: effectiveBrain,
+    budget,
+    ownBudget: null,
+    ownKey: null,
+    ...overrides,
+  };
+}
+
+const OWN_SONNET: JarvisBrain = "own:anthropic:claude-sonnet-5";
+
+function anOwnBudget(
+  overrides: Partial<JarvisBudgetView> = {},
+): JarvisBudgetView {
+  return {
+    keyKind: "own",
+    spentUsd: 0.4,
+    limitUsd: 1,
+    exhausted: null,
+    resetsAtMs: MIDNIGHT_UTC_MS,
+    ...overrides,
+  };
+}
+
+function anOwnKey(
+  status: JarvisOwnKeyView["status"] = "accepted",
+): JarvisOwnKeyView {
+  return { provider: "anthropic", status, capUsd: 1 };
 }

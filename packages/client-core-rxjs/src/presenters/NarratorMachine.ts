@@ -14,9 +14,10 @@ import {
   withLatestFrom,
 } from "rxjs/operators";
 
-import type { NarratorHandle } from "@rtc/core-api";
+import type { JarvisState, NarratorHandle } from "@rtc/core-api";
 import {
   admitAnomaly,
+  canNarrate,
   formatNarrationPrompt,
   isAdmittedGate,
   NARRATOR_INITIAL_GATE,
@@ -86,6 +87,11 @@ export interface NarratorDeps {
    * doc): flipping back to `"on"` re-enables narration for the NEXT
    * anomaly, with no re-composition needed. */
   readonly preference$: Observable<JarvisNarratorPreference>;
+  /** Jarvis's state now, for `canNarrate`: a refused own key drops every
+   * surviving anomaly, like the preference, without consuming a slot. A read
+   * and not a stream: a subscription of this machine's to `jarvis.state$`
+   * would keep it alive past `presenters.jarvis.dispose()`. */
+  readonly jarvisStateNow: () => Pick<JarvisState, "effectiveBrain" | "ownKey">;
   /** Injected for the cooldown gate's `now()` reads — a `TestScheduler` in
    * tests, `undefined` (rxjs's own `asyncScheduler`, whose `now()` is
    * `Date.now()`) in production. Mirrors `JarvisDriverDeps.scheduler`'s
@@ -126,7 +132,8 @@ function mergedTicks$(
  *    (`withLatestFrom` — always the LATEST preference value, so flipping
  *    the preference live re-enables/disables narration for the very next
  *    anomaly with no re-composition; a `"off"` reading here is dropped
- *    WITHOUT consuming a cooldown/session-cap slot).
+ *    WITHOUT consuming a cooldown/session-cap slot), and `canNarrate` holds
+ *    for `deps.jarvisStateNow()` (the same drop, for a refused own key).
  * 2. `NARRATION_COOLDOWN_MS` has elapsed since the last successful
  *    narration (measured via `deps.scheduler`'s `now()`, never
  *    `Date.now()` directly — see `NARRATION_COOLDOWN_MS`'s doc).
@@ -188,7 +195,7 @@ export function createNarratorMachine(deps: NarratorDeps): NarratorHandle {
   const narratePrompts$: Observable<string> = anomalies$.pipe(
     withLatestFrom(deps.preference$),
     filter(([, preference]) => {
-      return preference === "on";
+      return preference === "on" && canNarrate(deps.jarvisStateNow());
     }),
     map(([event]) => {
       return event;

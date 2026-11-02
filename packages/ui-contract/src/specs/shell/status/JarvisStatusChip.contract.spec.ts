@@ -26,6 +26,8 @@ describe("JarvisStatusChip", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     });
@@ -40,6 +42,8 @@ describe("JarvisStatusChip", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       jarvisBrain: "claude-opus-5",
@@ -57,6 +61,8 @@ describe("JarvisStatusChip", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       jarvisBrain: "scripted",
@@ -73,6 +79,8 @@ describe("JarvisStatusChip", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       // Preferred, but NOT among the offered brains above.
@@ -90,6 +98,8 @@ describe("JarvisStatusChip", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     });
@@ -110,6 +120,8 @@ describe("JarvisStatusChip", () => {
           gated: ["claude-sonnet-5", "claude-opus-5"],
         },
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     });
@@ -129,10 +141,87 @@ describe("JarvisStatusChip", () => {
           gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
         },
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     });
     expect(page.jarvisChipGateLevel()).toBe("hard");
     expect(page.jarvisChipText()).toBe("JARVIS · scripted · budget exhausted");
+  });
+
+  describe("with the server's merged gate", () => {
+    it("ignores a spent own cap while the saved brain is a house brain", () => {
+      const page = mount(StatusBar, {
+        jarvisAvailability: {
+          available: true,
+          brains: ["scripted", "claude-haiku-4-5"],
+          defaultBrain: "claude-haiku-4-5",
+          gate: { level: "soft", resetsAtMs: RESETS_AT_MS, gated: [OWN_HAIKU] },
+          budget: null,
+          ownBudget: spent,
+          ownKey: { provider: "anthropic", status: "accepted", capUsd: 1 },
+          demo: false,
+        },
+        jarvisBrain: "claude-haiku-4-5",
+      });
+
+      expect(page.jarvisChipGateLevel()).toBeNull();
+      expect(page.jarvisChipText()).toBe("JARVIS · Haiku 4.5");
+    });
+
+    it("ignores a spent house budget while the saved brain is an own brain", () => {
+      const page = mount(StatusBar, {
+        jarvisAvailability: {
+          available: true,
+          brains: ["scripted", OWN_HAIKU],
+          defaultBrain: "scripted",
+          gate: {
+            level: "soft",
+            resetsAtMs: RESETS_AT_MS,
+            gated: ["claude-haiku-4-5"],
+          },
+          budget: { ...spent, keyKind: "house", exhausted: "house" },
+          ownBudget: null,
+          ownKey: { provider: "anthropic", status: "accepted", capUsd: 1 },
+          demo: false,
+        },
+        jarvisBrain: OWN_HAIKU,
+      });
+
+      expect(page.jarvisChipBrain()).toBe(OWN_HAIKU);
+      expect(page.jarvisChipGateLevel()).toBeNull();
+    });
+
+    it("still shows the gate when the spent budget is the saved brain's own", () => {
+      const page = mount(StatusBar, {
+        jarvisAvailability: {
+          available: true,
+          brains: ["scripted"],
+          defaultBrain: "scripted",
+          gate: { level: "soft", resetsAtMs: RESETS_AT_MS, gated: [OWN_HAIKU] },
+          budget: null,
+          ownBudget: spent,
+          ownKey: { provider: "anthropic", status: "accepted", capUsd: 1 },
+          demo: false,
+        },
+        jarvisBrain: OWN_HAIKU,
+      });
+
+      expect(page.jarvisChipGateLevel()).toBe("soft");
+      expect(page.jarvisChipText()).toBe("JARVIS · scripted · budget-limited");
+    });
+
+    const OWN_HAIKU = "own:anthropic:claude-haiku-4-5";
+
+    const RESETS_AT_MS = 1_754_000_000_000;
+
+    const spent = {
+      keyKind: "own",
+      spentUsd: 1.2,
+      limitUsd: 1,
+      exhausted: "user",
+      resetsAtMs: RESETS_AT_MS,
+    } as const;
   });
 });

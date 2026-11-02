@@ -16,7 +16,6 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_FORCE_BOOT_ANIMATION,
-  DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_INDICATORS,
   DEFAULT_JARVIS_NARRATOR,
@@ -32,7 +31,6 @@ import {
   EQ_WATCHLIST_SORTS,
   type EqBlotterView,
   type EqWatchlistSort,
-  isJarvisBrain,
   isJarvisEffort,
   isJarvisNarratorPreference,
   isPowerSaverLevel,
@@ -53,6 +51,7 @@ import {
   type LoginWaitVariant,
   type PowerSaverLevel,
   type PreferencesPort,
+  parseStoredJarvisBrain,
   readJarvisIndicators,
   THEME_SKINS,
   type ThemeModePreference,
@@ -153,6 +152,15 @@ function isEqWatchlistSort(value: string | null): value is EqWatchlistSort {
 
 function isEqBlotterView(value: string | null): value is EqBlotterView {
   return value === "orders" || value === "positions";
+}
+
+function readStoredString(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    // localStorage may be unavailable (private mode, disabled cookies, etc.)
+    return null;
+  }
 }
 
 function readStored<T extends string>(
@@ -415,7 +423,7 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
       readStored(JARVIS_SKIN_STORAGE_KEY, isJarvisSkin, DEFAULT_JARVIS_SKIN),
     );
     this.jarvisBrainSubject = new BehaviorSubject<JarvisBrain>(
-      readStored(JARVIS_BRAIN_STORAGE_KEY, isJarvisBrain, DEFAULT_JARVIS_BRAIN),
+      parseStoredJarvisBrain(readStoredString(JARVIS_BRAIN_STORAGE_KEY)),
     );
     this.jarvisEffortSubject = new BehaviorSubject<JarvisEffort>(
       readStored(
