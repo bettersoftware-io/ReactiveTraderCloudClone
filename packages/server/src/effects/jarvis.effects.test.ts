@@ -3051,6 +3051,38 @@ describe("a person's own key", () => {
       ).toEqual(["https://api.openai.com/v1/chat/completions"]);
     });
 
+    it("a switch from an Anthropic key to an OpenRouter key builds a loop for the new key and disposes of the old session", async () => {
+      answerFetchWith(200);
+      const { messages$, ownSpy, buildOwnKeyLoop } = ownKeyHarness();
+      const openrouterKey = "sk-or-own-key-e5f6";
+      const openrouterBrain: JarvisOwnBrain =
+        "own:openrouter:deepseek/deepseek-v4.1-flash";
+
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+      messages$.next({
+        type: CLIENT_MSG.JARVIS_KEY,
+        payload: setKeyPayload({ provider: "openrouter", key: openrouterKey }),
+      });
+      await settleBudgetReads();
+      messages$.next(chatFrame(openrouterBrain));
+      await settleBudgetReads();
+
+      expect(buildOwnKeyLoop.mock.calls).toEqual([
+        ["anthropic", OWN_KEY],
+        ["openrouter", openrouterKey],
+      ]);
+      expect(ownSpy.sessions[0]?.dispose).toHaveBeenCalledTimes(1);
+      expect(ownSpy.sessions[1]?.dispose).not.toHaveBeenCalled();
+      expect(ownSpy.sessions[1]?.runTurn).toHaveBeenCalledExactlyOnceWith(
+        "hi",
+        [],
+        expect.objectContaining({ brain: openrouterBrain }),
+      );
+    });
+
     it("a loop that throws while it is built logs no message either", async () => {
       answerFetchWith(200);
       const logged = captureConsole();

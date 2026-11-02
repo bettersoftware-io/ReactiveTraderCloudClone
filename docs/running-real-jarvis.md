@@ -235,15 +235,24 @@ taken from the client:
 | OpenRouter | its authenticated key-info route (its models list is public, so it proves nothing about a key) | `OpenAiCompatibleAgentLoop` |
 | OpenAI | its models list | `OpenAiCompatibleAgentLoop` |
 
+An OpenAI restricted key needs "Models: Read" (List models) for the key check,
+or it reads refused.
+
 `createOwnKeyLoopBuilder` (`packages/server/src/agent/ownKeyLoops.ts`) picks the
 loop; `OWN_KEY_CHAT_CONFIGS` there holds each OpenAI-compatible provider's host,
 token-limit field and extra request fields. Both switch reasoning off on every
 request: OpenAI's Chat Completions runs function tools only that way on its
-current models, and with reasoning off every output token streams, so a
-cancelled request is booked in full from what it streamed.
+current models, and with reasoning off every output token streams, so the
+estimate a cancelled request is booked at (what streamed, at about four
+characters a token) leaves no hidden tokens out. OpenRouter's requests also
+carry a price ceiling at the listed price (`provider.max_price`), so no
+endpoint dearer than the list serves them.
 
-**Cost.** OpenRouter's turns book the cost each reply reports (`usage.cost`);
-Anthropic's and OpenAI's book the listed price, which the UI calls an estimate.
+**Cost.** OpenRouter's turns book the cost each reply reports (`usage.cost`,
+plus `cost_details.upstream_inference_cost` on a key the person keeps at
+OpenRouter for another provider, where `usage.cost` is OpenRouter's fee alone),
+never below the listed price for the same usage; Anthropic's and OpenAI's book
+the listed price, which the UI calls an estimate.
 The person's own daily limit applies to all three. The real backstop is the
 limit they set at the provider.
 
@@ -286,8 +295,10 @@ printed:
 RTC_PROBE_KEY_FILE=<path to a file holding the key> pnpm --filter @rtc/server own-key:probe openrouter
 ```
 
-Use a key made for the check, with a small limit at the provider. Each run
-costs a fraction of a cent per model.
+Use a key made for the check, with a small limit at the provider. A model's
+turn is at most `JARVIS_RUNNER_MAX_ITERATIONS` requests of up to
+`JARVIS_MAX_TOKENS_PER_TURN` output tokens each; a cheap model's turn costs a
+fraction of a cent, a strong model's a few cents.
 
 ## Rate limits, and how Jarvis behaves when any limit trips
 

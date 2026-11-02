@@ -1632,7 +1632,9 @@ person: the same desk tools through its own `LiveSessionDesk` (the confirm gate
 on `execute_trade`, `render_panel`, `drive_app`), the same copy, the iteration
 cap, cancel, and the budget asked before every request. It runs the tool loop
 itself, since there is no SDK runner. The stream is read by `parseSseChunks`
-(`openAiSse.ts`), which caps a line and an event and scans each read once.
+(`openAiSse.ts`), which caps a line and an event and scans each read once; one
+reply's generated text and tool arguments are capped too, at a small multiple
+of what the turn's token limit makes, past which the request fails.
 
 Each provider's request shape is a config in `OWN_KEY_CHAT_CONFIGS`: its fixed
 host, its token-limit field (`max_completion_tokens` at OpenAI, `max_tokens` at
@@ -1641,12 +1643,20 @@ Completions takes function tools only that way on its current models, and with
 reasoning off a cancelled request, booked from the characters it streamed,
 misses no hidden tokens. That is why the curated list names no model that must
 reason. OpenRouter also asks for the reply's cost, which the turn books in
-place of the listed price (clamped to a multiple of the request's listed worst
-case), and routes only to providers that honour every field sent.
+place of the listed price, with the upstream cost added on a key the person
+keeps at OpenRouter for another provider (where `usage.cost` is OpenRouter's
+fee alone); the booked cost is never below the listed price for the usage and
+never above a multiple of the request's listed worst case. A per-model field
+(`modelBody`) routes OpenRouter's requests only to providers that honour every
+field sent and charge no more than the listed price (`provider.max_price`).
 
 A 401, 402 or 403, or OpenAI's 429 for a key out of credit, refuses the key
 through the turn's `keyFailure`, as on Anthropic: the turn says
-`<Provider> refused your key.` and the key reads refused. Any other failure is
+`<Provider> refused your key.` and the key reads refused. OpenRouter's 403 for
+input its moderation flagged (its error metadata names the reasons) is not a
+refusal: the turn fails with the generic copy and the key stays accepted. The
+same key sent again after a refusal is checked again, so a key topped up
+after running out of credit is recovered with "Try again". Any other failure is
 the sanitized desk-link copy; no provider message reaches a log or the client.
 
 `own-key:probe` (`agent/ownKeyProbe.ts`, run by hand with a real key) drives

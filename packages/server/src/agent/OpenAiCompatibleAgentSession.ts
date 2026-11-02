@@ -5,6 +5,7 @@ import {
   type JarvisEvent,
   type JarvisHistoryEntry,
   type JarvisLiveBrain,
+  type JarvisOwnModel,
   ownModelOf,
 } from "@rtc/domain";
 
@@ -61,10 +62,16 @@ const SESSION_NAME = "OpenAiCompatibleAgentSession";
  * them cannot add up to Infinity. */
 const REPORTED_COST_CEILINGS = 4;
 
-/** How much of a 429's body is read to tell a key out of credit apart:
- * OpenAI's error object is a few hundred bytes. A longer body is not read
- * on, and is not taken as a refusal. */
+/** How much of a 429's or a 403's body is read to tell a key out of credit,
+ * or input flagged by moderation, apart: an error object is a few hundred
+ * bytes. A longer body is not read on, and says neither. */
 const ERROR_BODY_MAX_BYTES = 4 * 1024;
+
+/** The most generated characters (text and tool-call arguments) one reply
+ * may stream: four times what the turn's token limit makes at the estimate.
+ * A provider streaming past it is broken or hostile; the request fails. */
+const REPLY_MAX_CHARS: number =
+  4 * JARVIS_MAX_TOKENS_PER_TURN * CHARS_PER_TOKEN_ESTIMATE;
 
 /** What a call that named no tool is sent back under: the API takes no
  * empty name. */
@@ -81,6 +88,10 @@ export interface OpenAiCompatibleEndpoint {
   readonly headers: Readonly<Record<string, string>>;
   readonly tokenLimitParam: "max_tokens" | "max_completion_tokens";
   readonly extraBody: Readonly<Record<string, unknown>>;
+  /** Extra fields that depend on the model (OpenRouter's price ceiling). */
+  readonly modelBody: (
+    model: JarvisOwnModel,
+  ) => Readonly<Record<string, unknown>>;
   readonly fetchFn: typeof fetch;
 }
 
@@ -140,6 +151,9 @@ type RequestOutcome =
       readonly status: number;
       /** OpenAI's 429 for a key out of credit. */
       readonly outOfCredit: boolean;
+      /** OpenRouter's 403 for input its moderation flagged: the key is
+       * fine. */
+      readonly moderated: boolean;
     }
   | { readonly kind: "streamError" }
   | { readonly kind: "unfinished" };
@@ -152,6 +166,7 @@ type Push = (event: JarvisEvent) => void;
 
 /** What one request of a turn needs from the turn. */
 interface RequestTurn {
+  readonly brain: JarvisLiveBrain;
   readonly signal: AbortSignal;
   readonly push: Push;
   readonly requests: RequestLedger;
@@ -183,45 +198,103 @@ function countOf(value: unknown): number {
  * A request's usage as the provider reported it. `prompt_tokens` counts
  * cached input too, and the whole of it is booked as fresh input: providers
  * discount cached input by different amounts, so this errs high rather than
- * guessing a discount. A `cost` (OpenRouter's, once asked for) is booked as
- * the request's cost, up to `maxReportedCostUsd` (see
- * `REPORTED_COST_CEILINGS`).
+ * guessing a discount.
+ *
+ * A `cost` (OpenRouter's) is booked as the request's cost, with
+ * `cost_details.upstream_inference_cost` added: on a key the person keeps
+ * at OpenRouter for another provider (BYOK), `cost` is OpenRouter's fee
+ * alone and the provider's charge is the upstream cost. The booked cost is
+ * never below the listed price for the same usage, so a reported cost that
+ * leaves the charge out cannot let a turn run free, and never above
+ * `maxReportedCostUsd` (see `REPORTED_COST_CEILINGS`).
  */
 function usageOf(
   usage: Record<string, unknown>,
+  brain: JarvisLiveBrain,
   maxReportedCostUsd: number,
 ): JarvisTokenUsage {
-  return {
+  const tokens: JarvisTokenUsage = {
     inputTokens: countOf(usage.prompt_tokens),
     outputTokens: countOf(usage.completion_tokens),
     cacheReadTokens: 0,
     cacheCreationTokens: 0,
-    ...(typeof usage.cost === "number"
-      ? { reportedCostUsd: Math.min(usage.cost, maxReportedCostUsd) }
-      : {}),
+  };
+
+  if (typeof usage.cost !== "number") {
+    return tokens;
+  }
+
+  const details = isRecord(usage.cost_details) ? usage.cost_details : {};
+  const reportedUsd =
+    countOf(usage.cost) + countOf(details.upstream_inference_cost);
+  const listedUsd = estimateListedCostUsd(brain, tokens);
+
+  return {
+    ...tokens,
+    reportedCostUsd: Math.min(
+      Math.max(reportedUsd, listedUsd),
+      maxReportedCostUsd,
+    ),
   };
 }
 
-/** Whether a 429's body says the key is out of credit (D13): OpenAI's
- * `insufficient_quota`, in the error's `type` or `code`. The body is read
- * for this one test and goes nowhere else. */
-async function readsOutOfCredit(response: Response): Promise<boolean> {
+/** The `error` object of a failed request's JSON body, read up to
+ * `ERROR_BODY_MAX_BYTES`; empty when there is none. It is read only to tell
+ * kinds of failure apart and goes nowhere else. */
+async function readErrorObject(
+  response: Response,
+): Promise<Record<string, unknown>> {
   const text = await readBodyUpTo(response.body, ERROR_BODY_MAX_BYTES);
 
   if (text === null) {
-    return false;
+    return {};
   }
 
   try {
     const body: unknown = JSON.parse(text);
-    const error = isRecord(body) && isRecord(body.error) ? body.error : {};
 
-    return (
-      error.type === "insufficient_quota" || error.code === "insufficient_quota"
-    );
+    return isRecord(body) && isRecord(body.error) ? body.error : {};
   } catch {
-    return false;
+    return {};
   }
+}
+
+/** Whether a 429's error says the key is out of credit (D13): OpenAI's
+ * `insufficient_quota`, in the error's `type` or `code`. */
+function saysOutOfCredit(error: Record<string, unknown>): boolean {
+  return (
+    error.type === "insufficient_quota" || error.code === "insufficient_quota"
+  );
+}
+
+/** Whether a 403's error is OpenRouter's moderation flag: its metadata
+ * names the reasons or the flagged input. */
+function saysModerated(error: Record<string, unknown>): boolean {
+  const metadata = isRecord(error.metadata) ? error.metadata : {};
+
+  return (
+    Array.isArray(metadata.reasons) ||
+    typeof metadata.flagged_input === "string"
+  );
+}
+
+/** The generated characters one chunk's delta carries: text, and the
+ * arguments of its tool calls. */
+function generatedCharsOf(delta: Record<string, unknown>): number {
+  let chars = typeof delta.content === "string" ? delta.content.length : 0;
+
+  if (Array.isArray(delta.tool_calls)) {
+    for (const fragment of delta.tool_calls) {
+      const fn =
+        isRecord(fragment) && isRecord(fragment.function)
+          ? fragment.function
+          : {};
+
+      chars += typeof fn.arguments === "string" ? fn.arguments.length : 0;
+    }
+  }
+
+  return chars;
 }
 
 /** A body's text if it ends within `maxBytes`; null if it is longer, or
@@ -459,14 +532,15 @@ function foldToolCallDelta(
   }
 }
 
-/** Reads one request's stream to its end, relaying text as it arrives. */
+/** Reads one request's stream to its end, relaying text as it arrives.
+ * Throws once the reply passes `REPLY_MAX_CHARS`, which fails the turn. */
 async function readReply(
   chunks: AsyncIterable<unknown>,
-  push: Push,
-  requests: RequestLedger,
-  maxReportedCostUsd: number,
+  turn: RequestTurn,
 ): Promise<RequestOutcome> {
+  const { brain, push, requests, maxReportedCostUsd } = turn;
   let text = "";
+  let replyChars = 0;
   let finishReason: string | null = null;
   let usage: JarvisTokenUsage | null = null;
   const calls = new Map<number, PendingToolCall>();
@@ -483,7 +557,7 @@ async function readReply(
     }
 
     if (isRecord(chunk.usage)) {
-      usage = usageOf(chunk.usage, maxReportedCostUsd);
+      usage = usageOf(chunk.usage, brain, maxReportedCostUsd);
     }
 
     const choice = Array.isArray(chunk.choices) ? chunk.choices[0] : undefined;
@@ -495,6 +569,12 @@ async function readReply(
     requests.noteGenerating();
 
     const delta = isRecord(choice.delta) ? choice.delta : {};
+
+    replyChars += generatedCharsOf(delta);
+
+    if (replyChars > REPLY_MAX_CHARS) {
+      throw new RangeError("a reply passed the size cap");
+    }
 
     if (typeof delta.content === "string" && delta.content !== "") {
       text += delta.content;
@@ -688,7 +768,7 @@ export class OpenAiCompatibleAgentSession implements AgentSession {
     options: JarvisTurnOptions | undefined,
   ): Promise<TurnOutcome> {
     const brain = options?.brain;
-    const model = brain === undefined ? undefined : ownModelOf(brain)?.modelId;
+    const model = brain === undefined ? undefined : ownModelOf(brain);
 
     // Routing sends only a listed own brain here (its cost must be
     // meterable); anything else fails closed, before any request.
@@ -720,6 +800,7 @@ export class OpenAiCompatibleAgentSession implements AgentSession {
 
       for (let iteration = 1; ; iteration += 1) {
         const outcome = await this.requestReply(model, conversation, {
+          brain,
           signal,
           push,
           requests,
@@ -802,16 +883,19 @@ export class OpenAiCompatibleAgentSession implements AgentSession {
 
   /** Makes one streaming request and reads its reply. */
   private async requestReply(
-    model: string,
+    model: JarvisOwnModel,
     conversation: readonly ChatMessage[],
     turn: RequestTurn,
   ): Promise<RequestOutcome> {
-    const { signal, push, requests, maxReportedCostUsd } = turn;
-    const { url, headers, tokenLimitParam, extraBody, fetchFn } = this.endpoint;
+    const { signal, requests } = turn;
+    const { url, headers, tokenLimitParam, extraBody, modelBody, fetchFn } =
+      this.endpoint;
+
     // Extra fields first, so none can replace the request's own.
     const body = JSON.stringify({
       ...extraBody,
-      model,
+      ...modelBody(model),
+      model: model.modelId,
       messages: conversation,
       tools: this.tools,
       stream: true,
@@ -843,26 +927,27 @@ export class OpenAiCompatibleAgentSession implements AgentSession {
     }
 
     if (!response.ok) {
-      const outOfCredit =
-        response.status === 429 && (await readsOutOfCredit(response));
+      const { status } = response;
+      const readsBody = status === 429 || status === 403;
+      const error = readsBody ? await readErrorObject(response) : {};
 
-      if (response.status !== 429) {
+      if (!readsBody) {
         response.body?.cancel().catch(() => {});
       }
 
-      return { kind: "httpError", status: response.status, outOfCredit };
+      return {
+        kind: "httpError",
+        status,
+        outOfCredit: status === 429 && saysOutOfCredit(error),
+        moderated: status === 403 && saysModerated(error),
+      };
     }
 
     if (response.body === null) {
       return { kind: "unfinished" };
     }
 
-    return readReply(
-      parseSseChunks(response.body, signal),
-      push,
-      requests,
-      maxReportedCostUsd,
-    );
+    return readReply(parseSseChunks(response.body, signal), turn);
   }
 
   /** Ends a turn on a failed request. On a person's own key the provider's
@@ -878,9 +963,10 @@ export class OpenAiCompatibleAgentSession implements AgentSession {
       describeOutcomeForLogging(outcome),
     );
 
+    // A moderation flag judged the input, not the key.
     const refusesKey =
       outcome.kind === "httpError" &&
-      (KEY_REFUSAL_STATUSES.has(outcome.status) ||
+      ((KEY_REFUSAL_STATUSES.has(outcome.status) && !outcome.moderated) ||
         (outcome.status === 429 && outcome.outOfCredit));
 
     if (options?.keyFailure !== undefined && refusesKey) {

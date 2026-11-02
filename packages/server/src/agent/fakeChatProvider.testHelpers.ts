@@ -192,3 +192,180 @@ function createUsageChunkFixture(
     },
   };
 }
+
+/**
+ * Anthropic's Messages API, streamed, where every request first fails once
+ * with a 529 (overloaded) that asks for an immediate retry: the SDK's own
+ * retry then gets the real answer. A request with no tool result yet calls
+ * `toolName`; one with a tool result answers with it.
+ */
+export function createFakeAnthropicProviderFailingOnce(
+  toolName: string,
+): FakeChatProvider {
+  const requests: ProviderRequest[] = [];
+  const seenBodies = new Set<string>();
+  const fetchFn = vi.fn<typeof fetch>((input, init) => {
+    const request = seeProviderRequest(input, init);
+    requests.push(request);
+
+    if (typeof init?.body !== "string") {
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    }
+
+    if (!seenBodies.has(init.body)) {
+      seenBodies.add(init.body);
+
+      return Promise.resolve(
+        new Response(JSON.stringify(createOverloadedErrorFixture()), {
+          status: 529,
+          headers: {
+            "content-type": "application/json",
+            // The SDK waits what this says (a zero falls back to its own
+            // half-second backoff), so the retry follows at once.
+            "retry-after-ms": "1",
+            "x-should-retry": "true",
+          },
+        }),
+      );
+    }
+
+    const toolResult = toolResultIn(init.body);
+    const events =
+      toolResult === null
+        ? createAnthropicToolUseEventsFixture(toolName)
+        : createAnthropicTextEventsFixture(`Done: ${toolResult}`);
+
+    return Promise.resolve(
+      new Response(encodeAnthropicSseFixture(events), {
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+      }),
+    );
+  });
+
+  return { fetchFn, requests };
+}
+
+/** The text of the last tool result a Messages request carries, or null. */
+function toolResultIn(body: string): string | null {
+  const parsed: unknown = JSON.parse(body);
+  const messages =
+    isRecord(parsed) && Array.isArray(parsed.messages) ? parsed.messages : [];
+  let found: string | null = null;
+
+  for (const message of messages) {
+    const content =
+      isRecord(message) && Array.isArray(message.content)
+        ? message.content
+        : [];
+
+    for (const block of content) {
+      if (isRecord(block) && block.type === "tool_result") {
+        found = textOfToolResult(block.content);
+      }
+    }
+  }
+
+  return found;
+}
+
+function textOfToolResult(content: unknown): string {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  return Array.isArray(content)
+    ? content
+        .map((part: unknown) => {
+          return isRecord(part) && typeof part.text === "string"
+            ? part.text
+            : "";
+        })
+        .join("")
+    : "";
+}
+
+function createOverloadedErrorFixture(): unknown {
+  return {
+    type: "error",
+    error: { type: "overloaded_error", message: "Overloaded" },
+  };
+}
+
+function createAnthropicMessageStartFixture(): unknown {
+  return {
+    type: "message_start",
+    message: {
+      id: "msg_probe",
+      type: "message",
+      role: "assistant",
+      content: [],
+      model: "claude-test",
+      stop_reason: null,
+      stop_sequence: null,
+      usage: { input_tokens: FAKE_PROMPT_TOKENS, output_tokens: 1 },
+    },
+  };
+}
+
+function createAnthropicToolUseEventsFixture(toolName: string): unknown[] {
+  return [
+    createAnthropicMessageStartFixture(),
+    {
+      type: "content_block_start",
+      index: 0,
+      content_block: {
+        type: "tool_use",
+        id: "toolu_probe",
+        name: toolName,
+        input: {},
+      },
+    },
+    {
+      type: "content_block_delta",
+      index: 0,
+      delta: { type: "input_json_delta", partial_json: "{}" },
+    },
+    { type: "content_block_stop", index: 0 },
+    {
+      type: "message_delta",
+      delta: { stop_reason: "tool_use", stop_sequence: null },
+      usage: { output_tokens: FAKE_COMPLETION_TOKENS },
+    },
+    { type: "message_stop" },
+  ];
+}
+
+function createAnthropicTextEventsFixture(text: string): unknown[] {
+  return [
+    createAnthropicMessageStartFixture(),
+    {
+      type: "content_block_start",
+      index: 0,
+      content_block: { type: "text", text: "" },
+    },
+    {
+      type: "content_block_delta",
+      index: 0,
+      delta: { type: "text_delta", text },
+    },
+    { type: "content_block_stop", index: 0 },
+    {
+      type: "message_delta",
+      delta: { stop_reason: "end_turn", stop_sequence: null },
+      usage: { output_tokens: FAKE_COMPLETION_TOKENS },
+    },
+    { type: "message_stop" },
+  ];
+}
+
+function encodeAnthropicSseFixture(events: readonly unknown[]): string {
+  return events
+    .map((event) => {
+      const type =
+        isRecord(event) && typeof event.type === "string" ? event.type : "";
+
+      return `event: ${type}\ndata: ${JSON.stringify(event)}\n\n`;
+    })
+    .join("");
+}

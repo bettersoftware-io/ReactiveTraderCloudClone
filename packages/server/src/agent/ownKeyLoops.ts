@@ -1,5 +1,5 @@
 import type { ConfirmGate, JarvisToolDefinition } from "@rtc/agent-tools";
-import type { JarvisProvider } from "@rtc/domain";
+import type { JarvisOwnModel, JarvisProvider } from "@rtc/domain";
 
 import { AnthropicAgentLoop } from "./AnthropicAgentLoop.js";
 import type { AgentLoop, OwnKeyLoopBuilder } from "./agentLoop.js";
@@ -18,8 +18,11 @@ export type OpenAiCompatibleProvider = Exclude<JarvisProvider, "anthropic">;
  * Both switch reasoning off on every request. OpenAI's Chat Completions runs
  * function tools only with `reasoning_effort: "none"` on its current models,
  * and with reasoning off every output token streams as text or a tool call,
- * so a cancelled request booked from what it streamed books all of it. The
- * curated models (`JARVIS_OWN_MODELS`) are ones that accept it.
+ * so the estimate a cancelled request is booked at (what streamed, at about
+ * four characters a token, at the listed price) leaves no hidden tokens out.
+ * OpenRouter is also held to endpoints no dearer than the listed price, so
+ * that price is the most a token there can cost. The curated models
+ * (`JARVIS_OWN_MODELS`) are ones that accept all of it.
  */
 export const OWN_KEY_CHAT_CONFIGS: Readonly<
   Record<OpenAiCompatibleProvider, OpenAiCompatibleConfig>
@@ -42,10 +45,22 @@ export const OWN_KEY_CHAT_CONFIGS: Readonly<
       // asking still costs nothing and keeps the cost coming if it changes.
       usage: { include: true },
       reasoning: { effort: "none" },
-      // Only providers that honour every field above, the tools included,
-      // may serve the request: one that ignored `reasoning` would think
-      // unseen.
-      provider: { require_parameters: true },
+    },
+    modelBody: (model: JarvisOwnModel): Readonly<Record<string, unknown>> => {
+      return {
+        provider: {
+          // Only providers that honour every field sent, the tools
+          // included, may serve the request: one that ignored `reasoning`
+          // would think unseen.
+          require_parameters: true,
+          // No endpoint dearer than the listed price, in USD per million
+          // tokens, the unit `JarvisOwnModel` keeps its prices in.
+          max_price: {
+            prompt: model.inputUsdPerMtok,
+            completion: model.outputUsdPerMtok,
+          },
+        },
+      };
     },
   },
 };

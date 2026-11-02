@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { type JarvisProvider, ownModelsFor } from "@rtc/domain";
 
 import {
+  createFakeAnthropicProviderFailingOnce,
   createFakeChatProvider,
   type FakeChatProviderOptions,
 } from "./fakeChatProvider.testHelpers.js";
@@ -111,6 +112,61 @@ describe("probeOwnKey", () => {
     expect(run.output).not.toContain(SECRET_TEXT);
     expect(run.output).not.toContain("credit balance");
     expect(run.output).not.toContain(KEY);
+  });
+
+  it("passes a model whose request failed once and succeeded on the SDK's retry", async () => {
+    const provider = createFakeAnthropicProviderFailingOnce(PROBE_TOOL_NAME);
+    const lines: string[] = [];
+
+    const passed = await probeOwnKey({
+      provider: "anthropic",
+      key: KEY,
+      fetchFn: provider.fetchFn,
+      print: (line: string): void => {
+        lines.push(line);
+      },
+    });
+
+    expect(lines.join("\n")).not.toContain("FAIL");
+
+    for (const model of ownModelsFor("anthropic")) {
+      expect(lines.join("\n")).toContain(`PASS ${model.brain}`);
+    }
+
+    expect(passed).toBe(true);
+  });
+
+  it("clips a provider's error type and code to 64 printable characters", async () => {
+    const run = await probeWith("openai", {
+      toolName: PROBE_TOOL_NAME,
+      failWith: {
+        status: 400,
+        body: {
+          error: {
+            type: `${"t".repeat(100)}\u001b[31m`,
+            code: `c\u0007${"c".repeat(100)}`,
+          },
+        },
+      },
+    });
+
+    const line =
+      run.output.split("\n").find((candidate) => {
+        return candidate.startsWith("FAIL own:openai:gpt-6-luna");
+      }) ?? "";
+
+    expect(line).toContain(`type ${"t".repeat(64)},`);
+    expect(line).toContain(`code c${"c".repeat(63)}`);
+    expect(line).not.toContain("t".repeat(65));
+    expect(line).not.toContain("c".repeat(65));
+    // Printable ASCII only: no escape, no bell.
+    expect(
+      [...line].every((char) => {
+        const code = char.charCodeAt(0);
+
+        return code >= 0x20 && code < 0x7f;
+      }),
+    ).toBe(true);
   });
 
   it("stops at a refused key check, before any turn", async () => {

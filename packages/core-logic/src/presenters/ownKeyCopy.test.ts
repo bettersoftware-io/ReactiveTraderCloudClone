@@ -46,9 +46,10 @@ describe("canRetryOwnKey", () => {
     expect(canRetryOwnKey(null)).toBe(true);
     expect(canRetryOwnKey(view("unreachable"))).toBe(true);
     expect(canRetryOwnKey(view("limited"))).toBe(true);
+    // A refused key may have been topped up since.
+    expect(canRetryOwnKey(view("refused"))).toBe(true);
     expect(canRetryOwnKey(view("checking"))).toBe(false);
     expect(canRetryOwnKey(view("accepted"))).toBe(false);
-    expect(canRetryOwnKey(view("refused"))).toBe(false);
   });
 });
 

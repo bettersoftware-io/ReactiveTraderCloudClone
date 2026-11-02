@@ -97,7 +97,12 @@ describe("own-key loops", () => {
       max_tokens: expect.any(Number),
       reasoning: { effort: "none" },
       usage: { include: true },
-      provider: { require_parameters: true },
+      // Held to endpoints no dearer than the listed price, so a cancel
+      // booked at that price books no less than was charged.
+      provider: {
+        require_parameters: true,
+        max_price: { prompt: 0.045, completion: 0.5 },
+      },
     });
     expect(openrouterRequest?.body).not.toHaveProperty("max_completion_tokens");
 

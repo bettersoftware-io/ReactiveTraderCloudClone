@@ -1,4 +1,5 @@
 import type { ConfirmGate, JarvisToolDefinition } from "@rtc/agent-tools";
+import type { JarvisOwnModel } from "@rtc/domain";
 
 import type { AgentLoop, AgentSession } from "./agentLoop.js";
 import {
@@ -21,6 +22,12 @@ export interface OpenAiCompatibleConfig {
   /** Extra request fields (OpenRouter's `usage: { include: true }`). They
    * cannot replace the request's own fields. */
   readonly extraBody?: Readonly<Record<string, unknown>>;
+  /** Extra request fields that depend on the model, merged over
+   * `extraBody` (OpenRouter's price ceiling). They cannot replace the
+   * request's own fields either. */
+  readonly modelBody?: (
+    model: JarvisOwnModel,
+  ) => Readonly<Record<string, unknown>>;
 }
 
 export interface OpenAiCompatibleAgentLoopOptions {
@@ -53,6 +60,10 @@ function withoutHeaders(
   }
 
   return kept;
+}
+
+function noModelBody(): Readonly<Record<string, unknown>> {
+  return {};
 }
 
 /** The global `fetch`, looked up at each call rather than captured once. */
@@ -92,6 +103,7 @@ export class OpenAiCompatibleAgentLoop implements AgentLoop {
       },
       tokenLimitParam: config.tokenLimitParam,
       extraBody: config.extraBody ?? {},
+      modelBody: config.modelBody ?? noModelBody,
       fetchFn: options.fetchFn ?? fetchGlobally,
     };
   }

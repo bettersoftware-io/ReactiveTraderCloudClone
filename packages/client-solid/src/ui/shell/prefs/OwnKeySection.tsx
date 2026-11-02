@@ -278,8 +278,7 @@ function SavedKeyReadout(props: SavedKeyReadoutProps): JSX.Element {
 interface KeyFormProps {
   /** The key being replaced, or `null` for a first key. Its provider, limit and
    * Remember seed the form (they are the person's, not the key's), Save removes
-   * it first so the new one is checked afresh (a refused key stays refused on
-   * its connection otherwise), and Cancel goes back to it. */
+   * it first so the new one is checked afresh, and Cancel goes back to it. */
   seed: SavedOwnKey | null;
   save: (input: OwnKeyInput) => void;
   remove: () => void;

@@ -5,8 +5,10 @@
  * CI. It checks the key where the server does (and prints that URL), then
  * runs one tool-calling turn on each listed model of the provider, through
  * the loop and provider config the server uses, and prints PASS or FAIL per
- * model. A FAIL drops that model from the list. Each turn costs a fraction
- * of a cent on the key.
+ * model. A FAIL drops that model from the list. A model's turn is at most
+ * `JARVIS_RUNNER_MAX_ITERATIONS` requests of up to
+ * `JARVIS_MAX_TOKENS_PER_TURN` output tokens each, on the key: a cheap
+ * model's costs a fraction of a cent, a strong model's a few cents.
  *
  *   RTC_PROBE_KEY_FILE=/path/to/key-file pnpm --filter @rtc/server own-key:probe <anthropic|openrouter|openai>
  *

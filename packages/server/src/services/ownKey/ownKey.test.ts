@@ -2,6 +2,7 @@ import { inspect } from "node:util";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { JarvisProvider } from "@rtc/domain";
 import type { JarvisKeyPayload } from "@rtc/shared";
 
 import { ConnectionOwnKey } from "./ConnectionOwnKey.js";
@@ -397,21 +398,38 @@ describe("ConnectionOwnKey", () => {
     expect(own.view()?.status).toBe("checking");
   });
 
-  it("refused then the same key updates the cap and makes no call", async () => {
+  it("refused then the same key checks again, charged: a key topped up after running out is recoverable", async () => {
     const { verify, calls } = deferredVerify();
-    const { own } = build(verify);
+    const { own, limiter } = build(verify);
+    const allow = vi.spyOn(limiter, "allow");
 
     own.apply(setOf(SECRET, 5));
     calls[0]?.resolve("refused");
     await own.settled();
     own.apply(setOf(SECRET, 7));
 
-    expect(verify).toHaveBeenCalledTimes(1);
+    expect(verify).toHaveBeenCalledTimes(2);
+    expect(allow).toHaveBeenCalledTimes(2);
     expect(own.view()).toEqual({
       provider: "anthropic",
-      status: "refused",
+      status: "checking",
       capUsd: 7,
     });
+  });
+
+  it("the same key string under another provider checks again, at the new provider", async () => {
+    const { verify, calls } = deferredVerify();
+    const { own } = build(verify);
+
+    own.apply(setOf(SECRET));
+    calls[0]?.resolve("accepted");
+    await own.settled();
+    own.apply(setOf(SECRET, 5, "openrouter"));
+
+    expect(verify).toHaveBeenCalledTimes(2);
+    expect(verify.mock.calls[1]?.[0]).toBe("openrouter");
+    expect(own.view()?.provider).toBe("openrouter");
+    expect(own.view()?.status).toBe("checking");
   });
 
   it("limited then the same key after the window reopens checks again", async () => {
@@ -634,10 +652,14 @@ async function runAcceptedChecks(
   }
 }
 
-function setOf(key: string, capUsd: number | null = 5): JarvisKeyPayload {
+function setOf(
+  key: string,
+  capUsd: number | null = 5,
+  provider: JarvisProvider = "anthropic",
+): JarvisKeyPayload {
   return {
     action: "set",
-    provider: "anthropic",
+    provider,
     key,
     capUsd,
   } as const;

@@ -43,13 +43,14 @@ export function describeOwnKeyStatus(
 }
 
 /** Whether a new check of the saved key could change the answer: the server
- * could not judge it, or has not reported on it. A refused key stays refused
- * on its connection, so that one needs Replace. */
+ * could not judge it, has not reported on it, or refused it (a key out of
+ * credit may have been topped up since; the server checks it again). */
 export function canRetryOwnKey(ownKey: JarvisOwnKeyView | null): boolean {
   return (
     ownKey === null ||
     ownKey.status === "unreachable" ||
-    ownKey.status === "limited"
+    ownKey.status === "limited" ||
+    ownKey.status === "refused"
   );
 }
 

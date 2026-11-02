@@ -1457,6 +1457,189 @@ describe("OpenAiCompatibleAgentLoop", () => {
       ]);
     });
   });
+
+  describe("OpenRouter's answers", () => {
+    it("a 403 that flags the input for moderation fails the turn with the generic copy, and the key is not refused", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const refused = vi.fn();
+      const { fetchFn } = createScriptedFetch([
+        replyWithStatus(403, createModerationErrorFixture()),
+      ]);
+
+      const events = await runTurnCollecting(
+        createSession({ fetchFn }),
+        "hi",
+        [],
+        undefined,
+        { brain: BRAIN, keyFailure: { providerName: "OpenRouter", refused } },
+      );
+
+      expect(events).toEqual([
+        { type: "error", message: DESK_LINK_FALTERED_MESSAGE },
+      ]);
+      expect(refused).not.toHaveBeenCalled();
+      expect(inspectCalls(error)).not.toContain("SECRET-FLAGGED-TEXT");
+    });
+
+    it("a 403 with no moderation flag still refuses the key", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const refused = vi.fn();
+      const { fetchFn } = createScriptedFetch([
+        replyWithStatus(403, {
+          error: { code: 403, message: "Key limit exceeded" },
+        }),
+      ]);
+
+      const events = await runTurnCollecting(
+        createSession({ fetchFn }),
+        "hi",
+        [],
+        undefined,
+        { brain: BRAIN, keyFailure: { providerName: "OpenRouter", refused } },
+      );
+
+      expect(events).toEqual([
+        { type: "error", message: "OpenRouter refused your key." },
+      ]);
+      expect(refused).toHaveBeenCalledTimes(1);
+    });
+
+    it("a reported cost below the listed price books the listed price: on a key of the person's own at OpenRouter (BYOK) the cost is OpenRouter's fee alone", async () => {
+      const meter = createMeterSpy();
+      const { fetchFn } = createScriptedFetch([
+        replyWithText(
+          ["ok"],
+          createUsageChunk({ prompt: 12_000, completion: 1_500, cost: 0 }),
+        ),
+      ]);
+
+      await runTurnCollecting(createSession({ fetchFn }), "hi", [], undefined, {
+        brain: BRAIN,
+        meter,
+      });
+
+      // Haiku's list: 12,000 in at $1 and 1,500 out at $5 per million.
+      expect(meter.record.mock.calls[0]?.[1].reportedCostUsd).toBeCloseTo(
+        0.0195,
+        12,
+      );
+    });
+
+    it("BYOK's upstream inference cost is added to the reported cost", async () => {
+      const meter = createMeterSpy();
+      const { fetchFn } = createScriptedFetch([
+        replyWithText(
+          ["ok"],
+          createUsageChunk({
+            prompt: 100,
+            completion: 10,
+            cost: 0.001,
+            upstreamCost: 0.04,
+          }),
+        ),
+      ]);
+
+      await runTurnCollecting(createSession({ fetchFn }), "hi", [], undefined, {
+        brain: BRAIN,
+        meter,
+      });
+
+      expect(meter.record.mock.calls[0]?.[1].reportedCostUsd).toBeCloseTo(
+        0.041,
+        12,
+      );
+    });
+
+    it("a dearer endpoint books the cost it reported, above the listed price", async () => {
+      const meter = createMeterSpy();
+      const { fetchFn } = createScriptedFetch([
+        replyWithText(
+          ["ok"],
+          createUsageChunk({ prompt: 100, completion: 10, cost: 0.05 }),
+        ),
+      ]);
+
+      await runTurnCollecting(createSession({ fetchFn }), "hi", [], undefined, {
+        brain: BRAIN,
+        meter,
+      });
+
+      expect(meter.record.mock.calls[0]?.[1].reportedCostUsd).toBe(0.05);
+    });
+
+    it("a reply past its size cap ends the request as a failure, and what streamed is booked", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const meter = createMeterSpy();
+      // 100 chunks of 1,000 characters: far past what 4,096 tokens make.
+      const { fetchFn } = createScriptedFetch([
+        replyWith(
+          Array.from({ length: 100 }, () => {
+            return createTextChunk("x".repeat(1_000));
+          }),
+        ),
+      ]);
+
+      const events = await runTurnCollecting(
+        createSession({ fetchFn }),
+        "hi",
+        [],
+        undefined,
+        { brain: BRAIN, meter },
+      );
+
+      const deltas = events.filter((event) => {
+        return event.type === "delta";
+      });
+
+      expect(events.at(-1)).toEqual({
+        type: "error",
+        message: DESK_LINK_FALTERED_MESSAGE,
+      });
+      expect(deltas.length).toBeLessThanOrEqual(REPLY_CAP_CHARS / 1_000);
+      expect(meter.record).toHaveBeenCalledTimes(1);
+    });
+
+    it("tool-call arguments count toward a reply's size cap", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const toolRun = vi.fn(async () => {
+        return "1.1";
+      });
+
+      const { fetchFn, requests } = createScriptedFetch([
+        replyWith([
+          createToolCallDeltaChunk(0, {
+            id: "call_a",
+            name: "get_price",
+            arguments: "",
+          }),
+          ...Array.from({ length: 100 }, () => {
+            return createToolCallDeltaChunk(0, {
+              arguments: " ".repeat(1_000),
+            });
+          }),
+          createFinishChunk("tool_calls"),
+        ]),
+        replyWithText(["never asked for"]),
+      ]);
+
+      const events = await runTurnCollecting(
+        createSession({
+          fetchFn,
+          buildTools: () => {
+            return [createFakeGetPriceTool(toolRun)];
+          },
+        }),
+        "hi",
+      );
+
+      expect(events.at(-1)).toEqual({
+        type: "error",
+        message: DESK_LINK_FALTERED_MESSAGE,
+      });
+      expect(toolRun).not.toHaveBeenCalled();
+      expect(requests).toHaveLength(1);
+    });
+  });
 });
 
 // ── fake-fetch scripting helpers ───────────────────────────────────────
@@ -1498,6 +1681,8 @@ interface UsageFixture {
   readonly prompt: number;
   readonly completion: number;
   readonly cost?: number;
+  /** OpenRouter's `cost_details.upstream_inference_cost` (BYOK). */
+  readonly upstreamCost?: number;
 }
 
 interface ToolCallFragment {
@@ -1713,6 +1898,26 @@ function createUsageChunk(usage: UsageFixture): unknown {
       completion_tokens: usage.completion,
       total_tokens: usage.prompt + usage.completion,
       ...(usage.cost === undefined ? {} : { cost: usage.cost }),
+      ...(usage.upstreamCost === undefined
+        ? {}
+        : { cost_details: { upstream_inference_cost: usage.upstreamCost } }),
+    },
+  };
+}
+
+/** OpenRouter's 403 for input its moderation flagged. */
+function createModerationErrorFixture(): unknown {
+  return {
+    error: {
+      code: 403,
+      message:
+        "Your chosen model requires moderation and your input was flagged",
+      metadata: {
+        reasons: ["violence"],
+        flagged_input: "SECRET-FLAGGED-TEXT",
+        provider_name: "Example",
+        model_slug: "example/model",
+      },
     },
   };
 }
@@ -1930,6 +2135,10 @@ const NO_USAGE_CHUNK = { choices: [] };
 const BRAIN: JarvisOwnBrain = "own:anthropic:claude-haiku-4-5";
 
 const OPTIONS: JarvisTurnOptions = { brain: BRAIN };
+
+/** The most generated characters one reply may stream: four times what the
+ * turn's token limit makes at the estimate of four characters a token. */
+const REPLY_CAP_CHARS = 4 * 4_096 * 4;
 
 const TRADE_INPUT: TradeInputFixture = {
   symbol: "EURUSD",

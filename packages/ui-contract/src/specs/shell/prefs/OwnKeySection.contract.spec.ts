@@ -382,7 +382,8 @@ describe("OwnKeySection", () => {
     const offered: [JarvisOwnKeyStatus, boolean][] = [
       ["checking", false],
       ["accepted", false],
-      ["refused", false],
+      // A refused key may have been topped up since.
+      ["refused", true],
       ["unreachable", true],
       ["limited", true],
     ];

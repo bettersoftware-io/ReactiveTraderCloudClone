@@ -150,15 +150,21 @@ async function checkKey(options: OwnKeyProbeOptions): Promise<boolean> {
   return verdict === "accepted";
 }
 
-/** Why a model's turn failed, or null when it passed. */
+/** Why a model's turn failed, or null when it passed. A request the
+ * provider refused is named only when the turn went wrong: one that failed
+ * and then succeeded on the SDK's retry (an overload, a 5xx) passes. */
 function describeFailure(
   turn: TurnRecord,
   toolRuns: number,
   recorder: RecordingFetch,
 ): string | null {
+  const error = turn.events.find((event) => {
+    return event.type === "error";
+  });
+  const wentWrong = turn.timedOut || error !== undefined || toolRuns === 0;
   const refusal = recorder.lastRefusal();
 
-  if (refusal !== null) {
+  if (wentWrong && refusal !== null) {
     return [
       `status ${refusal.status}`,
       ...(refusal.type === null ? [] : [`type ${refusal.type}`]),
@@ -169,10 +175,6 @@ function describeFailure(
   if (turn.timedOut) {
     return `no end within ${PROBE_TURN_TIMEOUT_MS / 1_000} s`;
   }
-
-  const error = turn.events.find((event) => {
-    return event.type === "error";
-  });
 
   if (error !== undefined && error.type === "error") {
     // The session's own copy, which never quotes the provider.
@@ -309,10 +311,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** The most characters of a provider's error type or code printed. */
+const ERROR_FIELD_MAX_CHARS = 64;
+
+/** A provider's error `type` or `code` as printed: its printable ASCII
+ * characters only, at most `ERROR_FIELD_MAX_CHARS` of them, so a hostile
+ * value can neither flood the terminal nor drive it. */
 function textOf(value: unknown): string | null {
-  return typeof value === "string" || typeof value === "number"
-    ? String(value)
-    : null;
+  if (typeof value !== "string" && typeof value !== "number") {
+    return null;
+  }
+
+  return [...String(value)]
+    .filter((char) => {
+      const code = char.charCodeAt(0);
+
+      return code >= 0x20 && code < 0x7f;
+    })
+    .slice(0, ERROR_FIELD_MAX_CHARS)
+    .join("");
 }
 
 /** The status, and the error's `type` and `code` if the body is the JSON
