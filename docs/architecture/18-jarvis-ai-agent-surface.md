@@ -1633,8 +1633,10 @@ on `execute_trade`, `render_panel`, `drive_app`), the same copy, the iteration
 cap, cancel, and the budget asked before every request. It runs the tool loop
 itself, since there is no SDK runner. The stream is read by `parseSseChunks`
 (`openAiSse.ts`), which caps a line and an event and scans each read once; one
-reply's generated text and tool arguments are capped too, at a small multiple
-of what the turn's token limit makes, past which the request fails.
+reply's generated text and tool-call ids, names and arguments are capped too,
+at a small multiple of what the turn's token limit makes, and so are the
+distinct tool calls it announces; past either the request fails before another
+frame goes out.
 
 Each provider's request shape is a config in `OWN_KEY_CHAT_CONFIGS`: its fixed
 host, its token-limit field (`max_completion_tokens` at OpenAI, `max_tokens` at

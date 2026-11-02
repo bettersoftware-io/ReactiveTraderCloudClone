@@ -136,6 +136,30 @@ describe("probeOwnKey", () => {
     expect(passed).toBe(true);
   });
 
+  it("names a later failure's own cause, not an earlier request's refusal that a retry got past", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const provider = createFakeAnthropicProviderFailingOnce(
+      PROBE_TOOL_NAME,
+      true,
+    );
+    const lines: string[] = [];
+
+    const passed = await probeOwnKey({
+      provider: "anthropic",
+      key: KEY,
+      fetchFn: provider.fetchFn,
+      print: (line: string): void => {
+        lines.push(line);
+      },
+    });
+
+    expect(passed).toBe(false);
+    expect(lines.join("\n")).toContain(
+      "FAIL own:anthropic:claude-haiku-4-5: the turn ended with an error",
+    );
+    expect(lines.join("\n")).not.toContain("status 529");
+  });
+
   it("clips a provider's error type and code to 64 printable characters", async () => {
     const run = await probeWith("openai", {
       toolName: PROBE_TOOL_NAME,

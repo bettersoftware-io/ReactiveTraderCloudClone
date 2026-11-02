@@ -280,6 +280,9 @@ function createRecordingFetch(fetchFn: typeof fetch): RecordingFetch {
     const text = await response.text();
 
     if (response.ok) {
+      // A request that succeeds, on a retry or not, leaves no refusal
+      // standing: a later failure then names its own cause.
+      refusal = null;
       reasoning += reasoningTokensIn(text);
     } else {
       refusal = refusalOf(response.status, text);

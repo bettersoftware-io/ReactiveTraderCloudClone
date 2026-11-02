@@ -201,6 +201,8 @@ function createUsageChunkFixture(
  */
 export function createFakeAnthropicProviderFailingOnce(
   toolName: string,
+  /** Answers a request carrying a tool result with a stream that errs. */
+  breaksAfterTool = false,
 ): FakeChatProvider {
   const requests: ProviderRequest[] = [];
   const seenBodies = new Set<string>();
@@ -233,7 +235,9 @@ export function createFakeAnthropicProviderFailingOnce(
     const events =
       toolResult === null
         ? createAnthropicToolUseEventsFixture(toolName)
-        : createAnthropicTextEventsFixture(`Done: ${toolResult}`);
+        : breaksAfterTool
+          ? createAnthropicStreamErrorEventsFixture()
+          : createAnthropicTextEventsFixture(`Done: ${toolResult}`);
 
     return Promise.resolve(
       new Response(encodeAnthropicSseFixture(events), {
@@ -356,6 +360,17 @@ function createAnthropicTextEventsFixture(text: string): unknown[] {
       usage: { output_tokens: FAKE_COMPLETION_TOKENS },
     },
     { type: "message_stop" },
+  ];
+}
+
+/** A stream that starts, then carries Anthropic's mid-stream error event. */
+function createAnthropicStreamErrorEventsFixture(): unknown[] {
+  return [
+    createAnthropicMessageStartFixture(),
+    {
+      type: "error",
+      error: { type: "api_error", message: "Internal server error" },
+    },
   ];
 }
 

@@ -1599,6 +1599,49 @@ describe("OpenAiCompatibleAgentLoop", () => {
       expect(meter.record).toHaveBeenCalledTimes(1);
     });
 
+    it("tool-call names count toward a reply's size cap, before more announcements go out", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      // One call, renamed in chunk after chunk: past the cap in names alone.
+      const { fetchFn } = createScriptedFetch([
+        replyWith([
+          ...Array.from({ length: 100 }, () => {
+            return createToolCallDeltaChunk(0, { name: "n".repeat(1_000) });
+          }),
+          createFinishChunk("tool_calls"),
+        ]),
+      ]);
+
+      const events = await runTurnCollecting(createSession({ fetchFn }), "hi");
+
+      expect(events.at(-1)).toEqual({
+        type: "error",
+        message: DESK_LINK_FALTERED_MESSAGE,
+      });
+    });
+
+    it("a reply announcing more distinct tool calls than the cap allows fails before their frames go out", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const { fetchFn } = createScriptedFetch([
+        replyWith([
+          ...Array.from({ length: 1_000 }, (_unused, index) => {
+            return createToolCallDeltaChunk(index, { name: "get_price" });
+          }),
+          createFinishChunk("tool_calls"),
+        ]),
+      ]);
+
+      const events = await runTurnCollecting(createSession({ fetchFn }), "hi");
+      const announced = events.filter((event) => {
+        return event.type === "toolEvent";
+      });
+
+      expect(events.at(-1)).toEqual({
+        type: "error",
+        message: DESK_LINK_FALTERED_MESSAGE,
+      });
+      expect(announced.length).toBeLessThanOrEqual(REPLY_TOOL_CALL_INDEXES_MAX);
+    });
+
     it("tool-call arguments count toward a reply's size cap", async () => {
       vi.spyOn(console, "error").mockImplementation(() => {});
       const toolRun = vi.fn(async () => {
@@ -2130,8 +2173,8 @@ const OWN_KEY = "sk-own-test";
 /** A chunk in the usage chunk's place that reports none. */
 const NO_USAGE_CHUNK = { choices: [] };
 
-/** The curated list has no OpenRouter or OpenAI model until Task 14; the loop
- * is provider-blind, so a listed Anthropic model stands in. */
+/** The loop is provider-blind, so a listed Anthropic model stands in for the
+ * OpenRouter and OpenAI ones; its prices are the ones the cost tests use. */
 const BRAIN: JarvisOwnBrain = "own:anthropic:claude-haiku-4-5";
 
 const OPTIONS: JarvisTurnOptions = { brain: BRAIN };
@@ -2139,6 +2182,10 @@ const OPTIONS: JarvisTurnOptions = { brain: BRAIN };
 /** The most generated characters one reply may stream: four times what the
  * turn's token limit makes at the estimate of four characters a token. */
 const REPLY_CAP_CHARS = 4 * 4_096 * 4;
+
+/** The most distinct tool calls one reply may announce: four times the
+ * calls a reply may run. */
+const REPLY_TOOL_CALL_INDEXES_MAX = 4 * 8;
 
 const TRADE_INPUT: TradeInputFixture = {
   symbol: "EURUSD",

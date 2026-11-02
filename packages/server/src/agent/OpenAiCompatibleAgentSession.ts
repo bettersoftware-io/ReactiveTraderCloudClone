@@ -73,6 +73,11 @@ const ERROR_BODY_MAX_BYTES = 4 * 1024;
 const REPLY_MAX_CHARS: number =
   4 * JARVIS_MAX_TOKENS_PER_TURN * CHARS_PER_TOKEN_ESTIMATE;
 
+/** The most distinct tool calls one reply may announce, each with its own
+ * `toolEvent` frame: a small multiple of the calls a reply may run. Past it
+ * the request fails before another frame goes out. */
+const REPLY_MAX_TOOL_CALLS: number = 4 * JARVIS_MAX_TOOL_CALLS_PER_REPLY;
+
 /** What a call that named no tool is sent back under: the API takes no
  * empty name. */
 const NAMELESS_TOOL_NAME = "unnamed_tool";
@@ -278,23 +283,52 @@ function saysModerated(error: Record<string, unknown>): boolean {
   );
 }
 
-/** The generated characters one chunk's delta carries: text, and the
- * arguments of its tool calls. */
+function lengthOf(value: unknown): number {
+  return typeof value === "string" ? value.length : 0;
+}
+
+/** The generated characters one chunk's delta carries: text, and the ids,
+ * names and arguments of its tool calls. */
 function generatedCharsOf(delta: Record<string, unknown>): number {
-  let chars = typeof delta.content === "string" ? delta.content.length : 0;
+  let chars = lengthOf(delta.content);
 
   if (Array.isArray(delta.tool_calls)) {
     for (const fragment of delta.tool_calls) {
-      const fn =
-        isRecord(fragment) && isRecord(fragment.function)
-          ? fragment.function
-          : {};
+      const call = isRecord(fragment) ? fragment : {};
+      const fn = isRecord(call.function) ? call.function : {};
 
-      chars += typeof fn.arguments === "string" ? fn.arguments.length : 0;
+      chars += lengthOf(call.id) + lengthOf(fn.name) + lengthOf(fn.arguments);
     }
   }
 
   return chars;
+}
+
+/** The tool-call index a `delta.tool_calls` entry continues, as
+ * `foldToolCallDelta` keys it: its `index`, or its place in the list. */
+function toolCallIndexOf(fragment: unknown, position: number): number {
+  return isRecord(fragment) && typeof fragment.index === "number"
+    ? fragment.index
+    : position;
+}
+
+/** How many distinct tool calls the reply announces once `delta` is
+ * folded in. */
+function toolCallCountWith(
+  calls: ReadonlyMap<number, PendingToolCall>,
+  delta: Record<string, unknown>,
+): number {
+  if (!Array.isArray(delta.tool_calls)) {
+    return calls.size;
+  }
+
+  const indexes = new Set(calls.keys());
+
+  delta.tool_calls.forEach((fragment: unknown, position: number) => {
+    indexes.add(toolCallIndexOf(fragment, position));
+  });
+
+  return indexes.size;
 }
 
 /** A body's text if it ends within `maxBytes`; null if it is longer, or
@@ -499,7 +533,7 @@ function foldToolCallDelta(
     return;
   }
 
-  const index = typeof fragment.index === "number" ? fragment.index : position;
+  const index = toolCallIndexOf(fragment, position);
   let call = calls.get(index);
 
   if (call === undefined) {
@@ -574,6 +608,10 @@ async function readReply(
 
     if (replyChars > REPLY_MAX_CHARS) {
       throw new RangeError("a reply passed the size cap");
+    }
+
+    if (toolCallCountWith(calls, delta) > REPLY_MAX_TOOL_CALLS) {
+      throw new RangeError("a reply announced too many tool calls");
     }
 
     if (typeof delta.content === "string" && delta.content !== "") {
