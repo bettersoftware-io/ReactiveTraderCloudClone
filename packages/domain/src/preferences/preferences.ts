@@ -419,6 +419,27 @@ export function jarvisBrainLabel(brain: JarvisBrain): string {
   );
 }
 
+/**
+ * Model ids whose Anthropic request may carry `output_config.effort` — a
+ * capability SET rather than a per-model-name conditional at each call site,
+ * so a future model that also supports adaptive effort is added here once.
+ * `"claude-haiku-4-5"` is deliberately excluded: it predates the `effort`
+ * request parameter, so sending one for that model would be an unvalidated
+ * request-shape change, not a harmlessly-ignored no-op. Holds model ids, so an
+ * own brain is checked by the model it runs on (`jarvisBrainTakesEffort`).
+ */
+const JARVIS_EFFORT_CAPABLE_BRAINS: ReadonlySet<string> = new Set([
+  "claude-sonnet-5",
+  "claude-opus-5",
+]);
+
+/** Whether a turn on `brain` may carry an effort: the server sends one only
+ * when this holds, and the Preferences Effort row is enabled only then. A
+ * house brain is checked by its id, an own brain by the model it runs on. */
+export function jarvisBrainTakesEffort(brain: JarvisBrain): boolean {
+  return JARVIS_EFFORT_CAPABLE_BRAINS.has(ownModelOf(brain)?.modelId ?? brain);
+}
+
 /** Whether the app-driving proactive narrator (`NarratorMachine`) is allowed
  * to dispatch unsolicited `narrate()` turns into the Jarvis transcript.
  * `"on"` is the default — the narrator's whole point is surfacing an

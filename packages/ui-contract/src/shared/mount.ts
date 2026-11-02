@@ -9,6 +9,7 @@ import type {
   CoreImpl,
   IncidentKind,
   JarvisAvailability,
+  SavedOwnKey,
   ThroughputView,
 } from "@rtc/core-api";
 import type {
@@ -106,6 +107,9 @@ export interface MountOptions<P> {
   /** Seed the initial Jarvis indicators preference (useJarvisPreferences);
    * defaults to DEFAULT_JARVIS_INDICATORS. */
   jarvisIndicators?: JarvisIndicators;
+  /** Seed the saved own key a presenter shows (useJarvisOwnKey().saved) — the
+   * masked form only; defaults to none. */
+  jarvisOwnKeySaved?: SavedOwnKey | null;
   /** Seeds `useChartSubstrate`; defaults to `"dom"`. */
   chartSubstrate?: ChartSubstrate;
   /** Seeds the persisted `workspaceLayoutV1` string (GenUI L3 pinned panels);
@@ -362,6 +366,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     jarvisEffort: opts.jarvisEffort,
     jarvisNarrator: opts.jarvisNarrator,
     jarvisIndicators: opts.jarvisIndicators,
+    jarvisOwnKeySaved: opts.jarvisOwnKeySaved,
     chartSubstrate: opts.chartSubstrate,
     layoutEngine: opts.layoutEngine,
     workspaceLayout: opts.workspaceLayout,

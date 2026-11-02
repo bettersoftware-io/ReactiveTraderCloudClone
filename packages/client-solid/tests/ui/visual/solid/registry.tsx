@@ -53,6 +53,7 @@ import { JarvisPanelLayer } from "#/ui/shell/jarvis/panels/JarvisPanelLayer";
 import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
+import { OwnKeySection } from "#/ui/shell/prefs/OwnKeySection";
 import { PreferencesContent } from "#/ui/shell/prefs/PreferencesContent";
 import { PreferencesModal } from "#/ui/shell/prefs/PreferencesModal";
 import { StatusBar } from "#/ui/shell/status/StatusBar";
@@ -722,6 +723,21 @@ export const registry: Record<string, (fixtureKey: string) => JSX.Element> = {
         }}
       >
         <PreferencesContent />
+      </div>
+    );
+  },
+  OwnKeySection: () => {
+    // The section alone, at the width of the dialog's second column, on the
+    // dialog's own background (the section paints none).
+    return (
+      <div
+        style={{
+          width: "380px",
+          padding: "8px 22px 14px",
+          "background-color": "var(--bg-secondary)",
+        }}
+      >
+        <OwnKeySection />
       </div>
     );
   },

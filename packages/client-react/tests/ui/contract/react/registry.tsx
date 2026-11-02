@@ -57,6 +57,7 @@ import {
   OpsPanel,
   OrdersTable,
   OrderTicket,
+  OwnKeySection,
   PairPnlBars,
   PnlChart,
   PnlSparkline,
@@ -236,6 +237,7 @@ import { JarvisOverlay as JarvisOverlayComponent } from "#/ui/shell/jarvis/Jarvi
 import { JarvisPanelLayer as JarvisPanelLayerComponent } from "#/ui/shell/jarvis/panels/JarvisPanelLayer";
 import { LockScreen as LockScreenComponent } from "#/ui/shell/lock/LockScreen";
 import { PowerSaverRoot as PowerSaverRootComponent } from "#/ui/shell/power/PowerSaverRoot";
+import { OwnKeySection as OwnKeySectionComponent } from "#/ui/shell/prefs/OwnKeySection";
 import { PreferencesModal as PreferencesModalComponent } from "#/ui/shell/prefs/PreferencesModal";
 import { StaleIndicator as StaleIndicatorComponent } from "#/ui/shell/stale/StaleIndicator";
 import { StatusBar as StatusBarComponent } from "#/ui/shell/status/StatusBar";
@@ -875,6 +877,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     PowerSaverRoot,
     (): ReactElement => {
       return <PowerSaverRootComponent />;
+    },
+  ],
+  [
+    OwnKeySection,
+    (): ReactElement => {
+      return <OwnKeySectionComponent />;
     },
   ],
   [

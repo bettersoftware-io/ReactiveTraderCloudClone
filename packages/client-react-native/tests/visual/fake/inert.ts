@@ -22,6 +22,7 @@ import {
 } from "@rtc/domain";
 import type {
   UseJarvisDemoResult,
+  UseJarvisOwnKeyResult,
   UseJarvisPanelsResult,
   UseJarvisPreferencesResult,
   UseJarvisResult,
@@ -96,6 +97,9 @@ export const inertSlice: InertSlice = {
   },
   useJarvisPanels: () => {
     return JARVIS_PANELS_RESULT;
+  },
+  useJarvisOwnKey: () => {
+    return JARVIS_OWN_KEY_RESULT;
   },
   useJarvisPreferences: () => {
     return JARVIS_PREFERENCES_RESULT;
@@ -246,6 +250,16 @@ const JARVIS_DEMO_RESULT: UseJarvisDemoResult = {
 /** `useJarvisDriver()`'s resting result — matches `JarvisDriverMachine`'s
  * own idle state (`{ lastBatch: [] }`), no drive batch ever applied. */
 const JARVIS_DRIVER_STATE: JarvisDriverState = { lastBatch: [] };
+
+/** `useJarvisOwnKey()`'s resting result — no key held, every intent a no-op.
+ * RN has no "Your key" section; the hook is here only so the fake satisfies
+ * `ViewModel`. */
+const JARVIS_OWN_KEY_RESULT: UseJarvisOwnKeyResult = {
+  saved: null,
+  save: noop,
+  setCap: noop,
+  remove: noop,
+};
 
 /** `useJarvisPreferences()`'s resting result — the STORED preference has no
  * empty member of its own closed union, so each field takes its domain

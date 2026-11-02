@@ -160,3 +160,105 @@
   color: var(--accent-primary);
   background-color: color-mix(in srgb, var(--accent-primary) 12%, transparent);
 }
+
+/* The JARVIS "Your key" section: the explanation, then either the key form or
+ * the saved key's readout. A block of its own (not a .row) because it is taller
+ * than a label beside a control. No transition or animation anywhere here. */
+.keyBlock {
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.keyExplain {
+  margin: 4px 0 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.keyForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.keyLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.keyField {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border-primary);
+  border-radius: 3px;
+  background-color: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.keyField:focus-visible {
+  outline: 1px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.keyField:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.keySecret {
+  flex: 1 1 180px;
+}
+
+.keyAmount {
+  width: 72px;
+}
+
+.keyCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.keyActions {
+  display: flex;
+  gap: 8px;
+}
+
+.keyActions .actionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.keyReadout {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.keyMasked {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.keyStatus {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.keyStatus[data-tone="warn"] {
+  color: var(--accent-aware);
+}
+
+.keyNote {
+  font-size: 11px;
+  color: var(--text-muted);
+}

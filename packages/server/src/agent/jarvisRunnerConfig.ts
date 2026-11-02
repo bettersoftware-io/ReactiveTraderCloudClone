@@ -37,29 +37,6 @@ export const JARVIS_RESERVE_INPUT_TOKENS = 15_000;
 export const JARVIS_PROMPT_PREFIX_TOKENS = 2_100;
 
 /**
- * Brains whose Anthropic request may carry `output_config.effort` — a
- * capability SET rather than a per-model-name conditional in
- * `AnthropicAgentSession`, so a future brain that also supports adaptive
- * effort is added here once instead of at every call site that branches on
- * it. `"claude-haiku-4-5"` is deliberately excluded: it predates the
- * `effort` request parameter, so sending one to the API for that model
- * would be an unvalidated request-shape change, not a harmlessly-ignored
- * no-op — `@rtc/domain`'s `DEFAULT_JARVIS_EFFORT` (the default effort
- * value, used at the one call site that reads this set —
- * `AnthropicAgentSession.runOneTurn`) stays applicable only to the brains
- * listed here. No local `JARVIS_EFFORT` constant lives in this file: the
- * default effort value has exactly one source of truth, `@rtc/domain`'s
- * `DEFAULT_JARVIS_EFFORT` (the same constant the preferences UI defaults
- * to), imported directly at its one consumption site rather than re-pinned
- * here under a second name. Holds model ids, so an own brain is checked by
- * the model it runs on.
- */
-export const JARVIS_EFFORT_CAPABLE_BRAINS: ReadonlySet<string> = new Set([
-  "claude-sonnet-5",
-  "claude-opus-5",
-]);
-
-/**
  * Caps how many user-message turns one session may run before the loop
  * force-stops it (distinct from `JARVIS_RUNNER_MAX_ITERATIONS`, which caps
  * the tool-call round-trips *within* a single turn). Bounds a session that

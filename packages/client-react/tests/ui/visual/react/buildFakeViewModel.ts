@@ -657,6 +657,16 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         setIndicators: noop,
       };
     },
+    // The person's own key: the masked saved form from the fixture, no-op
+    // intents (static screenshots never fire them).
+    useJarvisOwnKey: () => {
+      return {
+        saved: data.jarvisOwnKeySaved ?? null,
+        save: noop,
+        setCap: noop,
+        remove: noop,
+      };
+    },
     // Jarvis token-usage/cost telemetry (Task 10) — data-driven off
     // AppData.jarvisUsage; fixtures that don't set it fall back to null (the
     // card's "NO USAGE DATA" placeholder), pixel-neutral for every existing

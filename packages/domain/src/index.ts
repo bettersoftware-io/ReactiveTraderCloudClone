@@ -343,6 +343,7 @@ export {
   type JarvisSkin,
   jarvisBrainLabel,
   jarvisBrainName,
+  jarvisBrainTakesEffort,
   jarvisIndicatorsEqual,
   LAYOUT_ENGINES,
   type LayoutEngine,

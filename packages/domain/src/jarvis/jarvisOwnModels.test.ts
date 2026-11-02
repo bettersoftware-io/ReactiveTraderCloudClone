@@ -8,6 +8,7 @@ import {
   type JarvisBrain,
   jarvisBrainLabel,
   jarvisBrainName,
+  jarvisBrainTakesEffort,
   parseStoredJarvisBrain,
 } from "../preferences/preferences.js";
 import {
@@ -118,5 +119,19 @@ describe("jarvisOwnModels", () => {
 
     expect(jarvisBrainName(retired)).toBe("retired-model");
     expect(jarvisBrainLabel(retired)).toBe("retired-model");
+  });
+});
+
+describe("jarvisBrainTakesEffort", () => {
+  it("is true for Sonnet and Opus, house or own, and false for Haiku and scripted", () => {
+    expect(jarvisBrainTakesEffort("claude-sonnet-5")).toBe(true);
+    expect(jarvisBrainTakesEffort("claude-opus-5")).toBe(true);
+    expect(jarvisBrainTakesEffort("own:anthropic:claude-sonnet-5")).toBe(true);
+    expect(jarvisBrainTakesEffort("own:anthropic:claude-opus-5")).toBe(true);
+    expect(jarvisBrainTakesEffort("claude-haiku-4-5")).toBe(false);
+    expect(jarvisBrainTakesEffort("own:anthropic:claude-haiku-4-5")).toBe(
+      false,
+    );
+    expect(jarvisBrainTakesEffort("scripted")).toBe(false);
   });
 });

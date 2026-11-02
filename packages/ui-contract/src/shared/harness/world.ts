@@ -24,9 +24,12 @@ import type {
   IncidentKind,
   IncidentState,
   JarvisAvailability,
+  JarvisOwnKeyPresenter,
   JarvisPort,
   Machine,
+  OwnKeyInput,
   RegistrationInput,
+  SavedOwnKey,
   ThroughputView,
   WorkspaceTab,
 } from "@rtc/core-api";
@@ -36,6 +39,7 @@ import {
   ACCOUNT_LIST_LOADING,
   type AccountActionEvent,
   countPending,
+  maskOwnKey,
   NOTHING_HELD,
   type PanelStreamDeps,
   stepAccountAccess,
@@ -219,6 +223,18 @@ const DEFAULT_METRICS_VIEW: MetricsView = {
 
 const INITIAL_INCIDENT_STATE: IncidentState = { active: [] };
 
+/** The intents of `useJarvisOwnKey()`, as the fake shell supplies them. */
+type JarvisOwnKeyIntents = Pick<
+  JarvisOwnKeyPresenter,
+  "save" | "setCap" | "remove"
+>;
+
+/** One call on the fake `useJarvisOwnKey()` intents, as recorded. */
+export type JarvisOwnKeyCall =
+  | { readonly kind: "save"; readonly input: OwnKeyInput }
+  | { readonly kind: "setCap"; readonly capUsd: number | null }
+  | { readonly kind: "remove" };
+
 /**
  * A controllable fake `JarvisPort` (Task 9): each `ask()` call opens a fresh
  * per-turn `Subject<JarvisEvent>` and returns it as the reply stream — mirrors
@@ -390,6 +406,9 @@ export interface CommandLog {
   /** Each indicators record written through
    * useJarvisPreferences().setIndicators, in order. */
   jarvisIndicatorsSets: JarvisIndicators[];
+  /** Every call on `useJarvisOwnKey()`, in order. `save` carries the input as
+   * the form handed it, so a spec can assert what was (and was not) sent. */
+  jarvisOwnKeyCalls: JarvisOwnKeyCall[];
   /** Each core impl asked for through useCoreSelection().select(), in order —
    * only when it differs from the current core (mirrors the real
    * createCoreSelection no-op rule for re-selecting the active core). */
@@ -526,6 +545,15 @@ export interface World {
    * readout (header), reply tags and brain pill (input bar) are shown.
    * Defaults to DEFAULT_JARVIS_INDICATORS. */
   readonly jarvisIndicators: BehaviorSubject<JarvisIndicators>;
+  /** The saved own key as a presenter shows it (the masked form only), backing
+   * `useJarvisOwnKey().saved`. The fake intents publish what the real
+   * `jarvisOwnKey` member would: `save` the masked input, `setCap` the same
+   * key with the new cap, `remove` nothing. Seed it with
+   * `jarvisOwnKeySaved`. */
+  readonly jarvisOwnKeySaved: BehaviorSubject<SavedOwnKey | null>;
+  /** The fake `useJarvisOwnKey()` intents: each is recorded in
+   * `commands.jarvisOwnKeyCalls` and then updates `jarvisOwnKeySaved`. */
+  readonly jarvisOwnKeyIntents: JarvisOwnKeyIntents;
   /** Jarvis token-usage/cost telemetry backing useJarvisUsage() (the
    * JarvisUsageCard ops surface, Task 10 of Phase 3) — mirrors `topology$`
    * above (null until first push / not seeded). */
@@ -793,6 +821,8 @@ export interface WorldSeeds {
   jarvisNarrator?: JarvisNarratorPreference;
   /** Seeds `World.jarvisIndicators`; defaults to DEFAULT_JARVIS_INDICATORS. */
   jarvisIndicators?: JarvisIndicators;
+  /** Seeds `World.jarvisOwnKeySaved`; defaults to no saved key. */
+  jarvisOwnKeySaved?: SavedOwnKey | null;
   /** Seeds `World.chartSubstrate`; defaults to DEFAULT_CHART_SUBSTRATE ("dom"). */
   chartSubstrate?: ChartSubstrate;
   /** Seeds `World.layoutEngine`; defaults to the literal "inhouse" (pinned
@@ -859,6 +889,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     jarvisEffort: jarvisEffortSeed,
     jarvisNarrator: jarvisNarratorSeed,
     jarvisIndicators: jarvisIndicatorsSeed,
+    jarvisOwnKeySaved: jarvisOwnKeySavedSeed,
     chartSubstrate: chartSubstrateSeed,
     layoutEngine: layoutEngineSeed,
     workspaceLayout: workspaceLayoutSeed,
@@ -1224,6 +1255,36 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     jarvisIndicatorsSeed ?? DEFAULT_JARVIS_INDICATORS,
   );
 
+  const jarvisOwnKeySaved = new BehaviorSubject<SavedOwnKey | null>(
+    jarvisOwnKeySavedSeed ?? null,
+  );
+
+  const jarvisOwnKeyCalls: JarvisOwnKeyCall[] = [];
+
+  const jarvisOwnKeyIntents: JarvisOwnKeyIntents = {
+    save: (input: OwnKeyInput): void => {
+      jarvisOwnKeyCalls.push({ kind: "save", input });
+      jarvisOwnKeySaved.next({
+        provider: input.provider,
+        masked: maskOwnKey(input.key),
+        capUsd: input.capUsd,
+        remember: input.remember,
+      });
+    },
+    setCap: (capUsd: number | null): void => {
+      jarvisOwnKeyCalls.push({ kind: "setCap", capUsd });
+      const held = jarvisOwnKeySaved.getValue();
+
+      if (held !== null) {
+        jarvisOwnKeySaved.next({ ...held, capUsd });
+      }
+    },
+    remove: (): void => {
+      jarvisOwnKeyCalls.push({ kind: "remove" });
+      jarvisOwnKeySaved.next(null);
+    },
+  };
+
   const jarvisUsage$ = new BehaviorSubject<JarvisUsage | null>(
     opsSeed.jarvisUsage ?? null,
   );
@@ -1396,6 +1457,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     jarvisEffortSets: [],
     jarvisNarratorSets: [],
     jarvisIndicatorsSets: [],
+    jarvisOwnKeyCalls,
     coreSelects: [],
     accountNavigations: [],
     accountRegister: [],
@@ -1447,6 +1509,8 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     jarvisEffort,
     jarvisNarrator,
     jarvisIndicators,
+    jarvisOwnKeySaved,
+    jarvisOwnKeyIntents,
     jarvisUsage$,
     setJarvisUsage: (value: JarvisUsage | null) => {
       return jarvisUsage$.next(value);

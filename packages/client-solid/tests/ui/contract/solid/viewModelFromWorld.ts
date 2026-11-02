@@ -1714,6 +1714,15 @@ export function solidViewModel(world: World): ViewModel {
         },
       };
     },
+    // The person's own model key (B3c): the masked saved form off
+    // World.jarvisOwnKeySaved, the intents the World's fake presenter records
+    // (`commands.jarvisOwnKeyCalls`) and applies — masking as the real one does.
+    useJarvisOwnKey: () => {
+      return {
+        saved: wrapSubject(world.jarvisOwnKeySaved),
+        ...world.jarvisOwnKeyIntents,
+      };
+    },
     // Ops / telemetry: World-backed fakes that re-render subscribing
     // components when the test pushes new data. The incident fake mirrors
     // the real IncidentMachine's connection-status asymmetry via
