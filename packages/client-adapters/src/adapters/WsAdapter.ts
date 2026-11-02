@@ -45,6 +45,15 @@ export interface WsAdapterOptions {
    * is rejected by the server's `verifyClient` upgrade check, and retries
    * forever behind the login screen. */
   autoConnect?: boolean;
+  /** The account the shared session store holds now (the session's user
+   * email), or `undefined` when it holds none. With it, a socket that would
+   * open on its own (a reconnect, a return from an idle close), or a live one
+   * `connect()` finds, is not used once the session has moved on to another
+   * account or away: the session ends instead. A new token for the same account
+   * (an unlock, in this tab or another) is taken. Without it the raw token is
+   * compared instead: the same protection, but a new token for the same
+   * account ends the session too. */
+  sessionAccount?: () => string | undefined;
 }
 
 export class WsAdapter implements IWsAdapter {
@@ -53,6 +62,8 @@ export class WsAdapter implements IWsAdapter {
   private readonly url: string;
 
   private readonly tokenProvider: () => string | undefined;
+
+  private readonly sessionAccount: (() => string | undefined) | undefined;
 
   private readonly reconnectDelayMs: number;
 
@@ -74,10 +85,12 @@ export class WsAdapter implements IWsAdapter {
 
   private disposed = false;
 
-  // The token this tab's session holds: what the socket opened with, or what
-  // this tab wrote since (`adoptToken`). The store it is compared with is
-  // shared by every tab, so anything else there is another tab's doing.
-  private sessionToken: string | undefined;
+  // The session the current socket opened for: its token (`undefined` for a
+  // socket opened with none, which has no session to lose) and its account.
+  // The store they are compared with is shared by every tab.
+  private socketToken: string | undefined;
+
+  private socketAccount: string | undefined;
 
   // Socket was closed deliberately (idle timeout, or a sign-out / not-yet-
   // signed-in auth gate) rather than dropped. Suppresses auto-reconnect until
@@ -102,6 +115,7 @@ export class WsAdapter implements IWsAdapter {
   ) {
     this.url = url;
     this.tokenProvider = tokenProvider;
+    this.sessionAccount = options.sessionAccount;
     this.reconnectDelayMs =
       options.reconnectDelayMs ?? DEFAULT_RECONNECT_DELAY_MS;
     this.rpcTimeoutMs = options.rpcTimeoutMs ?? DEFAULT_RPC_TIMEOUT_MS;
@@ -119,7 +133,21 @@ export class WsAdapter implements IWsAdapter {
    * every authenticated emission. Clears the suspend flag so the normal
    * auto-reconnect behaviour resumes for genuine drops. */
   connect(): void {
-    if (this.disposed || this.ws !== null) {
+    if (this.disposed) {
+      return;
+    }
+
+    // A socket outlives a composition, so the next one (a hot swap) can find
+    // it live after another tab moved the session on. Kept, it would carry the
+    // next account's key on the last one's socket.
+    if (this.ws !== null) {
+      if (this.sessionMovedOn()) {
+        const socket = this.ws;
+        this.ws = null;
+        socket.close();
+        this.endSession();
+      }
+
       return;
     }
 
@@ -157,8 +185,9 @@ export class WsAdapter implements IWsAdapter {
     // Read the token fresh on every (re)connect — never baked into `url` — so
     // a token that changes between disconnects (e.g. re-login) is picked up
     // without recreating the adapter.
-    this.sessionToken = this.tokenProvider();
-    const target = buildWsUrl(this.url, this.sessionToken);
+    this.socketToken = this.tokenProvider();
+    this.socketAccount = this.sessionAccount?.();
+    const target = buildWsUrl(this.url, this.socketToken);
     const socket = new WebSocket(target);
     this.ws = socket;
 
@@ -273,6 +302,11 @@ export class WsAdapter implements IWsAdapter {
   /** This session is over: lets go of the socket, goes quiet until a
    * connect() after a new sign-in, and reports it once. */
   private endSession(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
     this.ws = null;
     this.suspended = true;
     this.closedForIdle = false;
@@ -282,17 +316,24 @@ export class WsAdapter implements IWsAdapter {
     this.reportReleased();
   }
 
-  /** Whether the shared session store no longer holds this tab's token:
-   * another tab signed out, or signed in as someone. Asked before a socket
-   * opens on its own, because the upgrade cannot say: a new token would be
-   * accepted, and the key this tab remembers sent under that account, and a
-   * missing one is refused with a close no browser can tell from a drop. A
-   * socket opened with no token has no session to lose. */
+  /** Whether the shared session store no longer holds the account this socket
+   * opened for: another tab signed out, or signed in as someone else. Asked
+   * before a socket opens on its own, before a key frame and when connect()
+   * finds a socket live, because the upgrade cannot say: another account's
+   * token would be accepted, and the key this tab remembers sent under it, and
+   * a missing one is refused with a close no browser can tell from a drop. A
+   * new token for the same account is not a move. A socket opened with no
+   * session has none to lose. */
   private sessionMovedOn(): boolean {
-    return (
-      this.sessionToken !== undefined &&
-      this.tokenProvider() !== this.sessionToken
-    );
+    if (this.socketToken === undefined) {
+      return false;
+    }
+
+    if (this.sessionAccount === undefined) {
+      return this.tokenProvider() !== this.socketToken;
+    }
+
+    return this.sessionAccount() !== this.socketAccount;
   }
 
   /** Closes the current socket on purpose and reports it. The socket's own
@@ -371,10 +412,13 @@ export class WsAdapter implements IWsAdapter {
   sendIfOpen(type: string, payload?: unknown): boolean {
     const socket = this.ws;
 
+    // A key frame on a socket the session has moved off would go out under
+    // the last account. The next connect() ends that session.
     if (
       this.disposed ||
       socket === null ||
-      socket.readyState !== WebSocket.OPEN
+      socket.readyState !== WebSocket.OPEN ||
+      this.sessionMovedOn()
     ) {
       return false;
     }
@@ -454,15 +498,9 @@ export class WsAdapter implements IWsAdapter {
     return this.connectionEvents$.asObservable();
   }
 
-  /** This tab wrote `token` into the session store, so it is still this tab's
-   * session (an unlock rotates the token under a socket that stays open). */
-  adoptToken(token: string): void {
-    this.sessionToken = token;
-  }
-
-  /** One emission per ended session: a `4401` close, or a reconnect that found
-   * the session had moved on in another tab. Hot and not replayed (see
-   * `sessionEnded$`). */
+  /** One emission per ended session: a `4401` close, or a session that moved
+   * on to another account or away in another tab (`sessionAccount`). Hot and
+   * not replayed (see `sessionEnded$`). */
   sessionEnded(): Observable<void> {
     return this.sessionEnded$.asObservable();
   }

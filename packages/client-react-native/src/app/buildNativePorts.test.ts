@@ -8,6 +8,7 @@ import {
   type ConnectionEvent,
   ConnectionStatus,
   findRosterUser,
+  ROSTER,
 } from "@rtc/domain";
 
 import { buildNativePorts } from "#/app/buildNativePorts";
@@ -166,7 +167,11 @@ describe("real-WS branch gates the socket on authentication", () => {
 
     send = (): void => {};
 
-    close = (): void => {};
+    close = (): void => {
+      MockWebSocket.closed++;
+    };
+
+    static closed = 0;
 
     constructor(url: string) {
       MockWebSocket.instances++;
@@ -177,6 +182,7 @@ describe("real-WS branch gates the socket on authentication", () => {
   beforeEach(() => {
     constantsHolder.extra = { serverUrl: "ws://test.local:4000" };
     MockWebSocket.instances = 0;
+    MockWebSocket.closed = 0;
     MockWebSocket.lastUrl = "";
     vi.stubGlobal("WebSocket", MockWebSocket);
   });
@@ -224,6 +230,67 @@ describe("real-WS branch gates the socket on authentication", () => {
     expect(MockWebSocket.instances).toBe(1);
     expect(MockWebSocket.lastUrl).toContain("access=seeded-token");
 
+    composition.dispose();
+  });
+
+  it("tells the transport whose session it is: a live socket of another account is closed and the session ended", () => {
+    const [first, second] = ROSTER;
+    const store = new InMemorySessionStore();
+    store.write({
+      username: first.username,
+      token: "token-of-x",
+      user: first.user,
+      exp: Date.now() + 60_000,
+    });
+    const composition = buildNativePorts({ sessionStore: store });
+    const transport = composition.ports.transport;
+    let ended = 0;
+    transport?.sessionEnded().subscribe(() => {
+      ended += 1;
+    });
+    transport?.connect();
+
+    store.write({
+      username: second.username,
+      token: "token-of-y",
+      user: second.user,
+      exp: Date.now() + 60_000,
+    });
+    transport?.connect();
+
+    expect(MockWebSocket.instances).toBe(1);
+    expect(MockWebSocket.closed).toBe(1);
+    expect(ended).toBe(1);
+    composition.dispose();
+  });
+
+  it("tells the transport whose session it is: a new token for the same account keeps the live socket", () => {
+    const [first] = ROSTER;
+    const store = new InMemorySessionStore();
+    store.write({
+      username: first.username,
+      token: "token-before-unlock",
+      user: first.user,
+      exp: Date.now() + 60_000,
+    });
+    const composition = buildNativePorts({ sessionStore: store });
+    const transport = composition.ports.transport;
+    let ended = 0;
+    transport?.sessionEnded().subscribe(() => {
+      ended += 1;
+    });
+    transport?.connect();
+
+    store.write({
+      username: first.username,
+      token: "token-after-unlock",
+      user: first.user,
+      exp: Date.now() + 60_000,
+    });
+    transport?.connect();
+
+    expect(MockWebSocket.closed).toBe(0);
+    expect(ended).toBe(0);
     composition.dispose();
   });
 

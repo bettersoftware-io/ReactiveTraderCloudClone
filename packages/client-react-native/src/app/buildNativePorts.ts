@@ -90,7 +90,14 @@ export function buildNativePorts(
       () => {
         return sessionStore.read()?.token;
       },
-      { autoConnect: false },
+      {
+        autoConnect: false,
+        // The same session check as the web clients': one app instance here,
+        // but a hot swap still meets a socket the last composition left.
+        sessionAccount: (): string | undefined => {
+          return sessionStore.read()?.user.email;
+        },
+      },
     );
     const gateway = new WsConnectionEventsAdapter(ws);
     // Pairs THIS composition's own reconnect/incident intents with the

@@ -214,14 +214,10 @@ export interface IWsAdapter {
   /** Close the socket deliberately (sign-out) and suppress auto-reconnect,
    * leaving the adapter reusable via connect(). */
   disconnect(): void;
-  /** One emission per ended session: the server ended it (close `4401`), or a
-   * reconnect found the shared session store no longer holds this tab's token
-   * — see `AuthGatedTransport.sessionEnded`. */
+  /** One emission per ended session: the server ended it (close `4401`), or
+   * the shared session store moved on to another account or away — see
+   * `AuthGatedTransport.sessionEnded`. */
   sessionEnded(): Stream<void>;
-  /** This tab wrote `token` into the session store (a login, or an unlock,
-   * which rotates it under a socket that stays open), so a reconnect must not
-   * take it for another tab's. */
-  adoptToken(token: string): void;
   dispose(): void;
 }
 

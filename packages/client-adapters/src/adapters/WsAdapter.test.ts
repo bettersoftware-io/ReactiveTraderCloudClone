@@ -311,19 +311,24 @@ describe("WsAdapter token-at-connect", () => {
     adapter.dispose();
   });
 
-  it("reads the token this tab wrote fresh on every reconnect", () => {
+  it("reads the token fresh on every reconnect", () => {
     let token: string | undefined = "tok-1";
     const adapter = new WsAdapter(
       "ws://test",
       () => {
         return token;
       },
-      { reconnectDelayMs: 50 },
+      {
+        reconnectDelayMs: 50,
+        // The same account throughout: a new token for it is not a move.
+        sessionAccount: (): string | undefined => {
+          return "same@example.com";
+        },
+      },
     );
     expect(lastMock.url).toBe("ws://test/?access=tok-1");
 
     token = "tok-2";
-    adapter.adoptToken("tok-2");
     lastMock.onopen?.(new Event("open"));
     lastMock.onclose?.(new CloseEvent("close"));
     vi.advanceTimersByTime(50);

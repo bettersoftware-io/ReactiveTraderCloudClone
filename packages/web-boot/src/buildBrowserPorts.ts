@@ -192,7 +192,15 @@ export function buildBrowserPorts(options: BuildBrowserPortsOptions): AppPorts {
         () => {
           return sessionStore.read()?.token;
         },
-        { autoConnect: false },
+        {
+          autoConnect: false,
+          // Whose session the shared store holds: another tab's sign-out or
+          // account switch must not leave this tab's socket, or its key,
+          // under the wrong account.
+          sessionAccount: (): string | undefined => {
+            return sessionStore.read()?.user.email;
+          },
+        },
       ),
       devtoolsHub,
       // A `jarvis.key` frame carries a person's model key: the hub gets it

@@ -1,13 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { StoredSession } from "@rtc/core-api";
-import {
-  AuthSimulator,
-  Direction,
-  type PreferencesPort,
-  ROSTER,
-} from "@rtc/domain";
+import { AuthSimulator, Direction, type PreferencesPort } from "@rtc/domain";
 import { CLIENT_MSG } from "@rtc/shared";
 import { rpcNack } from "@rtc/shared/__fixtures__/wireFrames";
 
@@ -23,24 +17,12 @@ import { ScriptedJarvisAdapter } from "./ScriptedJarvisAdapter";
 import { WsJarvisAdapter } from "./WsJarvisAdapter";
 
 describe("createWsRealPorts session store", () => {
-  it("tells the transport about a token this tab writes, and stores it", () => {
-    const ws = new FakeWsAdapter();
+  it("hands auth the session store it was given: the transport reads whose session it is from the same store", () => {
     const deps = createAdminDeps();
-    const ports = createWsRealPorts(ws, deps);
-    const session: StoredSession = {
-      token: "rotated",
-      user: ROSTER[0].user,
-      username: ROSTER[0].username,
-      exp: 1,
-    };
 
-    ports.sessionStore.write(session);
-
-    expect(ws.adoptedTokens).toEqual(["rotated"]);
-    expect(deps.sessionStore.read()).toEqual(session);
-    expect(ports.sessionStore.read()).toEqual(session);
-    ports.sessionStore.clear();
-    expect(deps.sessionStore.read()).toBe(null);
+    expect(createWsRealPorts(new FakeWsAdapter(), deps).sessionStore).toBe(
+      deps.sessionStore,
+    );
   });
 });
 

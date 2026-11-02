@@ -263,10 +263,11 @@ goes with the tab, or in local storage when the person ticks "Remember on this
 device". It is never in both. Three facts from the code:
 
 - **It is wiped** at sign-out, on a switch to another account, and when the
-  session ends: the server ended it, or a reconnect in this tab found the shared
-  session store no longer holds this tab's token, because another tab signed
-  out or signed in as someone else. It is kept across a lock and across a reload
-  of the same account.
+  session ends: the server ended it, or this tab's transport found the shared
+  session store no longer holds the account its socket opened for, because
+  another tab signed out or signed in as someone else. A new token for the same
+  account (an unlock, in either tab) is not that. It is kept across a lock and
+  across a reload of the same account.
 - **It is shown back masked.** `maskOwnKey` keeps the vendor tag and the last
   four characters of a long key, less of a short one, and nothing of a very
   short one. The raw key passes through the save and the transport call and
@@ -304,12 +305,16 @@ its own cap, so tabs do not see each other:
 - two tabs can hold two different keys;
 - Remove in one tab leaves the key live in the other;
 - a sign-out or an account switch in one tab leaves another tab's socket holding
-  its key while that socket stays open, because nothing tells it. When it next
-  drops or comes back from an idle close, the tab finds the shared session gone
-  or changed, opens nothing, signs itself out and wipes its key. So the key never
-  goes out under the next account. That sign-out clears the shared session and
-  any remembered key, so the account switched to in the first tab is signed out
-  too at its next reconnect or reload.
+  its key while that socket stays open, because nothing tells it. The transport
+  compares the stored session's account with the one its socket opened for
+  before it reconnects, comes back from an idle close, sends a key frame, or
+  finds its socket live at `connect()` (a hot swap). Gone or another account, it
+  opens nothing and sends nothing, and the tab signs itself out and wipes its
+  key. So the key never goes out under the next account. That sign-out clears
+  the shared session and any remembered key, so the account switched to in the
+  first tab is signed out too at its next reconnect or reload: it fails safe;
+- an unlock in one tab rotates the shared token for the same account, and both
+  tabs keep reconnecting with it.
 
 **There is no server ping.** A half-open socket, one whose client vanished
 without a close, holds the key in memory until TCP gives up on it.
