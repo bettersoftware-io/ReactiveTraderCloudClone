@@ -55,6 +55,22 @@ export const JARVIS_MAX_TURNS_PER_SESSION = 40;
 export const JARVIS_HISTORY_MAX_MESSAGES = 30;
 
 /**
+ * How long a model request may wait for its response to begin. Matches the
+ * Anthropic SDK's own default, ten minutes: a slow first token on a long
+ * prompt is normal, and a turn the person gives up on is theirs to cancel.
+ * Past it the request fails as a stalled connection, never as a cancel.
+ */
+export const JARVIS_RESPONSE_TIMEOUT_MS = 600_000;
+
+/**
+ * The most tool calls of one reply that are run. A reply's calls run at
+ * once, so without a bound one reply could start any number of them; the
+ * desk's tools are a handful, and 8 covers every call a reply plausibly
+ * needs. Calls past it are answered with an error, not run.
+ */
+export const JARVIS_MAX_TOOL_CALLS_PER_REPLY = 8;
+
+/**
  * Short chip labels the UI shows while a tool call is in flight, keyed by
  * the tool name `@rtc/agent-tools`' `buildJarvisTools` exports. Exists
  * separately from the tool descriptions (which are prompt content, sized

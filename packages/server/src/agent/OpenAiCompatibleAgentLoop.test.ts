@@ -147,6 +147,20 @@ describe("OpenAiCompatibleAgentLoop", () => {
       expect(request.headers.get("authorization")).toBe("Bearer sk-own-test");
     });
 
+    it("sends no reasoning_effort, even when the turn names an effort", async () => {
+      const { fetchFn, requests } = createScriptedFetch([
+        replyWithText(["ok"]),
+      ]);
+
+      await runTurnCollecting(createSession({ fetchFn }), "hi", [], undefined, {
+        brain: BRAIN,
+        effort: "high",
+      });
+
+      expect(firstOf(requests).body).not.toHaveProperty("reasoning_effort");
+      expect(firstOf(requests).body).not.toHaveProperty("effort");
+    });
+
     it("takes its key and host from the connection, never from the environment", async () => {
       vi.stubEnv("OPENAI_API_KEY", "sk-house");
       vi.stubEnv("OPENAI_BASE_URL", "https://gateway.example.test");
@@ -1013,6 +1027,299 @@ describe("OpenAiCompatibleAgentLoop", () => {
     });
   });
 
+  describe("hardening", () => {
+    it.each([
+      { kind: "line", piece: "a".repeat(64 * 1024) },
+      { kind: "event", piece: `data: ${"a".repeat(1_000)}\n`.repeat(64) },
+    ])("an endless $kind ends the turn as a failure", async ({ piece }) => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { fetchFn } = createScriptedFetch([
+        (): Response => {
+          return new Response(createRunawayBody(piece).stream, {
+            status: 200,
+            headers: { "content-type": "text/event-stream" },
+          });
+        },
+      ]);
+
+      const events = await runTurnCollecting(createSession({ fetchFn }), "hi");
+
+      expect(events).toEqual([
+        { type: "error", message: DESK_LINK_FALTERED_MESSAGE },
+      ]);
+      expect(error.mock.calls).toEqual([
+        ["OpenAiCompatibleAgentSession: turn failed —", "RangeError"],
+      ]);
+    });
+
+    it("a cancel during the last allowed request's tools ends on the cancellation line, not the runway notice", async () => {
+      let runs = 0;
+      let session: AgentSession | undefined;
+      const { fetchFn, requests } = createScriptedFetch([
+        replyWithToolCall("call_a", "get_price", { symbol: "EURUSD" }),
+      ]);
+      session = createSession({
+        fetchFn,
+        buildTools: () => {
+          return [
+            createFakeGetPriceTool(async () => {
+              runs += 1;
+
+              if (runs === JARVIS_RUNNER_MAX_ITERATIONS) {
+                session?.cancelTurn();
+              }
+
+              return "1.1";
+            }),
+          ];
+        },
+      });
+
+      const events = await runTurnCollecting(session, "loop");
+
+      expect(runs).toBe(JARVIS_RUNNER_MAX_ITERATIONS);
+      expect(events.at(-1)).toEqual({
+        type: "error",
+        message: CANCELLED_MESSAGE,
+      });
+      expect(events).not.toContainEqual({
+        type: "delta",
+        text: RUNWAY_EXHAUSTED_NOTICE,
+      });
+
+      // A cancelled turn is not kept in the session's history.
+      await runTurnCollecting(session, "next");
+
+      expect(requests[JARVIS_RUNNER_MAX_ITERATIONS]?.body.messages).toEqual([
+        { role: "system", content: JARVIS_SYSTEM_PROMPT },
+        { role: "user", content: "next" },
+      ]);
+    });
+
+    it("a response that never arrives times out as a failure, not a cancel, and releases its reservation", async () => {
+      vi.useFakeTimers();
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const meter = createMeterSpy();
+      const refused = vi.fn();
+      const fetchFn = vi.fn<typeof fetch>((_input, init) => {
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(init.signal?.reason);
+          });
+        });
+      });
+      const events: JarvisEvent[] = [];
+      let ended = false;
+
+      createSession({ fetchFn })
+        .runTurn("hi", [], {
+          brain: BRAIN,
+          meter,
+          keyFailure: { providerName: "OpenAI", refused },
+        })
+        .subscribe({
+          next: (event: JarvisEvent): void => {
+            events.push(event);
+          },
+          complete: (): void => {
+            ended = true;
+          },
+        });
+
+      await vi.advanceTimersByTimeAsync(RESPONSE_TIMEOUT_MS - 1);
+
+      expect(ended).toBe(false);
+      expect(events).toEqual([]);
+
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(ended).toBe(true);
+      expect(events).toEqual([
+        { type: "error", message: DESK_LINK_FALTERED_MESSAGE },
+      ]);
+      expect(refused).not.toHaveBeenCalled();
+      expect(error).toHaveBeenCalledTimes(1);
+      expect(meter.record).not.toHaveBeenCalled();
+      expect(meter.endRequest).toHaveBeenCalledTimes(1);
+    });
+
+    it("a reported cost is booked at no more than four times the request's listed ceiling", async () => {
+      const meter = createMeterSpy();
+      const { fetchFn } = createScriptedFetch([
+        replyWithText(
+          ["ok"],
+          createUsageChunk({ prompt: 10, completion: 5, cost: 1e308 }),
+        ),
+      ]);
+
+      await runTurnCollecting(createSession({ fetchFn }), "hi", [], undefined, {
+        brain: BRAIN,
+        meter,
+      });
+
+      // Haiku's listed ceiling: 15,000 in at $1 and 4,096 out at $5 per
+      // million, $0.03548; four of them.
+      expect(meter.record.mock.calls[0]?.[1].reportedCostUsd).toBeCloseTo(
+        0.14192,
+        10,
+      );
+    });
+
+    it("a reply's tool calls past the cap are not run, and each is answered with a tool error", async () => {
+      const toolRun = vi.fn(async () => {
+        return "1.1";
+      });
+
+      const calls = Array.from({ length: 10 }, (_unused, index) => {
+        return createToolCallDeltaChunk(index, {
+          id: `call_${index}`,
+          name: "get_price",
+          arguments: JSON.stringify({ symbol: `S${index}` }),
+        });
+      });
+
+      const { fetchFn, requests } = createScriptedFetch([
+        replyWith([...calls, createFinishChunk("tool_calls")]),
+        replyWithText(["Done."]),
+      ]);
+
+      await runTurnCollecting(
+        createSession({
+          fetchFn,
+          buildTools: () => {
+            return [createFakeGetPriceTool(toolRun)];
+          },
+        }),
+        "quote ten",
+      );
+
+      const toolMessages = toolMessagesOf(requests[1]);
+
+      expect(toolRun).toHaveBeenCalledTimes(TOOL_CALLS_PER_REPLY);
+      expect(toolMessages).toHaveLength(10);
+      expect(
+        toolMessages.slice(0, TOOL_CALLS_PER_REPLY).every((message) => {
+          return message.content === "1.1";
+        }),
+      ).toBe(true);
+      expect(
+        toolMessages.slice(TOOL_CALLS_PER_REPLY).every((message) => {
+          return message.content.startsWith("Error: ");
+        }),
+      ).toBe(true);
+    });
+
+    it("tool call ids are made unique: a duplicate, and one that collides with the fallback for a call with none", async () => {
+      const { fetchFn, requests } = createScriptedFetch([
+        replyWith([
+          createToolCallDeltaChunk(0, {
+            id: "call_2",
+            name: "get_price",
+            arguments: '{"symbol":"A"}',
+          }),
+          createToolCallDeltaChunk(1, {
+            id: "call_2",
+            name: "get_price",
+            arguments: '{"symbol":"B"}',
+          }),
+          createToolCallDeltaChunk(2, {
+            name: "get_price",
+            arguments: '{"symbol":"C"}',
+          }),
+          createFinishChunk("tool_calls"),
+        ]),
+        replyWithText(["Done."]),
+      ]);
+
+      await runTurnCollecting(
+        createSession({
+          fetchFn,
+          buildTools: () => {
+            return [
+              createFakeGetPriceTool(
+                vi.fn(async () => {
+                  return "1.1";
+                }),
+              ),
+            ];
+          },
+        }),
+        "quote three",
+      );
+
+      const toolIds = toolMessagesOf(requests[1]).map((message) => {
+        return message.tool_call_id;
+      });
+      const assistant = requests[1]?.body.messages.at(-4) as AssistantFixture;
+
+      expect(new Set(toolIds).size).toBe(3);
+      expect(
+        assistant.tool_calls.map((call) => {
+          return call.id;
+        }),
+      ).toEqual(toolIds);
+    });
+
+    it("a call with no name is answered with a tool error and is never sent back nameless", async () => {
+      const { fetchFn, requests } = createScriptedFetch([
+        replyWith([
+          createToolCallDeltaChunk(0, { id: "call_a", arguments: "{}" }),
+          createFinishChunk("tool_calls"),
+        ]),
+        replyWithText(["Hm."]),
+      ]);
+
+      const events = await runTurnCollecting(createSession({ fetchFn }), "go");
+
+      const assistant = requests[1]?.body.messages.at(-2) as AssistantFixture;
+
+      expect(assistant.tool_calls[0]?.function.name).not.toBe("");
+      expect(toolMessagesOf(requests[1])).toEqual([
+        {
+          role: "tool",
+          tool_call_id: "call_a",
+          content: "Error: the call named no tool, so nothing ran.",
+        },
+      ]);
+      expect(
+        events.some((event) => {
+          return event.type === "toolEvent";
+        }),
+      ).toBe(false);
+    });
+
+    it("a 429 body is read only a few KiB deep: one too long to decide stays the sanitized copy", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const refused = vi.fn();
+      const body = createRunawayBody("a".repeat(1_024), {
+        prefix: '{"error":{"type":"insufficient_quota","pad":"',
+      });
+
+      const fetchFn = vi.fn<typeof fetch>(() => {
+        return Promise.resolve(
+          new Response(body.stream, {
+            status: 429,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      });
+
+      const events = await runTurnCollecting(
+        createSession({ fetchFn }),
+        "hi",
+        [],
+        undefined,
+        { brain: BRAIN, keyFailure: { providerName: "OpenAI", refused } },
+      );
+
+      expect(events).toEqual([
+        { type: "error", message: DESK_LINK_FALTERED_MESSAGE },
+      ]);
+      expect(refused).not.toHaveBeenCalled();
+      expect(body.pulledChars()).toBeLessThanOrEqual(64 * 1024);
+    });
+  });
+
   describe("failures", () => {
     it.each([401, 402, 403])(
       "a %i refuses the key: the provider-named error, then refused()",
@@ -1222,6 +1529,28 @@ interface MeterSpy extends TurnMeter {
   readonly beginRequest: Mock<TurnMeter["beginRequest"]>;
   readonly record: Mock<TurnMeter["record"]>;
   readonly endRequest: Mock<TurnMeter["endRequest"]>;
+}
+
+interface ToolMessageFixture {
+  readonly role: string;
+  readonly tool_call_id: string;
+  readonly content: string;
+}
+
+interface AssistantFixture {
+  readonly tool_calls: readonly {
+    readonly id: string;
+    readonly function: { readonly name: string };
+  }[];
+}
+
+interface RunawayBodyOptions {
+  readonly prefix?: string;
+}
+
+interface RunawayBody {
+  readonly stream: ReadableStream<Uint8Array>;
+  readonly pulledChars: () => number;
 }
 
 interface OpenSocketFixture {
@@ -1628,3 +1957,57 @@ const REQUEST_CEILING = {
   cacheReadTokens: 0,
   cacheCreationTokens: 0,
 };
+
+function toolMessagesOf(
+  request: SeenRequest | undefined,
+): ToolMessageFixture[] {
+  return (request?.body.messages ?? []).filter((message) => {
+    return (message as ToolMessageFixture).role === "tool";
+  }) as ToolMessageFixture[];
+}
+
+/** A body that sends `prefix`, then repeats `piece` on every pull up to
+ * 8 MiB, counting what it sent. */
+function createRunawayBody(
+  piece: string,
+  options: RunawayBodyOptions = {},
+): RunawayBody {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(piece);
+  const limit = 8 * 1024 * 1024;
+  let pulled = 0;
+  let started = false;
+
+  return {
+    stream: new ReadableStream<Uint8Array>({
+      pull(controller: ReadableStreamDefaultController<Uint8Array>): void {
+        if (!started && options.prefix !== undefined) {
+          started = true;
+          pulled += options.prefix.length;
+          controller.enqueue(encoder.encode(options.prefix));
+
+          return;
+        }
+
+        if (pulled >= limit) {
+          controller.close();
+
+          return;
+        }
+
+        pulled += bytes.length;
+        controller.enqueue(bytes);
+      },
+    }),
+    pulledChars: (): number => {
+      return pulled;
+    },
+  };
+}
+
+/** How long a request may wait for its response: the Anthropic SDK's own
+ * default, ten minutes. */
+const RESPONSE_TIMEOUT_MS = 600_000;
+
+/** The most tool calls one reply may have run. */
+const TOOL_CALLS_PER_REPLY = 8;

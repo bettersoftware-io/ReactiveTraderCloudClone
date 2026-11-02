@@ -9,7 +9,10 @@ import {
 } from "@rtc/domain";
 
 import type { TurnMeter } from "../services/jarvisBudget/JarvisBudgetService.js";
-import type { JarvisTokenUsage } from "../services/UsageMeter.js";
+import {
+  estimateListedCostUsd,
+  type JarvisTokenUsage,
+} from "../services/UsageMeter.js";
 import {
   type AgentSession,
   describeRefusedKey,
@@ -19,7 +22,9 @@ import {
 import { JARVIS_SYSTEM_PROMPT } from "./jarvisPersona.js";
 import {
   JARVIS_MAX_TOKENS_PER_TURN,
+  JARVIS_MAX_TOOL_CALLS_PER_REPLY,
   JARVIS_MAX_TURNS_PER_SESSION,
+  JARVIS_RESPONSE_TIMEOUT_MS,
 } from "./jarvisRunnerConfig.js";
 import {
   BUDGET_SPENT_NOTICE,
@@ -48,6 +53,22 @@ import { parseSseChunks } from "./openAiSse.js";
 
 /** Names this session in its log lines. */
 const SESSION_NAME = "OpenAiCompatibleAgentSession";
+
+/** A reported cost is booked at no more than this many of the request's
+ * listed worst case. Clamped rather than dropped: a cost above the list may
+ * be real (OpenRouter can route to a dearer provider), so the budget keeps
+ * the high figure, but a provider bug cannot book an absurd one, and two of
+ * them cannot add up to Infinity. */
+const REPORTED_COST_CEILINGS = 4;
+
+/** How much of a 429's body is read to tell a key out of credit apart:
+ * OpenAI's error object is a few hundred bytes. A longer body is not read
+ * on, and is not taken as a refusal. */
+const ERROR_BODY_MAX_BYTES = 4 * 1024;
+
+/** What a call that named no tool is sent back under: the API takes no
+ * empty name. */
+const NAMELESS_TOOL_NAME = "unnamed_tool";
 
 /**
  * Where a session's requests go and how they are shaped: what
@@ -129,6 +150,14 @@ type TurnOutcome =
 
 type Push = (event: JarvisEvent) => void;
 
+/** What one request of a turn needs from the turn. */
+interface RequestTurn {
+  readonly signal: AbortSignal;
+  readonly push: Push;
+  readonly requests: RequestLedger;
+  readonly maxReportedCostUsd: number;
+}
+
 function toChatTool(tool: JarvisToolDefinition): ChatTool {
   return {
     type: "function",
@@ -155,15 +184,21 @@ function countOf(value: unknown): number {
  * cached input too, and the whole of it is booked as fresh input: providers
  * discount cached input by different amounts, so this errs high rather than
  * guessing a discount. A `cost` (OpenRouter's, once asked for) is booked as
- * the request's cost.
+ * the request's cost, up to `maxReportedCostUsd` (see
+ * `REPORTED_COST_CEILINGS`).
  */
-function usageOf(usage: Record<string, unknown>): JarvisTokenUsage {
+function usageOf(
+  usage: Record<string, unknown>,
+  maxReportedCostUsd: number,
+): JarvisTokenUsage {
   return {
     inputTokens: countOf(usage.prompt_tokens),
     outputTokens: countOf(usage.completion_tokens),
     cacheReadTokens: 0,
     cacheCreationTokens: 0,
-    ...(typeof usage.cost === "number" ? { reportedCostUsd: usage.cost } : {}),
+    ...(typeof usage.cost === "number"
+      ? { reportedCostUsd: Math.min(usage.cost, maxReportedCostUsd) }
+      : {}),
   };
 }
 
@@ -171,8 +206,14 @@ function usageOf(usage: Record<string, unknown>): JarvisTokenUsage {
  * `insufficient_quota`, in the error's `type` or `code`. The body is read
  * for this one test and goes nowhere else. */
 async function readsOutOfCredit(response: Response): Promise<boolean> {
+  const text = await readBodyUpTo(response.body, ERROR_BODY_MAX_BYTES);
+
+  if (text === null) {
+    return false;
+  }
+
   try {
-    const body: unknown = await response.json();
+    const body: unknown = JSON.parse(text);
     const error = isRecord(body) && isRecord(body.error) ? body.error : {};
 
     return (
@@ -180,6 +221,44 @@ async function readsOutOfCredit(response: Response): Promise<boolean> {
     );
   } catch {
     return false;
+  }
+}
+
+/** A body's text if it ends within `maxBytes`; null if it is longer, or
+ * cannot be read. Either way the rest is cancelled, never read. */
+async function readBodyUpTo(
+  body: ReadableStream<Uint8Array> | null,
+  maxBytes: number,
+): Promise<string | null> {
+  if (body === null) {
+    return null;
+  }
+
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  let bytes = 0;
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+
+      if (done) {
+        return text + decoder.decode();
+      }
+
+      bytes += value.byteLength;
+
+      if (bytes > maxBytes) {
+        return null;
+      }
+
+      text += decoder.decode(value, { stream: true });
+    }
+  } catch {
+    return null;
+  } finally {
+    reader.cancel().catch(() => {});
   }
 }
 
@@ -200,7 +279,10 @@ function assistantMessageOf(reply: StreamedReply): ChatMessage {
       return {
         id: call.id,
         type: "function",
-        function: { name: call.name, arguments: call.arguments },
+        function: {
+          name: call.name === "" ? NAMELESS_TOOL_NAME : call.name,
+          arguments: call.arguments,
+        },
       };
     }),
   };
@@ -382,6 +464,7 @@ async function readReply(
   chunks: AsyncIterable<unknown>,
   push: Push,
   requests: RequestLedger,
+  maxReportedCostUsd: number,
 ): Promise<RequestOutcome> {
   let text = "";
   let finishReason: string | null = null;
@@ -400,7 +483,7 @@ async function readReply(
     }
 
     if (isRecord(chunk.usage)) {
-      usage = usageOf(chunk.usage);
+      usage = usageOf(chunk.usage, maxReportedCostUsd);
     }
 
     const choice = Array.isArray(chunk.choices) ? chunk.choices[0] : undefined;
@@ -439,14 +522,22 @@ async function readReply(
     return { kind: "streamError" };
   }
 
+  // Every tool message answers one id, so ids are made unique: a missing
+  // or repeated id takes `call_<index>`, suffixed until it is free.
+  const usedIds = new Set<string>();
   const toolCalls = [...calls.entries()]
     .sort(([a], [b]) => {
       return a - b;
     })
     .map(([index, call]): PendingToolCall => {
-      if (call.id === "") {
-        call.id = `call_${index}`;
+      let id = call.id === "" ? `call_${index}` : call.id;
+
+      for (let suffix = 1; usedIds.has(id); suffix += 1) {
+        id = `call_${index}_${suffix}`;
       }
+
+      usedIds.add(id);
+      call.id = id;
 
       return call;
     });
@@ -609,6 +700,9 @@ export class OpenAiCompatibleAgentSession implements AgentSession {
     }
 
     const requests = createRequestLedger(options?.meter, brain, signal);
+    const maxReportedCostUsd =
+      REPORTED_COST_CEILINGS * estimateListedCostUsd(brain, REQUEST_CEILING);
+
     const conversation: ChatMessage[] = [
       { role: "system", content: JARVIS_SYSTEM_PROMPT },
       ...turnMessages,
@@ -625,13 +719,12 @@ export class OpenAiCompatibleAgentSession implements AgentSession {
       }
 
       for (let iteration = 1; ; iteration += 1) {
-        const outcome = await this.requestReply(
-          model,
-          conversation,
+        const outcome = await this.requestReply(model, conversation, {
           signal,
           push,
           requests,
-        );
+          maxReportedCostUsd,
+        });
 
         if (outcome.kind !== "reply") {
           return this.failTurn(outcome, push, options);
@@ -674,6 +767,9 @@ export class OpenAiCompatibleAgentSession implements AgentSession {
         signal.throwIfAborted();
         conversation.push(assistantMessageOf(outcome));
         conversation.push(...(await this.runToolCalls(outcome.toolCalls)));
+        // A cancel while the tools ran ends the turn here, before the cap
+        // could end it as a reply.
+        signal.throwIfAborted();
 
         if (iteration >= JARVIS_RUNNER_MAX_ITERATIONS) {
           finalText += RUNWAY_EXHAUSTED_NOTICE;
@@ -682,8 +778,6 @@ export class OpenAiCompatibleAgentSession implements AgentSession {
 
           return { kind: "completed", finalText };
         }
-
-        signal.throwIfAborted();
       }
     } catch (error) {
       if (signal.aborted) {
@@ -710,10 +804,9 @@ export class OpenAiCompatibleAgentSession implements AgentSession {
   private async requestReply(
     model: string,
     conversation: readonly ChatMessage[],
-    signal: AbortSignal,
-    push: Push,
-    requests: RequestLedger,
+    turn: RequestTurn,
   ): Promise<RequestOutcome> {
+    const { signal, push, requests, maxReportedCostUsd } = turn;
     const { url, headers, tokenLimitParam, extraBody, fetchFn } = this.endpoint;
     // Extra fields first, so none can replace the request's own.
     const body = JSON.stringify({
@@ -728,13 +821,26 @@ export class OpenAiCompatibleAgentSession implements AgentSession {
 
     requests.markRequestSent(body.length);
 
-    const response = await fetchFn(url, {
-      method: "POST",
-      headers,
-      body,
-      redirect: "error",
-      signal,
-    });
+    // The response must begin within the timeout; a timeout fails the
+    // request, and is no cancel: the turn's own signal is not aborted. The
+    // stream that follows is bounded by the turn and the parser's caps.
+    const timeout = new AbortController();
+    const timer = setTimeout(() => {
+      timeout.abort(new DOMException("no response in time", "TimeoutError"));
+    }, JARVIS_RESPONSE_TIMEOUT_MS);
+    let response: Response;
+
+    try {
+      response = await fetchFn(url, {
+        method: "POST",
+        headers,
+        body,
+        redirect: "error",
+        signal: AbortSignal.any([signal, timeout.signal]),
+      });
+    } finally {
+      clearTimeout(timer);
+    }
 
     if (!response.ok) {
       const outOfCredit =
@@ -751,7 +857,12 @@ export class OpenAiCompatibleAgentSession implements AgentSession {
       return { kind: "unfinished" };
     }
 
-    return readReply(parseSseChunks(response.body, signal), push, requests);
+    return readReply(
+      parseSseChunks(response.body, signal),
+      push,
+      requests,
+      maxReportedCostUsd,
+    );
   }
 
   /** Ends a turn on a failed request. On a person's own key the provider's
@@ -788,16 +899,20 @@ export class OpenAiCompatibleAgentSession implements AgentSession {
   }
 
   /** Runs a reply's tool calls, all at once as the Anthropic SDK runner
-   * does, and answers each with a `tool` message in call order. */
+   * does, and answers each with a `tool` message in call order. Calls past
+   * `JARVIS_MAX_TOOL_CALLS_PER_REPLY` are answered with an error, not run. */
   private runToolCalls(
     calls: readonly PendingToolCall[],
   ): Promise<ChatMessage[]> {
     return Promise.all(
-      calls.map(async (call): Promise<ChatMessage> => {
+      calls.map(async (call, position): Promise<ChatMessage> => {
         return {
           role: "tool",
           tool_call_id: call.id,
-          content: await this.runToolCall(call),
+          content:
+            position < JARVIS_MAX_TOOL_CALLS_PER_REPLY
+              ? await this.runToolCall(call)
+              : "Error: too many tool calls in one reply, so this one did not run.",
         };
       }),
     );
@@ -807,6 +922,10 @@ export class OpenAiCompatibleAgentSession implements AgentSession {
    * result, worded as the Anthropic SDK runner words it, and never fails the
    * turn. */
   private async runToolCall(call: PendingToolCall): Promise<string> {
+    if (call.name === "") {
+      return "Error: the call named no tool, so nothing ran.";
+    }
+
     const tool = this.desk.tools.find((candidate) => {
       return candidate.name === call.name;
     });

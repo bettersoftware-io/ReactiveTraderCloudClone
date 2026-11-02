@@ -118,6 +118,49 @@ describe("parseSseChunks", () => {
     expect(seen).toEqual([{ n: 1 }]);
   });
 
+  it("an endless line fails the stream past the size cap, and cancels the body", async () => {
+    const body = createRunawayBody("a".repeat(64 * 1024));
+
+    await expect(
+      collectFrom(body.stream, new AbortController().signal),
+    ).rejects.toThrow(RangeError);
+    expect(body.cancelled()).toBe(true);
+    expect(body.pulledChars()).toBeLessThanOrEqual(SSE_CAP_CHARS * 2);
+  });
+
+  it("an endless event fails the stream past the size cap, and cancels the body", async () => {
+    // Data lines that no blank line ever closes into an event.
+    const body = createRunawayBody(`data: ${"a".repeat(1_000)}\n`.repeat(64));
+
+    await expect(
+      collectFrom(body.stream, new AbortController().signal),
+    ).rejects.toThrow(RangeError);
+    expect(body.cancelled()).toBe(true);
+    expect(body.pulledChars()).toBeLessThanOrEqual(SSE_CAP_CHARS * 2);
+  });
+
+  it("a data line over the cap fails the stream even when it ends within one read", async () => {
+    await expect(
+      collectChunks([`data: "${"a".repeat(SSE_CAP_CHARS)}"\n\n`]),
+    ).rejects.toThrow(RangeError);
+  });
+
+  it("a line just under the cap, in many small reads, parses in linear time", async () => {
+    const value = "a".repeat(SSE_CAP_CHARS - 1_000);
+    const text = `data: ${JSON.stringify(value)}\n\n`;
+    const parts: string[] = [];
+
+    for (let at = 0; at < text.length; at += 40) {
+      parts.push(text.slice(at, at + 40));
+    }
+
+    // ~26,000 reads: rescanning the line so far on each one is ~1.3e10
+    // character visits, far past the test's timeout.
+    const chunks = await collectChunks(parts);
+
+    expect(chunks).toEqual([value]);
+  });
+
   it("an already aborted signal reads nothing", async () => {
     const controller = new AbortController();
     controller.abort();
@@ -172,3 +215,45 @@ function collectChunks(parts: readonly string[]): Promise<unknown[]> {
 function collectByteChunks(parts: readonly Uint8Array[]): Promise<unknown[]> {
   return collectFrom(createByteBody(parts), new AbortController().signal);
 }
+
+interface RunawayBody {
+  readonly stream: ReadableStream<Uint8Array>;
+  readonly cancelled: () => boolean;
+  readonly pulledChars: () => number;
+}
+
+/** A body that repeats `piece` on every pull, up to 8 MiB, and records
+ * whether the reader cancelled it. */
+function createRunawayBody(piece: string): RunawayBody {
+  const bytes = new TextEncoder().encode(piece);
+  const limit = 8 * 1024 * 1024;
+  let pulled = 0;
+  let wasCancelled = false;
+
+  return {
+    stream: new ReadableStream<Uint8Array>({
+      pull(controller: ReadableStreamDefaultController<Uint8Array>): void {
+        if (pulled >= limit) {
+          controller.close();
+
+          return;
+        }
+
+        pulled += bytes.length;
+        controller.enqueue(bytes);
+      },
+      cancel(): void {
+        wasCancelled = true;
+      },
+    }),
+    cancelled: (): boolean => {
+      return wasCancelled;
+    },
+    pulledChars: (): number => {
+      return pulled;
+    },
+  };
+}
+
+/** The parser's cap on one line, and on one event's data: 1 MiB. */
+const SSE_CAP_CHARS = 1_048_576;
