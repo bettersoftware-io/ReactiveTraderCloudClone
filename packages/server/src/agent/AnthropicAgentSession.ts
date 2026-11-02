@@ -12,35 +12,27 @@ import type {
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { Observable } from "rxjs";
 
-import type {
-  ConfirmGate,
-  JarvisConfirmDetails,
-  JarvisToolDefinition,
-} from "@rtc/agent-tools";
+import type { ConfirmGate, JarvisToolDefinition } from "@rtc/agent-tools";
 import {
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
-  type DriveBatchV1,
   type JarvisBrain,
   type JarvisEvent,
   type JarvisHistoryEntry,
   type JarvisLiveBrain,
   jarvisBrainTakesEffort,
   ownModelOf,
-  type PanelSpecV1,
 } from "@rtc/domain";
 
 import type { TurnMeter } from "../services/jarvisBudget/JarvisBudgetService.js";
 import type { JarvisTokenUsage } from "../services/UsageMeter.js";
 import {
   type AgentSession,
-  DESK_LINK_FALTERED_MESSAGE,
   describeRefusedKey,
   describeSdkErrorForLogging,
   hasNumericStatus,
   type JarvisTurnOptions,
 } from "./agentLoop.js";
-import { buildDriveAppTool } from "./driveAppTool.js";
 import { JARVIS_SYSTEM_PROMPT } from "./jarvisPersona.js";
 import {
   JARVIS_HISTORY_MAX_MESSAGES,
@@ -48,57 +40,21 @@ import {
   JARVIS_MAX_TURNS_PER_SESSION,
   JARVIS_PROMPT_PREFIX_TOKENS,
   JARVIS_RESERVE_INPUT_TOKENS,
-  JARVIS_TOOL_FRIENDLY_NAMES,
 } from "./jarvisRunnerConfig.js";
-import { buildRenderPanelTool } from "./renderPanelTool.js";
-
-/**
- * Caps how many tool-round-trip iterations ONE turn's `toolRunner()` call may
- * take (`stop_reason: "pause_turn"` is the one case this loop resumes
- * automatically — see the doc comment on `AnthropicAgentSession.runOneTurn`
- * — so without a ceiling a model that keeps pausing a long-running turn
- * could keep this loop resuming it forever). Deliberately its OWN constant
- * rather than reusing `JARVIS_MAX_TURNS_PER_SESSION`: that cap counts
- * SESSION turns (one per user message); this one counts API round-trips
- * WITHIN a single turn — different axes, so conflating them would either
- * make one turn eat the whole session's budget or make the session cap too
- * tight for a legitimately multi-tool-call reply. 8 is generous for a
- * "quote, then trade" style turn while still bounding a stuck loop.
- */
-const JARVIS_RUNNER_MAX_ITERATIONS = 8;
-
-const REFUSAL_MESSAGE = "I'm afraid I can't assist with that, sir.";
-const SESSION_CAP_MESSAGE =
-  "We've had quite the session, sir — do reconnect for a fresh one.";
-
-/**
- * Emitted after `cancelTurn()` aborts an in-flight turn. Per the `AgentLoop`
- * seam's doc comment, cancelling guarantees no terminal frame for the
- * cancelled turn — this "error" event is only safe to emit because the
- * client's turnId filter (see `jarvisEffects`' `inFlightTurnId` gate) ignores
- * frames for a turn it no longer considers in flight, so a post-cancel event
- * that does slip through is simply dropped client-side rather than
- * corrupting a later turn's transcript.
- */
-const CANCELLED_MESSAGE = "Cancelled, sir.";
-
-const TRUNCATION_NOTICE =
-  " …that's as far as I can go this turn, sir — do ask me to continue.";
-
-/** Appended when `JARVIS_RUNNER_MAX_ITERATIONS` cuts the runner off while
- * the model still wanted to call a tool or was mid `pause_turn` — see the
- * post-loop check in `runOneTurn`. */
-const RUNWAY_EXHAUSTED_NOTICE =
-  " I ran out of runway mid-task, sir — the answer above may be incomplete.";
-
-/** The reply of a turn the daily budget stopped before its first model
- * request (spec §3.3 step 4): there is nothing above it to set it apart from. */
-const BUDGET_SPENT_NOTICE =
-  "Today's AI budget is used — switching to the scripted brain.";
-
-/** Ends a turn the daily budget stopped between two model requests: the
- * reply so far stays, and the next turn runs scripted. */
-const BUDGET_STOP_NOTICE = `\n\n${BUDGET_SPENT_NOTICE}`;
+import {
+  BUDGET_SPENT_NOTICE,
+  BUDGET_STOP_NOTICE,
+  CANCELLED_MESSAGE,
+  CHARS_PER_TOKEN_ESTIMATE,
+  DESK_LINK_FALTERED_MESSAGE,
+  friendlyToolName,
+  JARVIS_RUNNER_MAX_ITERATIONS,
+  REFUSAL_MESSAGE,
+  RUNWAY_EXHAUSTED_NOTICE,
+  SESSION_CAP_MESSAGE,
+  TRUNCATION_NOTICE,
+} from "./jarvisTurnCopy.js";
+import { LiveSessionDesk } from "./LiveSessionDesk.js";
 
 /** What one request is reserved at against the budget while it is in flight
  * — see `JARVIS_RESERVE_INPUT_TOKENS`. */
@@ -247,41 +203,6 @@ function adaptTool(tool: JarvisToolDefinition): BetaRunnableTool<unknown> {
   });
 
   return runnable as unknown as BetaRunnableTool<unknown>;
-}
-
-function friendlyToolName(name: string): string {
-  return JARVIS_TOOL_FRIENDLY_NAMES[name] ?? name;
-}
-
-/** Production `RenderPanelDeps.mintPanelId` — tests inject their own
- * deterministic mint instead (see `renderPanelTool.test.ts` and this
- * class's own constructor default). Uses the same global `crypto.randomUUID`
- * `requestConfirmation` already relies on below, not a `node:crypto`
- * import — Node exposes Web Crypto globally, so this file has never needed
- * that import for a UUID. */
-function defaultMintPanelId(): string {
-  return `panel-${crypto.randomUUID()}`;
-}
-
-/** Plain code-point order, not `localeCompare` — the cache-prefix
- * determinism this sort exists for (see `SYSTEM_BLOCKS`' doc comment) needs
- * a byte-stable order for the exact same tool-name set every time; a
- * locale-aware compare depends on the ICU/Node build's default locale,
- * which is not guaranteed identical across environments (dev machine vs.
- * the deployed container) the way simple `<`/`>` on ASCII tool names is. */
-function toolNameOrder(
-  a: BetaRunnableTool<unknown>,
-  b: BetaRunnableTool<unknown>,
-): number {
-  if (a.name < b.name) {
-    return -1;
-  }
-
-  if (a.name > b.name) {
-    return 1;
-  }
-
-  return 0;
 }
 
 /** What a provider answers for a key it will not serve: unauthorized, out of
@@ -549,10 +470,6 @@ function createRequestLedger(deps: RequestLedgerDeps): RequestLedger {
   };
 }
 
-/** The rough characters-per-token of English text and JSON, for estimating
- * the usage of a request that never reported its own. */
-const CHARS_PER_TOKEN_ESTIMATE = 4;
-
 /** The input of a request the provider never reported: its messages as sent
  * (JSON, so tool calls and results count) at ~4 characters a token, plus the
  * persona and tools prefix. All of it counts as fresh input — a cache read
@@ -666,18 +583,13 @@ type TurnOutcome =
  * is pure object construction, no I/O, no network.
  */
 export class AnthropicAgentSession implements AgentSession {
-  private readonly tools: readonly BetaRunnableTool<unknown>[];
+  private readonly desk: LiveSessionDesk;
 
-  private readonly pendingConfirmations = new Map<
-    string,
-    (approved: boolean) => void
-  >();
+  private readonly tools: readonly BetaRunnableTool<unknown>[];
 
   private history: BetaMessageParam[] = [];
 
   private turnCount = 0;
-
-  private currentPush: ((event: JarvisEvent) => void) | null = null;
 
   private currentAbort: AbortController | null = null;
 
@@ -694,113 +606,14 @@ export class AnthropicAgentSession implements AgentSession {
     // `AnthropicAgentLoopOptions`: nothing in production needs a different
     // mint strategy, unlike `knownSymbols`, which genuinely varies (the real
     // pair roster vs. a test's fixture roster).
-    mintPanelId: () => string = defaultMintPanelId,
+    mintPanelId?: () => string,
   ) {
-    const confirmTrade: ConfirmGate = (details: JarvisConfirmDetails) => {
-      return this.requestConfirmation(details);
-    };
-
-    const jarvisTools = buildTools(confirmTrade);
-
-    // `render_panel` is LIVE-brain-only (the scripted engine already emits
-    // `panel` events itself — see `ScriptedJarvisEngine` — so
-    // `ScriptedAgentSession` needs no equivalent). `emitPanel` closes over
-    // THIS session's own `currentPush` (via `emitPanelEvent` below) the same
-    // way `confirmTrade` above closes over THIS session's own confirmation
-    // registry — never a second, competing event channel.
-    const renderPanelTool = buildRenderPanelTool({
-      knownSymbols,
-      emitPanel: (panelId: string, spec: PanelSpecV1): void => {
-        this.emitPanelEvent(panelId, spec);
-      },
-      mintPanelId,
-    });
-
-    // `drive_app` is likewise LIVE-brain-only (the scripted engine drives
-    // the app via its own scripted intents — see Task 4 of this round — so
-    // `ScriptedAgentSession` needs no equivalent tool). `emitDrive` closes
-    // over THIS session's own `currentPush` (via `emitCommandEvent` below)
-    // the same way `emitPanel` above does, and the same way `confirmTrade`
-    // closes over THIS session's own confirmation registry — never a
-    // second, competing event channel.
-    const driveAppTool = buildDriveAppTool({
-      emitDrive: (batch: DriveBatchV1): void => {
-        this.emitCommandEvent(batch);
-      },
-    });
-
-    // Deterministic cache prefix (see SYSTEM_BLOCKS' doc comment): sort by
-    // name so the tools block is byte-identical turn to turn regardless of
-    // buildTools' own ordering.
-    this.tools = [...jarvisTools, renderPanelTool, driveAppTool]
-      .map(adaptTool)
-      .sort(toolNameOrder);
-  }
-
-  /** Pushes a `panel` event onto the SAME per-turn stream every other event
-   * (`delta`/`toolEvent`/`confirmRequest`/`done`) goes through — `currentPush`
-   * is only non-null while a turn's `runOneTurn` is in flight (see `runTurn`),
-   * which is exactly when a tool's `run()` can execute, so this is never
-   * reachable with no turn open in practice. `?.` still guards it, matching
-   * `requestConfirmation`'s own defensiveness. */
-  private emitPanelEvent(panelId: string, spec: PanelSpecV1): void {
-    this.currentPush?.({ type: "panel", panelId, spec });
-  }
-
-  /** Pushes a `command` event onto the SAME per-turn stream, mirroring
-   * `emitPanelEvent` above — see that method's doc comment for why `?.` is
-   * defense in depth rather than a reachable branch. */
-  private emitCommandEvent(batch: DriveBatchV1): void {
-    this.currentPush?.({ type: "command", batch });
-  }
-
-  private requestConfirmation(details: JarvisConfirmDetails): Promise<boolean> {
-    const push = this.currentPush;
-
-    // A cancelled turn is answered no at once. A tool's work before its gate
-    // (a trade's quote takes a second) does not hear the abort, so it can
-    // land here after `cancelTurn` released every pending confirmation: a
-    // resolver registered now would never settle, and the turn, its
-    // reservation and the connection's queue behind it would wait for ever.
-    if (!push || this.currentAbort?.signal.aborted) {
-      // No turn is currently open to receive this confirmRequest.
-      // Registering a resolver here anyway would leak a Promise nothing can
-      // ever settle: `resolveConfirmation` and `releasePendingConfirmations`
-      // both act on `this.pendingConfirmations`, but nothing would ever push
-      // the `confirmRequest` event a client could react to, and no cancel is
-      // "in flight" to release it either. Not reachable in the normal
-      // single-turn-at-a-time flow — kept as defense in depth against
-      // exactly the kind of concurrent-turn race `jarvis.chat`'s `concatMap`
-      // serialization (see `jarvis.effects.ts`) now rules out at the wire
-      // layer.
-      return Promise.resolve(false);
-    }
-
-    const confirmationId = `confirm-${crypto.randomUUID()}`;
-
-    return new Promise<boolean>((resolve) => {
-      this.pendingConfirmations.set(confirmationId, resolve);
-      push({
-        type: "confirmRequest",
-        confirmationId,
-        symbol: details.symbol,
-        direction: details.direction,
-        notional: details.notional,
-        quotedPrice: details.quotedPrice,
-        ratePrecision: details.ratePrecision,
-      });
-    });
+    this.desk = new LiveSessionDesk(buildTools, knownSymbols, mintPanelId);
+    this.tools = this.desk.tools.map(adaptTool);
   }
 
   resolveConfirmation(confirmationId: string, approved: boolean): void {
-    const resolve = this.pendingConfirmations.get(confirmationId);
-
-    if (!resolve) {
-      return;
-    }
-
-    this.pendingConfirmations.delete(confirmationId);
-    resolve(approved);
+    this.desk.resolveConfirmation(confirmationId, approved);
   }
 
   runTurn(
@@ -847,7 +660,7 @@ export class AnthropicAgentSession implements AgentSession {
       const requestMessages = [...this.history, userMessage];
       const controller = new AbortController();
       this.currentAbort = controller;
-      this.currentPush = push;
+      this.desk.bindTurn({ push, signal: controller.signal });
 
       // Fire-and-forget from this synchronous Observable executor (it has no
       // `await` context of its own): runOneTurn never rejects — its own
@@ -865,37 +678,16 @@ export class AnthropicAgentSession implements AgentSession {
         })
         .finally(() => {
           this.currentAbort = null;
-          this.currentPush = null;
+          this.desk.bindTurn(null);
           complete();
         });
 
       return (): void => {
         closed = true;
         controller.abort();
-        this.releasePendingConfirmations();
+        this.desk.releasePendingConfirmations();
       };
     });
-  }
-
-  /**
-   * A turn torn down mid-trade (cancel, dispose, unsubscribe) would
-   * otherwise strand its resolver forever and leave `requestConfirmation`'s
-   * promise dangling — resolve every outstanding one `false` so
-   * `execute_trade`'s `run` unblocks instead of hanging. Called from BOTH
-   * `cancelTurn()` (so a cancel arriving while a confirmation is in flight
-   * unblocks it immediately — `controller.abort()` alone only cancels the
-   * SDK's network request, not this session's separate, signal-unaware
-   * confirmation `Promise`, so `runOneTurn` would otherwise stay stuck
-   * awaiting a tool call that's awaiting a confirmation nothing will ever
-   * resolve) and the Observable's own teardown below (belt-and-suspenders
-   * for a socket-disconnect unsubscribe that bypasses `cancelTurn()`).
-   */
-  private releasePendingConfirmations(): void {
-    for (const resolve of this.pendingConfirmations.values()) {
-      resolve(false);
-    }
-
-    this.pendingConfirmations.clear();
   }
 
   /**
@@ -1137,7 +929,7 @@ export class AnthropicAgentSession implements AgentSession {
 
   cancelTurn(): void {
     this.currentAbort?.abort();
-    this.releasePendingConfirmations();
+    this.desk.releasePendingConfirmations();
   }
 
   dispose(): void {
