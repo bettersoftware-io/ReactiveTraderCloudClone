@@ -362,6 +362,11 @@ export interface ScriptedDriver {
   /** The server ended the session: one emission on the scripted transport's
    * `sessionEnded()` (a `4401` close). A no-op without `HarnessSeed.transport`. */
   endSession(): void;
+  /** The next `connect()` on the scripted transport ends the session from
+   * inside the call, synchronously: what `WsAdapter` does when it finds its
+   * live socket belongs to an account the shared session store no longer
+   * holds (a hot swap after another tab switched account). */
+  endSessionOnNextConnect(): void;
   /** How many subscriptions the core has ever opened on
    * `connectionEvents.events()`'s stream. The port's side effects (a client's
    * idle routing, the browser's listeners) run once per subscription, so a
@@ -1169,12 +1174,18 @@ export function scriptPorts(
   };
   const transportLog: TransportCall[] = [];
   const sessionEnded$ = new Subject<void>();
+  let endSessionOnConnect = false;
   const transport: AuthGatedTransport | undefined =
     seed.transport === true
       ? {
           connect: () => {
             transportLog.push("connect");
             wireLog.push("connect");
+
+            if (endSessionOnConnect) {
+              endSessionOnConnect = false;
+              sessionEnded$.next();
+            }
           },
           disconnect: () => {
             transportLog.push("disconnect");
@@ -1265,6 +1276,9 @@ export function scriptPorts(
       },
       endSession: () => {
         sessionEnded$.next();
+      },
+      endSessionOnNextConnect: () => {
+        endSessionOnConnect = true;
       },
       connectionEventSubscriptions: () => {
         return connectionEventSubscriptions;

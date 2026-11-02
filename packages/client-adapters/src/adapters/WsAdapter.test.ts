@@ -315,16 +315,15 @@ describe("WsAdapter token-at-connect", () => {
     let token: string | undefined = "tok-1";
     const adapter = new WsAdapter(
       "ws://test",
-      () => {
-        return token;
-      },
       {
-        reconnectDelayMs: 50,
         // The same account throughout: a new token for it is not a move.
-        sessionAccount: (): string | undefined => {
-          return "same@example.com";
+        read: (): SameAccountSession | null => {
+          return token === undefined
+            ? null
+            : { token, user: { email: "same@example.com" } };
         },
       },
+      { reconnectDelayMs: 50 },
     );
     expect(lastMock.url).toBe("ws://test/?access=tok-1");
 
@@ -1221,3 +1220,8 @@ function trackSettlement(promise: Promise<unknown>): Settlement {
 /** The adapter's documented default — pinned here as a literal so a change to
  * it is a visible decision, not a silent drift. */
 const DEFAULT_RPC_TIMEOUT_MS = 30_000;
+
+interface SameAccountSession {
+  readonly token: string;
+  readonly user: { readonly email: string };
+}

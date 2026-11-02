@@ -187,21 +187,10 @@ export function buildBrowserPorts(options: BuildBrowserPortsOptions): AppPorts {
       // the user is authenticated. Connecting here (at composition time) would
       // send a tokenless upgrade the server rejects, then retry it on a timer
       // behind the login screen.
-      new WsAdapter(
-        url,
-        () => {
-          return sessionStore.read()?.token;
-        },
-        {
-          autoConnect: false,
-          // Whose session the shared store holds: another tab's sign-out or
-          // account switch must not leave this tab's socket, or its key,
-          // under the wrong account.
-          sessionAccount: (): string | undefined => {
-            return sessionStore.read()?.user.email;
-          },
-        },
-      ),
+      // The session store itself, not just its token: whose session the
+      // shared store holds decides whether another tab's sign-out or account
+      // switch leaves this tab's socket, or its key, under the wrong account.
+      new WsAdapter(url, sessionStore, { autoConnect: false }),
       devtoolsHub,
       // A `jarvis.key` frame carries a person's model key: the hub gets it
       // redacted, the socket the real frame.

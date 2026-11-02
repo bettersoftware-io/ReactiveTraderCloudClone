@@ -1082,17 +1082,21 @@ opens (until 2026-10-26 a `4401` reported none, and the status kept reading
 CONNECTED while nobody was signed in).
 
 **A session that moved on in another tab.** The session store is shared by every
-tab, so `WsAdapter` (given `sessionAccount`, the stored session's user email)
-compares the stored account with the one its socket opened for: before it opens a
-socket on its own (the automatic reconnect, `reopen()` after an idle close),
+tab, so `WsAdapter`, given the session store itself, reads the token and the
+user's email in one read, and compares the stored account with the one its
+socket opened for: before it opens a socket on its own (the automatic reconnect, `reopen()` after an idle close),
 before a key frame, and when `connect()` finds a socket live, as after a hot
 swap. Missing, or another account, ends the session the same way as a `4401`,
 with no socket opened and the live one closed, because the upgrade cannot say:
 another account's token would be accepted, and a missing one is a `401` no browser
 can tell from a drop. A new token for the same account, as an unlock writes, is
 taken. A deliberate `connect()` with no socket, after a sign-in, opens for
-whoever is signed in. An adapter built without `sessionAccount` compares raw
-tokens instead.
+whoever is signed in. An adapter given only a token function compares raw
+tokens instead. Every core subscribes to `sessionEnded()` before its transport
+gate, because the gate's first `connect()` can end the session from inside the
+call, and `sessionEnded()` is hot: a composition listening only afterwards would
+stay signed in over a closed socket (the `recomposition` contract suite holds
+all three cores to it).
 
 Only a bundle that knows `4401` signs out like this: a tab still running
 the pre-B2c bundle, or a React Native build without the B2c EAS Update, treats

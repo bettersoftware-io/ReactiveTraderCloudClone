@@ -211,7 +211,7 @@ describe("WsAdapter when the session moved on in another tab", () => {
     expect(b.ended.count).toBe(1);
   });
 
-  it("without sessionAccount a different token ends the session: the safe side", () => {
+  it("given only a token, a different token ends the session: the safe side", () => {
     let token: string | undefined = "TOKEN-OF-X";
     const ws = new WsAdapter(
       "ws://no-account",
@@ -235,15 +235,12 @@ describe("WsAdapter when the session moved on in another tab", () => {
     let session: StoredSession | null = null;
     const ws = new WsAdapter(
       "ws://tokenless",
-      () => {
-        return session?.token;
-      },
       {
-        reconnectDelayMs: RECONNECT_DELAY_MS,
-        sessionAccount: (): string | undefined => {
-          return session?.user.email;
+        read: (): StoredSession | null => {
+          return session;
         },
       },
+      { reconnectDelayMs: RECONNECT_DELAY_MS },
     );
     const tab = track(ws, "ws://tokenless");
 
@@ -284,19 +281,10 @@ let nextTab = 0;
 function openTab(shared: InMemorySessionStore): Tab {
   nextTab += 1;
   const url = `ws://tab-${nextTab}`;
-  const ws = new WsAdapter(
-    url,
-    () => {
-      return shared.read()?.token;
-    },
-    {
-      autoConnect: false,
-      reconnectDelayMs: RECONNECT_DELAY_MS,
-      sessionAccount: (): string | undefined => {
-        return shared.read()?.user.email;
-      },
-    },
-  );
+  const ws = new WsAdapter(url, shared, {
+    autoConnect: false,
+    reconnectDelayMs: RECONNECT_DELAY_MS,
+  });
   const tab = track(ws, url);
   tab.jarvis.availability$().subscribe();
   ws.connect();
