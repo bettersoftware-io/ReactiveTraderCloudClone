@@ -45,6 +45,8 @@ export function jarvisOverlayDriveRowPage(): JarvisOverlayDriveRowPage {
               openCount: 0,
               effectiveBrain: "scripted",
               budget: null,
+              ownBudget: null,
+              ownKey: null,
               demo: false,
             },
             close: () => {},

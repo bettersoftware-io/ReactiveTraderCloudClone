@@ -28,11 +28,13 @@ import {
 } from "@rtc/domain";
 
 import { BrowserConnectionEventsAdapter } from "#/adapters/BrowserConnectionEventsAdapter";
+import { BrowserOwnKeyStore } from "#/adapters/BrowserOwnKeyStore";
 import { LocalStorageDataSourceStore } from "#/adapters/LocalStorageDataSourceStore";
 import { LocalStorageDockLayoutStore } from "#/adapters/LocalStorageDockLayoutStore";
 import { LocalStorageLayoutPresetStore } from "#/adapters/LocalStorageLayoutPresetStore";
 import { LocalStoragePreferencesAdapter } from "#/adapters/LocalStoragePreferencesAdapter";
 import { LocalStorageSessionStore } from "#/adapters/LocalStorageSessionStore";
+import { redactWsOut } from "#/devtools/redactWsOut";
 import type { WebBootEnv } from "#/env";
 import { MediaQueryColorSchemeAdapter } from "#/theme/MediaQueryColorSchemeAdapter";
 
@@ -185,14 +187,14 @@ export function buildBrowserPorts(options: BuildBrowserPortsOptions): AppPorts {
       // the user is authenticated. Connecting here (at composition time) would
       // send a tokenless upgrade the server rejects, then retry it on a timer
       // behind the login screen.
-      new WsAdapter(
-        url,
-        () => {
-          return sessionStore.read()?.token;
-        },
-        { autoConnect: false },
-      ),
+      // The session store itself, not just its token: whose session the
+      // shared store holds decides whether another tab's sign-out or account
+      // switch leaves this tab's socket, or its key, under the wrong account.
+      new WsAdapter(url, sessionStore, { autoConnect: false }),
       devtoolsHub,
+      // A `jarvis.key` frame carries a person's model key: the hub gets it
+      // redacted, the socket the real frame.
+      { redactOut: redactWsOut },
     );
     const gateway = new WsConnectionEventsAdapter(ws);
     // Pairs THIS composition's own reconnect/incident intents with the
@@ -229,6 +231,8 @@ export function buildBrowserPorts(options: BuildBrowserPortsOptions): AppPorts {
       bootSplash,
       transport: ws,
       narratorConfig,
+      // Live only: the simulator has no server to give a key to.
+      ownKeyStore: new BrowserOwnKeyStore(),
     };
   }
 

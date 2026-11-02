@@ -21,6 +21,7 @@ export {
 } from "./instrument/machines";
 export { instrumentPresenters } from "./instrument/presenters";
 export {
+  type InstrumentWsAdapterOptions,
   instrumentWsAdapter,
   type WsAdapterLike,
 } from "./instrument/wsAdapter";

@@ -16,6 +16,16 @@ import {
 import { ScriptedJarvisAdapter } from "./ScriptedJarvisAdapter";
 import { WsJarvisAdapter } from "./WsJarvisAdapter";
 
+describe("createWsRealPorts session store", () => {
+  it("hands auth the session store it was given: the transport reads whose session it is from the same store", () => {
+    const deps = createAdminDeps();
+
+    expect(createWsRealPorts(new FakeWsAdapter(), deps).sessionStore).toBe(
+      deps.sessionStore,
+    );
+  });
+});
+
 describe("createSimulatorPorts dependency injection", () => {
   it("uses the injected preferences port (no internal localStorage)", () => {
     const fakePreferences = {} as PreferencesPort;

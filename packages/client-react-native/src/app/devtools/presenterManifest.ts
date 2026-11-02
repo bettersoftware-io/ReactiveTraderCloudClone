@@ -6,7 +6,9 @@ import type { PresenterManifest } from "@rtc/devtools-core";
  * how `createViewModel` reads each presenter: `props` are the observable-valued
  * properties, `methods` are parameterized stream methods, `machine: true` marks
  * shared Machine seams. Command-only presenters (execution, rfqQuote,
- * bootPreference) expose no observed state and are intentionally absent. */
+ * bootPreference) expose no observed state and are intentionally absent.
+ * `jarvisOwnKey` is absent too, and must stay so: `save` carries the raw key,
+ * and an instrumented intent logs its arguments to the hub. */
 export const NATIVE_PRESENTER_MANIFEST: PresenterManifest = {
   priceStream: { methods: ["price$"] },
   priceHistory: { methods: ["history$"] },

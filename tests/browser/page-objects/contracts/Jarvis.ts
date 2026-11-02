@@ -49,6 +49,12 @@ export interface JarvisPO {
    * typed-reveal stream finishing) instead of a text fragment appearing.
    */
   waitForNonNarratorReplyDone(timeoutMs: number): Promise<void>;
+  /** Waits until the last non-narrator reply carries the brain tag `name`
+   *  (the full brain name, e.g. "Claude Haiku 4.5"). */
+  waitForNonNarratorReplyBrainTag(
+    name: string,
+    timeoutMs: number,
+  ): Promise<void>;
   /** Snapshot: is the trade confirmation card currently visible. */
   isConfirmCardVisible(): Promise<boolean>;
   /** Click APPROVE on the pending confirmation card. */

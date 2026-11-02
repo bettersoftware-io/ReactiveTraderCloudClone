@@ -50,6 +50,7 @@ import {
   createLoginWaitPreferencesPresenter,
 } from "#/presenters/groupedPreferences";
 import { createJarvisFamily } from "#/presenters/jarvisFamily";
+import { createJarvisOwnKeyPresenter } from "#/presenters/jarvisOwnKey";
 import {
   createEventLogPresenter,
   createMetricWindowPresenter,
@@ -150,6 +151,15 @@ function nativePresenters(
   // not on `connectionEvents`, whose one subscriber is the status fold):
   // sign out; the transport gate then disconnects.
   relaySessionEndToAuth(ports.transport, auth, lifetime);
+  // Built here, so its fold follows `auth` from composition and ahead of the
+  // transport gate: a key change lands before the socket opens or closes.
+  const jarvisOwnKey = createJarvisOwnKeyPresenter(
+    ports.jarvis,
+    ports.ownKeyStore,
+    auth.state$,
+    lifetime,
+  );
+
   const priceStream = createPriceStreamPresenter(
     ports.pricing,
     powerSaver.isCalm$,
@@ -189,6 +199,7 @@ function nativePresenters(
     bootPreference: createBootPreferencePresenter(preferences),
     loginWaitPreferences: createLoginWaitPreferencesPresenter(preferences),
     jarvisPreferences: createJarvisPreferencesPresenter(preferences),
+    jarvisOwnKey,
     animatedBackground: createAnimatedBackgroundPresenter(preferences),
     ambientStyle: createAmbientStylePresenter(preferences),
     chartSubstrate: createChartSubstratePresenter(preferences),

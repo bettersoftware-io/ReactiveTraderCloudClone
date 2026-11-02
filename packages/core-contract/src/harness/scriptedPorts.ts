@@ -19,7 +19,9 @@ import type {
   JarvisPort,
   JarvisUsagePort,
   LayoutPresetStore,
+  OwnKeyStore,
   SessionStore,
+  StoredOwnKey,
   StoredSession,
   Stream,
   WorkspaceTab,
@@ -56,6 +58,7 @@ import {
   type InstrumentPort,
   type JarvisEvent,
   type JarvisHistoryEntry,
+  type JarvisOwnKeySetting,
   type JarvisUsage,
   type LogEvent,
   type LoginWaitVariant,
@@ -131,6 +134,7 @@ export type PortMethodName =
   | "jarvis.confirm"
   | "jarvis.availability$"
   | "jarvis.setHistorySource"
+  | "jarvis.setOwnKey"
   | "jarvisUsage.usage$"
   | "accountAdmin.listAccounts"
   | "accountAdmin.actOn"
@@ -173,6 +177,12 @@ export interface HarnessSeed {
    * `pushJarvisAvailability` — the WS adapter before the server's first
    * availability reply. */
   readonly jarvisAvailabilityPending?: boolean;
+  /** Supply what a live branch has for a person's own key: a recording
+   * `jarvis.setOwnKey` (see `driver.ownKeySends()`) and a `ports.ownKeyStore`
+   * holding `stored` (see `driver.storedOwnKey()`); `noStore` leaves the store
+   * out, as a platform without one does. Absent: neither, as in the simulator
+   * branch. */
+  readonly ownKey?: HarnessOwnKeySeed;
   /** `ports.narratorConfig` — the detector thresholds. Absent: the base's. */
   readonly narratorConfig?: Partial<AnomalyDetectorConfig>;
   /** Supply a recording `ports.transport` (see `driver.transportCalls()`;
@@ -187,8 +197,17 @@ export interface HarnessSeed {
   readonly countPortStreams?: boolean;
 }
 
+/** `HarnessSeed.ownKey`. */
+interface HarnessOwnKeySeed {
+  readonly stored?: StoredOwnKey;
+  readonly noStore?: boolean;
+}
+
 /** One call the core made on the scripted `ports.transport`. */
 type TransportCall = "connect" | "disconnect";
+
+/** One call that reaches the socket's owner, in the one order they happened. */
+type WireCall = TransportCall | "setOwnKey";
 
 /** One `accountAdmin.actOn(accountId, action)` the core has subscribed. */
 interface AccountActionCall {
@@ -332,9 +351,22 @@ export interface ScriptedDriver {
    * in order (`HarnessSeed.transport`; always `[]` without it). Its
    * `sessionEnded()` calls are counted by `portCalls("transport.sessionEnded")`. */
   transportCalls(): readonly TransportCall[];
+  /** Every `jarvis.setOwnKey` and transport call, in the one order they were
+   * made: whether a key change lands before the socket opens or closes. */
+  wireCalls(): readonly WireCall[];
+  /** Every `jarvis.setOwnKey` the core has made, in order (`HarnessSeed.ownKey`;
+   * always `[]` without it). `null` is a clear. */
+  ownKeySends(): readonly (JarvisOwnKeySetting | null)[];
+  /** What `ports.ownKeyStore` holds now, or `null` when empty or absent. */
+  storedOwnKey(): StoredOwnKey | null;
   /** The server ended the session: one emission on the scripted transport's
    * `sessionEnded()` (a `4401` close). A no-op without `HarnessSeed.transport`. */
   endSession(): void;
+  /** The next `connect()` on the scripted transport ends the session from
+   * inside the call, synchronously: what `WsAdapter` does when it finds its
+   * live socket belongs to an account the shared session store no longer
+   * holds (a hot swap after another tab switched account). */
+  endSessionOnNextConnect(): void;
   /** How many subscriptions the core has ever opened on
    * `connectionEvents.events()`'s stream. The port's side effects (a client's
    * idle routing, the browser's listeners) run once per subscription, so a
@@ -581,6 +613,8 @@ const SIM_JARVIS_AVAILABILITY: JarvisAvailability = {
   defaultBrain: "scripted",
   gate: null,
   budget: null,
+  ownBudget: null,
+  ownKey: null,
   demo: true,
 };
 
@@ -653,6 +687,8 @@ export function scriptPorts(
   const asks = createPendingQueue<string, JarvisEvent>();
   const askLog: JarvisAskRecord[] = [];
   const confirmations: JarvisConfirmRecord[] = [];
+  const ownKeySends: (JarvisOwnKeySetting | null)[] = [];
+  const wireLog: WireCall[] = [];
   const availability$ = new ReplaySubject<JarvisAvailability>(1);
 
   if (seed.jarvisAvailabilityPending !== true) {
@@ -1083,10 +1119,34 @@ export function scriptPorts(
       setHistorySource: (source: () => readonly JarvisHistoryEntry[]) => {
         historySource = source;
       },
+      ...(seed.ownKey === undefined
+        ? {}
+        : {
+            setOwnKey: (setting: JarvisOwnKeySetting | null): void => {
+              ownKeySends.push(setting);
+              wireLog.push("setOwnKey");
+            },
+          }),
     },
     calls,
     "jarvis.",
   );
+
+  let storedOwnKey: StoredOwnKey | null = seed.ownKey?.stored ?? null;
+  const ownKeyStore: OwnKeyStore | undefined =
+    seed.ownKey === undefined || seed.ownKey.noStore === true
+      ? base.ownKeyStore
+      : {
+          read: () => {
+            return storedOwnKey;
+          },
+          write: (next: StoredOwnKey) => {
+            storedOwnKey = next;
+          },
+          clear: () => {
+            storedOwnKey = null;
+          },
+        };
 
   const jarvisUsage = countCalls<JarvisUsagePort>(
     {
@@ -1114,14 +1174,22 @@ export function scriptPorts(
   };
   const transportLog: TransportCall[] = [];
   const sessionEnded$ = new Subject<void>();
+  let endSessionOnConnect = false;
   const transport: AuthGatedTransport | undefined =
     seed.transport === true
       ? {
           connect: () => {
             transportLog.push("connect");
+            wireLog.push("connect");
+
+            if (endSessionOnConnect) {
+              endSessionOnConnect = false;
+              sessionEnded$.next();
+            }
           },
           disconnect: () => {
             transportLog.push("disconnect");
+            wireLog.push("disconnect");
           },
           sessionEnded: (): Observable<void> => {
             recordCall("transport.sessionEnded");
@@ -1146,6 +1214,7 @@ export function scriptPorts(
     bootSplash,
     jarvis,
     jarvisUsage,
+    ownKeyStore,
     accountAdmin,
     narratorConfig: seed.narratorConfig ?? base.narratorConfig,
     transport,
@@ -1196,8 +1265,20 @@ export function scriptPorts(
       transportCalls: () => {
         return [...transportLog];
       },
+      wireCalls: () => {
+        return [...wireLog];
+      },
+      ownKeySends: () => {
+        return [...ownKeySends];
+      },
+      storedOwnKey: () => {
+        return storedOwnKey;
+      },
       endSession: () => {
         sessionEnded$.next();
+      },
+      endSessionOnNextConnect: () => {
+        endSessionOnConnect = true;
       },
       connectionEventSubscriptions: () => {
         return connectionEventSubscriptions;

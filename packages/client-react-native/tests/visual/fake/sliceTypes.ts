@@ -153,6 +153,7 @@ export type InertSlice = Pick<
   | "useJarvis"
   | "useJarvisDemo"
   | "useJarvisDriver"
+  | "useJarvisOwnKey"
   | "useJarvisPanelData"
   | "useJarvisPanels"
   | "useJarvisPreferences"

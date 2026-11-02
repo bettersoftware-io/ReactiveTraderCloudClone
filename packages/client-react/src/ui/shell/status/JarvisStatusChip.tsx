@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 
+import { gateAppliesTo } from "@rtc/core-logic";
 import { jarvisBrainLabel } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -18,7 +19,9 @@ import styles from "./StatusBar.module.css";
  * gate (some brains removed), `· budget exhausted` for a hard gate (every
  * live brain removed, forced to scripted) — so the same fact the
  * Preferences picker's hint/tooltip explains is visible without opening the
- * modal. A static color tint only (amber soft / red hard, reusing the
+ * modal. The gate counts only when it concerns the saved brain (a spent own
+ * cap says nothing about a house brain, nor a spent house budget about an own
+ * one; `gateAppliesTo`). A static color tint only (amber soft / red hard, reusing the
  * status bar's existing warn/error tokens) — no transition/animation, per
  * `docs/performance.md`.
  */
@@ -30,7 +33,12 @@ export function JarvisStatusChip(): ReactElement | null {
     return null;
   }
 
-  const gate = state.gate;
+  // The server's gate merges house and own exhaustion: it is this chip's
+  // business only when the budget behind the SAVED brain is the spent one.
+  const gate =
+    state.gate !== null && gateAppliesTo(state, state.preferredBrain)
+      ? state.gate
+      : null;
 
   return (
     <>

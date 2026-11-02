@@ -286,6 +286,23 @@ export const TESTIDS = {
     coreImplSegment: (value: "rxjs" | "async" | "effect") => {
       return `pref-segment-coreImpl-${value}`;
     },
+    /** The account panel's Sign Out row (AccountMenu.tsx). */
+    signOut: "account-logout",
+    /** The "Your key" row of Jarvis brains the person's own key runs
+     * (PreferencesContent.tsx; PrefSegment composes `${testid}-${brain}`,
+     * testid="pref-segment-jarvisOwnBrain"). Offered once the server accepts
+     * a key. */
+    ownBrainSegment: (brain: string) => {
+      return `pref-segment-jarvisOwnBrain-${brain}`;
+    },
+    /** The key form's API key field (OwnKeySection.tsx). */
+    ownKeyInput: "jarvis-key-input",
+    /** The key form's SAVE button. */
+    ownKeySave: "jarvis-key-save",
+    /** The saved key's masked form (never the key itself). */
+    ownKeyMasked: "jarvis-key-masked",
+    /** What the server said about the held key, e.g. "Accepted". */
+    ownKeyStatus: "jarvis-key-status",
   },
   /**
    * The app-head "View" dropdown (Phase 3 close/reopen) and its LAYOUTS
@@ -379,6 +396,9 @@ export const TESTIDS = {
     overlay: "jarvis-overlay",
     close: "jarvis-close",
     entry: "jarvis-entry",
+    /** The tag on a reply naming the brain that ran it (JarvisOverlay.tsx),
+     * inside its `entry`. */
+    entryBrain: "jarvis-entry-brain",
     input: "jarvis-input",
     send: "jarvis-send",
     confirmCard: "jarvis-confirm-card",

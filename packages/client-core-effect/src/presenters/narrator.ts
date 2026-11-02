@@ -1,8 +1,9 @@
 import { Cause, Clock, Effect, Stream } from "effect";
 
-import type { Stream as CoreStream } from "@rtc/core-api";
+import type { Stream as CoreStream, JarvisState } from "@rtc/core-api";
 import {
   admitAnomaly,
+  canNarrate,
   formatNarrationPrompt,
   NARRATOR_INITIAL_GATE,
   type NarratorGateState,
@@ -33,6 +34,8 @@ export interface NarratorDeps {
   readonly priceFor: (pair: CurrencyPair) => CoreStream<PriceTick>;
   readonly narrate: (prompt: string) => void;
   readonly preference$: CoreStream<JarvisNarratorPreference>;
+  /** Jarvis's state now, for `canNarrate`. */
+  readonly jarvisStateNow: () => Pick<JarvisState, "effectiveBrain" | "ownKey">;
   readonly config?: Partial<AnomalyDetectorConfig>;
 }
 
@@ -41,9 +44,9 @@ export interface NarratorDeps {
  * session-wide `createAnomalyDetector` step reads the ticks of every pair
  * in the latest roster (`switchedPortEvents`: one queue for all of them,
  * and a roster switch releases the previous pairs); a surviving anomaly is
- * gated by the latest preference, then by the shared cooldown/cap gate
- * against the Effect `Clock`, and an admitted one becomes a `narrate()`
- * turn. A failing pair is dropped from the merge and silences only itself
+ * gated by the latest preference and `canNarrate`, then by the shared
+ * cooldown/cap gate against the Effect `Clock`, and an admitted one becomes
+ * a `narrate()` turn. A failing pair is dropped from the merge and silences only itself
  * until the next roster (as on the async core — kinder than the RxJS
  * narrator's single catchError; wave 2 PR B ruling).
  */
@@ -56,7 +59,7 @@ export function createNarrator(parent: EffectHost, deps: NarratorDeps): void {
 
   function foldTick(tick: PriceTick, now: number): void {
     for (const anomaly of detect(tick)) {
-      if (preference !== "on") {
+      if (preference !== "on" || !canNarrate(deps.jarvisStateNow())) {
         continue;
       }
 

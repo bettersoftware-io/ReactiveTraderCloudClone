@@ -8,7 +8,12 @@
  * `ThemeMode` (light/dark recolouring).
  */
 
-import { JARVIS_OWN_MODELS, ownModelOf } from "../jarvis/jarvisOwnModels.js";
+import {
+  isJarvisOwnBrain,
+  JARVIS_OWN_MODELS,
+  type JarvisProvider,
+  ownModelOf,
+} from "../jarvis/jarvisOwnModels.js";
 
 export type ThemeMode = "dark" | "light";
 /**
@@ -317,9 +322,6 @@ export type JarvisHouseBrain =
   | "claude-sonnet-5"
   | "claude-opus-5";
 
-/** Where an own-key brain's key is from. */
-export type JarvisProvider = "anthropic" | "openrouter" | "openai";
-
 /** A brain run on the person's own key: `own:<provider>:<model id>`. Still one
  * string, so the wire, the stored preference and the picker keep their shape. */
 export type JarvisOwnBrain = `own:${JarvisProvider}:${string}`;
@@ -348,6 +350,18 @@ export function isJarvisBrain(value: unknown): value is JarvisBrain {
       return model.brain === value;
     })
   );
+}
+
+/** Reads a stored brain string. A listed brain is kept; an own-key brain
+ * whose model left the curated list reads as `"scripted"` (a person who chose
+ * their own key must never land on a house brain that spends the house's
+ * money); anything else is not a brain and reads as the default. */
+export function parseStoredJarvisBrain(value: unknown): JarvisBrain {
+  if (isJarvisBrain(value)) {
+    return value;
+  }
+
+  return isJarvisOwnBrain(value) ? "scripted" : DEFAULT_JARVIS_BRAIN;
 }
 
 /** The thinking-effort budget passed to a live Claude brain (Anthropic's
@@ -403,6 +417,27 @@ export function jarvisBrainLabel(brain: JarvisBrain): string {
     JARVIS_BRAIN_LABELS[brain as JarvisHouseBrain] ??
     brain.split(":").slice(2).join(":")
   );
+}
+
+/**
+ * Model ids whose Anthropic request may carry `output_config.effort` — a
+ * capability SET rather than a per-model-name conditional at each call site,
+ * so a future model that also supports adaptive effort is added here once.
+ * `"claude-haiku-4-5"` is deliberately excluded: it predates the `effort`
+ * request parameter, so sending one for that model would be an unvalidated
+ * request-shape change, not a harmlessly-ignored no-op. Holds model ids, so an
+ * own brain is checked by the model it runs on (`jarvisBrainTakesEffort`).
+ */
+const JARVIS_EFFORT_CAPABLE_BRAINS: ReadonlySet<string> = new Set([
+  "claude-sonnet-5",
+  "claude-opus-5",
+]);
+
+/** Whether a turn on `brain` may carry an effort: the server sends one only
+ * when this holds, and the Preferences Effort row is enabled only then. A
+ * house brain is checked by its id, an own brain by the model it runs on. */
+export function jarvisBrainTakesEffort(brain: JarvisBrain): boolean {
+  return JARVIS_EFFORT_CAPABLE_BRAINS.has(ownModelOf(brain)?.modelId ?? brain);
 }
 
 /** Whether the app-driving proactive narrator (`NarratorMachine`) is allowed

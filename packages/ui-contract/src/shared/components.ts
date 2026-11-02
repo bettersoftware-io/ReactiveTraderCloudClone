@@ -201,6 +201,7 @@ import {
   type AnimationProbeProps,
 } from "./pages/shell/motion/AnimationProbePage";
 import { PowerSaverRootPage } from "./pages/shell/power/PowerSaverRootPage";
+import { OwnKeySectionPage } from "./pages/shell/prefs/OwnKeySectionPage";
 import {
   PreferencesModalPage,
   type PreferencesModalProps,
@@ -590,6 +591,13 @@ export const PowerSaverRoot = component<
   PowerSaverRootPage
 >((ctx) => {
   return new PowerSaverRootPage(ctx);
+});
+
+export const OwnKeySection = component<
+  Record<string, never>,
+  OwnKeySectionPage
+>((ctx) => {
+  return new OwnKeySectionPage(ctx);
 });
 
 export const PreferencesModal = component<

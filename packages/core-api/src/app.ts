@@ -31,6 +31,7 @@ import type {
   JarvisPort,
   JarvisUsagePort,
   LayoutPresetStore,
+  OwnKeyStore,
   SessionStore,
 } from "#/adapters";
 import type { LayoutState, WorkspaceTab } from "#/layout";
@@ -74,6 +75,7 @@ import type {
   EventLogPresenter,
   ForceBootAnimationPresenter,
   InstrumentsPresenter,
+  JarvisOwnKeyPresenter,
   JarvisPanelsPresenter,
   JarvisPreferencesPresenter,
   JarvisUsagePresenter,
@@ -140,6 +142,10 @@ export interface AppPorts {
   sessions: SessionsPort;
   auth: AuthPort;
   sessionStore: SessionStore;
+  /** Per-device persistence for a person's own model key. Optional: without
+   * it the key is held in memory for the session. Browser implementation:
+   * `BrowserOwnKeyStore`. */
+  ownKeyStore?: OwnKeyStore;
   /** Perturbable controls passed to IncidentMachine — latency, errorRate, topology, eventLog sims. */
   metricControls: readonly MetricControl[];
   /** Auth-gated transport handle. Optional — the simulator branch has no
@@ -309,6 +315,10 @@ export interface Presenters {
   /** J.A.R.V.I.S. usage/cost telemetry (Ops surface) — null until the
    * first snapshot. */
   jarvisUsage: JarvisUsagePresenter;
+  /** The person's own model key: the masked form of what is saved, and the
+   * intents that save, re-cap or remove it. Live only where the transport
+   * takes a key (`JarvisPort.setOwnKey`); elsewhere an inert no-op. */
+  jarvisOwnKey: JarvisOwnKeyPresenter;
   /** J.A.R.V.I.S. generative-UI desk panels: spawned/edited/dismissed via
    * `jarvis`'s own "panel" turn events, interpreted into live `PanelData`
    * over the domain ports. */

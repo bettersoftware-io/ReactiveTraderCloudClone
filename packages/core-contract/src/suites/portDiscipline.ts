@@ -533,6 +533,67 @@ export function describePortDisciplineContract(
       }
     });
 
+    it("jarvis.setOwnKey: none at composition signed out, none in sim mode", async () => {
+      const live = makeHarness({ ownKey: {} });
+      const sim = makeHarness();
+
+      try {
+        await settle();
+        expect(live.driver.portCalls("jarvis.setOwnKey")).toBe(0);
+        expect(sim.driver.portCalls("jarvis.setOwnKey")).toBe(0);
+      } finally {
+        await live.teardown();
+        await sim.teardown();
+      }
+    });
+
+    it("jarvis.setOwnKey: one clear at composition for a resumed owner with nothing to restore, because the transport outlives a composition", async () => {
+      const h = makeHarness({
+        session: {
+          token: "stored",
+          user: ROSTER[0].user,
+          username: ROSTER[0].username,
+          exp: Date.now() + 60_000,
+        },
+        ownKey: {},
+      });
+
+      try {
+        await settle();
+        expect(h.driver.portCalls("jarvis.setOwnKey")).toBe(1);
+        expect(h.driver.ownKeySends()).toEqual([null]);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("jarvis.setOwnKey: exactly once for a key restored at composition", async () => {
+      const h = makeHarness({
+        session: {
+          token: "stored",
+          user: ROSTER[0].user,
+          username: ROSTER[0].username,
+          exp: Date.now() + 60_000,
+        },
+        ownKey: {
+          stored: {
+            owner: ROSTER[0].user.email,
+            provider: "anthropic",
+            key: "sk-ant-api03-abcdefghij1234",
+            capUsd: null,
+            remember: true,
+          },
+        },
+      });
+
+      try {
+        await settle();
+        expect(h.driver.portCalls("jarvis.setOwnKey")).toBe(1);
+      } finally {
+        await h.teardown();
+      }
+    });
+
     it("jarvisUsage.usage$: two subscribers and two warm periods open the port exactly once", async () => {
       const h = makeHarness();
 

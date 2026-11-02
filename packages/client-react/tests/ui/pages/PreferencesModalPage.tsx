@@ -105,6 +105,15 @@ export function preferencesModalPage(): PreferencesModalPage {
             indicators: { readout: true, replyTags: true, brainPill: false },
           };
         },
+        // The "Your key" section reads it; these tests never save a key.
+        useJarvisOwnKey: () => {
+          return {
+            saved: null,
+            save: vi.fn(),
+            setCap: vi.fn(),
+            remove: vi.fn(),
+          };
+        },
         // Not exercised here (no test in this file clicks RESET) — but the
         // modal destructures it, so a fake that omits it fails to render at
         // all.

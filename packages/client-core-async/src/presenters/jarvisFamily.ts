@@ -17,7 +17,7 @@ import type {
   WorkspaceNavState,
   WorkspaceTab,
 } from "@rtc/core-api";
-import { LAYOUT_PANEL_IDS } from "@rtc/core-logic";
+import { JARVIS_INITIAL_STATE, LAYOUT_PANEL_IDS } from "@rtc/core-logic";
 import type {
   CurrencyPair,
   EquityInstrument,
@@ -160,6 +160,9 @@ export function createJarvisFamily(
         jarvis.intents.narrate(prompt);
       },
       preference$: deps.jarvisPreferences.narrator$,
+      jarvisStateNow: () => {
+        return peek(jarvis.state$, JARVIS_INITIAL_STATE);
+      },
       config: ports.narratorConfig,
       now: () => {
         return Date.now();

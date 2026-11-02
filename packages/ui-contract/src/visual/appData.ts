@@ -19,6 +19,7 @@ import type {
   PanelStatus,
   RfqState,
   RfqSubmissionState,
+  SavedOwnKey,
   ThroughputView,
   TicketSubmissionState,
   TileExecutionState,
@@ -234,6 +235,10 @@ export interface AppData {
    * defaults to DEFAULT_JARVIS_INDICATORS (readout and reply tags on, brain
    * pill off). */
   jarvisIndicators?: JarvisIndicators;
+  /** The saved own key a presenter shows (useJarvisOwnKey().saved) — the
+   * masked form only; defaults to none (the "Your key" section's empty form).
+   * The status line reads `jarvis.ownKey`. Intents are no-ops. */
+  jarvisOwnKeySaved?: SavedOwnKey | null;
   /** Generative-UI desk panels J.A.R.V.I.S. has spawned (useJarvisPanels;
    * `JarvisPanelLayer`, Task 10 of the generative-UI round) — defaults to
    * none (the layer renders null). Each entry mirrors `JarvisPanelVm`'s

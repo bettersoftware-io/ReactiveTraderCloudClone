@@ -20,6 +20,13 @@ export interface JarvisEntryView {
   readonly tag: string | undefined;
 }
 
+/** One brain-menu item and the group label it sits under (`null` when the
+ * menu is ungrouped). */
+export interface BrainOptionGroup {
+  readonly brain: string;
+  readonly group: string | null;
+}
+
 /** One brain-menu item as rendered. */
 export interface BrainOptionView {
   readonly brain: string;
@@ -216,6 +223,41 @@ export class JarvisOverlayPage extends MountedComponent<Record<string, never>> {
   private brainOptions(): HTMLButtonElement[] {
     const menu = within(this.requireOverlay()).getByTestId("jarvis-brain-menu");
     return within(menu).getAllByRole("menuitemradio") as HTMLButtonElement[];
+  }
+
+  /** The group labels of the open menu in render order, as `[group, text]`
+   * pairs (`house` / `own`); empty while the menu is ungrouped. */
+  brainGroupLabels(): [string, string][] {
+    const menu = within(this.requireOverlay()).getByTestId("jarvis-brain-menu");
+    return [
+      ...menu.querySelectorAll('[data-testid^="jarvis-brain-group-"]'),
+    ].map((el): [string, string] => {
+      return [
+        (el.getAttribute("data-testid") ?? "").replace(
+          "jarvis-brain-group-",
+          "",
+        ),
+        el.textContent ?? "",
+      ];
+    });
+  }
+
+  /** The menu's items in render order, each tagged with the group label it
+   * sits under (`null` when the menu is ungrouped). */
+  brainOptionGroups(): BrainOptionGroup[] {
+    return this.brainOptions().map((el) => {
+      const group = el.closest("fieldset");
+      const label = group?.querySelector(
+        '[data-testid^="jarvis-brain-group-"]',
+      );
+      return {
+        brain: (el.getAttribute("data-testid") ?? "").replace(
+          "jarvis-brain-option-",
+          "",
+        ),
+        group: label?.textContent ?? null,
+      };
+    });
   }
 
   /** Each menu item as `{ brain, checked, disabled }`, in render order. The

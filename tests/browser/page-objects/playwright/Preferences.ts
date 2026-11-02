@@ -8,6 +8,10 @@ import type {
 } from "../contracts/Preferences.ts";
 import { TESTIDS } from "../contracts/testids.ts";
 
+/** The one storage key the app keeps a person's own model key under
+ * (packages/web-boot's BrowserOwnKeyStore). */
+const OWN_KEY_STORAGE_NAME = "rt-jarvis-own-key";
+
 export class PlaywrightPreferences implements PreferencesPO {
   private readonly page: Page;
 
@@ -70,5 +74,50 @@ export class PlaywrightPreferences implements PreferencesPO {
     await expect(this.page.getByTestId(TESTIDS.prefs.modal)).toBeHidden({
       timeout: timeoutMs,
     });
+  }
+
+  async saveOwnKey(key: string): Promise<void> {
+    await this.page.getByTestId(TESTIDS.prefs.ownKeyInput).fill(key);
+    await this.page.getByTestId(TESTIDS.prefs.ownKeySave).click();
+  }
+
+  async waitOwnKeyStatus(text: string, timeoutMs: number): Promise<void> {
+    await expect(this.page.getByTestId(TESTIDS.prefs.ownKeyStatus)).toHaveText(
+      text,
+      { timeout: timeoutMs },
+    );
+  }
+
+  async ownKeyMasked(): Promise<string> {
+    return await this.page.getByTestId(TESTIDS.prefs.ownKeyMasked).innerText();
+  }
+
+  async chooseOwnBrain(brain: string, timeoutMs: number): Promise<void> {
+    const option = this.page.getByTestId(TESTIDS.prefs.ownBrainSegment(brain));
+    await expect(option).toBeEnabled({ timeout: timeoutMs });
+    await option.click();
+    await expect(option).toHaveAttribute("aria-pressed", "true", {
+      timeout: timeoutMs,
+    });
+  }
+
+  async signOut(): Promise<void> {
+    await this.page.getByTestId(TESTIDS.prefs.accountToggle).click();
+    await this.page.getByTestId(TESTIDS.prefs.signOut).click();
+  }
+
+  async waitSignedOut(timeoutMs: number): Promise<void> {
+    await expect(this.page.getByTestId(TESTIDS.auth.loginScreen)).toBeVisible({
+      timeout: timeoutMs,
+    });
+  }
+
+  async ownKeyInBrowserStorage(): Promise<boolean> {
+    return await this.page.evaluate((name) => {
+      return (
+        window.sessionStorage.getItem(name) !== null ||
+        window.localStorage.getItem(name) !== null
+      );
+    }, OWN_KEY_STORAGE_NAME);
   }
 }

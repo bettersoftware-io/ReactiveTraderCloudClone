@@ -325,6 +325,8 @@ describe("PreferencesModal", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     });
@@ -344,6 +346,8 @@ describe("PreferencesModal", () => {
         defaultBrain: "claude-haiku-4-5",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     });
@@ -362,6 +366,8 @@ describe("PreferencesModal", () => {
         defaultBrain: "claude-haiku-4-5",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       jarvisBrain: "scripted",
@@ -391,6 +397,8 @@ describe("PreferencesModal", () => {
           gated: ["claude-haiku-4-5"],
         },
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     });
@@ -427,6 +435,8 @@ describe("PreferencesModal", () => {
           gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
         },
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
     });
@@ -455,6 +465,8 @@ describe("PreferencesModal", () => {
           gated: ["claude-sonnet-5", "claude-opus-5"],
         },
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       jarvisBrain: "claude-haiku-4-5",
@@ -484,6 +496,8 @@ describe("PreferencesModal", () => {
           gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
         },
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       jarvisBrain: "claude-haiku-4-5",
@@ -508,6 +522,8 @@ describe("PreferencesModal", () => {
         defaultBrain: "scripted",
         gate: null,
         budget: null,
+        ownBudget: null,
+        ownKey: null,
         demo: false,
       },
       jarvisBrain: "claude-haiku-4-5",
@@ -528,10 +544,18 @@ describe("PreferencesModal", () => {
     expect(page.jarvisEffortDisabled()).toBe(true);
   });
 
-  it("leaves the Effort row enabled and writes through the seam when the stored brain is a real model", async () => {
+  it("disables the Effort row for Haiku, which predates the effort parameter", () => {
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },
       jarvisBrain: "claude-haiku-4-5",
+    });
+    expect(page.jarvisEffortDisabled()).toBe(true);
+  });
+
+  it("leaves the Effort row enabled and writes through the seam when the stored brain takes effort", async () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      jarvisBrain: "claude-sonnet-5",
     });
     expect(page.jarvisEffortDisabled()).toBe(false);
     expect(page.segmentActive("jarvisEffort", "medium")).toBe(true);

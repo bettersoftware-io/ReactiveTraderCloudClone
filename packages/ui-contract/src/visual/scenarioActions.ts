@@ -552,6 +552,21 @@ const scenarioActions: Record<string, ScenarioAction> = {
     waitForText: "Claude Opus 5",
   },
 
+  // B3c own key: the section alone is a component-level shot (waitForText
+  // proves it rendered); the overlay twins capture full page like the other
+  // indicator scenarios. The menu waits on its "House key" group label, which
+  // only exists once the pill menu has opened over an offered own brain ("Your
+  // key" would also match the readout, which says "your key").
+  "prefs/own-key-empty": { waitForText: "Remember on this device" },
+  "prefs/own-key-accepted": { waitForText: "Accepted" },
+  "prefs/own-key-refused": { waitForText: "Anthropic refused this key" },
+  "jarvis/indicators-own-key-readout": { fullPage: true },
+  "jarvis/indicators-pill-menu-own": {
+    fullPage: true,
+    click: "jarvis-brain-pill",
+    waitForText: "House key",
+  },
+
   // Task 10 (generative-UI round 1): JarvisPanelLayer is `position: fixed`
   // (top-right cascade, same as the overlay above), so it needs the same
   // full-page treatment. Each waitForText targets a string that only exists

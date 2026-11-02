@@ -180,6 +180,27 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
     );
   }
 
+  /** True when the given segment option is disabled (native `disabled`). */
+  segmentDisabled(group: string, value: string): boolean {
+    return within(this.root)
+      .getByTestId(`pref-segment-${group}-${value}`)
+      .hasAttribute("disabled");
+  }
+
+  /** The given segment option's native `title`, or `null`. */
+  segmentTitle(group: string, value: string): string | null {
+    return within(this.root)
+      .getByTestId(`pref-segment-${group}-${value}`)
+      .getAttribute("title");
+  }
+
+  /** True when the given segment option is rendered. */
+  hasSegmentOption(group: string, value: string): boolean {
+    return (
+      within(this.root).queryByTestId(`pref-segment-${group}-${value}`) !== null
+    );
+  }
+
   /** Click a segment option. */
   async selectSegment(group: string, value: string): Promise<void> {
     await this.user.click(

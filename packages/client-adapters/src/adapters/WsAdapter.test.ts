@@ -147,6 +147,60 @@ describe("WsAdapter.connectionEvents()", () => {
     adapter.dispose();
   });
 
+  it("sendIfOpen on a socket that is not open sends nothing, queues nothing, and says so", () => {
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
+
+    expect(adapter.sendIfOpen("jarvis.key", { action: "clear" })).toBe(false);
+
+    // Had it been queued, opening the socket would flush it.
+    lastMock.readyState = MockWebSocket.OPEN;
+    lastMock.onopen?.(new Event("open"));
+
+    expect(lastMock.send).not.toHaveBeenCalled();
+    adapter.dispose();
+  });
+
+  it("sendIfOpen on an open socket sends the frame at once and returns true", () => {
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
+    lastMock.readyState = MockWebSocket.OPEN;
+    lastMock.onopen?.(new Event("open"));
+
+    expect(adapter.sendIfOpen("jarvis.key", { action: "clear" })).toBe(true);
+
+    expect(lastMock.send).toHaveBeenCalledWith(
+      JSON.stringify({ type: "jarvis.key", payload: { action: "clear" } }),
+    );
+    adapter.dispose();
+  });
+
+  it("sendIfOpen with no socket at all (autoConnect off) returns false, even where WebSocket.OPEN is undefined", () => {
+    vi.stubGlobal("WebSocket", class {});
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return undefined;
+      },
+      { autoConnect: false },
+    );
+
+    expect(adapter.sendIfOpen("jarvis.key", { action: "clear" })).toBe(false);
+    adapter.dispose();
+  });
+
+  it("sendIfOpen after dispose sends nothing", () => {
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
+    lastMock.readyState = MockWebSocket.OPEN;
+    adapter.dispose();
+
+    expect(adapter.sendIfOpen("jarvis.key", { action: "clear" })).toBe(false);
+  });
+
   it("sends immediately when the socket is already open", () => {
     const adapter = new WsAdapter("ws://test", () => {
       return undefined;
@@ -261,8 +315,13 @@ describe("WsAdapter token-at-connect", () => {
     let token: string | undefined = "tok-1";
     const adapter = new WsAdapter(
       "ws://test",
-      () => {
-        return token;
+      {
+        // The same account throughout: a new token for it is not a move.
+        read: (): SameAccountSession | null => {
+          return token === undefined
+            ? null
+            : { token, user: { email: "same@example.com" } };
+        },
       },
       { reconnectDelayMs: 50 },
     );
@@ -1161,3 +1220,8 @@ function trackSettlement(promise: Promise<unknown>): Settlement {
 /** The adapter's documented default — pinned here as a literal so a change to
  * it is a visible decision, not a silent drift. */
 const DEFAULT_RPC_TIMEOUT_MS = 30_000;
+
+interface SameAccountSession {
+  readonly token: string;
+  readonly user: { readonly email: string };
+}

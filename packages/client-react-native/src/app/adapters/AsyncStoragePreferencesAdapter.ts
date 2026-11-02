@@ -34,6 +34,7 @@ import {
   isJarvisBrain,
   isJarvisEffort,
   isJarvisNarratorPreference,
+  isJarvisOwnBrain,
   isPowerSaverLevel,
   JARVIS_SKINS,
   type JarvisBrain,
@@ -52,6 +53,7 @@ import {
   type LoginWaitVariant,
   type PowerSaverLevel,
   type PreferencesPort,
+  parseStoredJarvisBrain,
   readJarvisIndicators,
   THEME_SKINS,
   type ThemeModePreference,
@@ -337,8 +339,8 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       stored.jarvisSkin = jarvisSkin;
     }
 
-    if (isJarvisBrain(jarvisBrain)) {
-      stored.jarvisBrain = jarvisBrain;
+    if (isJarvisBrain(jarvisBrain) || isJarvisOwnBrain(jarvisBrain)) {
+      stored.jarvisBrain = parseStoredJarvisBrain(jarvisBrain);
     }
 
     if (isJarvisEffort(jarvisEffort)) {

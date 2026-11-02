@@ -7,6 +7,7 @@ import {
   nextConnectionStatus,
 } from "@rtc/domain";
 
+import { BrowserOwnKeyStore } from "#/adapters/BrowserOwnKeyStore";
 import { LocalStoragePreferencesAdapter } from "#/adapters/LocalStoragePreferencesAdapter";
 import { LocalStorageSessionStore } from "#/adapters/LocalStorageSessionStore";
 import { buildBrowserPorts } from "#/buildBrowserPorts";
@@ -60,6 +61,43 @@ describe("buildBrowserPorts (ws-real branch)", () => {
 
     expect(sockets).toHaveLength(1);
     expect(sockets[0]).toContain("tok-abc123");
+  });
+
+  it("tells the transport whose session it is: a live socket of another account is closed and the session ended", () => {
+    seedSession("token-of-x");
+    const sockets = createOpenableWebSocket();
+    const ports = buildBrowserPorts(createPortsOptions({ serverUrl: WS_URL }));
+    let ended = 0;
+    ports.transport?.sessionEnded().subscribe(() => {
+      ended += 1;
+    });
+    ports.transport?.connect();
+    const close = vi.spyOn(sockets[0] as unknown as WebSocket, "close");
+
+    seedSession("token-of-y", "y@example.com");
+    ports.transport?.connect();
+
+    expect(close).toHaveBeenCalled();
+    expect(ended).toBe(1);
+    expect(sockets).toHaveLength(1);
+  });
+
+  it("tells the transport whose session it is: a new token for the same account keeps the live socket", () => {
+    seedSession("token-before-unlock");
+    const sockets = createOpenableWebSocket();
+    const ports = buildBrowserPorts(createPortsOptions({ serverUrl: WS_URL }));
+    let ended = 0;
+    ports.transport?.sessionEnded().subscribe(() => {
+      ended += 1;
+    });
+    ports.transport?.connect();
+    const close = vi.spyOn(sockets[0] as unknown as WebSocket, "close");
+
+    seedSession("token-after-unlock");
+    ports.transport?.connect();
+
+    expect(close).not.toHaveBeenCalled();
+    expect(ended).toBe(0);
   });
 
   it("re-reads the token on every connect rather than baking it in", () => {
@@ -232,6 +270,42 @@ describe("buildBrowserPorts dev-auth parsing (simulator branch)", () => {
   });
 });
 
+describe("buildBrowserPorts (own key)", () => {
+  it("the live branch supplies a BrowserOwnKeyStore; the simulator branch none", () => {
+    expect(
+      buildBrowserPorts(createPortsOptions({ serverUrl: WS_URL })).ownKeyStore,
+    ).toBeInstanceOf(BrowserOwnKeyStore);
+    expect(buildBrowserPorts(createPortsOptions()).ownKeyStore).toBeUndefined();
+  });
+
+  it("the hub sees a redacted jarvis.key frame, and the socket sees the real one", () => {
+    const options = createPortsOptions({ serverUrl: WS_URL });
+    const wireOut = vi.spyOn(options.devtoolsHub, "wireOut");
+    const socket = vi.spyOn(WsAdapter.prototype, "sendIfOpen");
+    const ports = buildBrowserPorts(options);
+
+    ports.jarvis.setOwnKey?.({
+      provider: "anthropic",
+      key: "sk-ant-SECRET",
+      capUsd: 3,
+    });
+
+    expect(socket).toHaveBeenCalledWith("jarvis.key", {
+      action: "set",
+      provider: "anthropic",
+      key: "sk-ant-SECRET",
+      capUsd: 3,
+    });
+    expect(wireOut).toHaveBeenCalledWith("jarvis.key", {
+      action: "set",
+      redacted: true,
+    });
+    expect(JSON.stringify(wireOut.mock.calls)).not.toContain("SECRET");
+  });
+
+  const WS_URL = "ws://localhost:4000";
+});
+
 interface LoginProbe {
   readonly ok: boolean;
 }
@@ -251,7 +325,7 @@ function loginOutcome(devAuth: string): LoginProbe {
 
 /** Writes a session whose token is `token`, so the adapter's token provider
  * has something to read. */
-function seedSession(token: string): void {
+function seedSession(token: string, email = "demo@example.com"): void {
   new LocalStorageSessionStore().write({
     token,
     username: "demo",
@@ -261,7 +335,7 @@ function seedSession(token: string): void {
       initials: "DU",
       role: "trader",
       id: "u1",
-      email: "demo@example.com",
+      email,
       desk: "FX",
       clearance: "standard",
       access: "user",

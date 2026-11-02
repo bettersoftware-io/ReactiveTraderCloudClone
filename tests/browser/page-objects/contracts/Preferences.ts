@@ -55,4 +55,20 @@ export interface PreferencesPO {
   /** Dismisses the modal via its footer DONE button. */
   close(): Promise<void>;
   waitModalHidden(timeoutMs: number): Promise<void>;
+  /** Types `key` into the "Your key" section's API key field and presses
+   *  SAVE (the first-key form, no key saved yet). */
+  saveOwnKey(key: string): Promise<void>;
+  /** Waits until the section's status line reads `text` (e.g. "Accepted"). */
+  waitOwnKeyStatus(text: string, timeoutMs: number): Promise<void>;
+  /** The saved key's masked form, as the section shows it. */
+  ownKeyMasked(): Promise<string>;
+  /** Picks the own-key brain `brain` in the "Your key" row, once the server
+   *  offers it. */
+  chooseOwnBrain(brain: string, timeoutMs: number): Promise<void>;
+  /** Opens the account menu and presses Sign Out. */
+  signOut(): Promise<void>;
+  /** Waits until this page shows the sign-in screen (after Sign Out). */
+  waitSignedOut(timeoutMs: number): Promise<void>;
+  /** Whether sessionStorage or localStorage holds the own-key value. */
+  ownKeyInBrowserStorage(): Promise<boolean>;
 }

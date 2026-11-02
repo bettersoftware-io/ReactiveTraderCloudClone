@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import type { JarvisAvailability } from "@rtc/core-api";
 import {
   JARVIS_NARRATION_PREFIX,
+  type JarvisBrain,
+  type JarvisOwnKeyStatus,
   MAX_NARRATIONS_PER_SESSION,
   NARRATION_COOLDOWN_MS,
 } from "@rtc/domain";
@@ -11,6 +14,7 @@ import type { MakeHarness } from "#/harness/harness";
 import {
   clockPause,
   completeTurn,
+  createAvailability,
   NARRATOR_BASELINE_TICKS,
   NARRATOR_TEST_CONFIG,
   narrationAsks,
@@ -18,6 +22,8 @@ import {
   pushBaselineTicks,
   pushSpreadSpike,
 } from "#/suites/jarvisKit";
+
+const OWN_BRAIN: JarvisBrain = "own:anthropic:claude-sonnet-5";
 
 /** The pinned narration copy: the prefix, the symbol, the channel ("spread
  * widened" for this spread spike), the size to one decimal, the window. */
@@ -61,6 +67,77 @@ export function describeJarvisNarratorCases(makeHarness: MakeHarness): void {
           pushSpreadSpike(h);
           await pause();
           expect(h.driver.askLog()).toEqual([]);
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("a refused key on an own brain asks nothing, and costs no cooldown: accepted again, the next spike narrates", async () => {
+      await withFakeClock(async (clock) => {
+        const h = makeHarness({
+          narratorConfig: NARRATOR_TEST_CONFIG,
+          jarvisAvailability: createOwnBrainAvailability("refused"),
+        });
+        const pause = clockPause(clock);
+
+        try {
+          h.app.presenters.jarvisPreferences.setBrain(OWN_BRAIN);
+          await publishNarratedPair(h, pause);
+          pushBaselineTicks(h, NARRATOR_BASELINE_TICKS);
+          pushSpreadSpike(h);
+          await pause();
+          expect(h.driver.askLog()).toEqual([]);
+          h.driver.pushJarvisAvailability(
+            createOwnBrainAvailability("accepted"),
+          );
+          await pause();
+          pushBaselineTicks(h, NARRATOR_BASELINE_TICKS);
+          pushSpreadSpike(h);
+          await pause();
+          expect(narrationAsks(h, JARVIS_NARRATION_PREFIX)).toHaveLength(1);
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("an accepted key on an own brain narrates", async () => {
+      await withFakeClock(async (clock) => {
+        const h = makeHarness({
+          narratorConfig: NARRATOR_TEST_CONFIG,
+          jarvisAvailability: createOwnBrainAvailability("accepted"),
+        });
+        const pause = clockPause(clock);
+
+        try {
+          h.app.presenters.jarvisPreferences.setBrain(OWN_BRAIN);
+          await publishNarratedPair(h, pause);
+          pushBaselineTicks(h, NARRATOR_BASELINE_TICKS);
+          pushSpreadSpike(h);
+          await pause();
+          expect(narrationAsks(h, JARVIS_NARRATION_PREFIX)).toHaveLength(1);
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("a refused key with a house brain in use still narrates", async () => {
+      await withFakeClock(async (clock) => {
+        const h = makeHarness({
+          narratorConfig: NARRATOR_TEST_CONFIG,
+          jarvisAvailability: createOwnBrainAvailability("refused"),
+        });
+        const pause = clockPause(clock);
+
+        try {
+          h.app.presenters.jarvisPreferences.setBrain("claude-haiku-4-5");
+          await publishNarratedPair(h, pause);
+          pushBaselineTicks(h, NARRATOR_BASELINE_TICKS);
+          pushSpreadSpike(h);
+          await pause();
+          expect(narrationAsks(h, JARVIS_NARRATION_PREFIX)).toHaveLength(1);
         } finally {
           await h.teardown();
         }
@@ -140,6 +217,15 @@ export function describeJarvisNarratorCases(makeHarness: MakeHarness): void {
         }
       });
     });
+  });
+}
+
+function createOwnBrainAvailability(
+  status: JarvisOwnKeyStatus,
+): JarvisAvailability {
+  return createAvailability({
+    brains: ["scripted", "claude-haiku-4-5", OWN_BRAIN],
+    ownKey: { provider: "anthropic", status, capUsd: 1 },
   });
 }
 

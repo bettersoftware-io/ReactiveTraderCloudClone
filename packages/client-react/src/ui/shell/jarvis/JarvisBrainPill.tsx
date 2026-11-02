@@ -2,9 +2,10 @@ import { type ReactElement, useEffect, useRef, useState } from "react";
 
 import { describeBrainPill } from "@rtc/core-logic";
 import {
-  JARVIS_BRAIN_NAMES,
   JARVIS_BRAINS,
+  JARVIS_OWN_MODELS,
   type JarvisBrain,
+  jarvisBrainName,
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -13,8 +14,10 @@ import styles from "./JarvisBrainPill.module.css";
 /**
  * The input-bar brain pill: the effective brain (and what is left of today's
  * budget) with a small menu to switch the saved brain. Offered brains follow
- * `JARVIS_BRAINS` order; a brain the active gate has removed is disabled, the
- * same rule as the Preferences Brain picker. The menu has no animation.
+ * `JARVIS_BRAINS` order, then the person's own-key brains in curated-list
+ * order; when both kinds are offered the menu groups them under "House key" and
+ * "Your key" labels. A brain the active gate has removed is disabled, the same
+ * rule as the Preferences Brain picker. The menu has no animation.
  *
  * While the menu is open, Escape closes the menu only, wherever focus is: a
  * `document` keydown listener in the CAPTURE phase runs before any bubble
@@ -33,9 +36,20 @@ export function JarvisBrainPill(): ReactElement {
   const pillRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const offered = JARVIS_BRAINS.filter((brain) => {
+  const offeredHouse = JARVIS_BRAINS.filter((brain) => {
     return brain === "scripted" || state.brains.includes(brain);
   });
+
+  const offeredOwn = JARVIS_OWN_MODELS.map((model) => {
+    return model.brain;
+  }).filter((brain) => {
+    // A spent own cap moves the own brains from `brains` into the gate: they
+    // stay listed, disabled.
+    return (
+      state.brains.includes(brain) || state.gate?.gated.includes(brain) === true
+    );
+  });
+  const grouped = offeredOwn.length > 0;
 
   function toggleMenu(): void {
     setMenuOpen((open) => {
@@ -72,11 +86,9 @@ export function JarvisBrainPill(): ReactElement {
     };
   }, [menuOpen]);
 
-  function chooseBrain(brain: JarvisBrain) {
-    return () => {
-      setBrain(brain);
-      closeMenuToPill();
-    };
+  function chooseBrain(brain: JarvisBrain): void {
+    setBrain(brain);
+    closeMenuToPill();
   }
 
   return (
@@ -103,31 +115,98 @@ export function JarvisBrainPill(): ReactElement {
           data-testid="jarvis-brain-menu"
           className={styles.menu}
         >
-          {offered.map((brain) => {
-            const checked = brain === state.effectiveBrain;
-            const gated = state.gate?.gated.includes(brain) === true;
-
-            return (
-              <button
-                key={brain}
-                type="button"
-                role="menuitemradio"
-                aria-checked={checked}
-                data-testid={`jarvis-brain-option-${brain}`}
-                className={styles.option}
-                disabled={gated}
-                onClick={chooseBrain(brain)}
-              >
-                <span className={styles.mark} aria-hidden="true">
-                  {checked ? "✓" : ""}
-                </span>
-                {JARVIS_BRAIN_NAMES[brain]}
-              </button>
-            );
-          })}
+          {grouped ? (
+            <>
+              <fieldset className={styles.group}>
+                <legend
+                  data-testid="jarvis-brain-group-house"
+                  className={styles.groupLabel}
+                >
+                  House key
+                </legend>
+                <BrainOptions
+                  brains={offeredHouse}
+                  effectiveBrain={state.effectiveBrain}
+                  gated={state.gate?.gated ?? NOTHING_GATED}
+                  onChoose={chooseBrain}
+                />
+              </fieldset>
+              <fieldset className={styles.group}>
+                <legend
+                  data-testid="jarvis-brain-group-own"
+                  className={styles.groupLabel}
+                >
+                  Your key
+                </legend>
+                <BrainOptions
+                  brains={offeredOwn}
+                  effectiveBrain={state.effectiveBrain}
+                  gated={state.gate?.gated ?? NOTHING_GATED}
+                  onChoose={chooseBrain}
+                />
+              </fieldset>
+            </>
+          ) : (
+            <BrainOptions
+              brains={offeredHouse}
+              effectiveBrain={state.effectiveBrain}
+              gated={state.gate?.gated ?? NOTHING_GATED}
+              onChoose={chooseBrain}
+            />
+          )}
         </div>
       ) : null}
     </div>
+  );
+}
+
+const NOTHING_GATED: readonly JarvisBrain[] = [];
+
+interface BrainOptionsProps {
+  brains: readonly JarvisBrain[];
+  effectiveBrain: JarvisBrain;
+  /** Brains the active gate has removed: shown, disabled. */
+  gated: readonly JarvisBrain[];
+  onChoose: (brain: JarvisBrain) => void;
+}
+
+/** The menu items for `brains`, the effective one checked. */
+function BrainOptions({
+  brains,
+  effectiveBrain,
+  gated,
+  onChoose,
+}: BrainOptionsProps): ReactElement {
+  function chooseThis(brain: JarvisBrain) {
+    return () => {
+      onChoose(brain);
+    };
+  }
+
+  return (
+    <>
+      {brains.map((brain) => {
+        const checked = brain === effectiveBrain;
+
+        return (
+          <button
+            key={brain}
+            type="button"
+            role="menuitemradio"
+            aria-checked={checked}
+            data-testid={`jarvis-brain-option-${brain}`}
+            className={styles.option}
+            disabled={gated.includes(brain)}
+            onClick={chooseThis(brain)}
+          >
+            <span className={styles.mark} aria-hidden="true">
+              {checked ? "✓" : ""}
+            </span>
+            {jarvisBrainName(brain)}
+          </button>
+        );
+      })}
+    </>
   );
 }
 

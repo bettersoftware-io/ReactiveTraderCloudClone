@@ -30,6 +30,7 @@ import type {
   IncidentState,
   JarvisDemoState,
   JarvisDriverState,
+  JarvisOwnKeyPresenter,
   JarvisPanelVm,
   JarvisState,
   LayoutIntents,
@@ -40,6 +41,7 @@ import type {
   NotionalView,
   OrderTicketIntents,
   OrderTicketState,
+  OwnKeyInput,
   PanelData,
   Presenters,
   RfqCountdownSeed,
@@ -48,6 +50,7 @@ import type {
   RfqSubmissionState,
   RfqTileIntents,
   RouteHistory,
+  SavedOwnKey,
   SaveLayoutPresetOptions,
   SaveLayoutPresetResult,
   ThroughputView,
@@ -303,6 +306,13 @@ interface UseJarvisPreferencesResult {
   setNarrator: (preference: JarvisNarratorPreference) => void;
   indicators: Accessor<JarvisIndicators>;
   setIndicators: (next: JarvisIndicators) => void;
+}
+
+/** The person's own model key. `saved` is the masked form only (`null` while
+ * none is held); the raw key goes through `save` once and nowhere else. */
+interface UseJarvisOwnKeyResult
+  extends Pick<JarvisOwnKeyPresenter, "save" | "setCap" | "remove"> {
+  saved: Accessor<SavedOwnKey | null>;
 }
 
 /** The generative-UI desk panels J.A.R.V.I.S. has spawned this session —
@@ -661,6 +671,9 @@ export interface ViewModel {
   /** The two Jarvis desk-assistant preferences (brain + effort) — the
    * Preferences modal's JARVIS section writer. */
   useJarvisPreferences: () => UseJarvisPreferencesResult;
+  /** The person's own model key: the masked saved form plus the intents to
+   * save, re-limit and remove it. The key is never in the returned state. */
+  useJarvisOwnKey: () => UseJarvisOwnKeyResult;
   /** Rolling Jarvis usage/cost telemetry (Ops surface) — null until the
    * first snapshot. */
   useJarvisUsage: () => Accessor<JarvisUsage | null>;
@@ -921,6 +934,23 @@ export function createViewModel(
     presenters.jarvisPreferences.indicators$,
     DEFAULT_JARVIS_INDICATORS,
   );
+
+  const jarvisOwnKeySavedState = state(
+    presenters.jarvisOwnKey.saved$,
+    null as SavedOwnKey | null,
+  );
+
+  function saveJarvisOwnKey(input: OwnKeyInput): void {
+    presenters.jarvisOwnKey.save(input);
+  }
+
+  function setJarvisOwnKeyCap(capUsd: number | null): void {
+    presenters.jarvisOwnKey.setCap(capUsd);
+  }
+
+  function removeJarvisOwnKey(): void {
+    presenters.jarvisOwnKey.remove();
+  }
 
   function setJarvisBrainPreference(brain: JarvisBrain): void {
     presenters.jarvisPreferences.setBrain(brain);
@@ -1683,6 +1713,14 @@ export function createViewModel(
         setNarrator: setJarvisNarratorPreference,
         indicators: toSignal(jarvisIndicatorsPreferenceState),
         setIndicators: setJarvisIndicatorsPreference,
+      };
+    },
+    useJarvisOwnKey: () => {
+      return {
+        saved: toSignal(jarvisOwnKeySavedState),
+        save: saveJarvisOwnKey,
+        setCap: setJarvisOwnKeyCap,
+        remove: removeJarvisOwnKey,
       };
     },
     useJarvisUsage: () => {
