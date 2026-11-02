@@ -333,16 +333,25 @@ describe("AccountAdminService", () => {
         ).toMatchObject({ ownerUsd: 0.3 });
       });
 
-      it("blocks the account, then deletes the spend rows, then the account", async () => {
+      it("blocks, forgets the owner in the budget, deletes the spend rows, then the account", async () => {
         const { service, steps } = createFixture();
 
         await service.act(createCaller(ADMIN_ID), OTHER_ID, REMOVE);
 
         expect(
           steps.filter((step) => {
-            return step.startsWith("account ") || step.startsWith("spend ");
+            return (
+              step.startsWith("account ") ||
+              step.startsWith("spend ") ||
+              step.startsWith("owner ")
+            );
           }),
-        ).toEqual(["account blocked", "spend deleted", "account deleted"]);
+        ).toEqual([
+          "account blocked",
+          `owner forgotten account:${OTHER_ID}`,
+          "spend deleted",
+          "account deleted",
+        ]);
       });
 
       it("ends the open sessions as soon as the block lands", async () => {
@@ -354,6 +363,14 @@ describe("AccountAdminService", () => {
 
         expect(sessions.closeAll).toHaveBeenCalledWith(OTHER_ID);
         expect(cache.invalidate).toHaveBeenCalledWith(OTHER_ID);
+      });
+
+      it("does not forget the owner when the block is unavailable", async () => {
+        const { service, budget } = createFixture({ blockDown: true });
+
+        await service.act(createCaller(ADMIN_ID), OTHER_ID, REMOVE);
+
+        expect(budget.forgetOwner).not.toHaveBeenCalled();
       });
 
       it("does nothing else when the block is unavailable", async () => {
@@ -566,6 +583,7 @@ interface Fixture {
   readonly steps: string[];
   readonly spend: SpendStore;
   readonly outages: Outages;
+  readonly budget: { forgetOwner: ReturnType<typeof vi.fn> };
 }
 
 function createFixture(options: FixtureOptions = {}): Fixture {
@@ -584,6 +602,14 @@ function createFixture(options: FixtureOptions = {}): Fixture {
     account: options.accountDeleteDown === true,
   };
   const memorySpend = createInMemorySpendStore();
+  const budget = {
+    forgetOwner: vi.fn((owner: SpendOwner): Promise<void> => {
+      steps.push(`owner forgotten ${owner}`);
+
+      return Promise.resolve();
+    }),
+  };
+
   const spend: SpendStore = {
     ...memorySpend,
     deleteOwner: (owner: SpendOwner) => {
@@ -664,6 +690,7 @@ function createFixture(options: FixtureOptions = {}): Fixture {
       sessions,
       revocations,
       spend,
+      budget,
       now: fixedNow,
       listLimit: LIST_LIMIT,
     }),
@@ -677,6 +704,7 @@ function createFixture(options: FixtureOptions = {}): Fixture {
     steps,
     spend,
     outages,
+    budget,
   };
 }
 

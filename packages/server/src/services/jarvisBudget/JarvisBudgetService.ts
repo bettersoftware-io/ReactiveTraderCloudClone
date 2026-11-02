@@ -154,6 +154,11 @@ export class JarvisBudgetService {
 
   private readonly owners = new Map<string, OwnerCopy>();
 
+  /** Owners whose account was deleted. For the life of the process nothing
+   * is booked, counted, reserved or written for them, so no row can be put
+   * back after the rows were deleted. */
+  private readonly forgottenOwners = new Set<string>();
+
   /** The house total only ever rises within a day, so the highest answer
    * wins: two owners' writes can come back out of order. */
   private houseConfirmedUsd = 0;
@@ -326,6 +331,49 @@ export class JarvisBudgetService {
     };
   }
 
+  /** Called when the owner's account is being deleted, before its rows are:
+   * drops the owner's copies, pending and unrecorded amounts and
+   * reservations for both key kinds, and from now on drops every record for
+   * the owner instead of writing it. A write already queued still runs, so
+   * it lands before the rows are deleted. Resolves once the owner's store
+   * queues have drained. */
+  async forgetOwner(owner: SpendOwner): Promise<void> {
+    this.forgottenOwners.add(owner);
+
+    const keyKinds: readonly KeyKind[] = ["house", "own"];
+
+    for (const keyKind of keyKinds) {
+      const { key } = slotOf(owner, keyKind);
+      const copy = this.owners.get(key);
+
+      if (copy !== undefined && keyKind === "house") {
+        this.housePendingUsd = roundUsd(this.housePendingUsd - copy.pendingUsd);
+        this.houseUnrecordedUsd = roundUsd(
+          this.houseUnrecordedUsd - copy.unrecordedUsd,
+        );
+      }
+
+      this.owners.delete(key);
+
+      const reservedUsd = this.ownerReservedUsd.get(key) ?? 0;
+
+      if (keyKind === "house") {
+        this.houseReservedUsd = Math.max(
+          0,
+          roundUsd(this.houseReservedUsd - reservedUsd),
+        );
+      }
+
+      this.ownerReservedUsd.delete(key);
+    }
+
+    await Promise.all(
+      keyKinds.map((keyKind) => {
+        return this.ownerQueues.get(slotOf(owner, keyKind).key);
+      }),
+    );
+  }
+
   dispose(): void {
     clearTimeout(this.midnightTimer);
     this.changes.complete();
@@ -401,6 +449,10 @@ export class JarvisBudgetService {
   }
 
   private adjustReservation(slot: Slot, usd: number): void {
+    if (this.forgottenOwners.has(slot.owner)) {
+      return;
+    }
+
     const ownerUsd = roundUsd((this.ownerReservedUsd.get(slot.key) ?? 0) + usd);
 
     // The last release drops the entry, so the map holds in-flight owners only.
@@ -430,6 +482,10 @@ export class JarvisBudgetService {
     brain: JarvisLiveBrain,
     usage: JarvisTokenUsage,
   ): void {
+    if (this.forgottenOwners.has(slot.owner)) {
+      return;
+    }
+
     const usd = estimateUsageCostUsd(brain, usage);
 
     // Neither the store nor `record_jarvis_spend` guards the amount, so a
@@ -465,6 +521,14 @@ export class JarvisBudgetService {
     const { answer, seq } = await this.callStore(() => {
       return this.store.record(slot.owner, day, slot.keyKind, usd);
     });
+
+    // Forgotten while the write was in flight: forgetOwner already took the
+    // amount out of the copy and the house figures.
+    if (this.forgottenOwners.has(slot.owner)) {
+      this.noteStoreAnswer(answer, seq);
+
+      return;
+    }
 
     // Midnight dropped the copy this amount was booked in; today's copy
     // never counted it. (A stale `copyDay` here is harmless: every reader
@@ -512,6 +576,7 @@ export class JarvisBudgetService {
   private async rewriteUnrecordedSpend(slot: Slot): Promise<void> {
     const day = this.rollCopyToToday();
     const copy = this.copyFor(slot);
+    // A forgotten owner's copy was dropped, so nothing is left to send.
     // Read when the write starts, not when it was queued: the owner's calls
     // run one at a time, so an earlier retry (a store that flapped) has
     // landed by now, and what it moved into the store is not sent twice.
@@ -548,6 +613,12 @@ export class JarvisBudgetService {
 
     // Rolled again after the wait, so a read of yesterday that answers after
     // midnight, before the timer's callback, never fills today's copy.
+    if (this.forgottenOwners.has(slot.owner)) {
+      this.noteStoreAnswer(answer, seq);
+
+      return;
+    }
+
     if (answer !== "unavailable" && day === this.rollCopyToToday()) {
       this.applyTotals(this.copyFor(slot), answer);
     }

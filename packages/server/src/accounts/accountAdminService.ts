@@ -6,6 +6,7 @@ import {
   normalizeDisplayName,
 } from "@rtc/domain";
 
+import type { JarvisBudgetService } from "../services/jarvisBudget/JarvisBudgetService.js";
 import type { SpendStore } from "../services/jarvisBudget/SpendStore.js";
 import type { Caller } from "../services/serviceContainer.js";
 import type {
@@ -25,6 +26,9 @@ export interface AccountAdminServiceDeps {
   readonly revocations: RevocationLedger;
   /** Deleting an account takes its Jarvis spend rows with it. */
   readonly spend: SpendStore;
+  /** Told to forget the owner before the spend rows are deleted, so nothing
+   * it still holds is written back. */
+  readonly budget: Pick<JarvisBudgetService, "forgetOwner">;
   readonly now: () => number;
   /** `ADMIN_ACCOUNT_LIST_MAX`. */
   readonly listLimit: number;
@@ -156,7 +160,11 @@ export function createAccountAdminService(
         deps.statusCache.invalidate(accountId);
         deps.sessions.closeAll(accountId);
 
-        const spent = await deps.spend.deleteOwner(`account:${accountId}`);
+        const owner = `account:${accountId}` as const;
+
+        await deps.budget.forgetOwner(owner);
+
+        const spent = await deps.spend.deleteOwner(owner);
 
         if (spent === "unavailable") {
           return "unavailable";

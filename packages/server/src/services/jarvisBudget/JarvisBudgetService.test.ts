@@ -994,6 +994,125 @@ describe("JarvisBudgetService", () => {
     });
   });
 
+  describe("forgetOwner", () => {
+    it("does not send an unrecorded amount again once the owner is forgotten", async () => {
+      const switchable = createSwitchableStore();
+      const record = vi.spyOn(switchable.store, "record");
+      const service = createService(switchable.store);
+
+      await service.stateFor(MEMBER, "member");
+      switchable.setDown(true);
+      service
+        .meterFor(MEMBER, "member")
+        .record("claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      await settle();
+      expect(service.houseToday().spentUsd).toBe(0.1);
+
+      switchable.setDown(false);
+      await service.forgetOwner("account:a");
+
+      expect(service.houseToday().spentUsd).toBe(0);
+
+      // Another owner's read lifts the outage, which retries unrecorded spend.
+      await service.stateFor(OTHER, "member");
+      await settle();
+
+      expect(record).toHaveBeenCalledTimes(1);
+      await expect(
+        switchable.store.read("account:a", TODAY, "house"),
+      ).resolves.toMatchObject({ ownerUsd: 0 });
+    });
+
+    it("writes nothing for a booking that arrives after the owner is forgotten", async () => {
+      const inner = createInMemorySpendStore();
+      const record = vi.spyOn(inner, "record");
+      const service = createService(inner);
+
+      await service.stateFor(MEMBER, "member");
+      await service.forgetOwner("account:a");
+      service
+        .meterFor(MEMBER, "member")
+        .record("claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      service
+        .ownMeterFor(MEMBER, capOf(null))
+        .record("claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      await settle();
+
+      expect(record).not.toHaveBeenCalled();
+      await expect(inner.read("account:a", TODAY, "own")).resolves.toEqual({
+        ownerUsd: 0,
+        houseUsd: 0,
+      });
+    });
+
+    it("lets a booking queued before it land before it resolves", async () => {
+      const calls: string[] = [];
+      const inner = createInMemorySpendStore();
+      const service = createService(createDelayedStore(calls, inner));
+
+      const loaded = service.stateFor(MEMBER, "member");
+      await vi.advanceTimersByTimeAsync(STORE_DELAY_MS);
+      await loaded;
+      service
+        .meterFor(MEMBER, "member")
+        .record("claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+
+      let forgotten = false;
+      const forgetting = service.forgetOwner("account:a").then(() => {
+        forgotten = true;
+      });
+
+      await settle();
+      expect(forgotten).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(STORE_DELAY_MS);
+      await forgetting;
+
+      expect(calls).toContain("record end");
+      // The write landed, so the DELETE that follows has something to remove.
+      await expect(inner.read("account:a", TODAY, "house")).resolves.toEqual({
+        ownerUsd: 0.1,
+        houseUsd: 0.1,
+      });
+      await inner.deleteOwner("account:a");
+      await expect(
+        inner.read("account:a", TODAY, "house"),
+      ).resolves.toMatchObject({ ownerUsd: 0 });
+    });
+
+    it("keeps a forgotten owner's spend out of the house total", async () => {
+      const service = createService(createInMemorySpendStore());
+
+      await service.stateFor(MEMBER, "member");
+      await service.stateFor(OTHER, "member");
+      await service.forgetOwner("account:a");
+      service
+        .meterFor(MEMBER, "member")
+        .record("claude-haiku-4-5", TEN_CENTS_ON_HAIKU);
+      service
+        .meterFor(OTHER, "member")
+        .record("claude-haiku-4-5", ONE_CENT_ON_HAIKU);
+      await settle();
+
+      expect(service.houseToday().spentUsd).toBe(0.01);
+    });
+
+    it("leaves other owners' copies and reservations alone", async () => {
+      const service = createService(createInMemorySpendStore());
+
+      await service.stateFor(OTHER, "member");
+      service
+        .meterFor(OTHER, "member")
+        .record("claude-haiku-4-5", ONE_CENT_ON_HAIKU);
+      await settle();
+      await service.forgetOwner("account:a");
+
+      expect((await service.stateFor(OTHER, "member")).spentUsd).toBe(0.01);
+    });
+
+    const OTHER: Caller = { username: "bo", accountId: "b", issuedAt: null };
+  });
+
   describe("changes$", () => {
     it("emits on every record", async () => {
       const service = createService(createInMemorySpendStore());
