@@ -266,6 +266,15 @@ export class PlaywrightJarvis implements JarvisPO {
     );
   }
 
+  async waitForNonNarratorReplyBrainTag(
+    name: string,
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(
+      this.lastNonNarratorJarvisEntry().getByTestId(TESTIDS.jarvis.entryBrain),
+    ).toHaveText(name, { timeout: timeoutMs });
+  }
+
   async isConfirmCardVisible(): Promise<boolean> {
     return await this.confirmCard().isVisible();
   }

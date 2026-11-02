@@ -1620,6 +1620,40 @@ refused key never spends the house key. With no `ANTHROPIC_API_KEY` (or the
 house amounts at `0`) Jarvis is still available, on the scripted brain plus
 any accepted own key (D16).
 
+### Own keys in the clients (B3c)
+
+The browser half of an own key is a fourth member of each application core,
+`jarvisOwnKey`, over one shared rule set, `createOwnKeyController` in
+`@rtc/core-logic`. The member folds the auth state: the signed-in account's
+email is the key's owner, and the controller decides when to restore, send,
+keep or wipe it. `OwnKeyStore` is a port; `BrowserOwnKeyStore` in `@rtc/web-boot`
+is the web adapter (session storage, or local storage when the person asked to
+remember it). `WsJarvisAdapter.setOwnKey` sends the `jarvis.key` frame after
+each connect and does nothing on a closed socket. The simulator has no such
+port, so the member is inert there and the Preferences section stays hidden
+(it is also hidden for a demo login).
+
+What a person sees:
+
+- **Preferences, "Your key".** Provider, key field, daily limit, "No limit"
+  and "Remember on this device". A saved key shows its masked form, the
+  server's reading (`Checking…`, `Accepted`, a refusal, `unreachable`,
+  `limited`), an editable limit, Replace and Remove. The raw key is never in
+  state or markup.
+- **The brain picker.** House brains and the curated own-key brains sit in two
+  groups, "House key" and "Your key". The own group appears once the server
+  offers it. A brain the active gate removed is shown disabled.
+- **The readout and reply tags.** A reply is tagged with the brain that ran
+  it. A preferred own brain that cannot run reads as `Scripted` with the
+  reason (refused, couldn't reach the provider, too many key checks, limit
+  used). A stored own brain whose model left the list reads as scripted, never
+  as the house default.
+
+The full-stack browser case in `tests/fullstack/browser/fullstack.spec.ts`
+drives the whole path on React and Solid with a fake key: save it, see
+`Accepted`, reload, pick an own brain, get a tagged reply, sign out, and find
+nothing in either storage. Rulings: [the B3c rulings](../superpowers/plans/2026-11-01-b3c-byo-keys-rulings.md).
+
 ## 18.16 The generative-UI surface (round 1)
 
 Round 1 (2026-08-04) of the "Jarvis generative UI" workstream (design:

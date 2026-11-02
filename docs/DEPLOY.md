@@ -471,6 +471,18 @@ server host the policy allows.
    deployed server the availability frame carries no `ownKey` until a client
    sends a key.
 
+**Client half (PR 3).** Deploy both web clients after the server half is out.
+There is no migration and no setting.
+
+8. **Deploy both web clients** (`deploy.yml`). A new client on an old server
+   shows no "Your key" section, because the server never offers own brains.
+9. **Verify on each site** with a real account (the section is hidden for a demo
+   login): open Preferences, find "Your key", save a real key with a small daily
+   limit, and wait for `Accepted`. Pick one of its brains and ask Jarvis
+   something; the reply is tagged with that brain. Sign out and confirm the
+   browser's session and local storage hold no `rt-jarvis-own-key`. Use a key
+   made for this check, and remove it afterwards.
+
 ## Deploying
 
 Run the **Deploy** workflow manually — Actions tab → "Deploy" → Run workflow,

@@ -257,12 +257,25 @@ authenticated socket in a `jarvis.key` message, held by the server only in that
 connection's scope (`ConnectionOwnKey`), and never stored, logged or echoed
 back.
 
-The browser half is **planned, not built** (PR 3 of the B3c plan): the key is
-to live in session storage by default, or in local storage if the person opts in
-to remembering it on the device; it is to be wiped at sign-out, on an account
-switch and when the server ends the session, and shown back masked. The
-Preferences section is to tell people, before the field, to create a key with
-its own spend limit at the provider.
+The browser half is built (B3c PR 3). `BrowserOwnKeyStore` in `@rtc/web-boot`
+keeps the key under `rt-jarvis-own-key`: in session storage by default, which
+goes with the tab, or in local storage when the person ticks "Remember on this
+device". It is never in both. Three facts from the code:
+
+- **It is wiped** at sign-out, on a switch to another account, and when the
+  server ends the session (the client reads that as signed out). It is kept
+  across a lock and across a reload of the same account.
+- **It is shown back masked.** `maskOwnKey` keeps the vendor tag and the last
+  four characters of a long key, less of a short one, and nothing of a very
+  short one. The raw key passes through the save and the transport call and
+  nowhere else; the form field is emptied on save.
+- **The transport holds the owner's key or nothing.** After any sign-in the
+  controller sends a clear unless it restored a key for that account, because
+  the socket outlives a composition and has no owner check of its own.
+
+The Preferences section tells people, before the field, what happens to the
+key and to create one with its own spend limit at the provider
+(`OWN_KEY_EXPLANATION` in `@rtc/core-logic`).
 
 The threat that matters is script running on the page: a cross-site-scripting
 bug, a compromised dependency or a browser extension. **That script can read

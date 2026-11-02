@@ -1192,3 +1192,14 @@ entries.
 [`DEPLOY.md`](DEPLOY.md#rolling-out-b2c): apply the migration first, because
 the new server selects `sessions_not_before` on every account read. Every
 registered account is then signed out once, since old tokens carry no `iat`.
+
+### 7.11 A person's own model key (B3c)
+
+An own model key belongs to the signed-in account, identified by its email
+address. Signing out, switching to another account, and a session the server
+ends all remove the key from the browser and from the socket. A lock and a
+reload of the same account keep it. The key is sent to the server over the
+authenticated WebSocket, held in the connection's memory only, and never
+stored. Where it lives and what is not protected:
+[`security.md`](security.md) §3.2. How it flows through the clients:
+[architecture §18](architecture/18-jarvis-ai-agent-surface.md#own-keys-in-the-clients-b3c).

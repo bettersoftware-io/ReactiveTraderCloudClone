@@ -13,7 +13,7 @@ The WebSocket server: a thin Node.js host that exposes the domain simulators to 
 
 | Path | What lives here |
 |---|---|
-| `src/effects/` | Declarative `WsEffect`s, one array per domain, assembled by `buildEffects(loops)` in `effects/index.ts` (the `allEffects` barrel plus the Jarvis effects), which `src/index.ts` (the composition root) hands to `combineEffects`. Inventory below. |
+| `src/effects/` | Declarative `WsEffect`s, one array per domain, assembled by `buildEffects(loops, buildOwnKeyLoop)` in `effects/index.ts` (the `allEffects` barrel plus the Jarvis effects), which `src/index.ts` (the composition root) hands to `combineEffects`. Inventory below. |
 | `src/services/` | `serviceContainer.ts` -- `createServices()`, which builds the domain simulators/ports once at module load and packages them, plus the server-only `ThroughputService`, `UsageMeter` (today's Jarvis usage, for display) and `JarvisBudgetService` (each person's daily Jarvis spend on the house key, `jarvisBudget/`), as the `ServiceContainer` (aliased `Ctx` in `effects/context.ts`). |
 | `src/agent/` | The Jarvis agent loops: `ScriptedAgentLoop` (the transport-neutral scripted brain from `@rtc/shared`) and `AnthropicAgentLoop` (the only place `@anthropic-ai/sdk` is imported), chosen per connection by `createJarvisLoops` in `agentLoop.ts`; also the `render_panel` and app-driving tools and the persona. |
 | `src/mcp/` | The `/mcp` Streamable-HTTP endpoint: `buildJarvisMcpServer` exposes the `@rtc/agent-tools` registry to external MCP clients, `mcpHttpHandler` serves it behind the same token auth (the only place `@modelcontextprotocol/sdk` is imported). |
@@ -22,7 +22,7 @@ The WebSocket server: a thin Node.js host that exposes the domain simulators to 
 | `src/auth/` | `AuthService` -- scrypt-hashes + `timingSafeEqual`-checks credentials from the `AUTH_USERS` roster and issues/verifies signed session tokens (`token.ts`; an account session carries the account id and access level too); `loadUsers.ts` parses the `"user:pass,user2:pass2"` `AUTH_USERS` format and refuses a username containing `@`; `rateLimit.ts` is the per-IP rate limiter every POST route runs through; `banList.ts` the in-app ban list. |
 | `src/accounts/` | Registered accounts (B2a, [docs/authentication.md §7](../../docs/authentication.md#7-registered-accounts-b2a)): the `AccountDirectory` port and its three implementations (Supabase over plain `fetch`, in-memory for dev, disabled), `AccountService` (the policy), `resolveAccountsMode` (which store, and the startup refusals), `accountStatusCache` (the upgrade re-check) and `sessionUserFor`. The only code in the repo that knows Supabase exists. |
 | `src/http/` | `loginHandler.ts` -- `authenticateLoginRequest` (the pure `/login` request handler: ban check → rate-limit → parse → `AuthService.login` for a roster username, `AccountService.login` for an email address) and `describeUpgrade` (the WebSocket-upgrade token check, reads `?access=` and calls `AuthService.verifyToken`); `upgradeGate.ts` (the whole upgrade decision, including the account status re-check); `accountHandlers.ts` + `accountLimits.ts` (the five account endpoints and their limiters); `postRouter.ts` (one preflight, ban check, body cap and error mapping for all six POST routes); `accountsHealth.ts` (`/health/accounts`). |
-| `src/index.ts` | The composition root: HTTP server (`/health`, `/health/accounts`, the six POST routes, `/mcp`) + `WebSocketServer` (gated by `decideUpgrade`) + `combineEffects(...buildEffects(jarvisLoops))` + `createWsListener` + `httpServer.listen`. |
+| `src/index.ts` | The composition root: HTTP server (`/health`, `/health/accounts`, the six POST routes, `/mcp`) + `WebSocketServer` (gated by `decideUpgrade`) + `combineEffects(...buildEffects(jarvisLoops, buildOwnKeyLoop))` + `createWsListener` + `httpServer.listen`. |
 
 ### `src/effects/` inventory
 
@@ -33,9 +33,9 @@ The WebSocket server: a thin Node.js host that exposes the domain simulators to 
 | `equities.effects.ts` | `watchlist$`, `eqQuotes$`, `depth$`, `orders$`, `positions$`, `getCandles$`, `cancelOrder$`, `placeOrder$` (8) | Equities: watchlist, quotes, depth-of-book, the order and position books, candle history, and order placement/cancellation. |
 | `ops.effects.ts` | `getThroughput$`, `setThroughput$` (2) | Ops: the throughput setpoint RPC pair. |
 | `context.ts` | -- | Re-exports `ServiceContainer` as `Ctx`, the shared context type every effect above is generic over. |
-| `jarvis.effects.ts` | -- | The `JARVIS_*` effects: an availability responder always, and the per-connection chat session (scripted or Anthropic, by the caller's `JarvisBrain` preference) when a loop set is present. |
+| `jarvis.effects.ts` | -- | The `JARVIS_*` effects: an availability responder always, and the per-connection chat session (scripted, house Anthropic, or a person's own key, by the caller's `JarvisBrain` preference). The own-key loop comes from `buildOwnKeyLoop`, built per connection, so a person's key is never shared. |
 | `opsJarvisUsage.effects.ts` | -- | Ops: today's Jarvis usage from `ctx.usageMeter` beside the house-wide spend and cap from `ctx.jarvisBudget`. |
-| `index.ts` | -- | `allEffects` (FX + Credit + Ops + Equities, plus `opsJarvisUsageEffects`) and `buildEffects(loops)`, which appends the Jarvis effects; `src/index.ts` combines the result. |
+| `index.ts` | -- | `allEffects` (FX + Credit + Ops + Equities, plus `opsJarvisUsageEffects`) and `buildEffects(loops, buildOwnKeyLoop)`, which appends the Jarvis effects; `src/index.ts` combines the result. |
 
 (`*.effects.test.ts` siblings and `index.test.ts` are test files, omitted from the inventory above.)
 
@@ -187,7 +187,7 @@ const jarvisLoops = createJarvisLoops(
   buildAnthropicLoop,
 );
 const listen = createWsListener(
-  combineEffects(...buildEffects(jarvisLoops)),
+  combineEffects(...buildEffects(jarvisLoops, buildOwnKeyLoop)),
   services,
 );
 const auth = new AuthService({

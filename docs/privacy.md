@@ -33,6 +33,13 @@ Anthropic API to produce the answer. Your email address and display name
 are not sent. Anthropic's own data retention applies to what it receives.
 The scripted assistant sends nothing anywhere.
 
+If you choose to use your own API key, it passes through our server on its
+way to the provider you picked, and is not stored there. The server holds it in
+memory only while your connection is open, and never logs it. In your browser it
+stays in the tab's session storage, or on the device if you tick "Remember on
+this device". Signing out removes it. The provider then sees your messages the
+same way Anthropic does above, under your account with them.
+
 The server keeps the conversation in memory only for as long as your
 connection is open, and does not store or log message contents. It counts
 turns and tokens per model for the whole server, not per person.
