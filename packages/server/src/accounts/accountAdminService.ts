@@ -137,10 +137,25 @@ export function createAccountAdminService(
       }
 
       case "delete": {
-        // Spend rows first, then the account. If the spend store cannot be
-        // reached the account stays, so the administrator retries and nothing
-        // is left behind; an account delete that fails after this leaves an
-        // account without spend history, which is harmless.
+        // Block, then spend rows, then the account. The block comes first so
+        // a part-way failure never leaves an ACTIVE account with a reset
+        // daily allowance: a blocked account cannot run turns, whatever its
+        // spend says, and the administrator retries the delete (blocking an
+        // already-blocked account is a plain "ok").
+        const blocked = await deps.directory.setBlocked(
+          accountId,
+          true,
+          deps.now(),
+        );
+
+        if (blocked !== "ok") {
+          return blocked;
+        }
+
+        // The block ends its sessions now, not only if the delete finishes.
+        deps.statusCache.invalidate(accountId);
+        deps.sessions.closeAll(accountId);
+
         const spent = await deps.spend.deleteOwner(`account:${accountId}`);
 
         if (spent === "unavailable") {
