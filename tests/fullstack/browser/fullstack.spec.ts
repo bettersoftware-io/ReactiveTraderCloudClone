@@ -139,8 +139,7 @@ test.describe("full-stack: a person's own key over the real wire", () => {
     await jarvisOwnKey.saveKeyAndExpectAccepted(ctx, fakeKey);
     await jarvisOwnKey.closePreferences(ctx);
 
-    await ctx.po.workspace.reload();
-    await jarvis.expectOrbVisibleWithin(ctx, 20);
+    await jarvisOwnKey.reloadWorkspace(ctx);
     await jarvisOwnKey.openPreferences(ctx);
     await jarvisOwnKey.expectKeyRestoredAndAccepted(ctx);
     await jarvisOwnKey.chooseOwnBrain(ctx, ownBrain);

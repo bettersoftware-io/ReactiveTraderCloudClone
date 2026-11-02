@@ -34,6 +34,12 @@ export async function saveKeyAndExpectAccepted(
   assertTrue(masked.length > 0, "the saved readout is empty");
 }
 
+/** Reloads the page and waits for the app (the orb) to come back. */
+export async function reloadWorkspace(ctx: TestContext): Promise<void> {
+  await ctx.po.workspace.reload();
+  await ctx.po.jarvis.waitForOrbVisible(20_000);
+}
+
 /** With Preferences open after a reload: the key is still saved, and the
  *  server accepts it again on the new connection. */
 export async function expectKeyRestoredAndAccepted(
