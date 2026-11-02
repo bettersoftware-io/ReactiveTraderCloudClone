@@ -35,11 +35,9 @@ import {
 } from "./agentLoop.js";
 import { JARVIS_SYSTEM_PROMPT } from "./jarvisPersona.js";
 import {
-  JARVIS_HISTORY_MAX_MESSAGES,
   JARVIS_MAX_TOKENS_PER_TURN,
   JARVIS_MAX_TURNS_PER_SESSION,
   JARVIS_PROMPT_PREFIX_TOKENS,
-  JARVIS_RESERVE_INPUT_TOKENS,
 } from "./jarvisRunnerConfig.js";
 import {
   BUDGET_SPENT_NOTICE,
@@ -55,15 +53,17 @@ import {
   TRUNCATION_NOTICE,
 } from "./jarvisTurnCopy.js";
 import { LiveSessionDesk } from "./LiveSessionDesk.js";
+import {
+  capMessages,
+  historyMessageOf,
+  isBudgetSpent,
+  KEY_REFUSAL_STATUSES,
+  REQUEST_CEILING,
+  recordSafely,
+} from "./liveSessionRules.js";
 
-/** What one request is reserved at against the budget while it is in flight
- * — see `JARVIS_RESERVE_INPUT_TOKENS`. */
-const REQUEST_CEILING: JarvisTokenUsage = {
-  inputTokens: JARVIS_RESERVE_INPUT_TOKENS,
-  outputTokens: JARVIS_MAX_TOKENS_PER_TURN,
-  cacheReadTokens: 0,
-  cacheCreationTokens: 0,
-};
+/** Names this session in its log lines. */
+const SESSION_NAME = "AnthropicAgentSession";
 
 const SYSTEM_BLOCKS: readonly BetaTextBlockParam[] = [
   {
@@ -205,10 +205,6 @@ function adaptTool(tool: JarvisToolDefinition): BetaRunnableTool<unknown> {
   return runnable as unknown as BetaRunnableTool<unknown>;
 }
 
-/** What a provider answers for a key it will not serve: unauthorized, out of
- * credit, forbidden. A 429 is not one of them: the key may be fine. */
-const KEY_REFUSAL_STATUSES: ReadonlySet<number> = new Set([401, 402, 403]);
-
 /** Anthropic's answer to a key with no credit, as far as anyone recalls: a 400
  * `invalid_request_error` saying the credit balance is too low. To be
  * confirmed by the real-key run (B3c Task 14). */
@@ -234,21 +230,6 @@ function isKeyRefusal(error: unknown): boolean {
  * `pause_turn` once the paused content is pushed back. */
 function wouldRequestAgain(stopReason: string | null): boolean {
   return stopReason === "tool_use" || stopReason === "pause_turn";
-}
-
-/** Asks the meter whether the budget is spent; a meter that throws counts as
- * spent, so a broken budget never lets a house turn run on unchecked. */
-function isBudgetSpent(meter: TurnMeter): boolean {
-  try {
-    return meter.exhausted();
-  } catch (error) {
-    console.error(
-      "AnthropicAgentSession: meter.exhausted threw —",
-      describeSdkErrorForLogging(error),
-    );
-
-    return true;
-  }
 }
 
 /** Running token counts of a request still streaming. */
@@ -330,7 +311,7 @@ function createRequestLedger(deps: RequestLedgerDeps): RequestLedger {
   function book(usage: JarvisTokenUsage): void {
     open = false;
     accrued = null;
-    recordSafely(liveMeter, liveBrain, usage);
+    recordSafely(liveMeter, liveBrain, usage, SESSION_NAME);
   }
 
   function release(): void {
@@ -365,7 +346,7 @@ function createRequestLedger(deps: RequestLedgerDeps): RequestLedger {
 
   return {
     beginRequest: (): boolean => {
-      if (isBudgetSpent(liveMeter)) {
+      if (isBudgetSpent(liveMeter, SESSION_NAME)) {
         return false;
       }
 
@@ -502,71 +483,6 @@ function streamedLengthOf(delta: BetaRawContentBlockDelta): number {
   }
 }
 
-/**
- * Books a request's usage. Own try/catch: by the time this runs the request
- * was already billed by Anthropic and, on the normal path, its reply already
- * streamed, so a throwing meter (a bug in the budget or the usage display, an
- * injected test double gone wrong) must never reach the turn's own catch —
- * that would turn an already-served turn into a sanitized "desk link
- * faltered" error AND drop it from the session's history (`runTurn` appends
- * only on a "completed" outcome), corrupting the NEXT turn's context for a
- * failure that has nothing to do with the model or the conversation.
- */
-function recordSafely(
-  meter: TurnMeter,
-  brain: JarvisLiveBrain,
-  usage: JarvisTokenUsage,
-): void {
-  try {
-    meter.record(brain, usage);
-  } catch (usageError) {
-    console.error(
-      "AnthropicAgentSession: meter.record threw —",
-      describeSdkErrorForLogging(usageError),
-    );
-  }
-}
-
-function mapHistoryEntry(entry: JarvisHistoryEntry): BetaMessageParam {
-  return {
-    role: entry.role === "jarvis" ? "assistant" : "user",
-    content: entry.text,
-  };
-}
-
-/**
- * Keeps only the newest `JARVIS_HISTORY_MAX_MESSAGES` messages — every
- * history message replayed is billed input tokens on every subsequent turn
- * (see `JARVIS_HISTORY_MAX_MESSAGES`'s doc comment), so an over-long history
- * is trimmed from the front (oldest first) rather than rejected outright —
- * then drops any now-leading `"assistant"` entries: the Messages API
- * requires `messages[0].role === "user"`, and either the trim boundary
- * above OR the wire layer's OWN 20-entry cap (`JARVIS_HISTORY_MAX_ENTRIES`,
- * enforced in `jarvis.effects.ts`, applied before this ever runs — e.g. a reconnect
- * mid-conversation truncating to a window that happens to start on a
- * "jarvis" reply) can leave an assistant-first array. Left unguarded that's
- * a PERMANENT session brick: the resulting 400 is caught as a generic
- * sanitized error, and since an errored turn appends nothing to history
- * (see `runTurn`'s `.then`), every later turn on this session resends the
- * exact same bad prefix. Runs on every call, not just when trimming
- * actually removed something, since the assistant-first array can arrive
- * already capped (short history, wire-truncated to start wrong).
- */
-function capMessages(
-  messages: readonly BetaMessageParam[],
-): BetaMessageParam[] {
-  const capped =
-    messages.length > JARVIS_HISTORY_MAX_MESSAGES
-      ? messages.slice(-JARVIS_HISTORY_MAX_MESSAGES)
-      : [...messages];
-
-  while (capped[0]?.role === "assistant") {
-    capped.shift();
-  }
-
-  return capped;
-}
-
 type TurnOutcome =
   | { readonly kind: "completed"; readonly finalText: string }
   | { readonly kind: "refused" | "aborted" | "errored" };
@@ -653,7 +569,9 @@ export class AnthropicAgentSession implements AgentSession {
       // brand-new session (first turn) has context, not as an ongoing
       // per-turn source of truth.
       if (this.history.length === 0 && history.length > 0) {
-        this.history = capMessages(history.map(mapHistoryEntry));
+        this.history = capMessages<BetaMessageParam>(
+          history.map(historyMessageOf),
+        );
       }
 
       const userMessage: BetaMessageParam = { role: "user", content: text };

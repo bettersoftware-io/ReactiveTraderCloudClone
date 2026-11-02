@@ -191,6 +191,37 @@ describe("JarvisBudgetService", () => {
       expect((await service.stateFor(MEMBER, "member")).spentUsd).toBe(0.15);
     });
 
+    it("a reservation is priced from the list even when its usage carries a reported cost", async () => {
+      const store = createInMemorySpendStore();
+      await store.record("account:a", TODAY, "house", 0.15);
+      const service = createService(store);
+      await service.stateFor(MEMBER, "member");
+      const first = service.meterFor(MEMBER, "member");
+      const second = service.meterFor(MEMBER, "member");
+
+      first.beginRequest("claude-sonnet-5", {
+        ...SONNET_CEILING,
+        reportedCostUsd: 0,
+      });
+
+      // Booked at the reported $0 the other meter would still fit; reserved
+      // at Sonnet's listed worst case it does not.
+      expect(second.exhausted()).toBe(true);
+    });
+
+    it("a record books a reported cost as it is", async () => {
+      const store = createInMemorySpendStore();
+      const service = createService(store);
+      await service.stateFor(MEMBER, "member");
+
+      service.meterFor(MEMBER, "member").record("claude-sonnet-5", {
+        ...SONNET_CEILING,
+        reportedCostUsd: 0.05,
+      });
+
+      expect((await service.stateFor(MEMBER, "member")).spentUsd).toBe(0.05);
+    });
+
     it("booking the request releases its reservation, leaving only what it cost", async () => {
       const store = createInMemorySpendStore();
       await store.record("account:a", TODAY, "house", 0.15);

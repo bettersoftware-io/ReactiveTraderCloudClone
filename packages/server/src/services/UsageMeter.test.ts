@@ -315,6 +315,45 @@ describe("estimateUsageCostUsd", () => {
     }
   });
 
+  it("books a reported cost as it is, instead of the listed price", () => {
+    expect(
+      estimateUsageCostUsd("own:anthropic:claude-opus-5", {
+        inputTokens: 1_000_000,
+        outputTokens: 1_000_000,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+        reportedCostUsd: 0.0042,
+      }),
+    ).toBe(0.0042);
+  });
+
+  it("books a reported cost of zero as zero: a free model costs nothing", () => {
+    expect(
+      estimateUsageCostUsd("own:anthropic:claude-opus-5", {
+        inputTokens: 1_000_000,
+        outputTokens: 1_000_000,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+        reportedCostUsd: 0,
+      }),
+    ).toBe(0);
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, -0.01])(
+    "falls back to the listed price when the reported cost is %s",
+    (reportedCostUsd) => {
+      expect(
+        estimateUsageCostUsd("own:anthropic:claude-opus-5", {
+          inputTokens: 1_000_000,
+          outputTokens: 1_000_000,
+          cacheReadTokens: 0,
+          cacheCreationTokens: 0,
+          reportedCostUsd,
+        }),
+      ).toBeCloseTo(5 + 25, 10);
+    },
+  );
+
   it("prices the scripted brain at zero", () => {
     expect(
       estimateUsageCostUsd("scripted", {

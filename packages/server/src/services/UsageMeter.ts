@@ -34,12 +34,16 @@ export const JARVIS_PRICE_TABLE: Record<
   "claude-opus-5": { inputUsdPerMtok: 5, outputUsdPerMtok: 25 },
 };
 
-/** One Anthropic session iteration's token counts, as reported by the SDK. */
+/** One model request's token counts, as the provider reported them. */
 export interface JarvisTokenUsage {
   readonly inputTokens: number;
   readonly outputTokens: number;
   readonly cacheReadTokens: number;
   readonly cacheCreationTokens: number;
+  /** What the provider says the request cost, USD, when it says (OpenRouter
+   * does). Booked in place of the listed price when it is a finite amount of
+   * zero or more; a reservation never reads it. */
+  readonly reportedCostUsd?: number;
 }
 
 /** Mutable per-brain running totals; `JarvisBrainUsageRow` minus the
@@ -66,7 +70,7 @@ function createAccumulator(): BrainAccumulator {
  * The estimated USD cost of some token usage on a brain — one request's for
  * the daily budget, a window's running totals for the Ops rows. Both price
  * through this one function so the budget is enforced against exactly the
- * figure the Ops card shows.
+ * figure the Ops card shows. A cost the provider reported is booked as it is.
  */
 export function estimateUsageCostUsd(
   brain: JarvisLiveBrain | "scripted",
@@ -76,6 +80,22 @@ export function estimateUsageCostUsd(
     return 0;
   }
 
+  const reported = usage.reportedCostUsd;
+
+  if (reported !== undefined && Number.isFinite(reported) && reported >= 0) {
+    return reported;
+  }
+
+  return estimateListedCostUsd(brain, usage);
+}
+
+/** The cost of some token usage at the brain's listed price, whatever the
+ * provider reported: what a reservation is priced at, since nothing has been
+ * reported before a request is made. */
+export function estimateListedCostUsd(
+  brain: JarvisLiveBrain,
+  usage: JarvisTokenUsage,
+): number {
   // An own-key brain is priced from its curated model; any other from the
   // house table.
   const housePrices: Readonly<Record<string, JarvisBrainPrice | undefined>> =
