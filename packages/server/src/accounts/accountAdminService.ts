@@ -6,6 +6,7 @@ import {
   normalizeDisplayName,
 } from "@rtc/domain";
 
+import type { SpendStore } from "../services/jarvisBudget/SpendStore.js";
 import type { Caller } from "../services/serviceContainer.js";
 import type {
   AccountDirectory,
@@ -22,6 +23,8 @@ export interface AccountAdminServiceDeps {
   readonly statusCache: AccountStatusCache;
   readonly sessions: SessionRegistry;
   readonly revocations: RevocationLedger;
+  /** Deleting an account takes its Jarvis spend rows with it. */
+  readonly spend: SpendStore;
   readonly now: () => number;
   /** `ADMIN_ACCOUNT_LIST_MAX`. */
   readonly listLimit: number;
@@ -111,7 +114,7 @@ export function createAccountAdminService(
     };
   }
 
-  function write(
+  async function write(
     accountId: string,
     action: AccountAdminAction,
     displayName: string,
@@ -134,6 +137,16 @@ export function createAccountAdminService(
       }
 
       case "delete": {
+        // Spend rows first, then the account. If the spend store cannot be
+        // reached the account stays, so the administrator retries and nothing
+        // is left behind; an account delete that fails after this leaves an
+        // account without spend history, which is harmless.
+        const spent = await deps.spend.deleteOwner(`account:${accountId}`);
+
+        if (spent === "unavailable") {
+          return "unavailable";
+        }
+
         return deps.directory.deleteAccount(accountId);
       }
     }

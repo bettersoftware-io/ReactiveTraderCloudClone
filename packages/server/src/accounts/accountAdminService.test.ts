@@ -12,6 +12,11 @@ import type { DevAccountSeed } from "#/accounts/devAccounts";
 import { createInMemoryAccountDirectory } from "#/accounts/InMemoryAccountDirectory";
 import { createRevocationLedger } from "#/accounts/revocationLedger";
 import type { SessionRegistry } from "#/accounts/sessionRegistry";
+import { createInMemorySpendStore } from "#/services/jarvisBudget/InMemorySpendStore";
+import type {
+  SpendOwner,
+  SpendStore,
+} from "#/services/jarvisBudget/SpendStore";
 import type { Caller } from "#/services/serviceContainer";
 
 describe("AccountAdminService", () => {
@@ -309,6 +314,84 @@ describe("AccountAdminService", () => {
       expect(cache.invalidate).toHaveBeenCalledWith(OTHER_ID);
       expect(sessions.closeAll).toHaveBeenCalledWith(OTHER_ID);
     });
+
+    describe("delete and the account's spend rows", () => {
+      it("deletes the spend rows of that account only", async () => {
+        const { service, spend } = createFixture();
+        await seedSpend(spend);
+
+        await service.act(createCaller(ADMIN_ID), OTHER_ID, REMOVE);
+
+        expect(
+          await spend.read(`account:${OTHER_ID}`, "2026-10-25", "house"),
+        ).toMatchObject({ ownerUsd: 0 });
+        expect(
+          await spend.read(`account:${OTHER_ID}`, "2026-10-26", "own"),
+        ).toMatchObject({ ownerUsd: 0 });
+        expect(
+          await spend.read(`account:${ADMIN_ID}`, "2026-10-25", "house"),
+        ).toMatchObject({ ownerUsd: 0.3 });
+      });
+
+      it("deletes the spend rows BEFORE the account", async () => {
+        const { service, order } = createFixture();
+
+        await service.act(createCaller(ADMIN_ID), OTHER_ID, REMOVE);
+
+        expect(
+          order.filter((step) => {
+            return step.endsWith("deleted");
+          }),
+        ).toEqual(["spend deleted", "account deleted"]);
+      });
+
+      it("keeps the account and answers unavailable when the spend delete is unavailable", async () => {
+        const { service, directory, spend, sessions, order } = createFixture({
+          spendDown: true,
+        });
+        await seedSpend(spend);
+
+        expect(
+          await service.act(createCaller(ADMIN_ID), OTHER_ID, REMOVE),
+        ).toEqual({ ok: false, refusal: "unavailable" });
+        expect(order).not.toContain("account deleted");
+        expect(await directory.findAccount(OTHER_ID)).toMatchObject({
+          outcome: "found",
+        });
+        expect(sessions.closeAll).not.toHaveBeenCalled();
+      });
+
+      it("leaves the account's spend rows alone for every other action", async () => {
+        const { service, spend, order } = createFixture();
+        await seedSpend(spend);
+
+        await service.act(createCaller(ADMIN_ID), OTHER_ID, {
+          kind: "block",
+        });
+
+        expect(order).not.toContain("spend deleted");
+        expect(
+          await spend.read(`account:${OTHER_ID}`, "2026-10-25", "house"),
+        ).toMatchObject({ ownerUsd: 0.1 });
+      });
+
+      it("has still removed the spend rows when the account delete then fails", async () => {
+        const { service, directory, spend } = createFixture({
+          writesDown: true,
+        });
+        await seedSpend(spend);
+
+        expect(
+          await service.act(createCaller(ADMIN_ID), OTHER_ID, REMOVE),
+        ).toEqual({ ok: false, refusal: "unavailable" });
+        expect(await directory.findAccount(OTHER_ID)).toMatchObject({
+          outcome: "found",
+        });
+        expect(
+          await spend.read(`account:${OTHER_ID}`, "2026-10-25", "house"),
+        ).toMatchObject({ ownerUsd: 0 });
+      });
+    });
   });
 
   describe("list", () => {
@@ -365,6 +448,14 @@ describe("AccountAdminService", () => {
 
 const LIST_LIMIT = 77;
 
+const REMOVE = { kind: "delete" } as const;
+
+async function seedSpend(spend: SpendStore): Promise<void> {
+  await spend.record(`account:${OTHER_ID}`, "2026-10-25", "house", 0.1);
+  await spend.record(`account:${OTHER_ID}`, "2026-10-26", "own", 0.2);
+  await spend.record(`account:${ADMIN_ID}`, "2026-10-25", "house", 0.3);
+}
+
 interface ForbiddenAnswer {
   readonly ok: false;
   readonly refusal: "forbidden";
@@ -382,6 +473,7 @@ interface FixtureOptions {
   readonly down?: boolean;
   readonly writesDown?: boolean;
   readonly listingDown?: boolean;
+  readonly spendDown?: boolean;
 }
 
 interface Fixture {
@@ -396,6 +488,7 @@ interface Fixture {
   readonly writes: ReturnType<typeof vi.fn>;
   readonly listAccounts: ReturnType<typeof vi.fn>;
   readonly order: string[];
+  readonly spend: SpendStore;
 }
 
 function createFixture(options: FixtureOptions = {}): Fixture {
@@ -406,6 +499,18 @@ function createFixture(options: FixtureOptions = {}): Fixture {
     createSeed(BLOCKED_ADMIN_ID, "admin", "blocked"),
   ];
   const base = createInMemoryAccountDirectory({ now: fixedNow, seeds });
+  const order: string[] = [];
+  const memorySpend = createInMemorySpendStore();
+  const spend: SpendStore = {
+    ...memorySpend,
+    deleteOwner: (owner: SpendOwner) => {
+      order.push("spend deleted");
+
+      return options.spendDown === true
+        ? Promise.resolve("unavailable" as const)
+        : memorySpend.deleteOwner(owner);
+    },
+  };
   const writes = vi.fn();
   const listAccounts = vi.fn((limit: number) => {
     return options.listingDown === true
@@ -436,9 +541,13 @@ function createFixture(options: FixtureOptions = {}): Fixture {
     setApproved: writeThrough(base.setApproved),
     setBlocked: writeThrough(base.setBlocked),
     rename: writeThrough(base.rename),
-    deleteAccount: writeThrough(base.deleteAccount),
+    deleteAccount: (id: string) => {
+      order.push("account deleted");
+
+      return writeThrough(base.deleteAccount)(id);
+    },
   };
-  const order: string[] = [];
+
   const cache = {
     read: vi.fn(),
     invalidate: vi.fn(() => {
@@ -463,6 +572,7 @@ function createFixture(options: FixtureOptions = {}): Fixture {
       statusCache: cache,
       sessions,
       revocations,
+      spend,
       now: fixedNow,
       listLimit: LIST_LIMIT,
     }),
@@ -473,6 +583,7 @@ function createFixture(options: FixtureOptions = {}): Fixture {
     writes,
     listAccounts,
     order,
+    spend,
   };
 }
 

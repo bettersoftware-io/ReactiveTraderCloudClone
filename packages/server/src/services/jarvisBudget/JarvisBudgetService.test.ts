@@ -1189,6 +1189,9 @@ function createSwitchableStore(
       record: (...args: Parameters<SpendStore["record"]>): SpendAnswer => {
         return down ? Promise.resolve("unavailable") : inner.record(...args);
       },
+      deleteOwner: (owner: SpendOwner) => {
+        return inner.deleteOwner(owner);
+      },
     },
     setDown: (value: boolean): void => {
       down = value;
@@ -1224,6 +1227,9 @@ function createDelayedStore(
       return delay("record", () => {
         return inner.record(...args);
       });
+    },
+    deleteOwner: (owner: SpendOwner) => {
+      return inner.deleteOwner(owner);
     },
   };
 }
@@ -1276,6 +1282,9 @@ function createManualStore(
           args[0],
           down ? Promise.resolve("unavailable") : inner.record(...args),
         );
+      },
+      deleteOwner: (owner: SpendOwner) => {
+        return inner.deleteOwner(owner);
       },
     },
     setDown: (value: boolean): void => {

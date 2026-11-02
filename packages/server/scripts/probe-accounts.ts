@@ -384,6 +384,24 @@ async function probeSpendStore(): Promise<void> {
         ? read
         : `owner ${read.ownerUsd}, house ${read.houseUsd}`,
     );
+
+    // The account-delete path: every row of one owner goes, the house row
+    // stays for the cleanup below.
+    const deleted = await spend.deleteOwner(SPEND_PROBE_OWNER);
+    const afterDelete = await spend.read(
+      SPEND_PROBE_OWNER,
+      SPEND_PROBE_DAY,
+      "house",
+    );
+    check(
+      "deleteOwner removes the owner's rows",
+      deleted === "deleted" &&
+        afterDelete !== "unavailable" &&
+        afterDelete.ownerUsd === 0,
+      afterDelete === "unavailable"
+        ? afterDelete
+        : `delete ${deleted}, owner now ${afterDelete.ownerUsd}`,
+    );
   } finally {
     const { status, removed } = await deleteSpendRows();
     check(

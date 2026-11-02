@@ -120,6 +120,43 @@ describe("createSupabaseSpendStore.read", () => {
   });
 });
 
+describe("createSupabaseSpendStore.deleteOwner", () => {
+  it("sends one DELETE filtered on the plainly percent-encoded owner", async () => {
+    const { store, requests } = createStore(noContent);
+
+    expect(await store.deleteOwner("account:abc")).toBe("deleted");
+    expect(requests).toEqual([
+      {
+        url: "https://p.supabase.co/rest/v1/jarvis_spend_daily?owner=eq.account%3Aabc",
+        method: "DELETE",
+        body: undefined,
+      },
+    ]);
+  });
+
+  it("does not quote the value at the top level", async () => {
+    const { store, requests } = createStore(noContent);
+
+    await store.deleteOwner("account:a&b");
+
+    expect(requests[0]?.url).toBe(
+      "https://p.supabase.co/rest/v1/jarvis_spend_daily?owner=eq.account%3Aa%26b",
+    );
+    expect(requests[0]?.url).not.toContain("%22");
+  });
+
+  it.each<[string, Reply]>([
+    ["a 5xx", answers(503, {})],
+    ["a 401", answers(401, {})],
+    ["a network error", failsToConnect],
+    ["a refusal", answers(400, { code: "22P02", message: "bad" })],
+  ])("is unavailable on %s", async (_name, reply) => {
+    const { store } = createStore(reply);
+
+    expect(await store.deleteOwner("account:a")).toBe("unavailable");
+  });
+});
+
 interface RecordedRequest {
   readonly url: string;
   readonly method: string;
@@ -144,6 +181,11 @@ function answers(status: number, body: unknown): Reply {
   return () => {
     return Promise.resolve(jsonResponse(status, body));
   };
+}
+
+/** PostgREST answers a DELETE with no `return=representation` as 204, empty. */
+function noContent(): Promise<Response> {
+  return Promise.resolve(new Response(null, { status: 204 }));
 }
 
 function failsToConnect(): Promise<Response> {

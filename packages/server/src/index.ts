@@ -295,6 +295,7 @@ const accountAdmin = createAccountAdminService({
   statusCache: accountStatus,
   sessions: sessionRegistry,
   revocations,
+  spend: spendStore,
   now: readClock,
   listLimit: ADMIN_ACCOUNT_LIST_MAX,
 });
