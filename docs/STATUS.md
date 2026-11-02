@@ -9,7 +9,7 @@
 > they move here once they earn a spec or plan. See [README.md](README.md) for
 > the full document map.
 >
-> Maintained via the `tracking-workstream-status` skill. **Last updated: 2026-11-01**
+> Maintained via the `tracking-workstream-status` skill. **Last updated: 2026-11-02**
 
 ## 🟡 In progress
 
@@ -56,6 +56,7 @@
 
 ## ⚪ Optional / next step (no plan file yet)
 
+- **Jarvis: a socket lost mid-turn leaves the turn open** — the turn stays open until a reload, because `timeout({ first })` in `WsJarvisAdapter.ask` ends at the first frame. Pre-existing, and it carries no key. Fix: end the turn on `gatewayDisconnected`.
 - **React Native after the Expo SDK 58 upgrade — one leftover** — the upgrade (2026-10-25: react-native 0.88, gesture-handler 3, Skia 2.14, jest 30; it superseded Renovate's #732) re-shot the 26 simctl goldens and nothing else. **The Maestro goldens (iOS and Android) were not re-shot.** React Native 0.88 moves some layout by one physical pixel (the rates grid sits 1 px lower), which is why 14 simctl goldens changed; expect the same in both Maestro sets on their next run, which gates nothing.
 - **CI: shard the Playwright browser suites across runners (optional, raised 2026-10-25)** — since #1059 the three browser e2e jobs set every run's wall time (328–451 s against `checks` 269 s, `coverage` 352 s), and each spends ~220–250 s of it in the react + solid Playwright suites at 2 workers on a fast runner. A third worker does not help on 4 vCPUs (measured in #1052). `playwright test --shard=1/2` over two jobs per core would give each half a whole runner, at the cost of the ~70–110 s job setup being paid again and three more required checks. Splitting by client (react in one job, solid in the other) gets the same effect without `--shard`. **Alone it buys little:** a run lasts as long as its slowest job, and once the browser jobs drop to an estimated ~230–260 s, `coverage` (352–383 s) becomes the slowest, so the run would go from ~375–450 s to only ~380 s. A real drop (to ~260–300 s, then bound by `checks`) needs `coverage` split too, e.g. the two UI-contract gates (~165 s) in a job of their own. Measure the pair together, not sharding alone. **Deferred on 2026-10-25**: the options, the decision and when to revisit are in [ci-performance.md](ci-performance.md#decided-2026-10-25-not-sharding-the-browser-suites-yet). Unmeasured: run a paired experiment first, as [ci-performance.md](ci-performance.md#measuring-a-ci-change) describes. Context: [ci-performance.md](ci-performance.md#next-levers).
 

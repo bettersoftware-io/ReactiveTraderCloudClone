@@ -9,6 +9,7 @@ import {
 
 import type { JarvisState, OwnKeyInput, SavedOwnKey } from "@rtc/core-api";
 import {
+  canRetryOwnKey,
   describeOwnKeyStatus,
   isOwnKeyTroubled,
   OWN_KEY_EXPLANATION,
@@ -169,6 +170,13 @@ function SavedKeyReadout({
     setCap(null);
   }
 
+  /** Sends the key again, unchanged, so the server checks it again. The
+   * answer may take this button away, so focus moves on first. */
+  function retryKey(): void {
+    replaceRef.current?.focus();
+    setCap(saved.capUsd);
+  }
+
   return (
     <div className={styles.keyReadout}>
       <span className={styles.keyMasked} data-testid="jarvis-key-masked">
@@ -210,6 +218,16 @@ function SavedKeyReadout({
       </div>
       <span className={styles.keyNote}>{OWN_KEY_LIMIT_NOTE}</span>
       <div className={styles.keyActions}>
+        {canRetryOwnKey(ownKey) ? (
+          <button
+            type="button"
+            className={styles.actionButton}
+            data-testid="jarvis-key-retry"
+            onClick={retryKey}
+          >
+            TRY AGAIN
+          </button>
+        ) : null}
         <button
           ref={replaceRef}
           type="button"
@@ -348,7 +366,7 @@ function KeyForm({
           ref={keyRef}
           className={`${styles.keyField} ${styles.keySecret}`}
           type="password"
-          autoComplete="off"
+          autoComplete="new-password"
           autoCapitalize="off"
           spellCheck={false}
           maxLength={JARVIS_KEY_MAX_CHARS}
@@ -356,6 +374,10 @@ function KeyForm({
           placeholder="Paste your API key"
           onInput={noteKeyTyped}
           data-testid="jarvis-key-input"
+          data-1p-ignore="true"
+          data-lpignore="true"
+          data-bwignore="true"
+          data-form-type="other"
         />
       </div>
       <label className={styles.keyCheck}>

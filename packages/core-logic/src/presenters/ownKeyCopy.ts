@@ -28,6 +28,7 @@ export function describeOwnKeyStatus(
 
   switch (ownKey?.status) {
     case undefined:
+      return "Not confirmed by the server yet";
     case "checking":
       return "Checking…";
     case "accepted":
@@ -39,6 +40,17 @@ export function describeOwnKeyStatus(
     case "limited":
       return "Too many checks. Try again later.";
   }
+}
+
+/** Whether a new check of the saved key could change the answer: the server
+ * could not judge it, or has not reported on it. A refused key stays refused
+ * on its connection, so that one needs Replace. */
+export function canRetryOwnKey(ownKey: JarvisOwnKeyView | null): boolean {
+  return (
+    ownKey === null ||
+    ownKey.status === "unreachable" ||
+    ownKey.status === "limited"
+  );
 }
 
 const TROUBLED_STATUSES: ReadonlySet<JarvisOwnKeyStatus> = new Set([

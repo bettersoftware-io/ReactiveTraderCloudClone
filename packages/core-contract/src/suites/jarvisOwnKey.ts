@@ -283,6 +283,18 @@ export function describeJarvisOwnKeyContract(
       );
     });
 
+    it("setCap with the cap it already has resends the key: Try again", async () => {
+      await withHarness(
+        { session: createSession(), ownKey: { stored: createStored(OWNER) } },
+        async (h, clock) => {
+          h.app.presenters.jarvisOwnKey.setCap(INPUT.capUsd);
+          await clock.settle();
+          expect(h.driver.ownKeySends()).toEqual([SETTING, SETTING]);
+          expect(h.driver.storedOwnKey()).toEqual(createStored(OWNER));
+        },
+      );
+    });
+
     it("remove clears the store and sends clear", async () => {
       await withHarness(
         { session: createSession(), ownKey: { stored: createStored(OWNER) } },

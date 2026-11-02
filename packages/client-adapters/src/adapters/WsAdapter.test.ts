@@ -311,7 +311,7 @@ describe("WsAdapter token-at-connect", () => {
     adapter.dispose();
   });
 
-  it("reads the token fresh on every reconnect", () => {
+  it("reads the token this tab wrote fresh on every reconnect", () => {
     let token: string | undefined = "tok-1";
     const adapter = new WsAdapter(
       "ws://test",
@@ -323,6 +323,7 @@ describe("WsAdapter token-at-connect", () => {
     expect(lastMock.url).toBe("ws://test/?access=tok-1");
 
     token = "tok-2";
+    adapter.adoptToken("tok-2");
     lastMock.onopen?.(new Event("open"));
     lastMock.onclose?.(new CloseEvent("close"));
     vi.advanceTimersByTime(50);

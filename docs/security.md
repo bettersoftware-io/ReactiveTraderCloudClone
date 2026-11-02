@@ -190,10 +190,10 @@ of them is misread as more than it is.
 | **Content-Security-Policy** | Script from anywhere but our own origin: no inline script, no third-party script, no `eval`. A page that gets HTML into the DOM cannot run it, load a plugin, rewrite `<base>` or be framed. | Injected *styles* (`'unsafe-inline'` is on `style-src`, see §3.1); a script served from our own origin; anything the server does. It limits what a hostile page can *do in the browser*; it is not an input filter. | `headers` in `vercel.react.json` and `vercel.solid.json`; `scripts/check-csp.mts` |
 | **Supply chain** | Unpinned actions, images and installers; secrets in the tree; workflow tokens with write scope. | A compromised upstream package inside its pinned version. | `scorecard.yml`, pinned `Dockerfile`, `pnpm audit --prod` gate, push protection |
 
-Two layers are **planned, not built**: Cloudflare in front of the Fly server
+One layer is **planned, not built**: Cloudflare in front of the Fly server
 (volumetric absorption, edge rate limits and bans, a Turnstile challenge on
 sign-up, `RTC_TRUSTED_IP_HEADER=cf-connecting-ip` plus a server check that
-drops traffic not from Cloudflare's ranges), and bring-your-own model keys on the client (B3c; the server half is built). The first is the only layer that stops a
+drops traffic not from Cloudflare's ranges). It is the only layer that stops a
 real flood before it is paid for, and the one that removes the sign-up denial
 levers; it needs a custom domain proxied through Cloudflare and a client
 redeploy for the new server URL.
@@ -263,8 +263,10 @@ goes with the tab, or in local storage when the person ticks "Remember on this
 device". It is never in both. Three facts from the code:
 
 - **It is wiped** at sign-out, on a switch to another account, and when the
-  server ends the session (the client reads that as signed out). It is kept
-  across a lock and across a reload of the same account.
+  session ends: the server ended it, or a reconnect in this tab found the shared
+  session store no longer holds this tab's token, because another tab signed
+  out or signed in as someone else. It is kept across a lock and across a reload
+  of the same account.
 - **It is shown back masked.** `maskOwnKey` keeps the vendor tag and the last
   four characters of a long key, less of a short one, and nothing of a very
   short one. The raw key passes through the save and the transport call and
@@ -301,8 +303,13 @@ its own cap, so tabs do not see each other:
 - a cap change in one tab does not reach another;
 - two tabs can hold two different keys;
 - Remove in one tab leaves the key live in the other;
-- a sign-out in one tab leaves another tab's socket holding its key until that
-  socket closes.
+- a sign-out or an account switch in one tab leaves another tab's socket holding
+  its key while that socket stays open, because nothing tells it. When it next
+  drops or comes back from an idle close, the tab finds the shared session gone
+  or changed, opens nothing, signs itself out and wipes its key. So the key never
+  goes out under the next account. That sign-out clears the shared session and
+  any remembered key, so the account switched to in the first tab is signed out
+  too at its next reconnect or reload.
 
 **There is no server ping.** A half-open socket, one whose client vanished
 without a close, holds the key in memory until TCP gives up on it.

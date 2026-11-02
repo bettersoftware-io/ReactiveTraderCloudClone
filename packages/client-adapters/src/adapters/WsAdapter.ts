@@ -74,6 +74,11 @@ export class WsAdapter implements IWsAdapter {
 
   private disposed = false;
 
+  // The token this tab's session holds: what the socket opened with, or what
+  // this tab wrote since (`adoptToken`). The store it is compared with is
+  // shared by every tab, so anything else there is another tab's doing.
+  private sessionToken: string | undefined;
+
   // Socket was closed deliberately (idle timeout, or a sign-out / not-yet-
   // signed-in auth gate) rather than dropped. Suppresses auto-reconnect until
   // an explicit reopen()/connect().
@@ -152,7 +157,8 @@ export class WsAdapter implements IWsAdapter {
     // Read the token fresh on every (re)connect — never baked into `url` — so
     // a token that changes between disconnects (e.g. re-login) is picked up
     // without recreating the adapter.
-    const target = buildWsUrl(this.url, this.tokenProvider());
+    this.sessionToken = this.tokenProvider();
+    const target = buildWsUrl(this.url, this.sessionToken);
     const socket = new WebSocket(target);
     this.ws = socket;
 
@@ -239,13 +245,7 @@ export class WsAdapter implements IWsAdapter {
       // status waits at DISCONNECTED for the next sign-in's socket, and
       // nothing that reads it reconnects or raises an incident.
       if (event.code === SESSION_ENDED_CLOSE_CODE) {
-        this.ws = null;
-        this.suspended = true;
-        this.closedForIdle = false;
-        this.sendQueue.length = 0;
-        this.rejectPendingRpcs("WsAdapter session ended");
-        this.sessionEnded$.next();
-        this.reportReleased();
+        this.endSession();
         return;
       }
 
@@ -268,6 +268,31 @@ export class WsAdapter implements IWsAdapter {
     socket.onerror = (): void => {
       // onclose will fire after onerror
     };
+  }
+
+  /** This session is over: lets go of the socket, goes quiet until a
+   * connect() after a new sign-in, and reports it once. */
+  private endSession(): void {
+    this.ws = null;
+    this.suspended = true;
+    this.closedForIdle = false;
+    this.sendQueue.length = 0;
+    this.rejectPendingRpcs("WsAdapter session ended");
+    this.sessionEnded$.next();
+    this.reportReleased();
+  }
+
+  /** Whether the shared session store no longer holds this tab's token:
+   * another tab signed out, or signed in as someone. Asked before a socket
+   * opens on its own, because the upgrade cannot say: a new token would be
+   * accepted, and the key this tab remembers sent under that account, and a
+   * missing one is refused with a close no browser can tell from a drop. A
+   * socket opened with no token has no session to lose. */
+  private sessionMovedOn(): boolean {
+    return (
+      this.sessionToken !== undefined &&
+      this.tokenProvider() !== this.sessionToken
+    );
   }
 
   /** Closes the current socket on purpose and reports it. The socket's own
@@ -312,6 +337,11 @@ export class WsAdapter implements IWsAdapter {
 
     this.reconnectTimer = setTimeout(() => {
       if (this.disposed) {
+        return;
+      }
+
+      if (this.sessionMovedOn()) {
+        this.endSession();
         return;
       }
 
@@ -424,8 +454,15 @@ export class WsAdapter implements IWsAdapter {
     return this.connectionEvents$.asObservable();
   }
 
-  /** One emission per `4401` close: the server ended this session. Hot and
-   * not replayed (see `sessionEnded$`). */
+  /** This tab wrote `token` into the session store, so it is still this tab's
+   * session (an unlock rotates the token under a socket that stays open). */
+  adoptToken(token: string): void {
+    this.sessionToken = token;
+  }
+
+  /** One emission per ended session: a `4401` close, or a reconnect that found
+   * the session had moved on in another tab. Hot and not replayed (see
+   * `sessionEnded$`). */
   sessionEnded(): Observable<void> {
     return this.sessionEnded$.asObservable();
   }
@@ -461,6 +498,12 @@ export class WsAdapter implements IWsAdapter {
 
     this.closedForIdle = false;
     this.suspended = false;
+
+    if (this.sessionMovedOn()) {
+      this.endSession();
+      return;
+    }
+
     this.openSocket();
   }
 

@@ -729,11 +729,13 @@ export function createJarvisController(): JarvisController {
         // own-key brain was left behind (its key dropped, with no gate to
         // say so), it actually MOVED this session's effective brain (not for
         // an unaffected user, nor a republished frame at the same level), and
-        // there is a conversation beyond the greeting to append it to.
+        // there is a conversation beyond the greeting to append it to. An
+        // unavailable reading says nothing about the key: the adapter
+        // synthesizes one when the server stays silent.
         const leftOwnBrain = isJarvisOwnBrain(previousEffectiveBrain);
 
         if (
-          (gate === null && !leftOwnBrain) ||
+          (gate === null && (!leftOwnBrain || !value.available)) ||
           nextEffectiveBrain === previousEffectiveBrain ||
           s.entries.length <= 1
         ) {

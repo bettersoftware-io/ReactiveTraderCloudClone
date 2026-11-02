@@ -262,6 +262,26 @@ describe("createJarvisController — a saved own preference without its key", ()
     );
   });
 
+  it("silence from the server says nothing about the key: no line, and the key's brain comes back", () => {
+    const controller = createJarvisController();
+    controller.preferredBrainPatch(OWN_SONNET);
+    const talking = withConversation(OWN_SONNET);
+
+    const silent = controller.availabilityPatch(
+      anAvailability({ available: false, brains: [] }),
+    )(talking);
+
+    expect(silent.effectiveBrain).toBe("scripted");
+    expect(silent.entries).toEqual(talking.entries);
+
+    const answered = controller.availabilityPatch(
+      anAvailability({ brains: ["scripted", OWN_SONNET] }),
+    )(silent);
+
+    expect(answered.effectiveBrain).toBe(OWN_SONNET);
+    expect(answered.entries).toEqual(talking.entries);
+  });
+
   it("a key dropped with no gate at all still gets the line", () => {
     const controller = createJarvisController();
     controller.preferredBrainPatch(OWN_SONNET);

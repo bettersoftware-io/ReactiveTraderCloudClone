@@ -52,8 +52,12 @@ describe("OwnKeySection", () => {
     expect(page.providers()).toEqual(["anthropic"]);
     expect(page.keyFieldAttributes()).toEqual({
       type: "password",
-      autocomplete: "off",
+      autocomplete: "new-password",
       maxLength: String(JARVIS_KEY_MAX_CHARS),
+      onePasswordIgnore: "true",
+      lastPassIgnore: "true",
+      bitwardenIgnore: "true",
+      formType: "other",
     });
     expect(page.rememberChecked()).toBe(false);
     expect(page.capValue()).toBe(String(JARVIS_OWN_CAP_DEFAULT_USD));
@@ -347,10 +351,65 @@ describe("OwnKeySection", () => {
     }
   });
 
-  it("reads a saved key the server has not reported on as being checked", () => {
+  it("says a saved key the server has not reported on is not confirmed, not that it is being checked", () => {
     const page = mount(OwnKeySection, { jarvisOwnKeySaved: SAVED });
 
-    expect(page.status()).toBe("Checking…");
+    expect(page.status()).toBe("Not confirmed by the server yet");
+  });
+
+  it("offers Try again while a new check could change the answer", () => {
+    const offered: [JarvisOwnKeyStatus, boolean][] = [
+      ["checking", false],
+      ["accepted", false],
+      ["refused", false],
+      ["unreachable", true],
+      ["limited", true],
+    ];
+
+    for (const [status, shown] of offered) {
+      const page = mount(OwnKeySection, {
+        jarvisOwnKeySaved: SAVED,
+        jarvisAvailability: withOwnKey(status),
+      });
+
+      expect(page.hasRetry()).toBe(shown);
+      cleanupMounted();
+    }
+  });
+
+  it("offers Try again for a saved key the server has not reported on", () => {
+    const page = mount(OwnKeySection, { jarvisOwnKeySaved: SAVED });
+
+    expect(page.hasRetry()).toBe(true);
+  });
+
+  it("offers no Try again with no key saved", () => {
+    const page = mount(OwnKeySection, {});
+
+    expect(page.hasRetry()).toBe(false);
+  });
+
+  it("Try again sends the saved limit back through setCap, and hands focus on", async () => {
+    const page = mount(OwnKeySection, {
+      jarvisOwnKeySaved: SAVED,
+      jarvisAvailability: withOwnKey("unreachable"),
+    });
+
+    await page.retry();
+
+    expect(page.calls()).toEqual([{ kind: "setCap", capUsd: SAVED.capUsd }]);
+    expect(page.focusedControl()).toBe("jarvis-key-replace");
+  });
+
+  it("Try again with no limit sends no limit", async () => {
+    const page = mount(OwnKeySection, {
+      jarvisOwnKeySaved: { ...SAVED, capUsd: null },
+      jarvisAvailability: withOwnKey("limited"),
+    });
+
+    await page.retry();
+
+    expect(page.calls()).toEqual([{ kind: "setCap", capUsd: null }]);
   });
 });
 

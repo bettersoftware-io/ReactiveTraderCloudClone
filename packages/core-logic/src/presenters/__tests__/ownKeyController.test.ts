@@ -192,6 +192,20 @@ describe("createOwnKeyController", () => {
     });
   });
 
+  it("setCap with the cap it already has still resends the key: that is Try again", () => {
+    const { controller, setOwnKey } = build(stored("ann"));
+    controller.authChanged("ann");
+    setOwnKey.mockClear();
+
+    controller.setCap(1);
+
+    expect(setOwnKey).toHaveBeenCalledExactlyOnceWith({
+      provider: "anthropic",
+      key: KEY,
+      capUsd: 1,
+    });
+  });
+
   it("setCap with no key held does nothing", () => {
     const { controller, store, setOwnKey } = build(null);
 
@@ -223,6 +237,19 @@ describe("createOwnKeyController", () => {
     });
 
     expect(controller.setCap(4)?.capUsd).toBe(4);
+  });
+
+  it("release lets go of the held key, sends nothing and wipes nothing", () => {
+    const { controller, store, setOwnKey } = build(stored("ann"));
+    controller.authChanged("ann");
+    setOwnKey.mockClear();
+
+    controller.release();
+
+    expect(controller.setCap(3)).toBe(null);
+    expect(store.clear).not.toHaveBeenCalled();
+    expect(store.write).not.toHaveBeenCalled();
+    expect(setOwnKey).not.toHaveBeenCalled();
   });
 
   it("works without a transport that takes a key", () => {
@@ -302,6 +329,23 @@ describe("createOwnKeyFold", () => {
     fold.readAuth(SIGNED_OUT);
     expect(publish).toHaveBeenCalledTimes(2);
     expect(publish).toHaveBeenLastCalledWith(null);
+  });
+
+  it("lets go of the key it holds once stopped, and leaves the store alone", () => {
+    const { store, setOwnKey } = build(stored(DEMO.user.email));
+    const publish = vi.fn<(saved: SavedOwnKey | null) => void>();
+    const fold = createOwnKeyFold({ jarvis: { setOwnKey }, store, publish });
+    fold.readAuth(SIGNED_IN);
+    store.read.mockReturnValue(null);
+    publish.mockClear();
+
+    fold.stop();
+    // A reading after the stop finds nothing held: the fold's only way to
+    // show what the controller still has.
+    fold.readAuth(SIGNED_IN);
+
+    expect(publish).toHaveBeenCalledExactlyOnceWith(null);
+    expect(store.clear).not.toHaveBeenCalled();
   });
 
   it("does nothing on an intent once stopped, and wipes nothing", () => {

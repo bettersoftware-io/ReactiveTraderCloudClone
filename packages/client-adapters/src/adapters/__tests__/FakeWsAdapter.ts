@@ -56,6 +56,13 @@ export class FakeWsAdapter implements IWsAdapter {
     this.sent.push({ type, payload });
   }
 
+  /** Every token `adoptToken` was handed, in order. */
+  readonly adoptedTokens: string[] = [];
+
+  adoptToken(token: string): void {
+    this.adoptedTokens.push(token);
+  }
+
   /** Mirrors `WsAdapter.sendIfOpen`: nothing is recorded, and `false` is
    * returned, while `setOpen(false)` has the socket closed. */
   sendIfOpen(type: string, payload?: unknown): boolean {

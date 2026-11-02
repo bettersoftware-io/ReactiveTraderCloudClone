@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { JarvisOwnKeyStatus, JarvisOwnKeyView } from "@rtc/domain";
 
 import {
+  canRetryOwnKey,
   describeOwnKeyStatus,
   isOwnKeyTroubled,
   parseOwnKeyCap,
@@ -27,14 +28,27 @@ describe("describeOwnKeyStatus", () => {
     );
   });
 
-  it("reads a key the server has not reported on yet as still being checked", () => {
-    expect(describeOwnKeyStatus(null, "openai")).toBe("Checking…");
+  it("says a key the server has not reported on is not confirmed: only the server says checking", () => {
+    expect(describeOwnKeyStatus(null, "openai")).toBe(
+      "Not confirmed by the server yet",
+    );
   });
 
   it("names the provider the key belongs to", () => {
     expect(describeOwnKeyStatus(view("refused"), "openrouter")).toBe(
       "OpenRouter refused this key",
     );
+  });
+});
+
+describe("canRetryOwnKey", () => {
+  it("is true when a new check could change the answer, false otherwise", () => {
+    expect(canRetryOwnKey(null)).toBe(true);
+    expect(canRetryOwnKey(view("unreachable"))).toBe(true);
+    expect(canRetryOwnKey(view("limited"))).toBe(true);
+    expect(canRetryOwnKey(view("checking"))).toBe(false);
+    expect(canRetryOwnKey(view("accepted"))).toBe(false);
+    expect(canRetryOwnKey(view("refused"))).toBe(false);
   });
 });
 

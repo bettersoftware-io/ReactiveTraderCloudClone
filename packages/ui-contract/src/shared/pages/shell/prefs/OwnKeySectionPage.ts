@@ -10,6 +10,10 @@ export interface KeyFieldAttributes {
   readonly type: string | null;
   readonly autocomplete: string | null;
   readonly maxLength: string | null;
+  readonly onePasswordIgnore: string | null;
+  readonly lastPassIgnore: string | null;
+  readonly bitwardenIgnore: string | null;
+  readonly formType: string | null;
 }
 
 /**
@@ -131,6 +135,10 @@ export class OwnKeySectionPage extends MountedComponent<Record<string, never>> {
       type: field.getAttribute("type"),
       autocomplete: field.getAttribute("autocomplete"),
       maxLength: field.getAttribute("maxlength"),
+      onePasswordIgnore: field.getAttribute("data-1p-ignore"),
+      lastPassIgnore: field.getAttribute("data-lpignore"),
+      bitwardenIgnore: field.getAttribute("data-bwignore"),
+      formType: field.getAttribute("data-form-type"),
     };
   }
 
@@ -206,6 +214,15 @@ export class OwnKeySectionPage extends MountedComponent<Record<string, never>> {
 
   async remove(): Promise<void> {
     await this.user.click(this.control("jarvis-key-remove"));
+  }
+
+  /** Whether the readout offers Try again. */
+  hasRetry(): boolean {
+    return within(this.section()).queryByTestId("jarvis-key-retry") !== null;
+  }
+
+  async retry(): Promise<void> {
+    await this.user.click(this.control("jarvis-key-retry"));
   }
 
   /** Every call the section made on the key presenter, in order. */

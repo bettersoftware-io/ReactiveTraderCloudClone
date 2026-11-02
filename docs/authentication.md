@@ -1081,6 +1081,16 @@ status reads DISCONNECTED, not CONNECTED, until the next sign-in's socket
 opens (until 2026-10-26 a `4401` reported none, and the status kept reading
 CONNECTED while nobody was signed in).
 
+**A session that moved on in another tab.** The session store is shared by every
+tab, so `WsAdapter` compares it with this tab's token before it opens a socket on
+its own: the automatic reconnect, and `reopen()` after an idle close. A missing or
+different token ends the session the same way as a `4401`, with no socket opened,
+because the upgrade cannot say: a different token would be accepted, under
+another account, and a missing one is a `401` no browser can tell from a drop. A
+deliberate `connect()` after a sign-in is not checked. An unlock rotates the
+token under a socket that stays open, so `createWsRealPorts` hands this tab's auth
+a store that tells the transport (`adoptToken`) what this tab wrote.
+
 Only a bundle that knows `4401` signs out like this: a tab still running
 the pre-B2c bundle, or a React Native build without the B2c EAS Update, treats
 the close as an ordinary drop and reconnects about every 3 s — its token

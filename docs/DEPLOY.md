@@ -455,7 +455,8 @@ server host the policy allows.
    directive in both `vercel.*.json` files, run `pnpm check:scripts`, and add the
    reason to `security.md` §3.1. Do not remove the header.
 
-**Server half (PR 2).** It deploys alone, in any order against the clients.
+**Server half (PR 2).** It deploys alone, and it goes out **before** the client
+half below.
 
 5. **Deploy the server** (`deploy.yml`). There is **no migration** and no new
    setting: own keys are held in the connection's memory and the spend rows
@@ -471,11 +472,12 @@ server host the policy allows.
    deployed server the availability frame carries no `ownKey` until a client
    sends a key.
 
-**Client half (PR 3).** Deploy both web clients after the server half is out.
-There is no migration and no setting.
+**Client half (PR 3).** There is no migration and no setting.
 
-8. **Deploy both web clients** (`deploy.yml`). A new client on an old server
-   shows no "Your key" section, because the server never offers own brains.
+8. **Deploy both web clients** (`deploy.yml`), **only after the server half is
+   out.** This order is hard: a new client on an old server shows the "Your key"
+   section, takes a key, and the key is never confirmed. The wire cannot reveal
+   a server's version, so the client cannot tell.
 9. **Verify on each site** with a real account (the section is hidden for a demo
    login): open Preferences, find "Your key", save a real key with a small daily
    limit, and wait for `Accepted`. Pick one of its brains and ask Jarvis

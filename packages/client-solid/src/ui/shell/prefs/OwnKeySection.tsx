@@ -10,6 +10,7 @@ import {
 
 import type { JarvisState, OwnKeyInput, SavedOwnKey } from "@rtc/core-api";
 import {
+  canRetryOwnKey,
   describeOwnKeyStatus,
   isOwnKeyTroubled,
   OWN_KEY_EXPLANATION,
@@ -186,6 +187,13 @@ function SavedKeyReadout(props: SavedKeyReadoutProps): JSX.Element {
     props.setCap(null);
   }
 
+  /** Sends the key again, unchanged, so the server checks it again. The
+   * answer may take this button away, so focus moves on first. */
+  function retryKey(): void {
+    replaceRef?.focus();
+    props.setCap(props.saved.capUsd);
+  }
+
   function requestReplace(): void {
     props.onReplace();
   }
@@ -235,6 +243,16 @@ function SavedKeyReadout(props: SavedKeyReadoutProps): JSX.Element {
       </div>
       <span class={styles.keyNote}>{OWN_KEY_LIMIT_NOTE}</span>
       <div class={styles.keyActions}>
+        <Show when={canRetryOwnKey(props.ownKey)}>
+          <button
+            type="button"
+            class={styles.actionButton}
+            data-testid="jarvis-key-retry"
+            onClick={retryKey}
+          >
+            TRY AGAIN
+          </button>
+        </Show>
         <button
           ref={replaceRef}
           type="button"
@@ -381,7 +399,7 @@ function KeyForm(props: KeyFormProps): JSX.Element {
           ref={keyRef}
           class={`${styles.keyField} ${styles.keySecret}`}
           type="password"
-          autocomplete="off"
+          autocomplete="new-password"
           autocapitalize="off"
           spellcheck={false}
           maxLength={JARVIS_KEY_MAX_CHARS}
@@ -389,6 +407,10 @@ function KeyForm(props: KeyFormProps): JSX.Element {
           placeholder="Paste your API key"
           onInput={noteKeyTyped}
           data-testid="jarvis-key-input"
+          data-1p-ignore="true"
+          data-lpignore="true"
+          data-bwignore="true"
+          data-form-type="other"
         />
       </div>
       <label class={styles.keyCheck}>

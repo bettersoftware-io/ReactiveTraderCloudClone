@@ -1,6 +1,11 @@
 import { defer, map, Observable, of } from "rxjs";
 
-import type { IWsAdapter, SessionStore, TransportPorts } from "@rtc/core-api";
+import type {
+  IWsAdapter,
+  SessionStore,
+  StoredSession,
+  TransportPorts,
+} from "@rtc/core-api";
 import {
   type AnalyticsPort,
   AnalyticsSimulator,
@@ -1111,6 +1116,27 @@ function createPositionPort(ws: IWsAdapter): PositionPort {
 
 // ── Factory ─────────────────────────────────────────────────────
 
+/** The store this tab's auth writes through. The transport compares the shared
+ * store with this tab's token before it reconnects, so a write made here has
+ * to be told apart from another tab's. */
+function createTabSessionStore(
+  shared: SessionStore,
+  ws: Pick<IWsAdapter, "adoptToken">,
+): SessionStore {
+  return {
+    read: () => {
+      return shared.read();
+    },
+    write: (session: StoredSession) => {
+      shared.write(session);
+      ws.adoptToken(session.token);
+    },
+    clear: () => {
+      shared.clear();
+    },
+  };
+}
+
 export function createWsRealPorts(
   ws: IWsAdapter,
   deps: PortFactoryDeps,
@@ -1151,6 +1177,6 @@ export function createWsRealPorts(
     sessions: new SessionSimulator(5),
     metricControls: [latency, errorRate, topology, eventLog],
     auth: deps.auth,
-    sessionStore: deps.sessionStore,
+    sessionStore: createTabSessionStore(deps.sessionStore, ws),
   };
 }

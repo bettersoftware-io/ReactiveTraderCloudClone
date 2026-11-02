@@ -52,6 +52,9 @@ export interface OwnKeyController {
   /** Resends the held key with the new cap; `null` when no key is held. */
   setCap(capUsd: number | null): SavedOwnKey | null;
   remove(): void;
+  /** Lets go of the held key without touching the store or the transport: a
+   * hot swap resumes from those. */
+  release(): void;
 }
 
 export interface OwnKeyControllerDeps {
@@ -159,6 +162,10 @@ export function createOwnKeyController(
       wipe();
       deps.setOwnKey?.(null);
     },
+
+    release: (): void => {
+      held = null;
+    },
   };
 }
 
@@ -233,6 +240,7 @@ export function createOwnKeyFold(deps: OwnKeyFoldDeps): OwnKeyFold {
     },
     stop: (): void => {
       owner = null;
+      controller.release();
     },
     save: (input: OwnKeyInput): void => {
       if (owner !== null) {
