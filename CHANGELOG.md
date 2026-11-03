@@ -29,6 +29,186 @@ Each tagged week is also a [GitHub Release](https://github.com/bettersoftware-io
 whose notes are generated from its section here, so edit this file, never a
 release.
 
+## 2026-W44 — 26 Oct – 1 Nov
+
+Jarvis on a budget. Each person now has a durable daily AI allowance, every
+reply says which brain wrote it and on whose key, and the server can run
+Jarvis on a person's own Anthropic key — the first half of bringing your own
+key, behind a new Content-Security-Policy on both web clients. Around it, the
+server moved onto `@better-software/rx-ws-effects` from npm, and the B2c
+follow-ups were all closed.
+
+### Added
+
+- **A per-person, per-day AI budget for Jarvis**, kept in Supabase so it
+  survives restarts. Approved members get Haiku 4.5 and Sonnet 5 on the house
+  key with $0.20 a day; administrators and the roster persona have no personal
+  limit; everyone sits inside a $3 house-wide daily cap. A spent budget, a
+  spent house cap or an unreachable store switches Jarvis to the scripted
+  brain until 00:00 UTC — it never refuses and never spends anyway. In-flight
+  requests reserve their worst-case cost, so concurrent tabs cannot pass the
+  check together. It replaces the server-wide, in-memory five-hour gate
+  ([#1071]); Sonnet 5 was then repriced to its $2/$10 list price, which had
+  been a third too high ([#1081]).
+- **Brain indicators.** A header readout with a budget meter, a tag on every
+  Jarvis reply naming the brain that actually answered (which can differ from
+  the one asked for), and an optional brain pill, in React and Solid over one
+  shared controller in `@rtc/core-logic`. The in-chat switch line now says
+  why, e.g. that today's budget is used. [#1091]
+- **Jarvis on a person's own Anthropic key, server half.** A key is checked
+  once with the provider, held only in its socket's scope and gone when the
+  socket closes; own-key spend sits under the person's own cap, never in the
+  house budget, and an own-key request has no path to a house brain. Failed
+  key checks are rate-limited. No client sends a key yet. [#1102]
+- **A Content-Security-Policy on both web clients**, blocking inline and
+  third-party script. `vite preview` applies it, so every Playwright suite
+  boots under the real policy; a spec proves an injected script is blocked;
+  a check keeps the two Vercel configs identical. `?relay=` no longer works on
+  the deployed `/devtools/`. [#1100]
+
+### Changed
+
+- **The server runs on `@better-software/rx-ws-effects` from npm** and
+  `packages/ws-effects` is deleted. Three runtime differences come with it: a
+  throwing `send` ends only its connection instead of the process, a
+  connection whose effects stopped closes with 1011, and `rpc` is capped at
+  64 requests in flight per connection. [#1090]
+- **`/mcp` is rate-limited** per IP (before the token is read) and per
+  administrator account (before the directory read), so a stolen admin token
+  or a looping client cannot drain the account store's quota. [#1083]
+- **A client RPC times out after 30 s** as a lost transport, so a call the
+  server never answers on an open socket no longer hangs its caller. [#1084]
+- **A password reset replies without waiting on ending sessions** — the
+  revocation is held in-process and the sockets closed first, the durable
+  stamp follows unawaited — and the Users list fetches accounts awaiting
+  approval first, so an old pending account is never cut off. [#1085]
+- **Signing out cancels a login or unlock still in flight** in all three
+  cores, under 17 new contract cases; a 4401 session end now reports
+  disconnected. [#1086]
+
+### Fixed
+
+- **The React Native app disposes its application core on unmount.** Each
+  demo toggle had left another narrator running, and a single-process jest run
+  never exited. [#1082]
+- **Desk panels no longer stack server streams** — every blotter or analytics
+  panel had opened another full trade-list stream — and **one long Jarvis
+  reply no longer fails the rest of the session**: history entries over the
+  server's cap are shortened, never splitting a surrogate pair. [#1097]
+- **Users panel focus** returns to the row's Rename or Delete button after a
+  rename or delete-confirm, in both clients. [#1087]
+- **The dockview golden wait** counts a tab strip as settled only once
+  dockview has measured it, which ends a scrollbar thumb flashing into 8 of 23
+  captures. [#1088]
+
+### Decisions
+
+- **Bring-your-own keys ships as four PRs** — the CSP, the server, the web
+  clients, then an OpenAI-compatible loop — in
+  [the B3c plan](docs/superpowers/plans/2026-11-01-b3c-byo-keys.md). [#1099]
+- **Options for replacing `STATUS.md` with a board** — Backlog.md, a generated
+  in-repo board, GitHub Issues + Projects — recorded in
+  [`docs/IDEAS.md`](docs/IDEAS.md) with measured conflict rates. Nothing
+  adopted yet. [#1101]
+
+### Under the hood
+
+- **Docs:** the README screenshots recaptured with the Ops tab, the stale
+  `react-local/linux-arm64` golden bucket deleted, and the B2c follow-ups
+  closed ([#1089]); STATUS records for B3b merged and deployed, stale B1
+  hand-off items and the Runner image step ([#1092] [#1093] [#1094] [#1096]).
+- **Dependencies:** `node-forge` forced to 1.4.2 for five new HIGH advisories,
+  which also drops its audit suppression ([#1098]); react 19.3.1, solid-js
+  1.9.17, effect 3.22.4 and the MCP SDK 1.32.2 combined into one PR
+  ([#1095], superseding [#1069] [#1072] [#1074] [#1077]); and the weekly
+  Renovate wave ([#1070] [#1073] [#1075] [#1076] [#1079] [#1080]).
+
+## 2026-W43 — 19 Oct – 25 Oct
+
+Administrators, CI time and the phone app. B2 finished: the old Admin tab
+became Ops, and a new Admin tab lets an administrator approve, block, rename
+and delete accounts, with every rule enforced on the server. CI's longest job
+went from about 740 s to under 450 s. The React Native app moved to Expo SDK
+58 after an Xcode 27 launch failure, and its animated logos finally turned on
+iOS.
+
+### Added
+
+- **The Users panel and administrator access.** Administrators approve,
+  block, unblock, rename and delete registered accounts from a new Admin tab
+  that only they see. Every call re-reads the caller's current account from
+  the store. A block, a rename or a password reset ends the account's
+  sessions, which a client sees as a 4401 close. [#1055]
+- **Changelog checks.** Every week must cite exactly the PRs merged in it, a
+  finished week all of them, and the Monday reminder issue lists the weeks
+  still to write. Week tags are now dated at the week's end, so releases sort
+  in order ([#1043]); W42 written ([#1040]).
+- **React Native dev builds** regenerate a stale `ios/` or `android/` folder
+  first, by fingerprinting the native inputs ([#1035]), and `dev:ios` /
+  `dev:android` default to the visual goldens' devices ([#1036]).
+
+### Changed
+
+- **The Admin dashboard is Ops** — wire, port, tab, route and tests — so that
+  "admin" now means only the access level. Behaviour unchanged. [#1050]
+- **The React Native app is on Expo SDK 58** (react-native 0.88,
+  gesture-handler 3, Skia 2.14, jest 30), because Expo Go on iOS now ships SDK
+  58 only. Skia's paths became immutable and the hold-to-unlock ring moved to
+  the v3 gesture API. [#1067]
+- **CI runs in parallel jobs:** the coverage gates beside `checks`, Playwright
+  at 2 workers ([#1057]), and the full-stack smokes in their own e2e job
+  ([#1059]). The longest job went from 743 s to 374–451 s with no gate
+  dropped, recorded in [`docs/ci-performance.md`](docs/ci-performance.md)
+  ([#1060]).
+- **Local `pnpm test` is capped like CI**, 4 turbo tasks × 2 vitest workers —
+  faster on a 12-core Mac and further from the timeout. [#1064]
+- **The repository grows more slowly.** `gh-pages` is published as one
+  parentless commit instead of 560 commits of report snapshots ([#1041]), and
+  each regenerated golden is losslessly recompressed, 26% smaller and
+  pixel-identical ([#1042]).
+
+### Fixed
+
+- **The iOS app launches under Xcode 27**, which requires the UIKit scene
+  life cycle. [#1033]
+- **The lock emblem** no longer re-runs its glow filter every frame (about 250
+  CoreGraphics errors a second) ([#1038]), its orbit actually turns on iOS
+  ([#1045]), and the header logo's ring and triangles stay in view while they
+  spin ([#1047]).
+- **The RN visual runners drive the device the goldens were shot on**, never
+  whatever simulator happens to be running. [#1034]
+- `client-react-native`'s build declares no outputs, ending turbo's warning on
+  every cache miss. [#1037]
+
+### Decisions
+
+- **Keep committing the Mac (`react-local`) goldens** for now; ignoring them
+  is still the largest saving left, to revisit if repo size starts to hurt.
+  [#1046]
+- **`ubuntu-latest` moving to Ubuntu 26 needs no change**: every job ran green
+  on 26.04 ([#1053]). A temporary CI step warns on the first run that gets it
+  ([#1063]).
+- **Sharding the browser suites is deferred**: it would make the coverage job
+  the slowest and save little unless that job is split too. Both are to be
+  measured together. [#1061] [#1066]
+- **The turbo remote cache is active**, with the Vercel OIDC policy that works
+  recorded in [ADR-008](docs/adr/ADR-008-ci-turbo-remote-cache.md). [#1049]
+- **Dependabot alert 40** (zod 3 in the Vercel CLI tree) dismissed as
+  tolerable: no patched zod 3 exists, and the vulnerable code never runs
+  here. [#1068]
+
+### Under the hood
+
+- **Security advisories:** zod and body-parser HIGH advisories patched, with a
+  documented temporary suppression for zod 3 in the Expo CLI ([#1039]); the
+  withdrawn braces suppression dropped and the Vercel CLI tree patched
+  ([#1044]); the fast-uri, ip-address and hono floors raised ([#1048]).
+- **Docs:** STATUS records for B2c merged and deployed — B2 is complete — and
+  for `rx-ws-effects` 0.1.0 reaching npm ([#1056] [#1062] [#1065]); test
+  strategy describes the parallel CI jobs ([#1058]).
+- **Dependencies:** the weekly Renovate and Dependabot wave ([#1028] [#1029]
+  [#1030] [#1031] [#1054]).
+
 ## 2026-W42 — 12 Oct – 18 Oct
 
 Real accounts. The server learned to register, confirm, approve and sign in
@@ -3361,6 +3541,77 @@ Every commit: [`2026-W12`](https://github.com/bettersoftware-io/ReactiveTraderCl
 [#1025]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1025
 [#1026]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1026
 [#1027]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1027
+[#1028]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1028
+[#1029]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1029
+[#1030]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1030
+[#1031]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1031
+[#1033]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1033
+[#1034]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1034
+[#1035]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1035
+[#1036]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1036
+[#1037]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1037
+[#1038]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1038
+[#1039]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1039
+[#1040]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1040
+[#1041]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1041
+[#1042]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1042
+[#1043]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1043
+[#1044]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1044
+[#1045]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1045
+[#1046]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1046
+[#1047]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1047
+[#1048]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1048
+[#1049]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1049
+[#1050]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1050
+[#1053]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1053
+[#1054]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1054
+[#1055]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1055
+[#1056]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1056
+[#1057]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1057
+[#1058]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1058
+[#1059]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1059
+[#1060]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1060
+[#1061]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1061
+[#1062]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1062
+[#1063]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1063
+[#1064]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1064
+[#1065]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1065
+[#1066]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1066
+[#1067]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1067
+[#1068]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1068
+[#1069]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1069
+[#1070]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1070
+[#1071]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1071
+[#1072]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1072
+[#1073]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1073
+[#1074]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1074
+[#1075]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1075
+[#1076]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1076
+[#1077]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1077
+[#1079]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1079
+[#1080]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1080
+[#1081]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1081
+[#1082]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1082
+[#1083]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1083
+[#1084]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1084
+[#1085]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1085
+[#1086]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1086
+[#1087]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1087
+[#1088]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1088
+[#1089]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1089
+[#1090]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1090
+[#1091]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1091
+[#1092]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1092
+[#1093]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1093
+[#1094]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1094
+[#1095]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1095
+[#1096]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1096
+[#1097]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1097
+[#1098]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1098
+[#1099]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1099
+[#1100]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1100
+[#1101]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1101
+[#1102]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/pull/1102
 
 [`007b6b325`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/007b6b32551f3d35184f10389c57a2529b122401
 [`0281b2a4e`]: https://github.com/bettersoftware-io/ReactiveTraderCloudClone/commit/0281b2a4e8c218a63eeb77e8c29c9a93accc1f9b
