@@ -1,5 +1,7 @@
 import { type BrowserContext, test as base, type Page } from "@playwright/test";
 
+import type { LoginResponseDto } from "@rtc/shared";
+
 import {
   E2E_SESSION_KEY,
   JARVIS_NARRATOR_OFF_VALUE,
@@ -17,6 +19,26 @@ import { loginForToken } from "../loginForToken.js";
 // WsReal adapters to, not the client's own Vite port).
 const SERVER_PORT = Number(process.env.FULLSTACK_PORT ?? 4124);
 const SERVER_BASE = `http://127.0.0.1:${SERVER_PORT}`;
+
+/** The worker's one `demo` login, shared by its tests. */
+let demoLogin: Promise<LoginResponseDto> | null = null;
+
+/**
+ * One real `POST /login` per worker, not one per test: the server allows
+ * `LOGIN_RATE_LIMIT_MAX` logins a minute per IP, and a quick local run of
+ * this suite, with the account journeys' own sign-ins, asks for more than
+ * that. Each test still gets a fresh browser context seeded with the token;
+ * signing out in one test clears only that context. A failed login is not
+ * kept, so the next test tries again.
+ */
+function loginOncePerWorker(): Promise<LoginResponseDto> {
+  demoLogin ??= loginForToken(SERVER_BASE).catch((error: unknown) => {
+    demoLogin = null;
+    throw error;
+  });
+
+  return demoLogin;
+}
 
 interface TestFixtures {
   ctx: TestContext;
@@ -56,13 +78,13 @@ export const test = base.extend<TestFixtures>({
   // and seed the resulting token into localStorage via addInitScript, so
   // it's present before the app's own scripts run on the FIRST navigation.
   // Unlike the simulator-mode `browser/playwright/_context.ts`, the session
-  // here is a REAL token, fetched fresh per test rather than a static
-  // constant.
+  // here is a REAL token rather than a static
+  // constant, fetched once per worker (`loginOncePerWorker`).
   context: async (
     { context }: ContextFixtureArgs,
     use: (value: BrowserContext) => Promise<void>,
   ) => {
-    const login = await loginForToken(SERVER_BASE);
+    const login = await loginOncePerWorker();
     const session = {
       token: login.token,
       username: "demo",

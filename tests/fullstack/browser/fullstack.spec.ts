@@ -119,19 +119,22 @@ test.describe("full-stack: jarvis chat + confirm-gated execution over the real w
  * A person's own key across a real browser and a real server. The server
  * runs with RTC_JARVIS_FAKE=1: a key starting `fake-good` is accepted, any
  * other is refused, and the own loop is the scripted one, so no provider is
- * ever called. This is the only test that drives the whole path: the
+ * ever called. These are the only tests that drive the whole path: the
  * Preferences form, `useJarvisOwnKey`, the presenter, the adapter's
  * `jarvis.key` frame, the server's check, the offered own brains, a turn run
  * on that key, the browser store, and the wipe at sign-out.
+ *
+ * Two tests, not one journey: as one, its ~40 actions on a loaded CI runner
+ * ran past the 30 s test budget (21 s on a quiet run, 33.7 s on the one that
+ * failed). Its trace showed sign-out was not slow: the budget ran out before
+ * sign-out began, while each click right after a boot waited one to three
+ * seconds for the page to settle.
  */
 test.describe("full-stack: a person's own key over the real wire", () => {
-  test("accepts a key, keeps it across a reload, runs a turn on it, and leaves none in the browser after sign-out", async ({
-    ctx,
-  }) => {
-    // Obviously fake, and never a real key.
-    const fakeKey = "fake-good-e2e-not-a-real-key";
-    const ownBrain = "own:anthropic:claude-haiku-4-5";
+  // Obviously fake, and never a real key.
+  const fakeKey = "fake-good-e2e-not-a-real-key";
 
+  test("accepts a key and keeps it across a reload", async ({ ctx }) => {
     await common.openWorkspace(ctx);
     await jarvis.expectOrbVisibleWithin(ctx, 20);
 
@@ -142,6 +145,18 @@ test.describe("full-stack: a person's own key over the real wire", () => {
     await jarvisOwnKey.reloadWorkspace(ctx);
     await jarvisOwnKey.openPreferences(ctx);
     await jarvisOwnKey.expectKeyRestoredAndAccepted(ctx);
+  });
+
+  test("runs a turn on the key, and leaves none in the browser after sign-out", async ({
+    ctx,
+  }) => {
+    const ownBrain = "own:anthropic:claude-haiku-4-5";
+
+    await common.openWorkspace(ctx);
+    await jarvis.expectOrbVisibleWithin(ctx, 20);
+
+    await jarvisOwnKey.openPreferences(ctx);
+    await jarvisOwnKey.saveKeyAndExpectAccepted(ctx, fakeKey);
     await jarvisOwnKey.chooseOwnBrain(ctx, ownBrain);
     await jarvisOwnKey.closePreferences(ctx);
 
