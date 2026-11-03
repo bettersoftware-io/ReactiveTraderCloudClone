@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Aurora backdrop — blur comparison</title>
+<style>
+  :root{
+    --aurora-opacity:0.6;              /* holo-dark master opacity */
+    --amb-play:running;
+    --fa:blur(9px); --fb:blur(13px); --fc:blur(5px);   /* current */
+    --ink:#dfeaf6; --faint:#7c8ba0; --accent:#3dffab; --line:rgba(120,150,180,.18);
+    --panel:rgba(9,14,26,.72);
+  }
+  :root[data-blur="reduced"]{ --fa:blur(4px); --fb:blur(6px); --fc:blur(2px); }
+  :root[data-blur="none"]{ --fa:none; --fb:none; --fc:none; }
+  :root[data-paused="true"]{ --amb-play:paused; }
+  @media (prefers-reduced-motion: reduce){ :root{ --amb-play:paused; } }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    min-height:100vh; overflow:hidden;
+    background:
+      radial-gradient(ellipse 120% 80% at 50% -10%, #0c1730 0%, #070c18 55%, #04070f 100%);
+    color:var(--ink);
+    font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+
+  /* ————— the backdrop (faithful port of AmbientBackground) ————— */
+  .stage{position:fixed;inset:0;overflow:hidden;}
+  .wrap{position:absolute;inset:0;opacity:clamp(0,calc(var(--aurora-opacity)*100),1);}
+  .aur{position:absolute;inset:0;opacity:var(--aurora-opacity);}
+
+  .blobA,.blobB{position:absolute;inset:-12% -6%;will-change:transform;
+    animation-play-state:var(--amb-play);}
+  .blobA{opacity:.26;animation:aurora-a 52s ease-in-out infinite;
+    background:
+      radial-gradient(120% 30% at 50% 12%,rgba(61,255,171,.42),rgba(45,212,191,.2) 46%,transparent 74%),
+      radial-gradient(90% 24% at 30% 26%,rgba(56,189,248,.3),transparent 68%),
+      radial-gradient(80% 22% at 74% 6%,rgba(168,85,247,.38),rgba(217,70,239,.14) 52%,transparent 76%);}
+  .blobB{opacity:.2;animation:aurora-b 68s ease-in-out infinite;
+    background:
+      radial-gradient(70% 18% at 62% 20%,rgba(217,70,239,.3),transparent 64%),
+      radial-gradient(95% 26% at 18% 10%,rgba(45,212,191,.34),transparent 66%);}
+
+  .cA,.cB,.cC{position:absolute;will-change:transform;animation-play-state:var(--amb-play);}
+  .cA{left:-18%;right:-18%;top:-6%;height:46%;opacity:.3;filter:var(--fa);
+    border-radius:0 0 50% 50%/0 0 100% 100%;animation:aurora-c 44s ease-in-out infinite;
+    background:repeating-linear-gradient(94deg,transparent 0,rgba(61,255,171,.1) 14px,rgba(61,255,171,.42) 26px,rgba(45,212,191,.18) 40px,transparent 58px,transparent 92px,rgba(56,189,248,.3) 110px,rgba(61,255,171,.12) 126px,transparent 148px,transparent 205px);
+    -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.95) 6%,rgba(0,0,0,.6) 45%,rgba(0,0,0,.18) 75%,transparent 100%);
+    mask-image:linear-gradient(180deg,rgba(0,0,0,.95) 6%,rgba(0,0,0,.6) 45%,rgba(0,0,0,.18) 75%,transparent 100%);}
+  .cB{left:-18%;right:-18%;top:-4%;height:40%;opacity:.24;filter:var(--fb);
+    border-radius:0 0 60% 40%/0 0 100% 100%;animation:aurora-d 61s ease-in-out infinite;
+    background:repeating-linear-gradient(86deg,transparent 0,transparent 44px,rgba(168,85,247,.36) 66px,rgba(217,70,239,.16) 84px,transparent 106px,transparent 170px,rgba(61,255,171,.22) 192px,transparent 216px,transparent 275px);
+    -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.9) 4%,rgba(0,0,0,.5) 42%,rgba(0,0,0,.12) 72%,transparent 100%);
+    mask-image:linear-gradient(180deg,rgba(0,0,0,.9) 4%,rgba(0,0,0,.5) 42%,rgba(0,0,0,.12) 72%,transparent 100%);}
+  .cC{left:-14%;right:-14%;top:2%;height:30%;opacity:.22;filter:var(--fc);
+    border-radius:0 0 45% 55%/0 0 100% 100%;animation:aurora-e 27s ease-in-out infinite;
+    background:repeating-linear-gradient(91deg,transparent 0,transparent 26px,rgba(255,255,255,.16) 34px,rgba(61,255,171,.3) 42px,transparent 54px,transparent 120px);
+    -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.9) 8%,rgba(0,0,0,.35) 55%,transparent 92%);
+    mask-image:linear-gradient(180deg,rgba(0,0,0,.9) 8%,rgba(0,0,0,.35) 55%,transparent 92%);}
+  .wash{position:absolute;left:0;right:0;top:0;height:52%;opacity:.5;
+    background:linear-gradient(180deg,rgba(168,85,247,.14),rgba(56,189,248,.06) 55%,transparent);}
+  .grid{position:absolute;inset:-48px 0 0 -48px;opacity:.4;will-change:transform;
+    animation:grid-drift 60s linear infinite;animation-play-state:var(--amb-play);
+    background-image:linear-gradient(rgba(0,224,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,224,255,.05) 1px,transparent 1px);
+    background-size:48px 48px,48px 48px;}
+  .dots{position:absolute;inset:-48px 0 0 0;opacity:calc(var(--aurora-opacity)*.16);will-change:transform;
+    animation:dots-drift 90s linear infinite;animation-play-state:var(--amb-play);
+    background-image:radial-gradient(rgba(0,224,255,1) 1.1px,transparent 1.4px);background-size:24px 24px;}
+  .vig{position:absolute;inset:0;z-index:1;
+    background:radial-gradient(ellipse 78% 68% at 50% 38%,transparent 48%,rgba(0,0,0,.58));}
+
+  @keyframes aurora-a{0%{transform:translate3d(-7%,-4%,0) scale(1.08)}50%{transform:translate3d(7%,5%,0) scale(1.28)}100%{transform:translate3d(-7%,-4%,0) scale(1.08)}}
+  @keyframes aurora-b{0%{transform:translate3d(6%,4%,0) scale(1.22)}50%{transform:translate3d(-6%,-4%,0) scale(1.04)}100%{transform:translate3d(6%,4%,0) scale(1.22)}}
+  @keyframes aurora-c{0%{transform:translate3d(-4%,-2%,0) skewX(-4deg) scaleY(1.05)}50%{transform:translate3d(5%,2%,0) skewX(5deg) scaleY(1.18)}100%{transform:translate3d(-4%,-2%,0) skewX(-4deg) scaleY(1.05)}}
+  @keyframes aurora-d{0%{transform:translate3d(4%,1%,0) skewX(6deg) scaleY(1.14)}50%{transform:translate3d(-5%,-2%,0) skewX(-5deg) scaleY(1.02)}100%{transform:translate3d(4%,1%,0) skewX(6deg) scaleY(1.14)}}
+  @keyframes aurora-e{0%{transform:translate3d(-2%,0,0) skewX(-2deg) scaleY(1)}33%{transform:translate3d(3%,1%,0) skewX(4deg) scaleY(1.22)}66%{transform:translate3d(-1%,-1%,0) skewX(-3deg) scaleY(1.08)}100%{transform:translate3d(-2%,0,0) skewX(-2deg) scaleY(1)}}
+  @keyframes grid-drift{from{transform:translate3d(0,0,0)}to{transform:translate3d(48px,48px,0)}}
+  @keyframes dots-drift{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,48px,0)}}
+
+  /* ————— HUD control cluster ————— */
+  .hud{position:fixed;z-index:5;left:24px;bottom:24px;width:min(340px,calc(100vw - 48px));
+    background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border:1px solid var(--line);border-radius:2px;padding:16px 18px;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);}
+  .kick{font-size:10px;letter-spacing:.22em;color:var(--accent);text-transform:uppercase;}
+  .ttl{font-size:14px;letter-spacing:.02em;color:var(--ink);margin:6px 0 2px;font-weight:600;}
+  .sub{font-size:11px;line-height:1.5;color:var(--faint);text-wrap:pretty;margin:0 0 14px;}
+  .seg{display:flex;gap:6px;margin-bottom:12px;}
+  .seg button{flex:1;appearance:none;cursor:pointer;font:inherit;font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--faint);background:transparent;border:1px solid var(--line);
+    border-radius:2px;padding:9px 6px;transition:.15s;}
+  .seg button:hover{color:var(--ink);border-color:rgba(120,150,180,.4);}
+  .seg button[aria-pressed="true"]{color:#04121a;background:var(--accent);border-color:var(--accent);font-weight:700;}
+  .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .readout{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    font-size:11px;padding-top:12px;border-top:1px solid var(--line);}
+  .readout .cost{color:var(--ink);}
+  .readout .cost b{color:var(--accent);font-variant-numeric:tabular-nums;}
+  .note{font-size:10.5px;line-height:1.5;color:var(--faint);margin-top:8px;text-wrap:pretty;}
+  .pause{margin-top:12px;width:100%;appearance:none;cursor:pointer;font:inherit;font-size:10.5px;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--faint);background:transparent;
+    border:1px dashed var(--line);border-radius:2px;padding:8px;transition:.15s;}
+  .pause:hover{color:var(--ink);border-color:rgba(120,150,180,.4);}
+  .pause:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .foot{position:fixed;z-index:5;right:24px;bottom:24px;font-size:10px;letter-spacing:.14em;
+    text-transform:uppercase;color:rgba(124,139,160,.6);}
+</style>
+</head>
+<body>
+
+<div class="stage" aria-hidden="true">
+  <div class="wrap">
+    <div class="aur">
+      <div class="blobA"></div><div class="blobB"></div>
+      <div class="cA"></div><div class="cB"></div><div class="cC"></div>
+      <div class="wash"></div><div class="dots"></div>
+    </div>
+    <div class="grid"></div>
+  </div>
+  <div class="vig"></div>
+</div>
+
+<section class="hud" aria-label="Aurora blur controls">
+  <div class="kick">Reactive Trader · Aurora</div>
+  <h1 class="ttl">Curtain blur — cost vs. look</h1>
+  <p class="sub">The Aurora backdrop, live on the holo-dark skin. The three curtain bands
+    carry a <code>filter: blur()</code> — the one per-frame GPU cost left in the backdrop.
+    Switch it and watch both the look and the cost.</p>
+
+  <div class="seg" role="group" aria-label="Blur level">
+    <button data-v="current" aria-pressed="false">Current</button>
+    <button data-v="reduced" aria-pressed="false">Reduced</button>
+    <button data-v="none" aria-pressed="true">None ✓</button>
+  </div>
+
+  <div class="readout">
+    <span class="cost">Curtain filter&nbsp; <b id="radii">— (removed)</b></span>
+    <span class="cost" id="load" style="color:var(--accent)">zero / frame · shipped</span>
+  </div>
+  <p class="note" id="note">Filter removed: each curtain becomes a plain composited texture, rasterized once then only transformed — as cheap as the blobs. Crisper, more defined shafts, still a legible aurora. This is what shipped.</p>
+
+  <button class="pause" id="pauseBtn" aria-pressed="false">⏸ Pause drift</button>
+</section>
+
+<div class="foot">M2 · holo dark · aurora-opacity 0.6</div>
+
+<script>
+  const root = document.documentElement;
+  const radii = document.getElementById('radii');
+  const load  = document.getElementById('load');
+  const note  = document.getElementById('note');
+  const COPY = {
+    current: ['9 / 13 / 5px', 're-evaluated / frame',
+      'Softest, most diffuse — and the layers are re-filtered on every composited frame the app produces (it never idles over a live price stream).'],
+    reduced: ['4 / 6 / 2px', '~½ cost / frame',
+      'Nearly identical to Current, but still a filter: the compositor keeps re-evaluating it each frame — cheaper per eval, not gone.'],
+    none:    ['— (removed)', 'zero / frame',
+      'Filter removed: each curtain becomes a plain composited texture, rasterized once then only transformed — as cheap as the blobs. Crisper, more defined shafts, still a legible aurora.'],
+  };
+  document.querySelectorAll('.seg button').forEach(b => {
+    b.addEventListener('click', () => {
+      const v = b.dataset.v;
+      root.setAttribute('data-blur', v);
+      document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      radii.textContent = COPY[v][0];
+      load.textContent = COPY[v][1];
+      load.style.color = v === 'none' ? 'var(--accent)' : 'var(--faint)';
+      note.textContent = COPY[v][2];
+    });
+  });
+  const pauseBtn = document.getElementById('pauseBtn');
+  pauseBtn.addEventListener('click', () => {
+    const paused = root.getAttribute('data-paused') === 'true';
+    root.setAttribute('data-paused', String(!paused));
+    pauseBtn.setAttribute('aria-pressed', String(!paused));
+    pauseBtn.textContent = paused ? '⏸ Pause drift' : '▶ Resume drift';
+  });
+  root.setAttribute('data-blur', 'none');
+</script>
+
+</body>
+</html>
