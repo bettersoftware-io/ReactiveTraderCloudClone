@@ -29,6 +29,7 @@ import {
   type JarvisEvent,
   type JarvisHistoryEntry,
   type JarvisOwnBrain,
+  type JarvisProvider,
   type PanelSpecV1,
 } from "@rtc/domain";
 import {
@@ -56,6 +57,8 @@ import {
   type OwnKeyFailureSink,
   type OwnKeyLoopBuilder,
 } from "../agent/agentLoop.js";
+import { createFakeChatProvider } from "../agent/fakeChatProvider.testHelpers.js";
+import { createOwnKeyLoopBuilder } from "../agent/ownKeyLoops.js";
 import { scopeServicesToConnection } from "../services/connectionScope.js";
 import { createInMemorySpendStore } from "../services/jarvisBudget/InMemorySpendStore.js";
 import type { JarvisTier } from "../services/jarvisBudget/jarvisTier.js";
@@ -63,6 +66,7 @@ import type {
   SpendStore,
   SpendTotals,
 } from "../services/jarvisBudget/SpendStore.js";
+import { OWN_KEY_ENDPOINTS } from "../services/ownKey/ownKeyEndpoints.js";
 import {
   type Caller,
   createServices,
@@ -2837,7 +2841,6 @@ describe("a person's own key", () => {
       ["no action", { provider: "anthropic", key: OWN_KEY, capUsd: 1 }],
       ["an unknown action", setKeyPayload({ action: "replace" })],
       ["a provider outside the set", setKeyPayload({ provider: "evil" })],
-      ["a provider not offered yet", setKeyPayload({ provider: "openai" })],
       ["a key that is no string", setKeyPayload({ key: [OWN_KEY] })],
       [
         "a key over the limit",
@@ -2888,6 +2891,27 @@ describe("a person's own key", () => {
       expect(logged()).not.toContain(OWN_KEY);
       expect(JSON.stringify(sent)).not.toContain(OWN_KEY);
     });
+
+    it.each<JarvisProvider>(["openrouter", "openai"])(
+      "takes a %s key and checks it at that provider",
+      async (provider) => {
+        const fetchFn = answerFetchWith(200);
+        const { messages$, sent } = ownKeyHarness();
+
+        messages$.next(SUBSCRIBE_FRAME);
+        messages$.next(providerKeyFrame(provider));
+        await settleBudgetReads();
+
+        expect(lastAvailability(sent).ownKey).toEqual({
+          provider,
+          status: "accepted",
+          capUsd: 1,
+        });
+        expect(fetchFn.mock.calls[0]?.[0]).toBe(
+          OWN_KEY_ENDPOINTS[provider].url,
+        );
+      },
+    );
 
     it("takes the largest key and the largest cap, and no limit", async () => {
       answerFetchWith(200);
@@ -2986,6 +3010,77 @@ describe("a person's own key", () => {
       expect(logged()).toContain("status 500");
       expect(logged()).not.toContain(SECRET_MARKER);
       expect(logged()).not.toContain(OWN_KEY);
+    });
+
+    it("an OpenAI-compatible own loop's 401 names the provider and marks the key refused", async () => {
+      answerFetchWith(200);
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const provider = createFakeChatProvider({
+        toolName: "unused",
+        failWith: { status: 401, body: { error: { type: "invalid_api_key" } } },
+      });
+
+      const { messages$, sent } = ownKeyHarness({
+        buildOwnKeyLoop: createOwnKeyLoopBuilder({
+          buildTools: () => {
+            return [];
+          },
+          knownSymbols: [],
+          fetchFn: provider.fetchFn,
+        }),
+      });
+
+      messages$.next(SUBSCRIBE_FRAME);
+      messages$.next(providerKeyFrame("openai"));
+      await settleBudgetReads();
+      messages$.next(chatFrame(OPENAI_OWN_BRAIN));
+      await vi.waitFor(() => {
+        expect(errorMessagesOf(sent)).toEqual(["OpenAI refused your key."]);
+      });
+
+      await vi.waitFor(() => {
+        expect(lastAvailability(sent).ownKey).toMatchObject({
+          provider: "openai",
+          status: "refused",
+        });
+      });
+      expect(
+        provider.requests.map((request) => {
+          return request.url;
+        }),
+      ).toEqual(["https://api.openai.com/v1/chat/completions"]);
+    });
+
+    it("a switch from an Anthropic key to an OpenRouter key builds a loop for the new key and disposes of the old session", async () => {
+      answerFetchWith(200);
+      const { messages$, ownSpy, buildOwnKeyLoop } = ownKeyHarness();
+      const openrouterKey = "sk-or-own-key-e5f6";
+      const openrouterBrain: JarvisOwnBrain =
+        "own:openrouter:deepseek/deepseek-v4.1-flash";
+
+      messages$.next(keyFrame());
+      await settleBudgetReads();
+      messages$.next(chatFrame(OWN_HAIKU));
+      await settleBudgetReads();
+      messages$.next({
+        type: CLIENT_MSG.JARVIS_KEY,
+        payload: setKeyPayload({ provider: "openrouter", key: openrouterKey }),
+      });
+      await settleBudgetReads();
+      messages$.next(chatFrame(openrouterBrain));
+      await settleBudgetReads();
+
+      expect(buildOwnKeyLoop.mock.calls).toEqual([
+        ["anthropic", OWN_KEY],
+        ["openrouter", openrouterKey],
+      ]);
+      expect(ownSpy.sessions[0]?.dispose).toHaveBeenCalledTimes(1);
+      expect(ownSpy.sessions[1]?.dispose).not.toHaveBeenCalled();
+      expect(ownSpy.sessions[1]?.runTurn).toHaveBeenCalledExactlyOnceWith(
+        "hi",
+        [],
+        expect.objectContaining({ brain: openrouterBrain }),
+      );
     });
 
     it("a loop that throws while it is built logs no message either", async () => {
@@ -3575,8 +3670,9 @@ const OWN_OPUS: JarvisOwnBrain = "own:anthropic:claude-opus-5";
 /** The right shape, but off the curated list. */
 const RETIRED_OWN_BRAIN: JarvisOwnBrain = "own:anthropic:claude-retired-1";
 
-/** A provider the accepted test key is not for. */
-const OPENAI_OWN_BRAIN: JarvisOwnBrain = "own:openai:gpt-test";
+/** A listed model of a provider the accepted test key is not for: only the
+ * provider check keeps it off the key. */
+const OPENAI_OWN_BRAIN: JarvisOwnBrain = "own:openai:gpt-6-luna";
 
 /** Stands for whatever a provider's error text may quote. */
 const SECRET_MARKER = "MARKER-must-stay-out";
@@ -3600,6 +3696,14 @@ function keyFrame(key: string = OWN_KEY, capUsd: number | null = 1): Inbound {
       key,
       capUsd,
     } satisfies JarvisKeyPayload,
+  };
+}
+
+/** A key frame for `provider`'s key. */
+function providerKeyFrame(provider: JarvisProvider): Inbound {
+  return {
+    type: CLIENT_MSG.JARVIS_KEY,
+    payload: setKeyPayload({ provider }),
   };
 }
 

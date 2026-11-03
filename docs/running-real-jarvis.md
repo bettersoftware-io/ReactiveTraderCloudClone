@@ -218,6 +218,88 @@ default), Reply tags (on) and Brain pill (off). To see the exhausted copy
 without spending a token, use `RTC_JARVIS_FORCE_GATE=exhausted` as in the
 previous section. Design: [architecture §18.15](architecture/18-jarvis-ai-agent-surface.md#the-brain-indicators-b3b).
 
+## Bring your own key (B3c)
+
+A signed-in member can run Jarvis on their own key at Anthropic, OpenRouter or
+OpenAI (Preferences → "Your key"). The key stays in their browser and reaches
+the server on the `jarvis.key` frame, held in that connection's memory only.
+Design: [the B3 spec](superpowers/specs/2026-10-25-b3-ai-metering-byo-keys-design.md)
+§5; how it is built: [architecture §18.15](architecture/18-jarvis-ai-agent-surface.md#own-keys-on-the-server-b3c).
+
+**Where each key goes.** The provider's host is fixed on the server, never
+taken from the client:
+
+| Provider | Key check (`OWN_KEY_ENDPOINTS`) | Turns |
+|---|---|---|
+| Anthropic | its models list | `AnthropicAgentLoop`, the house loop given the person's key |
+| OpenRouter | its authenticated key-info route (its models list is public, so it proves nothing about a key) | `OpenAiCompatibleAgentLoop` |
+| OpenAI | its models list | `OpenAiCompatibleAgentLoop` |
+
+An OpenAI restricted key needs "Models: Read" (List models) for the key check,
+or it reads refused.
+
+`createOwnKeyLoopBuilder` (`packages/server/src/agent/ownKeyLoops.ts`) picks the
+loop; `OWN_KEY_CHAT_CONFIGS` there holds each OpenAI-compatible provider's host,
+token-limit field and extra request fields. Both switch reasoning off on every
+request: OpenAI's Chat Completions runs function tools only that way on its
+current models, and with reasoning off every output token streams, so the
+estimate a cancelled request is booked at (what streamed, at about four
+characters a token) leaves no hidden tokens out. OpenRouter's requests also
+carry a price ceiling at the listed price (`provider.max_price`), so no
+endpoint dearer than the list serves them.
+
+**Cost.** OpenRouter's turns book the cost each reply reports (`usage.cost`,
+plus `cost_details.upstream_inference_cost` on a key the person keeps at
+OpenRouter for another provider, where `usage.cost` is OpenRouter's fee alone),
+never below the listed price for the same usage; Anthropic's and OpenAI's book
+the listed price, which the UI calls an estimate.
+The person's own daily limit applies to all three. The real backstop is the
+limit they set at the provider.
+
+**The current list** (`JARVIS_OWN_MODELS` in
+`packages/domain/src/jarvis/jarvisOwnModels.ts`, which also holds the prices):
+
+| Provider | Cheap | Strong |
+|---|---|---|
+| Anthropic | `claude-haiku-4-5` | `claude-sonnet-5`, `claude-opus-5` |
+| OpenRouter | `deepseek/deepseek-v4.1-flash` | `anthropic/claude-sonnet-5` |
+| OpenAI | `gpt-6-luna` | `gpt-5.6-sol` |
+
+**Changing the list.**
+
+1. Check the candidate in the provider's current docs: it calls function tools
+   over Chat Completions (OpenAI's newest models take tools only on the
+   Responses API, so they cannot be listed), it streams, it reports usage in
+   the stream, and its reasoning can be switched off. On OpenRouter, take it
+   from the models its API marks as supporting `tools`, with reasoning not
+   mandatory.
+2. Add it to `JARVIS_OWN_MODELS` with its name, short label and its listed
+   input and output prices. The picker and Preferences pick it up from there.
+3. Run the probe below with a real key. A model that fails comes out of the
+   list.
+4. A changed label or a new provider moves the Preferences goldens: regenerate
+   them, and update this table.
+
+**The probe** (`own-key:probe`, `packages/server/scripts/probe-own-key.ts`, run
+by hand, never in CI). It checks the key where the server does and prints that
+URL, then runs one tool-calling turn on each listed model of the provider,
+through the server's own builder, and prints PASS or FAIL per model. A model
+fails if its turn errs, if it never calls the probe tool, if its reply does not
+carry the tool's answer back, or if it reports reasoning tokens. A refused
+request prints its status and error type, never the provider's message, so a
+key low on credit shows what that provider answers. The key is read from the
+file named in `RTC_PROBE_KEY_FILE`, never from an argument, and is never
+printed:
+
+```bash
+RTC_PROBE_KEY_FILE=<path to a file holding the key> pnpm --filter @rtc/server own-key:probe openrouter
+```
+
+Use a key made for the check, with a small limit at the provider. A model's
+turn is at most `JARVIS_RUNNER_MAX_ITERATIONS` requests of up to
+`JARVIS_MAX_TOKENS_PER_TURN` output tokens each; a cheap model's turn costs a
+fraction of a cent, a strong model's a few cents.
+
 ## Rate limits, and how Jarvis behaves when any limit trips
 
 Beyond spend, the Console has genuinely fine-grained rate machinery

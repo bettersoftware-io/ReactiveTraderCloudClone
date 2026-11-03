@@ -485,6 +485,22 @@ half below.
    browser's session and local storage hold no `rt-jarvis-own-key`. Use a key
    made for this check, and remove it afterwards.
 
+**OpenRouter and OpenAI (PR 4).** Server and both web clients, server first.
+There is no migration and no setting.
+
+10. **Before merging, run the probe with a real key for each provider**
+    (`own-key:probe`, [running-real-jarvis.md](running-real-jarvis.md#bring-your-own-key-b3c)).
+    Every listed model must print PASS; a model that fails comes out of
+    `JARVIS_OWN_MODELS` before the merge.
+11. **Deploy the server first, then both web clients.** A new client on an old
+    server offers OpenRouter and OpenAI, but the old server drops their key
+    frames as malformed, so the key stays `Not confirmed by the server yet`.
+    An old client on a new server offers Anthropic alone, as before.
+12. **Verify on each site** with a real account, as in step 9, once with an
+    OpenRouter key and once with an OpenAI key: `Accepted`, then the "Your key"
+    row lists that provider's models only, and a reply is tagged with the
+    model picked.
+
 ## Deploying
 
 Run the **Deploy** workflow manually — Actions tab → "Deploy" → Run workflow,

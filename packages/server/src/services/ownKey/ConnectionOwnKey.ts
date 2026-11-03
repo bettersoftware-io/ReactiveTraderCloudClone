@@ -60,13 +60,15 @@ export class ConnectionOwnKey {
     }
 
     // The same key updates the cap only — unless the last answer judged
-    // nothing (unreachable) or was never obtained (limited): then it is
-    // checked again, and charged.
+    // nothing (unreachable), was never obtained (limited), or refused it (a
+    // key out of credit may have been topped up since): then it is checked
+    // again, and charged like any check.
     if (
       this.#key === payload.key &&
       this.#provider === payload.provider &&
       this.#status !== "unreachable" &&
-      this.#status !== "limited"
+      this.#status !== "limited" &&
+      this.#status !== "refused"
     ) {
       this.#capUsd = payload.capUsd;
       this.#changes.next();

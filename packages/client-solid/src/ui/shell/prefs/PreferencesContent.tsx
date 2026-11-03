@@ -21,6 +21,7 @@ import {
   type JarvisEffort,
   type JarvisIndicators,
   type JarvisNarratorPreference,
+  type JarvisOwnModel,
   jarvisBrainTakesEffort,
   type LayoutEngine,
   type LoginWaitDelay,
@@ -186,14 +187,15 @@ export function PreferencesContent(): JSX.Element {
     });
   }
 
-  // The "Your key" row: the curated own-key models, offered once the server
-  // offers any of them (a key is held and accepted). Each is disabled the same
-  // way a house brain is — not offered, or removed by the active gate.
-  function ownBrainsOffered(): boolean {
+  // The "Your key" row: the curated own-key models the server offers, which
+  // are those of the provider the accepted key is for — the other providers'
+  // models are left out, not shown disabled. Each is disabled the same way a
+  // house brain is — removed by the active gate.
+  function offeredOwnModels(): readonly JarvisOwnModel[] {
     // A spent own cap removes the own brains from `brains` and lists them in
     // the gate instead, so a gated own brain counts as present: the row stays,
     // its options disabled with the reset hint.
-    return JARVIS_OWN_MODELS.some((model) => {
+    return JARVIS_OWN_MODELS.filter((model) => {
       return (
         jarvisState().brains.includes(model.brain) ||
         gate()?.gated.includes(model.brain) === true
@@ -201,9 +203,13 @@ export function PreferencesContent(): JSX.Element {
     });
   }
 
+  function ownBrainsOffered(): boolean {
+    return offeredOwnModels().length > 0;
+  }
+
   function jarvisOwnBrainOptions(): readonly PrefSegmentOption[] {
     const g = gate();
-    return JARVIS_OWN_MODELS.map((model): PrefSegmentOption => {
+    return offeredOwnModels().map((model): PrefSegmentOption => {
       const gated = g?.gated.includes(model.brain) ?? false;
       return {
         value: model.brain,

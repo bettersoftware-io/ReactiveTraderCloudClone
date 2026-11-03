@@ -35,13 +35,13 @@ import {
   type Instrument,
   JARVIS_BRAINS,
   JARVIS_GREETING,
-  JARVIS_OWN_MODELS,
   type JarvisBrain,
   type JarvisBudgetView,
   type JarvisUsage,
   type LogEvent,
   listDemoAccounts,
   type MetricSample,
+  ownModelsFor,
   type PositionUpdates,
   type Price,
   PriceMovementType,
@@ -2563,9 +2563,12 @@ fixtures["jarvis-indicators-pill"] = makeAppData({
 // Jarvis. Empty is the form; accepted and refused are the masked readout with
 // the status line the server's frame reports. The saved key is the masked form
 // only, as a presenter shows it.
-const OWN_BRAINS: readonly JarvisBrain[] = JARVIS_OWN_MODELS.map((model) => {
-  return model.brain;
-});
+// An accepted Anthropic key offers Anthropic's own models only.
+const OWN_BRAINS: readonly JarvisBrain[] = ownModelsFor("anthropic").map(
+  (model) => {
+    return model.brain;
+  },
+);
 const OWN_SONNET: JarvisBrain = "own:anthropic:claude-sonnet-5";
 
 const jarvisStateOwnKeyAccepted: JarvisState = {

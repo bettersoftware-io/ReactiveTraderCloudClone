@@ -4,6 +4,7 @@ import type { JarvisLiveBrain } from "@rtc/domain";
 
 import type { Caller } from "#/services/serviceContainer.js";
 import {
+  estimateListedCostUsd,
   estimateUsageCostUsd,
   type JarvisTokenUsage,
 } from "#/services/UsageMeter.js";
@@ -301,7 +302,9 @@ export class JarvisBudgetService {
       ): void => {
         releaseReservation();
 
-        const usd = estimateUsageCostUsd(brain, ceiling);
+        // The list price: a reported cost is what a request turned out to
+        // cost, never what it may cost.
+        const usd = estimateListedCostUsd(brain, ceiling);
 
         // The same guard as a record: a reservation that is not a finite,
         // positive amount would loosen the check, so it is not taken.

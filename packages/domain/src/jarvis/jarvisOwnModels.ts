@@ -26,8 +26,13 @@ export interface JarvisOwnModel {
   readonly outputUsdPerMtok: number;
 }
 
-/** Providers a person can bring a key for. OpenRouter and OpenAI join in PR 4. */
-export const JARVIS_OWN_PROVIDERS: readonly JarvisProvider[] = ["anthropic"];
+/** Providers a person can bring a key for, in the order the form offers
+ * them. */
+export const JARVIS_OWN_PROVIDERS: readonly JarvisProvider[] = [
+  "anthropic",
+  "openrouter",
+  "openai",
+];
 
 export const JARVIS_PROVIDER_NAMES: Readonly<Record<JarvisProvider, string>> = {
   anthropic: "Anthropic",
@@ -35,7 +40,8 @@ export const JARVIS_PROVIDER_NAMES: Readonly<Record<JarvisProvider, string>> = {
   openai: "OpenAI",
 };
 
-function anthropicModel(
+function ownModel(
+  provider: JarvisProvider,
   modelId: string,
   name: string,
   label: string,
@@ -43,8 +49,8 @@ function anthropicModel(
   outputUsdPerMtok: number,
 ): JarvisOwnModel {
   return {
-    brain: `own:anthropic:${modelId}`,
-    provider: "anthropic",
+    brain: `own:${provider}:${modelId}`,
+    provider,
     modelId,
     name,
     label,
@@ -53,11 +59,54 @@ function anthropicModel(
   };
 }
 
-/** The curated own-key models, in picker order. Prices match the house table. */
+/**
+ * The curated own-key models, in picker order: per provider, the cheap one
+ * first. Prices are USD per million tokens, from each provider's own price
+ * list. Anthropic's match the house table.
+ *
+ * Every OpenRouter and OpenAI model here calls function tools over Chat
+ * Completions with reasoning switched off, which the loop's provider config
+ * does on every request (`ownKeyLoops.ts` in the server). None is a model
+ * that must reason: a cancelled request is booked from the characters it
+ * streamed, which would miss hidden reasoning tokens. Changing the list,
+ * and checking a candidate first: `docs/running-real-jarvis.md`.
+ */
 export const JARVIS_OWN_MODELS: readonly JarvisOwnModel[] = [
-  anthropicModel("claude-haiku-4-5", "Claude Haiku 4.5", "Haiku 4.5", 1, 5),
-  anthropicModel("claude-sonnet-5", "Claude Sonnet 5", "Sonnet 5", 2, 10),
-  anthropicModel("claude-opus-5", "Claude Opus 5", "Opus 5", 5, 25),
+  ownModel(
+    "anthropic",
+    "claude-haiku-4-5",
+    "Claude Haiku 4.5",
+    "Haiku 4.5",
+    1,
+    5,
+  ),
+  ownModel(
+    "anthropic",
+    "claude-sonnet-5",
+    "Claude Sonnet 5",
+    "Sonnet 5",
+    2,
+    10,
+  ),
+  ownModel("anthropic", "claude-opus-5", "Claude Opus 5", "Opus 5", 5, 25),
+  ownModel(
+    "openrouter",
+    "deepseek/deepseek-v4.1-flash",
+    "DeepSeek V4.1 Flash",
+    "DeepSeek V4.1",
+    0.045,
+    0.5,
+  ),
+  ownModel(
+    "openrouter",
+    "anthropic/claude-sonnet-5",
+    "Claude Sonnet 5",
+    "Sonnet 5",
+    2,
+    10,
+  ),
+  ownModel("openai", "gpt-6-luna", "GPT-6 Luna", "GPT-6 Luna", 0.1, 0.5),
+  ownModel("openai", "gpt-5.6-sol", "GPT-5.6 Sol", "GPT-5.6 Sol", 4, 20),
 ];
 
 export function ownModelOf(brain: JarvisBrain): JarvisOwnModel | undefined {
