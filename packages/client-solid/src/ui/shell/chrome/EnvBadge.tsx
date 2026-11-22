@@ -1,5 +1,5 @@
 // DECORATIVE — cosmetic HUD chrome, intentionally not wired to any port (spec: decorative-but-dead is allowed and explicit).
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 import styles from "./HeaderChrome.module.css";
 

@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from "@solidjs/testing-library";
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 import { PanelErrorBoundary } from "#/ui/shell/layout/engine/PanelErrorBoundary";
 

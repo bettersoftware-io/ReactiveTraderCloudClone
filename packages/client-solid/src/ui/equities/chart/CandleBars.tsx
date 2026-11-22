@@ -1,4 +1,5 @@
-import { type Accessor, Index, type JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, For } from "solid-js";
 
 import type { ChartVm } from "@rtc/motion-core";
 
@@ -14,7 +15,7 @@ import styles from "./CandleBars.module.css";
  */
 export function CandleBars(props: CandleBarsProps): JSX.Element {
   return (
-    <Index each={props.candles}>
+    <For keyed={false} each={props.candles}>
       {(cd: Accessor<ChartVm["candles"][number]>): JSX.Element => {
         return (
           <div data-candle="" data-up={String(cd().up)}>
@@ -33,7 +34,7 @@ export function CandleBars(props: CandleBarsProps): JSX.Element {
           </div>
         );
       }}
-    </Index>
+    </For>
   );
 }
 

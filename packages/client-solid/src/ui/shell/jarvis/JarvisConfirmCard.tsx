@@ -1,4 +1,4 @@
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 import type { JarvisConfirmation } from "@rtc/core-api";
 import { Direction } from "@rtc/domain";

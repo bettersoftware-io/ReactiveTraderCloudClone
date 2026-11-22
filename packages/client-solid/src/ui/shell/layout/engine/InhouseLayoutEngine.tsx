@@ -1,4 +1,5 @@
-import { type Accessor, Index, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, For, Show } from "solid-js";
 
 import type {
   LayoutIntents,
@@ -434,7 +435,7 @@ function SplitNode(props: SplitNodeProps): JSX.Element {
       data-dir={props.node.dir}
       data-pinned-tail={lastIsPinned() ? "true" : "false"}
     >
-      <Index each={props.node.children}>
+      <For keyed={false} each={props.node.children}>
         {(child: Accessor<LayoutNode>, i: number) => {
           function childPinned(): boolean {
             const c = child();
@@ -649,14 +650,14 @@ function SplitNode(props: SplitNodeProps): JSX.Element {
                     props.node.dir === "row" ? "vertical" : "horizontal"
                   }
                   class={styles.handle}
-                  tabIndex={0}
+                  tabindex={0}
                   onPointerDown={startResizeDragFor(i)}
                 />
               </Show>
             </>
           );
         }}
-      </Index>
+      </For>
     </div>
   );
 }

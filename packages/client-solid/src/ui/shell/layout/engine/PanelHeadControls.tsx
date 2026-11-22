@@ -1,4 +1,5 @@
-import { type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { Show } from "solid-js";
 
 import type { PanelId } from "@rtc/core-api";
 
@@ -66,7 +67,7 @@ export function PanelHeadControls(props: PanelHeadControlsProps): JSX.Element {
           aria-label={`Pop out ${props.title}`}
           title={`Pop out ${props.title}`}
           disabled={popped()}
-          aria-disabled={popped()}
+          aria-disabled={popped() ? "true" : "false"}
           onClick={popoutPanel}
         >
           ↗
@@ -80,7 +81,7 @@ export function PanelHeadControls(props: PanelHeadControlsProps): JSX.Element {
           aria-label={`Detach ${props.title}`}
           title={`Detach ${props.title}`}
           disabled={popped()}
-          aria-disabled={popped()}
+          aria-disabled={popped() ? "true" : "false"}
           onClick={detachPanel}
         >
           ⇱
@@ -96,7 +97,7 @@ export function PanelHeadControls(props: PanelHeadControlsProps): JSX.Element {
           }
           title={floating() ? `Dock ${props.title}` : `Float ${props.title}`}
           disabled={popped()}
-          aria-disabled={popped()}
+          aria-disabled={popped() ? "true" : "false"}
           onClick={floatOrDockPanel}
         >
           {floating() ? "⚓" : "◱"}
@@ -110,7 +111,7 @@ export function PanelHeadControls(props: PanelHeadControlsProps): JSX.Element {
           aria-label={`Collapse ${props.title}`}
           title={`Collapse ${props.title}`}
           disabled={popped()}
-          aria-disabled={popped()}
+          aria-disabled={popped() ? "true" : "false"}
           onClick={collapsePanel}
         >
           —
@@ -124,7 +125,7 @@ export function PanelHeadControls(props: PanelHeadControlsProps): JSX.Element {
           aria-label={maximizeLabel()}
           title={maximizeLabel()}
           disabled={popped()}
-          aria-disabled={popped()}
+          aria-disabled={popped() ? "true" : "false"}
           onClick={maximizeOrRestorePanel}
         >
           {props.maximizedHere ? "⧉" : "⛶"}
@@ -138,7 +139,7 @@ export function PanelHeadControls(props: PanelHeadControlsProps): JSX.Element {
           aria-label={`Close ${props.title}`}
           title={`Close ${props.title}`}
           disabled={popped()}
-          aria-disabled={popped()}
+          aria-disabled={popped() ? "true" : "false"}
           onClick={closePanel}
         >
           ✕

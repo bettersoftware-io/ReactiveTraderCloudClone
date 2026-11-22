@@ -1,4 +1,5 @@
-import { createMemo, createSignal, For, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo, createSignal, For, Show } from "solid-js";
 
 import { MAX_PANEL_INSTANCES } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/solid-bindings";

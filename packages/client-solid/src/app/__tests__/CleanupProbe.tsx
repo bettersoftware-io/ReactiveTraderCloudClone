@@ -1,4 +1,5 @@
-import { type JSX, onCleanup } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { onCleanup } from "solid-js";
 
 /** A tree-mount test fixture: records "probe" in `cleaned` when its reactive
  * owner is disposed — the witness that a tree's root was torn down. */

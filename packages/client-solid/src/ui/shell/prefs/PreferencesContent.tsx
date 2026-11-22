@@ -1,11 +1,5 @@
-import {
-  type Accessor,
-  createMemo,
-  createSignal,
-  For,
-  type JSX,
-  Show,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, createMemo, createSignal, For, Show } from "solid-js";
 
 import type { CoreImpl, JarvisState } from "@rtc/core-api";
 import { formatBrainHint, formatGateHint } from "@rtc/core-logic";

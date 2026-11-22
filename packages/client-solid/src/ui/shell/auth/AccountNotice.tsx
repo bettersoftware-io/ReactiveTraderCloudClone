@@ -1,4 +1,4 @@
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 import type { AccountAccessState } from "@rtc/core-api";
 import { ACCOUNT_ACCESS_COPY } from "@rtc/core-logic";

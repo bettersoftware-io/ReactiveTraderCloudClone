@@ -1,4 +1,5 @@
-import { createMemo, createSignal, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo, createSignal, Show } from "solid-js";
 
 import { type Instrument, type Quote, type Rfq, RfqState } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";

@@ -1,5 +1,5 @@
+import type { JSX } from "@solidjs/web";
 import { fixtures } from "@ui-visual-shared/fixtures";
-import type { JSX } from "solid-js";
 
 import type { LayoutState } from "@rtc/core-api";
 import { createDefaultLayoutPort, EVERY_USER_TABS } from "@rtc/core-logic";

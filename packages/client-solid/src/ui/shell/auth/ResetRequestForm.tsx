@@ -1,4 +1,5 @@
-import { createSignal, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createSignal, Show } from "solid-js";
 
 import type { AccountAccessState } from "@rtc/core-api";
 import { ACCOUNT_ACCESS_COPY, checkEmailInput } from "@rtc/core-logic";
@@ -52,7 +53,7 @@ export function ResetRequestForm(props: ResetRequestFormProps): JSX.Element {
 
   return (
     <>
-      <form class={styles.form} noValidate onSubmit={submitResetRequest}>
+      <form class={styles.form} novalidate onSubmit={submitResetRequest}>
         <label class={styles.field}>
           <span class={styles.label}>{ACCOUNT_ACCESS_COPY.emailLabel}</span>
           <input

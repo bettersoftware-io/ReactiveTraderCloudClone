@@ -84,9 +84,9 @@ export function jarvisOverlayDriveRowPage(): JarvisOverlayDriveRowPage {
 
       render(() => {
         return (
-          <ViewModelContext.Provider value={hooks}>
+          <ViewModelContext value={hooks}>
             <JarvisOverlay />
-          </ViewModelContext.Provider>
+          </ViewModelContext>
         );
       });
     },

@@ -1,4 +1,5 @@
-import { createMemo, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo, Show } from "solid-js";
 
 import type { NavigatorVm } from "@rtc/motion-core";
 

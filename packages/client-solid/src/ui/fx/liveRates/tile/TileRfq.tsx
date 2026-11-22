@@ -1,4 +1,5 @@
-import { type Accessor, type JSX, Match, Switch } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, Match, Switch } from "solid-js";
 
 import type { RfqState, RfqTileIntents } from "@rtc/core-api";
 import {

@@ -1,4 +1,5 @@
-import { createMemo, For, type JSX, Match, Show, Switch } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo, For, Match, Show, Switch } from "solid-js";
 
 import type { AccountListState } from "@rtc/core-api";
 import {

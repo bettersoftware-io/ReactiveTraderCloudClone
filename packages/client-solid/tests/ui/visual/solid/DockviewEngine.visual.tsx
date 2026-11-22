@@ -1,5 +1,5 @@
+import type { JSX } from "@solidjs/web";
 import { ATTACHED_FX_BLOB } from "@ui-visual-shared/attachedFxBlob";
-import type { JSX } from "solid-js";
 
 import { InMemoryDockLayoutStore } from "@rtc/core-logic";
 

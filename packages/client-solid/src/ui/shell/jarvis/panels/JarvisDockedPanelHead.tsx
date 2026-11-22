@@ -1,4 +1,5 @@
-import { type Accessor, createMemo, type JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, createMemo } from "solid-js";
 
 import type { JarvisPanelVm } from "@rtc/core-api";
 

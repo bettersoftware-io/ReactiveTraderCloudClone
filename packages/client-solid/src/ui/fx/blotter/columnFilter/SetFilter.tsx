@@ -1,4 +1,5 @@
-import { createMemo, createSignal, For, type JSX, untrack } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo, createSignal, For, untrack } from "solid-js";
 
 import type { ColumnFilter } from "@rtc/core-logic";
 

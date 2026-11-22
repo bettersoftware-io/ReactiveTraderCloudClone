@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@solidjs/testing-library";
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 import { type ViewModel, ViewModelContext } from "@rtc/solid-bindings";
 
@@ -55,9 +55,9 @@ export function jarvisDrivenPulsePage(): UseJarvisDrivenPulsePage {
 
       function TestApp(): JSX.Element {
         return (
-          <ViewModelContext.Provider value={props.viewModel}>
+          <ViewModelContext value={props.viewModel}>
             <Harness />
-          </ViewModelContext.Provider>
+          </ViewModelContext>
         );
       }
 

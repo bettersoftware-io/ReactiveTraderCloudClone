@@ -1,4 +1,5 @@
-import { type Accessor, createSignal, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, createSignal, Show } from "solid-js";
 
 import type { SessionUser } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";

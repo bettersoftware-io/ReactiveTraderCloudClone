@@ -1,4 +1,5 @@
-import { createSignal, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createSignal, Show } from "solid-js";
 
 import type { AccountAccessState, RegistrationInput } from "@rtc/core-api";
 import {
@@ -117,7 +118,7 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
 
   return (
     <>
-      <form class={styles.form} noValidate onSubmit={submitRegistration}>
+      <form class={styles.form} novalidate onSubmit={submitRegistration}>
         <label class={styles.field}>
           <span class={styles.label}>{ACCOUNT_ACCESS_COPY.emailLabel}</span>
           <input

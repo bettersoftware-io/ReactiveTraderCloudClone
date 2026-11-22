@@ -1,4 +1,4 @@
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 /** A tree-mount test fixture: fails its first render, as a UI that cannot
  * render on the new core would. Its own (non-`.test.`) module so it can be a

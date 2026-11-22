@@ -1,5 +1,7 @@
 // DECORATIVE — cosmetic HUD chrome, intentionally not wired to any port (spec: decorative-but-dead is allowed and explicit).
-import { createSignal, For, type JSX, Show } from "solid-js";
+
+import type { JSX } from "@solidjs/web";
+import { createSignal, For, Show } from "solid-js";
 
 import styles from "./HeaderChrome.module.css";
 
@@ -21,7 +23,7 @@ export function NotificationsMenu(): JSX.Element {
         type="button"
         data-testid="notifications-toggle"
         aria-label="Notifications"
-        aria-expanded={open()}
+        aria-expanded={open() ? "true" : "false"}
         class={styles.iconButton}
         onClick={toggleNotificationsMenu}
       >

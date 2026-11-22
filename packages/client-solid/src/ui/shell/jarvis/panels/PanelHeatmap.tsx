@@ -1,4 +1,5 @@
-import { createMemo, For, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo, For, Show } from "solid-js";
 
 import type { PanelData } from "@rtc/core-api";
 

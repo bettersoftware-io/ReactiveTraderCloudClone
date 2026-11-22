@@ -1,4 +1,5 @@
-import { type Accessor, createMemo, type JSX, Match, Switch } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, createMemo, Match, Switch } from "solid-js";
 
 import type { TileExecutionState } from "@rtc/core-api";
 import { Direction, ExecutionStatus, type Trade } from "@rtc/domain";
