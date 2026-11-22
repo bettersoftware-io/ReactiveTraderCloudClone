@@ -1,6 +1,6 @@
 import { state } from "@rx-state/core";
 import { Subject } from "rxjs";
-import { createRoot } from "solid-js";
+import { createEffect, createRoot, flush } from "solid-js";
 import { describe, expect, it } from "vitest";
 
 import { toSignal } from "#/toSignal";
@@ -9,13 +9,71 @@ describe("toSignal", () => {
   it("reads a warm value synchronously on first read", () => {
     const src = new Subject<number>();
     const st = state(src, 0);
-    createRoot((dispose) => {
-      const value = toSignal(st);
-      expect(value()).toBe(0); // default served synchronously — no undefined frame
-      src.next(42);
-      expect(value()).toBe(42);
-      dispose();
+    const { value, dispose } = createRoot((dispose) => {
+      return { value: toSignal(st), dispose };
     });
+
+    expect(value()).toBe(0); // default served synchronously — no undefined frame
+    src.next(42);
+    flush();
+
+    expect(value()).toBe(42);
+    dispose();
+  });
+
+  it("delivers a burst emitted in one turn as ONE downstream update, carrying the last value", () => {
+    const src = new Subject<number>();
+    const st = state(src, 0);
+    const applied: number[] = [];
+    const { dispose } = createRoot((dispose) => {
+      const value = toSignal(st);
+      createEffect(
+        () => {
+          return value();
+        },
+        (v) => {
+          applied.push(v);
+        },
+      );
+
+      return { dispose };
+    });
+    flush();
+
+    expect(applied).toEqual([0]);
+    src.next(1);
+    src.next(2);
+    src.next(3);
+    flush();
+
+    expect(applied).toEqual([0, 3]);
+    dispose();
+  });
+
+  it("notifies nobody when the source re-emits the same reference", () => {
+    const src = new Subject<Counted>();
+    const first: Counted = { n: 1 };
+    const st = state(src, first);
+    const applied: Counted[] = [];
+    const { dispose } = createRoot((dispose) => {
+      const value = toSignal(st);
+      createEffect(
+        () => {
+          return value();
+        },
+        (v) => {
+          applied.push(v);
+        },
+      );
+
+      return { dispose };
+    });
+    flush();
+    src.next(first);
+    flush();
+
+    expect(applied).toEqual([first]);
+    dispose();
   });
 
   it("unsubscribes on cleanup (refcount drops)", () => {
@@ -50,13 +108,23 @@ describe("toSignal", () => {
     const st = state(src, () => {
       return "a";
     });
-    createRoot((dispose) => {
-      const value = toSignal(st);
-      src.next(() => {
-        return "b";
-      });
-      expect(value()()).toBe("b"); // setValue(() => v) wrapper, not updater misfire
-      dispose();
+
+    const { value, dispose } = createRoot((dispose) => {
+      return { value: toSignal(st), dispose };
     });
+
+    expect(value()()).toBe("a"); // seeded as a value, not run as a compute
+    src.next(() => {
+      return "b";
+    });
+    flush();
+
+    expect(value()()).toBe("b"); // boxed write, not an updater misfire
+    dispose();
   });
 });
+
+/** A reference-compared value: two `{ n: 1 }` literals are different values. */
+interface Counted {
+  readonly n: number;
+}

@@ -13,6 +13,7 @@
 // separately in useMachine.test.tsx, not here.
 
 import { renderHook, waitFor } from "@solidjs/testing-library";
+import { flush } from "solid-js";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -108,6 +109,7 @@ describe("createViewModel — machine-backed members", () => {
     expect(result.state().isDefault).toBe(true);
 
     result.change("2.5m");
+    flush();
     expect(result.state().numericValue).toBe(2_500_000);
     expect(result.state().isDefault).toBe(false);
   });
@@ -170,9 +172,11 @@ describe("createViewModel — machine-backed members", () => {
     expect(result.state().maximized).toBeNull();
 
     result.maximize("fx-blotter");
+    flush();
     expect(result.state().maximized).toBe("fx-blotter");
 
     result.restore();
+    flush();
     expect(result.state().maximized).toBeNull();
   });
 
@@ -188,6 +192,7 @@ describe("createViewModel — machine-backed members", () => {
 
     expect(result.state().done).toBe(false);
     result.skip();
+    flush();
     expect(result.state().done).toBe(true);
     expect(done).toBe(true);
   });
@@ -205,6 +210,7 @@ describe("createViewModel — machine-backed members", () => {
       throw new Error(`expected phase "editing", got "${editing.phase}"`);
     }
 
+    flush();
     expect(editing.form.symbol).toBe("AAPL");
   });
 
@@ -218,6 +224,7 @@ describe("createViewModel — machine-backed members", () => {
     expect(result.state().sel).toBe("AAPL");
 
     result.setTimeframe("1W");
+    flush();
     expect(result.state().timeframe).toBe("1W");
   });
 
@@ -232,12 +239,15 @@ describe("createViewModel — machine-backed members", () => {
     expect(result.state().indicators).toEqual([]);
 
     result.setChartType("line");
+    flush();
     expect(result.state().chartType).toBe("line");
 
     result.toggleIndicator("ema50");
+    flush();
     expect(result.state().indicators).toEqual(["ema50"]);
 
     result.toggleIndicator("ema50");
+    flush();
     expect(result.state().indicators).toEqual([]);
   });
 
@@ -252,10 +262,12 @@ describe("createViewModel — machine-backed members", () => {
 
     result.toggleIndicator("ema50");
     result.togglePane("rsi");
+    flush();
     expect(result.state().indicators).toEqual(["ema50"]);
     expect(result.state().panes).toEqual(["rsi"]);
 
     result.togglePane("rsi");
+    flush();
     expect(result.state().indicators).toEqual(["ema50"]);
     expect(result.state().panes).toEqual([]);
   });
@@ -270,9 +282,11 @@ describe("createViewModel — machine-backed members", () => {
     expect(result.state().yScale).toBe("linear");
 
     result.toggleYScale();
+    flush();
     expect(result.state().yScale).toBe("log");
 
     result.toggleYScale();
+    flush();
     expect(result.state().yScale).toBe("linear");
   });
 
@@ -290,6 +304,7 @@ describe("createViewModel — machine-backed members", () => {
       b: { index: 5, price: 110 },
     });
 
+    flush();
     expect(result.state().drawings.AAPL).toEqual([
       {
         id: "t1",

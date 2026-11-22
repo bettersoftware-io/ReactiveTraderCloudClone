@@ -3,6 +3,7 @@
 import { state } from "@rx-state/core";
 import { renderHook } from "@solidjs/testing-library";
 import { BehaviorSubject } from "rxjs";
+import { flush } from "solid-js";
 import { describe, expect, it, type Mock, vi } from "vitest";
 
 import {
@@ -58,8 +59,10 @@ describe("createViewModel — core selection", () => {
 
     expect(result?.failure()).toBeNull();
     failures.next("chunk gone");
+    flush();
     expect(result?.failure()).toBe("chunk gone");
     failures.next(null);
+    flush();
     expect(result?.failure()).toBeNull();
   });
 

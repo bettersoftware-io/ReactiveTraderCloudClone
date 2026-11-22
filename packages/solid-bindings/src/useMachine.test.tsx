@@ -1,6 +1,7 @@
 import { state } from "@rx-state/core";
 import { renderHook } from "@solidjs/testing-library";
 import { BehaviorSubject } from "rxjs";
+import { flush } from "solid-js";
 import { describe, expect, it, type Mock, vi } from "vitest";
 
 import type { Machine } from "@rtc/core-api";
@@ -21,6 +22,7 @@ describe("useMachine", () => {
     expect(result.state()).toBe(42);
 
     subject.next(99);
+    flush();
     expect(result.state()).toBe(99);
   });
 

@@ -1,4 +1,5 @@
 import { renderHook } from "@solidjs/testing-library";
+import { flush } from "solid-js";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -72,10 +73,12 @@ describe("createViewModel — useAccountAccess", () => {
 
     result.startRegistration();
 
+    flush();
     expect(result.state().phase).toBe("register");
 
     result.returnToSignIn();
 
+    flush();
     expect(result.state()).toEqual({ phase: "signIn" });
   });
 

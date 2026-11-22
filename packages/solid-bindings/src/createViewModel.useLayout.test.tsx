@@ -1,4 +1,5 @@
 import { renderHook } from "@solidjs/testing-library";
+import { flush } from "solid-js";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -67,6 +68,7 @@ describe("createViewModel — useLayout does not dispose the shared singleton on
     // produce this — its Subjects would be completed, so `.next()` would be
     // a silent no-op).
     second.result.collapse("eq-chart");
+    flush();
     expect(second.result.state().collapsed).toEqual(["eq-chart"]);
 
     second.cleanup();
