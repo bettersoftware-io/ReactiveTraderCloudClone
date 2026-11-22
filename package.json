@@ -103,7 +103,7 @@
     "visual:engine-parity": "pnpm --filter @rtc/tests visual:engine-parity"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
+    "@biomejs/biome": "2.6.8",
     "@manypkg/cli": "^0.25.1",
     "@types/node": "^26.2.0",
     "@typescript-eslint/rule-tester": "8.73.0",

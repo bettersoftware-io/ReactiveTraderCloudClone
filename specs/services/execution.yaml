@@ -8,10 +8,15 @@ operations:
     request:
       currencyPair: { type: string, example: "EURUSD" }
       spotRate: { type: number, description: "Price at time of execution" }
-      valueDate: { type: date, description: "Settlement date (ISO format YYYY-MM-DD)" }
+      valueDate:
+        { type: date, description: "Settlement date (ISO format YYYY-MM-DD)" }
       direction: { type: Direction, description: "Buy or Sell" }
       notional: { type: number, description: "Trade size" }
-      dealtCurrency: { type: string, description: "Currency being dealt (base for Buy, terms for Sell)" }
+      dealtCurrency:
+        {
+          type: string,
+          description: "Currency being dealt (base for Buy, terms for Sell)",
+        }
     response:
       trade:
         tradeId: { type: integer }
@@ -21,7 +26,8 @@ operations:
         dealtCurrency: { type: string }
         direction: { type: Direction }
         spotRate: { type: number }
-        status: { type: TradeStatus, description: "Done or Rejected (never Pending)" }
+        status:
+          { type: TradeStatus, description: "Done or Rejected (never Pending)" }
         tradeDate: { type: date }
         valueDate: { type: date }
     behavior:

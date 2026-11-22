@@ -34,7 +34,7 @@ describe("createThroughputPresenter (effect)", () => {
 
   it("calls getThroughput() once at construction but subscribes it only on the first subscriber", async () => {
     const ops = createScriptedOps();
-    const presenter = createThroughputPresenter(useHost(), ops.port);
+    const presenter = createThroughputPresenter(createTrackedHost(), ops.port);
     await vi.advanceTimersByTimeAsync(0);
 
     expect(ops.loadCalls()).toBe(1);
@@ -46,7 +46,9 @@ describe("createThroughputPresenter (effect)", () => {
 
   it("starts loading, lands the loaded value, and falls back to the default when the load fails", async () => {
     const ok = createScriptedOps();
-    const loaded = watch(createThroughputPresenter(useHost(), ok.port));
+    const loaded = watch(
+      createThroughputPresenter(createTrackedHost(), ok.port),
+    );
     expect(loaded.last()).toEqual({
       value: DEFAULT_THROUGHPUT,
       loading: true,
@@ -62,7 +64,9 @@ describe("createThroughputPresenter (effect)", () => {
     });
 
     const bad = createScriptedOps();
-    const failed = watch(createThroughputPresenter(useHost(), bad.port));
+    const failed = watch(
+      createThroughputPresenter(createTrackedHost(), bad.port),
+    );
     await vi.advanceTimersByTimeAsync(0);
     bad.load.error(new Error("down"));
     await vi.advanceTimersByTimeAsync(0);
@@ -75,7 +79,7 @@ describe("createThroughputPresenter (effect)", () => {
 
   it("echoes setValue at once, writes nothing before the debounce, and writes only the LAST of a burst", async () => {
     const ops = createScriptedOps();
-    const presenter = createThroughputPresenter(useHost(), ops.port);
+    const presenter = createThroughputPresenter(createTrackedHost(), ops.port);
     const view = watch(presenter);
     presenter.setValue(200);
     await vi.advanceTimersByTimeAsync(100);
@@ -91,7 +95,7 @@ describe("createThroughputPresenter (effect)", () => {
 
   it("shows the success banner and clears it exactly THROUGHPUT_MESSAGE_DISMISS_MS later", async () => {
     const ops = createScriptedOps();
-    const presenter = createThroughputPresenter(useHost(), ops.port);
+    const presenter = createThroughputPresenter(createTrackedHost(), ops.port);
     const view = watch(presenter);
     presenter.setValue(400);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
@@ -110,7 +114,7 @@ describe("createThroughputPresenter (effect)", () => {
 
   it("shows the error banner when the write fails, and when the port throws synchronously", async () => {
     const ops = createScriptedOps();
-    const presenter = createThroughputPresenter(useHost(), ops.port);
+    const presenter = createThroughputPresenter(createTrackedHost(), ops.port);
     const view = watch(presenter);
     presenter.setValue(400);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
@@ -122,7 +126,7 @@ describe("createThroughputPresenter (effect)", () => {
     });
 
     const throwing = createScriptedOps({ throwOnWrite: true });
-    const other = createThroughputPresenter(useHost(), throwing.port);
+    const other = createThroughputPresenter(createTrackedHost(), throwing.port);
     const otherView = watch(other);
     other.setValue(400);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
@@ -134,7 +138,7 @@ describe("createThroughputPresenter (effect)", () => {
 
   it("supersedes at the DEBOUNCE, not the keystroke: a new setValue leaves write b in flight until its own debounce fires", async () => {
     const ops = createScriptedOps();
-    const presenter = createThroughputPresenter(useHost(), ops.port);
+    const presenter = createThroughputPresenter(createTrackedHost(), ops.port);
     const view = watch(presenter);
     presenter.setValue(500);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
@@ -152,7 +156,7 @@ describe("createThroughputPresenter (effect)", () => {
 
   it("a write resolved before the next debounce shows its banner, and the next debounce drops that banner's dismiss with it", async () => {
     const ops = createScriptedOps();
-    const presenter = createThroughputPresenter(useHost(), ops.port);
+    const presenter = createThroughputPresenter(createTrackedHost(), ops.port);
     const view = watch(presenter);
     presenter.setValue(500);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
@@ -176,7 +180,7 @@ describe("createThroughputPresenter (effect)", () => {
   // the ref.
   it("after the host scope closes, setValue neither writes nor echoes", async () => {
     const ops = createScriptedOps();
-    const host = useHost();
+    const host = createTrackedHost();
     const presenter = createThroughputPresenter(host, ops.port);
     presenter.setValue(700);
     await closeScope(host);
@@ -200,7 +204,7 @@ describe("createThroughputPresenter (effect)", () => {
 
   it("closing the host scope mid-debounce starts no write", async () => {
     const ops = createScriptedOps();
-    const host = useHost();
+    const host = createTrackedHost();
     const presenter = createThroughputPresenter(host, ops.port);
     presenter.setValue(700);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS - 1);
@@ -212,7 +216,7 @@ describe("createThroughputPresenter (effect)", () => {
 
   it("closing the host scope releases an in-flight write, and its late resolution shows no banner", async () => {
     const ops = createScriptedOps();
-    const host = useHost();
+    const host = createTrackedHost();
     const presenter = createThroughputPresenter(host, ops.port);
     const view = watch(presenter);
     presenter.setValue(700);
@@ -228,7 +232,7 @@ describe("createThroughputPresenter (effect)", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

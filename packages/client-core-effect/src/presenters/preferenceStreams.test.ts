@@ -124,7 +124,10 @@ describe("native preference streams (effect)", () => {
     "$port is subscribed by the first consumer, replays synchronously, and is released once the warm period's scope has closed",
     async ({ port, stream }) => {
       const subject = new BehaviorSubject<unknown>("seed");
-      const stream$ = stream(useHost(), createPortWithSubject(port, subject));
+      const stream$ = stream(
+        createTrackedHost(),
+        createPortWithSubject(port, subject),
+      );
       // Construction calls the port method but subscribes nothing:
       // `fromObservable` is only called inside the fold's `run`.
       expect(subject.observed).toBe(false);
@@ -145,7 +148,7 @@ describe("native preference streams (effect)", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

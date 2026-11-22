@@ -83,7 +83,7 @@ export function collectFreezeViolations(): FreezeViolation[] {
     return value.trim().endsWith("ms") ? parsed / 1000 : parsed;
   }
 
-  function describe(el: Element, pseudo: string): string {
+  function describeElement(el: Element, pseudo: string): string {
     const testId = el.getAttribute("data-testid");
     const cls = el.getAttribute("class");
     const testIdPart = testId === null ? "" : `[data-testid="${testId}"]`;
@@ -123,7 +123,11 @@ export function collectFreezeViolations(): FreezeViolation[] {
     }
 
     function report(property: string, actual: string): void {
-      violations.push({ element: describe(el, pseudo), property, actual });
+      violations.push({
+        element: describeElement(el, pseudo),
+        property,
+        actual,
+      });
     }
 
     // Transitions must be OFF (`transition-property: none`), not merely fast.
@@ -187,7 +191,7 @@ export function collectFreezeViolations(): FreezeViolation[] {
       const target =
         animation.effect instanceof KeyframeEffect &&
         animation.effect.target !== null
-          ? describe(
+          ? describeElement(
               animation.effect.target,
               animation.effect.pseudoElement ?? "",
             )

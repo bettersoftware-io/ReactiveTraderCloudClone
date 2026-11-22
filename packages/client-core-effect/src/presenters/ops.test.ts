@@ -37,7 +37,7 @@ describe("ops presenters (effect)", () => {
 
   it("metric window: [] synchronously, one window per sample, truncated to the newest METRIC_WINDOW", async () => {
     const samples = new Subject<MetricSample>();
-    const presenter = createMetricWindowPresenter(useHost(), samples);
+    const presenter = createMetricWindowPresenter(createTrackedHost(), samples);
     const seen: (readonly MetricSample[])[] = [];
     const sub = presenter.samples$.subscribe((w) => {
       seen.push(w);
@@ -60,7 +60,7 @@ describe("ops presenters (effect)", () => {
 
   it("metric window: the window and its ONE port subscription survive a full unsubscribe until the host scope closes", async () => {
     const samples = new Subject<MetricSample>();
-    const host = useHost();
+    const host = createTrackedHost();
     const presenter = createMetricWindowPresenter(host, samples);
     presenter.samples$.subscribe(() => {}).unsubscribe();
     await tick();
@@ -89,7 +89,7 @@ describe("ops presenters (effect)", () => {
         return topology;
       },
     };
-    const host = useHost();
+    const host = createTrackedHost();
     const presenter = createTopologyPresenter(host, port);
     const early: ServiceTopology[] = [];
     presenter.topology$
@@ -118,7 +118,7 @@ describe("ops presenters (effect)", () => {
 
   it("sessions: the same retained-mirror shape", async () => {
     const roster = new Subject<readonly SessionInfo[]>();
-    const host = useHost();
+    const host = createTrackedHost();
     const presenter = createSessionsPresenter(host, createSessionsPort(roster));
     presenter.sessions$.subscribe(() => {}).unsubscribe();
     await tick();
@@ -144,7 +144,7 @@ describe("ops presenters (effect)", () => {
         return events;
       },
     };
-    const presenter = createEventLogPresenter(useHost(), port);
+    const presenter = createEventLogPresenter(createTrackedHost(), port);
     const seen: (readonly LogEvent[])[] = [];
     const sub = presenter.events$.subscribe((log) => {
       seen.push(log);
@@ -168,7 +168,7 @@ describe("ops presenters (effect)", () => {
   it("eventLog and sessionsKpi: each keeps its window across a full unsubscribe and releases its port when the host scope closes", async () => {
     const events = new Subject<LogEvent>();
     const roster = new Subject<readonly SessionInfo[]>();
-    const host = useHost();
+    const host = createTrackedHost();
     const port: EventLogPort = {
       events$: () => {
         return events;
@@ -213,7 +213,7 @@ describe("ops presenters (effect)", () => {
     const roster = new Subject<readonly SessionInfo[]>();
     let clock = 1_000;
     const presenter = createSessionsKpiPresenter(
-      useHost(),
+      createTrackedHost(),
       createSessionsPort(roster),
       () => {
         return clock;
@@ -243,7 +243,7 @@ describe("ops presenters (effect)", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

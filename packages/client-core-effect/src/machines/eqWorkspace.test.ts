@@ -22,7 +22,7 @@ describe("eqWorkspace machine", () => {
 
   it("a roster arriving SYNCHRONOUSLY with the subscription seeds the workspace and does not strand the source", async () => {
     const roster = new Subject<readonly EquityInstrument[]>();
-    const m = createEqWorkspaceMachine(useHost(), {
+    const m = createEqWorkspaceMachine(createTrackedHost(), {
       initialSymbol: "",
       watchlist$: roster,
     });
@@ -41,7 +41,7 @@ describe("eqWorkspace machine", () => {
 
   it("an empty roster never seeds, and only the FIRST non-empty one does", async () => {
     const roster = new Subject<readonly EquityInstrument[]>();
-    const m = createEqWorkspaceMachine(useHost(), {
+    const m = createEqWorkspaceMachine(createTrackedHost(), {
       initialSymbol: "",
       watchlist$: roster,
     });
@@ -59,7 +59,7 @@ describe("eqWorkspace machine", () => {
 
   it("a FAILING roster has no channel on the ref, so it is rethrown out of band and the workspace stands", async () => {
     vi.useFakeTimers();
-    const host = useHost();
+    const host = createTrackedHost();
 
     try {
       const roster = new Subject<readonly EquityInstrument[]>();
@@ -87,7 +87,7 @@ describe("eqWorkspace machine", () => {
 
   it("dispose() interrupts the seed fiber silently — an interrupt is not a failure", async () => {
     vi.useFakeTimers();
-    const host = useHost();
+    const host = createTrackedHost();
 
     try {
       const roster = new Subject<readonly EquityInstrument[]>();
@@ -111,7 +111,7 @@ describe("eqWorkspace machine", () => {
   });
 
   it("closing the PARENT scope releases the still-pending seed's port — no dispose() call", async () => {
-    const parent = useHost();
+    const parent = createTrackedHost();
     const roster = new Subject<readonly EquityInstrument[]>();
     createEqWorkspaceMachine(parent, {
       initialSymbol: "",
@@ -138,7 +138,7 @@ describe("eqWorkspace machine", () => {
     // produces. Without the child scope's finalizer the parent-close path
     // stays warm and reads "TSLA" here while the `dispose()` path reads the
     // default.
-    const viaDispose = createEqWorkspaceMachine(useHost(), {
+    const viaDispose = createEqWorkspaceMachine(createTrackedHost(), {
       initialSymbol: "AAPL",
     });
     viaDispose.intents.select("TSLA");
@@ -147,7 +147,7 @@ describe("eqWorkspace machine", () => {
     await tick();
     const afterDispose = viaDispose.state$.getValue();
 
-    const parent = useHost();
+    const parent = createTrackedHost();
     const viaParent = createEqWorkspaceMachine(parent, {
       initialSymbol: "AAPL",
     });
@@ -167,7 +167,9 @@ describe("eqWorkspace machine", () => {
   });
 
   it("with no watchlist$ at all it opens on the initial symbol and nothing seeds it later", async () => {
-    const m = createEqWorkspaceMachine(useHost(), { initialSymbol: "AAPL" });
+    const m = createEqWorkspaceMachine(createTrackedHost(), {
+      initialSymbol: "AAPL",
+    });
     const seen: EqWorkspaceState[] = [];
     m.state$.subscribe((state: EqWorkspaceState) => {
       seen.push(state);
@@ -179,7 +181,9 @@ describe("eqWorkspace machine", () => {
   });
 
   it("an intent after dispose() is ignored", async () => {
-    const m = createEqWorkspaceMachine(useHost(), { initialSymbol: "AAPL" });
+    const m = createEqWorkspaceMachine(createTrackedHost(), {
+      initialSymbol: "AAPL",
+    });
     m.dispose();
     m.intents.select("MSFT");
     await tick();
@@ -194,7 +198,7 @@ describe("eqWorkspace machine", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

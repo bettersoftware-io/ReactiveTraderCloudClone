@@ -28,10 +28,14 @@ describe("createBlotterPresenter", () => {
 
   it("activity$ is retained across zero subscribers and stamps with the injected clock", async () => {
     const trades = new Subject<readonly Trade[]>();
-    const p = createBlotterPresenter(useHost(), portFor(trades), () => {
-      // 1970-01-01T01:02:03Z, read through the local zone the fold formats in.
-      return new Date(2026, 0, 2, 1, 2, 3).getTime();
-    });
+    const p = createBlotterPresenter(
+      createTrackedHost(),
+      portFor(trades),
+      () => {
+        // 1970-01-01T01:02:03Z, read through the local zone the fold formats in.
+        return new Date(2026, 0, 2, 1, 2, 3).getTime();
+      },
+    );
     const first: (readonly ActivityEntry[])[] = [];
     const sub = p.activity$.subscribe((entries: readonly ActivityEntry[]) => {
       first.push(entries);
@@ -55,7 +59,7 @@ describe("createBlotterPresenter", () => {
 
   it("newTradeIds$ restarts per period while trades$ stays warm", async () => {
     const trades = new Subject<readonly Trade[]>();
-    const p = createBlotterPresenter(useHost(), portFor(trades));
+    const p = createBlotterPresenter(createTrackedHost(), portFor(trades));
     const first: ReadonlySet<number>[] = [];
     const sub = p.newTradeIds$.subscribe((fresh: ReadonlySet<number>) => {
       first.push(fresh);
@@ -89,7 +93,7 @@ describe("createBlotterPresenter", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

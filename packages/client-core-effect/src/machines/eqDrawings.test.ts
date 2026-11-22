@@ -19,7 +19,7 @@ describe("eqDrawings machine", () => {
   });
 
   it("is warm from construction: a change made with nobody watching is the next subscriber's first value", async () => {
-    const m = createEqDrawingsMachine(useHost());
+    const m = createEqDrawingsMachine(createTrackedHost());
     m.intents.addDrawing("AAPL", TREND);
     await tick();
     expect(m.state$.getValue()).toMatchObject({ drawings: { AAPL: [TREND] } });
@@ -33,7 +33,7 @@ describe("eqDrawings machine", () => {
   });
 
   it("an intent after dispose() is ignored, and dispose() is safe to repeat", async () => {
-    const m = createEqDrawingsMachine(useHost());
+    const m = createEqDrawingsMachine(createTrackedHost());
     m.intents.setTool("hline");
     await tick();
     m.dispose();
@@ -62,14 +62,14 @@ describe("eqDrawings machine", () => {
     // That is the discriminating assertion: without the child scope's
     // finalizer the parent-close path stays warm and reads "hline" here
     // while the `dispose()` path reads "cursor".
-    const viaDispose = createEqDrawingsMachine(useHost());
+    const viaDispose = createEqDrawingsMachine(createTrackedHost());
     viaDispose.intents.setTool("hline");
     await tick();
     viaDispose.dispose();
     await tick();
     const afterDispose = viaDispose.state$.getValue();
 
-    const parent = useHost();
+    const parent = createTrackedHost();
     const viaParent = createEqDrawingsMachine(parent);
     viaParent.intents.setTool("hline");
     await tick();
@@ -93,7 +93,7 @@ describe("eqDrawings machine", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

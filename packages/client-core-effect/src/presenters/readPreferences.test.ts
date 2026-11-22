@@ -30,7 +30,7 @@ describe("createEqWatchlistSortPreferencePresenter (effect)", () => {
   it("cycle() advances from the value the PORT holds now, even one written behind the presenter's back", () => {
     const preferences = new PreferencesSimulator({ eqWatchlistSort: "chg" });
     const presenter = createEqWatchlistSortPreferencePresenter(
-      useHost(),
+      createTrackedHost(),
       preferences,
     );
     const seen: EqWatchlistSort[] = [];
@@ -48,7 +48,7 @@ describe("createEqWatchlistSortPreferencePresenter (effect)", () => {
   it("cycle() leaves nothing warm on the port", () => {
     const subject = new BehaviorSubject<EqWatchlistSort>("sym");
     const presenter = createEqWatchlistSortPreferencePresenter(
-      useHost(),
+      createTrackedHost(),
       createPortWithStream("eqWatchlistSort$", subject),
     );
     presenter.cycle();
@@ -57,7 +57,7 @@ describe("createEqWatchlistSortPreferencePresenter (effect)", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

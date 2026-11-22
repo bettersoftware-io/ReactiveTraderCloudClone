@@ -635,7 +635,7 @@ describe("AnthropicAgentLoop", () => {
     expect(seen.redirect).toBeUndefined();
   });
 
-  it("(f) breaching the per-session turn cap short-circuits with no runnerFactory invocation", async () => {
+  it("a 429 on an own key stays the sanitized copy and refuses nothing", async () => {
     const refused = vi.fn();
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const loop = new AnthropicAgentLoop({

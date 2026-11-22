@@ -9,8 +9,8 @@ import { conflatedFold } from "#/presenters/conflatedFold";
 
 describe("conflatedFold", () => {
   beforeEach(() => {
-    // Installed BEFORE `useHost()`: an Effect runtime that captured the real
-    // `setTimeout` before the swap would never advance.
+    // Installed BEFORE `createTrackedHost()`: an Effect runtime that captured
+    // the real `setTimeout` before the swap would never advance.
     vi.useFakeTimers();
   });
 
@@ -31,7 +31,7 @@ describe("conflatedFold", () => {
     const source = new Subject<number>();
     const calm = new BehaviorSubject<boolean>(true);
     const seen = collect(
-      conflatedFold(useHost(), source, calm, MS, () => {
+      conflatedFold(createTrackedHost(), source, calm, MS, () => {
         return Option.none<number>();
       }),
     );
@@ -52,7 +52,7 @@ describe("conflatedFold", () => {
     const source = new Subject<number>();
     const calm = new BehaviorSubject<boolean>(false);
     const seen = collect(
-      conflatedFold(useHost(), source, calm, MS, () => {
+      conflatedFold(createTrackedHost(), source, calm, MS, () => {
         return Option.none<number>();
       }),
     );
@@ -68,7 +68,7 @@ describe("conflatedFold", () => {
     const source = new Subject<number>();
     const calm = new BehaviorSubject<boolean>(true);
     const seen = collect(
-      conflatedFold(useHost(), source, calm, MS, () => {
+      conflatedFold(createTrackedHost(), source, calm, MS, () => {
         return Option.none<number>();
       }),
     );
@@ -92,7 +92,7 @@ describe("conflatedFold", () => {
     const source = new Subject<number>();
     const calm = new BehaviorSubject<boolean>(false);
     const seen = collect(
-      conflatedFold(useHost(), source, calm, MS, () => {
+      conflatedFold(createTrackedHost(), source, calm, MS, () => {
         return Option.none<number>();
       }),
     );
@@ -117,7 +117,7 @@ describe("conflatedFold", () => {
     const source = new Subject<number>();
     const calm = new Subject<boolean>();
     const seen = collect(
-      conflatedFold(useHost(), source, calm, MS, () => {
+      conflatedFold(createTrackedHost(), source, calm, MS, () => {
         return Option.none<number>();
       }),
     );
@@ -136,7 +136,7 @@ describe("conflatedFold", () => {
     const source = new Subject<number>();
     const calm = new BehaviorSubject<boolean>(false);
     const seen = collect(
-      conflatedFold(useHost(), source, calm, MS, () => {
+      conflatedFold(createTrackedHost(), source, calm, MS, () => {
         return Option.some(9);
       }),
     );
@@ -152,7 +152,7 @@ describe("conflatedFold", () => {
     const source = new Subject<number>();
     const calm = new BehaviorSubject<boolean>(false);
     const seen = collect(
-      conflatedFold(useHost(), source, calm, MS, () => {
+      conflatedFold(createTrackedHost(), source, calm, MS, () => {
         return Option.none<number>();
       }),
     );
@@ -174,7 +174,7 @@ describe("conflatedFold", () => {
     source.next(3);
     const calm = new BehaviorSubject<boolean>(false);
     const seen = collect(
-      conflatedFold(useHost(), source, calm, MS, () => {
+      conflatedFold(createTrackedHost(), source, calm, MS, () => {
         return Option.none<number>();
       }),
     );
@@ -186,7 +186,7 @@ describe("conflatedFold", () => {
     const source = new Subject<number>();
     const calm = new BehaviorSubject<boolean>(true);
     const seen = collect(
-      conflatedFold(useHost(), source, calm, MS, () => {
+      conflatedFold(createTrackedHost(), source, calm, MS, () => {
         return Option.none<number>();
       }),
     );
@@ -208,7 +208,7 @@ describe("conflatedFold", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

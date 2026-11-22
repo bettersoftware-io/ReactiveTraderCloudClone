@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.8/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -167,6 +167,17 @@
       "enabled": true
     }
   },
+  "markdown": {
+    // Biome 2.6 formats Markdown by default. The docs are hand-wrapped prose
+    // with mermaid diagrams and tables laid out for GitHub's column width
+    // (CLAUDE.md "Markdown Diagrams"); a reflow would rewrite ~500 files for
+    // no reader benefit. Their gate is `pnpm check:doc-links` (every relative
+    // link + anchor), not a formatter. Only the formatter is off: the
+    // Markdown linter stays on.
+    "formatter": {
+      "enabled": false
+    }
+  },
   "overrides": [
     {
       // The three nodenext-resolution tsc-built libs import relative modules
@@ -295,6 +306,72 @@
         "rules": {
           "complexity": {
             "noImportantStyles": "off"
+          }
+        }
+      }
+    },
+    {
+      // noComponentHookFactories (Biome 2.6) guards against a component or
+      // hook built inside a function that runs on every render: each render
+      // then mints a new component type and React remounts the subtree. Both
+      // places below build them in a function that runs ONCE, never per render:
+      //
+      // - `createViewModel` IS the ViewModel seam (docs/adr/ADR-004): it turns
+      //   presenters + machines + commands into the hook bundle the UI reads
+      //   through `useViewModel()`, closing over the core it was given. It runs
+      //   once per AppRoot mount (packages/client-react/src/AppRoot.tsx), so
+      //   every hook in the bundle keeps one identity for the core's lifetime.
+      // - Test harnesses (page objects, contract fakes, `renderHook` probes and
+      //   wrappers) declare their Probe/Harness/Wrapper inside the factory or
+      //   `mount()` that closes over its arguments, called once per mount and
+      //   never during a render. Hoisting them to module scope is not an
+      //   option: a module-level component in a module that exports a page
+      //   factory is a `useComponentExportOnlyModules` error (re-checked on
+      //   2.6.8), which is why the harnesses nest them in the first place.
+      "includes": [
+        "packages/react-bindings/src/createViewModel.ts",
+        "packages/*/tests/**",
+        "packages/*/src/**/*.test.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noComponentHookFactories": "off"
+          }
+        }
+      }
+    },
+    {
+      // useDomNodeTextContent (Biome 2.6) targets the DOM property
+      // `Node.innerText`. Every hit here is Playwright's `Locator.innerText()`
+      // instead — a different API that only shares the name. The page objects
+      // read it on purpose: it is the text as RENDERED (CSS text-transform
+      // applied, hidden nodes skipped), which is what a user sees and what the
+      // specs assert. `Locator.textContent()` would return the raw source text
+      // and `string | null`, changing what the assertions compare.
+      "includes": ["tests/browser/page-objects/playwright/**"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "useDomNodeTextContent": "off"
+          }
+        }
+      }
+    },
+    {
+      // noReactNativeRawText (Biome 2.6, reactNative domain) only knows the
+      // built-in text containers. `SectionLabel` renders its `children: string`
+      // inside a `<Text>`, so a string child is not raw text; `skip` is the
+      // rule's own option for exactly such wrappers. Scoped to the RN client so
+      // naming the level here cannot switch the rule on for the web clients.
+      "includes": ["packages/client-react-native/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noReactNativeRawText": {
+              "level": "error",
+              "options": { "skip": ["SectionLabel"] }
+            }
           }
         }
       }

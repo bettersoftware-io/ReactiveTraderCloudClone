@@ -22,7 +22,7 @@ describe("createConnectionPresenter (effect)", () => {
 
   it("folds events on a fiber and conflates a state an ignored event leaves unchanged", async () => {
     const events = new Subject<ConnectionEvent>();
-    const presenter = createConnectionPresenter(useHost(), {
+    const presenter = createConnectionPresenter(createTrackedHost(), {
       events: () => {
         return events;
       },
@@ -50,7 +50,7 @@ describe("createConnectionPresenter (effect)", () => {
 
   it("surfaces a port error as a stream error", async () => {
     const events = new Subject<ConnectionEvent>();
-    const presenter = createConnectionPresenter(useHost(), {
+    const presenter = createConnectionPresenter(createTrackedHost(), {
       events: () => {
         return events;
       },
@@ -66,7 +66,7 @@ describe("createConnectionPresenter (effect)", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),
