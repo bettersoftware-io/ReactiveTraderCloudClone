@@ -1,8 +1,14 @@
 // The web clients' font manifest, once: the app's v2 design fonts — Chakra Petch
 // 400/500/600/700, JetBrains Mono 400/500/700, IBM Plex Sans 400/500/600,
-// IBM Plex Mono 400/500/600, Orbitron 700/800 (wordmark, P&L amount, lock-screen
-// fallback, prefs-dialog title chrome) — registered as @font-face by the
-// @fontsource stylesheets below, plus the list of faces to force-load.
+// IBM Plex Mono 400/500/600, Inter 400/500/600/700, Orbitron 700/800 (wordmark,
+// P&L amount, lock-screen fallback, prefs-dialog title chrome) — registered as
+// @font-face by the @fontsource stylesheets below, plus the list of faces to
+// force-load.
+//
+// Every skin uses only these faces, never a system font: the classic skin
+// (Inter + JetBrains Mono) used `system-ui` / `ui-monospace` until 2026-11-22,
+// so its goldens moved whenever the Playwright container's fonts did (the
+// 1.65 image bump swapped its monospace face, #1131).
 //
 // It is its OWN entry point (`@rtc/web-boot/fonts`), not re-exported from
 // `index.ts`: the `.css` imports are for a bundler, and node-run scripts import
@@ -20,6 +26,10 @@ import "@fontsource/ibm-plex-mono/600.css";
 import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/500.css";
 import "@fontsource/ibm-plex-sans/600.css";
+import "@fontsource/inter/400.css";
+import "@fontsource/inter/500.css";
+import "@fontsource/inter/600.css";
+import "@fontsource/inter/700.css";
 import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
 import "@fontsource/jetbrains-mono/700.css";
@@ -49,6 +59,10 @@ export const FONT_LOAD_SPECS: readonly string[] = [
   '400 16px "IBM Plex Sans"',
   '500 16px "IBM Plex Sans"',
   '600 16px "IBM Plex Sans"',
+  '400 16px "Inter"',
+  '500 16px "Inter"',
+  '600 16px "Inter"',
+  '700 16px "Inter"',
   '400 16px "JetBrains Mono"',
   '500 16px "JetBrains Mono"',
   '700 16px "JetBrains Mono"',
