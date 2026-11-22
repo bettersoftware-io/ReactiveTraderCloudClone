@@ -20,7 +20,7 @@ the one open failure was reduced to a minimal reproduction and fixed on
 | What actually broke | 3 behaviour changes, **none of which `pnpm test` noticed**, plus 1 upstream mocking regression |
 | The mocking regression | After a setup-file preload and `vi.resetModules()`, **concurrent** re-imports give only the first importer the mock. One line in each of two `client-solid` tests avoids it. Still unreported upstream: see [vitest-5-upstream-bug-report.md](vitest-5-upstream-bug-report.md) |
 | Why it was parked for a week | Small gain (test strictness, browser-mode DX we barely use) against a young major with several silent traps; v4 still receives security backports |
-| What is left | Report the regression upstream, remove the workaround once fixed, drop the peer override once `vitest-browser-solid` releases |
+| What is left | Report the regression upstream, remove the workaround once fixed. (The `vitest-browser-solid` peer override is gone: the Solid 2 migration, 2026-11-22, replaced the adapter, which has no Solid 2 release, with a local helper.) |
 
 ## What vitest 5 brings
 

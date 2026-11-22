@@ -487,7 +487,8 @@ Tier 1 the one that didn't go as planned.**
 - `playwright/host/main.tsx`: React's `createRoot(...).render(<VisualScenario/>)`
   swapped for Solid's `render(() => <VisualScenario name={name}/>, root)`.
 - `playwright/host/vite.config.ts`: `@vitejs/plugin-react` swapped for
-  `vite-plugin-solid`, `@ui-visual` re-pointed at `solid/`.
+  the Solid Vite plugin (`@solidjs/vite-plugin` since Solid 2; it was
+  `vite-plugin-solid` under Solid 1), `@ui-visual` re-pointed at `solid/`.
 
 **Tier 3 — vitest-browser (low, as planned):**
 

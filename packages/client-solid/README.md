@@ -1,11 +1,11 @@
 # @rtc/client-solid — SolidJS UI
 
-SolidJS + RxJS + Vite client, at full parity with `@rtc/client-react`. Same clean-architecture seam: components read ALL data through `useViewModel()` (`ViewModel` interface, from `@rtc/solid-bindings` instead of `@rtc/react-bindings`); production wires presenters via `@rx-state/core`'s `state()`, tests inject fakes through `ViewModelProvider`. This package is the empirical proof of [§8.1](../../docs/architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port): a genuinely different reactive framework, running the same behaviour, verified by the same tests.
+SolidJS 2 + RxJS + Vite client, at full parity with `@rtc/client-react`. Same clean-architecture seam: components read ALL data through `useViewModel()` (`ViewModel` interface, from `@rtc/solid-bindings` instead of `@rtc/react-bindings`); production wires presenters via `@rx-state/core`'s `state()`, tests inject fakes through `ViewModelProvider`. This package is the empirical proof of [§8.1](../../docs/architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port): a genuinely different reactive framework, running the same behaviour, verified by the same tests.
 
 | | |
 |---|---|
 | **Ring** | ④ Frameworks & Drivers (`src/ui`, plus the view in `src/main.tsx` and the tree mount in `src/app`); the page's composition root and the ③ platform adapters are in `@rtc/web-boot` — per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
-| **Runtime deps** | `@rtc/core-api`, `@rtc/web-boot`, `@rtc/core-logic`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`, `@rtc/solid-bindings`, `solid-js`, `rxjs` (`package.json` `dependencies`). `@rtc/client-core-rxjs` and `@rx-state/core` are `devDependencies`, for tests. The app reaches all three cores, each a lazy chunk, and the ports (`@rtc/client-adapters`) through `@rtc/web-boot`. No file under `src` imports `rxjs`; it is a listed dependency, and `@rtc/web-boot` (`buildBrowserPorts.ts`) is where it is imported — never in `src/ui` (machine-enforced, gate 34). |
+| **Runtime deps** | `@rtc/core-api`, `@rtc/web-boot`, `@rtc/core-logic`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`, `@rtc/solid-bindings`, `solid-js`, `@solidjs/web` (Solid 2's DOM renderer, JSX types and `render`), `rxjs` (`package.json` `dependencies`). `@rtc/client-core-rxjs` and `@rx-state/core` are `devDependencies`, for tests. The app reaches all three cores, each a lazy chunk, and the ports (`@rtc/client-adapters`) through `@rtc/web-boot`. No file under `src` imports `rxjs`; it is a listed dependency, and `@rtc/web-boot` (`buildBrowserPorts.ts`) is where it is imported — never in `src/ui` (machine-enforced, gate 34). |
 | **Consumed by** | Nothing in-workspace — like `client-react-native`, it is a leaf app and *not* a `tests` (`@rtc/tests`) workspace dependency; its own suites (contract + the visual tier) run entirely in-package. |
 | **Must never import** | `rxjs` / `@rx-state` in `src/ui` (gate 34); `local storage` in `src/ui` (gate 35); `fetch(` / `import.meta.env` in `src/ui` (gate 36); `setTimeout` / `setInterval` in `src/ui` (gate 37) — the exact same four-gate shape as `client-react`'s 26–29, re-numbered for this package, see [§12](../../docs/architecture/12-architectural-gates.md#12-architectural-gates). |
 
@@ -13,7 +13,7 @@ SolidJS + RxJS + Vite client, at full parity with `@rtc/client-react`. Same clea
 
 | Path | What lives here |
 |---|---|
-| `src/main.tsx` | Entry point: the `@rtc/web-boot/fonts` import (the font manifest), solid-devtools registration, `createSolidView` (the Solid part of the page: `createSolidTreeMount` over `#root`, and a second reactive root on `#core-swap-overlay` that renders `CoreSwapOverlay` (`src/ui/shell/core/`)) and one `startWebClient({ appId, rootId, env, createView })` call from `@rtc/web-boot` -- the same load-time core selection as `client-react` (`?core=`, stored Preferences choice, `VITE_CORE_IMPL`, then `rxjs`), the same ports built once, the same core host, which renders `<AppRoot composition demoAccounts><App /></AppRoot>` and swaps the core in place when Preferences picks another. While a swap is under way the overlay is shown and `#root` is `inert` (`@rtc/web-boot`'s `coreSwapCover.ts`). It is the only file under `src/` that reads `import.meta.env`, tests aside (grep gate 53) |
+| `src/main.tsx` | Entry point: the `@rtc/web-boot/fonts` import (the font manifest), `createSolidView` (the Solid part of the page: `createSolidTreeMount` over `#root`, and a second reactive root on `#core-swap-overlay` that renders `CoreSwapOverlay` (`src/ui/shell/core/`)) and one `startWebClient({ appId, rootId, env, createView })` call from `@rtc/web-boot` -- the same load-time core selection as `client-react` (`?core=`, stored Preferences choice, `VITE_CORE_IMPL`, then `rxjs`), the same ports built once, the same core host, which renders `<AppRoot composition demoAccounts><App /></AppRoot>` and swaps the core in place when Preferences picks another. While a swap is under way the overlay is shown and `#root` is `inert` (`@rtc/web-boot`'s `coreSwapCover.ts`). It is the only file under `src/` that reads `import.meta.env`, tests aside (grep gate 53) |
 | `src/AppRoot.tsx` | UI root of one composition — builds the `ViewModel` from the host's composition and supplies `ViewModelProvider` + theme + `BootGate` |
 | `src/app/` | The tree mount (`solidTreeMount.ts`): one reactive root's `mount` / `unmount` / `destroy` for the core host, disposing a partly built root before it rethrows a first-render error. The browser platform adapters, the core host, the core selection and the page's composition root (`startWebClient`) live in `@rtc/web-boot` |
 | `src/ui/` | Dumb SolidJS UI (Ring ④) — every component reads data through `useViewModel()`; gates 34–37 keep it framework-swappable, same discipline `client-react`'s gates 26–29 enforce there |
@@ -72,98 +72,104 @@ pnpm dev:solid:fs        # full stack: starts the WS server + this client togeth
 | `test:ui:visual:playwright:solid[:ui]` | The CI-asserted tier — plain Playwright over a Vite host, reusing `client-react`'s `visual.spec.ts` verbatim |
 | `clean` / `clean:deep` | remove build/test artifacts (/ + node_modules) |
 
-## solid/reactivity and this port
+## Solid 2 and this port
 
-`eslint-plugin-solid`'s `reactivity` rule fires on reads of reactive values
-outside tracked scope. This port carries **zero** `solid/reactivity`
-directives, in `src/` and `tests/` alike, and adding one is a review defect:
-the rule is right often enough that a suppression is the wrong tool.
+The client runs on Solid 2 (`solid-js` 2, `@solidjs/web`, `@solidjs/vite-plugin`
+3; migrated from Solid 1.9 on 2026-11-22). The rules that shape its code, each
+backed by Solid's own dev diagnostics (dev builds print `[CODE] message`; the
+repair guide is `node_modules/solid-js/skills/reactivity-diagnostics/SKILL.md`)
+and by `eslint-plugin-solid`'s `v2` config:
+
+**Writes apply at the next microtask.** A burst of writes in one turn lands in
+one flush, which is exactly the UI half of the core's "a burst is delivered in
+one turn" guarantee (`@rtc/solid-bindings`' `toSignal` forwards each emission
+as a write). Code never reads its own write back in the same turn. Tests apply
+writes before asserting: the contract driver's `flushSync`/`flushAsync` call
+`flush()`, `tests/setup/flush-after-each-event.ts` makes Testing Library's
+`eventWrapper` flush after every fired event (what a browser's task boundary
+between two input events does), and the page objects that call a hook's
+handlers directly wrap them in `tests/ui/pages/thenFlush.ts`.
+
+**Effects split compute from apply.** `createEffect(compute, apply)`: every
+reactive read goes in `compute`, which is what the effect tracks; `apply` runs
+the side effect and is untracked, and a reactive read there dev-warns
+(`STRICT_READ_UNTRACKED … in an effect callback`) because it would never
+re-run the effect. The apply receives the previous compute value as its second
+argument, which is how the bookkeeping effects (new-trade flash, RFQ cascades,
+the dock reset counter) get their "previous" baseline — undefined on the first
+run, so they fall back to the current value (`previous ?? current`). Effects
+never compare, so an effect whose apply must not re-run on an equal value
+reads a `createMemo` in its compute (`ModalShell`, `JarvisOverlay`). Mount-time
+work is `onSettled` (a returned function is its cleanup), not `onMount`.
+
+**Imperative callers read plain copies.** The dock engine pulls panel titles,
+maximize scopes and the docked set through callbacks, and `ChartPanel`'s
+paging handlers run from `CandleChart`'s effects — both from inside an apply
+phase, where a reactive read is untracked and warns. Each keeps a plain copy
+refreshed by a `createRenderEffect` (render effects run before every user
+effect of the same flush, so the copy is never stale when read).
+`SceneCanvas` takes its scene as a prop read in the compute phase instead of
+inside the `draw` closure, so a new scene repaints.
+
+**No writes in owned scopes.** A signal write in a component body, a memo or
+an effect's compute throws in dev. Writes live in event handlers, effect
+applies and `onSettled`; the bindings' bridge signal keeps the guard too (see
+its README). A test writes from outside the root it built, as a handler
+would.
 
 **The default is a live read.** A read that feeds rendered output belongs in
-the JSX (or in an accessor/`createMemo` the JSX calls), where it is tracked. A
-value copied to a `const` at setup and used in JSX later is the bug the rule
-exists to catch, not a false positive; `<For>`- and `<Show>`-scoped reads must
-STAY in the JSX body for the same reason. Where a prop is a callback, forward
-it (`function finishBoot() { props.onDone(); }`) rather than capturing it, so
-the read happens when it fires — see `BootSequence.tsx`.
+the JSX (or in an accessor/`createMemo` the JSX calls), where it is tracked; a
+value copied to a `const` at setup is the bug `STRICT_READ_UNTRACKED` and
+`solid/reactivity` exist to catch. `<For>`/`<Show>` callback arguments are read
+in the JSX, never at the top of the callback. Where a prop is a callback,
+forward it (`function finishBoot() { props.onDone(); }`) rather than capturing
+it, so the read happens when it fires.
 
-**What `untrack(() => …)` does, and what it does not.** At the top level of a
-component body it is a **runtime no-op**: Solid already calls a component
-inside one (`createComponent` is `untrack(() => Comp(props))`, solid.js), so
-`untrack(() => props.x)` there subscribes to exactly as much as the bare
-`props.x` it replaces — nothing. What it does is *declare*, to the reader and
-to `eslint-plugin-solid` (which registers its callback as a tracked scope, its
-sanctioned opt-out), that the snapshot is deliberate. It **makes nothing
-safe.** Whatever invariant keeps a given snapshot correct still has to hold,
-and still has to be named in one line at the site.
+**`untrack` marks a deliberate snapshot, nothing else.** In a component body
+it silences `STRICT_READ_UNTRACKED`, so it is only correct where the value must
+never follow its source — and the site names, in one line, the invariant that
+keeps it correct. `grep -rn "untrack(" packages/client-solid/src | grep -v import`
+lists every site. They fall into two groups:
+
+- **Hook-seed.** `Tile.tsx` (`seedPair` → `useStaleFlag` / `useNotional` /
+  `useTileExecution` / `useRfqTile`), `BlotterRow.tsx` (`useRowHighlight`),
+  `RfqCard.tsx` (`useRfqCountdown`'s `creationTimestamp`), `App.tsx`
+  (`useLayout`'s and `useDockedPanelIds`' tab), `UserRow.tsx`
+  (`useAccountAction`'s id), `OrderTicket.tsx` (`useOrderTicket`'s symbol),
+  `AppRoot.tsx` (the composition), `ViewMenu`/`LayoutPresetsSection` (the tab).
+- **Deliberate, for a behavioural reason.** `RfqCountdown`/`RfqCard` drive ONE
+  mount-time CSS keyframe fast-forwarded by a negative delay, and a per-tick
+  rewrite re-triggers it every tick; the blotter filter popovers
+  (`DateFilter`/`SetFilter`/`NumberFilter`) and `OwnKeySection`'s forms seed
+  editing signals the user then owns, so a live read would clobber half-typed
+  input; `useRankGlide` seeds `committed` once (it follows the candidate only
+  through its coalescing effect); `App.tsx`'s `untrack(dockedPanels)` keeps one
+  uniform identity across a merge.
 
 **The seam takes accessors.** Every `@rtc/solid-bindings` ViewModel hook whose
 body is nothing but a keyed subscription — `usePrice`, `usePriceHistory`,
 `useQuotesForRfq`, `useAnimationIntents`, `useEquityQuote`, `useCandles`,
 `useCandleBackfill`, `useDepth`, `useJarvisPanelData` — takes each key as
 `T | Accessor<T>`, independently per key. The accessor form re-subscribes when
-the key's resolved **value** changes — not on every read of it: `toKeyedSignal`
-resolves each key through its own `===`-gated `createMemo` first, so an
-accessor that reads a coarse upstream signal (`() => props.symbol`, a getter
-over a whole `state()` object) keeps its subscription through unrelated updates
-to that object. On a real key change Solid's owner disposal releases the old
-subscription and the new one seeds synchronously. That closes the parity gap
-with `@rtc/react-bindings` — whose hooks are live only because React re-runs
-the component. Write `usePrice(() => props.pair)` and there is no snapshot to
-justify.
+the key's resolved **value** changes — not on every read of it (see
+`toKeyedSignal`). Write `usePrice(() => props.pair)` and there is no snapshot
+to justify. The hooks that stay **value-only** are the ones that build
+something on the key rather than subscribe to it: `useStaleFlag`,
+`useRowHighlight`, `useNotional`, `useRfqCountdown`, `useTileExecution`,
+`useRfqTile`, `useOrderTicket`, `useBootSequence` (per-mount machines —
+re-keying would dispose and rebuild one) and `useLayout` (a composition-root
+singleton per tab).
 
-The hooks that stay **value-only** are the ones that build something on the key
-rather than subscribe to it: `useStaleFlag`, `useRowHighlight`, `useNotional`,
-`useRfqCountdown`, `useTileExecution`, `useRfqTile`, `useOrderTicket`,
-`useBootSequence` (per-mount machines — re-keying would dispose and rebuild one,
-restarting a timer or dropping an in-flight fold) and `useLayout` (a
-composition-root singleton per tab — re-keying would tear it down for every
-other reader). Their seeds are snapshots because the hook's *shape* says so, not
-because the seam is missing a feature.
+**Attributes are presence/absence.** Solid 2 writes `false` as "remove the
+attribute" and `true` as an empty one, so every `aria-*` state and
+`data-stale` spell out `"true"`/`"false"` (the JSX types reject a boolean on an
+enumerated `aria-*` attribute; `solid/no-boolean-enumerated-attribute` too),
+and built-in attributes are lowercase (`tabindex`, `colspan`, `maxlength`,
+`novalidate`, `inputmode`).
 
-`grep -rn "untrack(" packages/client-solid/src | grep -v import` lists every
-site (the list grows as the port does, so this section names groups, not a
-total). They fall into two groups:
-
-- **Hook-seed.** `Tile.tsx` (`seedPair` → `useStaleFlag` /
-  `useNotional` / `useTileExecution` / `useRfqTile`), `BlotterRow.tsx`
-  (`useRowHighlight`), `RfqCard.tsx` (`useRfqCountdown`'s
-  `creationTimestamp`), `App.tsx` (`useLayout`'s tab). Each names, in one line
-  at the site, which hooks still need the seed and the invariant that keeps it
-  correct.
-- **Deliberate, for a behavioural reason.** A live read would make
-  things worse: `RfqCountdown`/`RfqCard` drive ONE mount-time CSS keyframe
-  fast-forwarded by a negative delay, and a per-tick rewrite re-triggers it
-  every tick; the blotter filter popovers (`DateFilter`/`SetFilter`/
-  `NumberFilter`) seed editing signals the user then owns, so a live read would
-  clobber half-typed input; `RfqsPanel`'s cascade effects want the CURRENT value
-  of their own bookkeeping signals, not a dependency on them; `App.tsx`'s
-  `untrack(dockedPanels)` keeps one uniform identity across a merge. These are
-  correct as snapshots and stay that way whatever the seam does.
-
-One read is a snapshot no matter how it is written: a context Provider's
-`value`. Solid's own `createProvider` reads it inside an `untrack`, so
-`ViewModelProvider` wraps it in an explicit one to say so.
-
-One shape needs neither a live read nor a snapshot, and is worth its own
-note: a bookkeeping `createEffect` that diffs the current emission against the previous one
-(new-trade/new-RFQ flash, RFQ entrance/exit cascades) used to seed that
-"previous" baseline with a plain `let prev… = accessor()` read at setup,
-outside tracking. `on()` supplies that baseline natively — its first run
-establishes it — so there's nothing left to read outside tracking. Use it
-**without** `{ defer: true }`: that option skips *calling* the callback on
-mount, but does not preserve the mount-time read as the following call's
-`previous` (measured — the first
-non-deferred call gets a valid baseline; under `defer: true` that same call
-gets `previous: undefined` instead), which reintroduces the exact bug the
-seed existed to prevent, just shifted one tick later. Fall back to the
-CURRENT values when `previous` is `undefined` (`previous ?? current`) so an
-existing equality guard handles mount with no special case — the mount call
-still runs (comparing the current value against itself, a no-op) and,
-critically, still records the mount values as `previous` for the first real
-call afterwards. See `CreditBlotter.tsx`, `NewRfqPanel.tsx`, and
-`RfqsPanel.tsx` for worked examples. A `solid/reactivity` finding fails the lint step, so it is
-either fixed or carries a justified disable comment.
+**Lint.** `eslint-plugin-solid` runs its `v2` config over this package and the
+bindings. There are no `eslint-disable` directives for its rules, in `src/` and
+`tests/` alike, and adding one is a review defect.
 
 ## See also
 
