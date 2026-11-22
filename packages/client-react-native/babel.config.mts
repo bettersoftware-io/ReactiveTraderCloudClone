@@ -40,15 +40,10 @@ export default function babelConfig(api: BabelApi): BabelConfig {
         isTest ? { worklets: false, reanimated: false } : {},
       ],
     ],
+    // No alias plugin: `#/…` resolves through package.json `imports`, which
+    // Metro reads (unstable_enablePackageExports in metro.config.mts), tsc
+    // reads via tsconfig `paths`, and jest maps in jest.config.js.
     plugins: [
-      [
-        "module-resolver",
-        {
-          alias: {
-            "#": "./src",
-          },
-        },
-      ],
       // Reanimated worklets — MUST be the last plugin. Skipped under jest
       // for the same reason as above.
       ...(isTest ? [] : ["react-native-worklets/plugin"]),

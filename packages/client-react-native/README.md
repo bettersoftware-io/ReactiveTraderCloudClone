@@ -546,7 +546,11 @@ was rejected — verify it against the Fly server's `AUTH_USERS` secret.
 Metro is configured for pnpm in `metro.config.mts` (watchFolders → workspace
 root, `nodeModulesPaths`, symlinks + package `exports`). Workspace packages are
 consumed from their built `dist`, so run `pnpm build` after changing a lib. The
-`#/` alias resolves via `babel-plugin-module-resolver` (`babel.config.mts`).
+`#/` alias resolves through the package's own `imports` field, which Metro
+reads because `metro.config.mts` turns on package `exports`; tsc reads it via
+tsconfig `paths`, jest via `moduleNameMapper`. (A `babel-plugin-module-resolver`
+alias did this until 2026-11-22; it was dropped because it was redundant and
+was the tree's only path to the vulnerable glob 9 / minimatch 8.)
 
 The `@expo/metro-runtime` override (`pnpm-workspace.yaml`) is pinned to the
 current SDK's line, and `@xmldom/xmldom` to `^0.8.13` — both load-bearing for native
