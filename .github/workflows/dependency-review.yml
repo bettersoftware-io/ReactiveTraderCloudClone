@@ -53,3 +53,12 @@ jobs:
             AGPL-1.0-only, AGPL-1.0-or-later, AGPL-3.0-only, AGPL-3.0-or-later,
             GPL-2.0-only, GPL-2.0-or-later, GPL-3.0-only, GPL-3.0-or-later,
             SSPL-1.0
+          # Dual-licensed packages the deny list misreads. The action flags an
+          # OR expression when ANY alternative is denied, but the licensee
+          # picks one alternative, and these are taken under the permissive one.
+          # node-forge (client-react-native > expo > @expo/cli, the dev-server
+          # certificate): "(BSD-3-Clause OR GPL-2.0)", taken as BSD-3-Clause.
+          # First flagged 2026-11-22 when the 1.4.3 security bump changed it.
+          # Unversioned on purpose: the licence has been the same dual
+          # expression across every release.
+          allow-dependencies-licenses: pkg:npm/node-forge
