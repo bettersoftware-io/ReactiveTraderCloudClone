@@ -66,13 +66,18 @@
       enabled: false,
     },
     {
-      // solid-js 2 is HELD (2026-11-22): it cannot be compiled yet. Solid 2's
-      // JSX compiler ships only as prereleases (babel-preset-solid 2.0.0-rc.x,
-      // vite-plugin-solid 3.0.0-next.x); the stable vite-plugin-solid 2.11.x
-      // peers solid-js ^1.7. The migration itself is a reactivity rewrite
-      // across ~250 files of client-solid and solid-bindings.
-      // DROP CONDITION: a stable vite-plugin-solid that peers solid-js ^2.
-      // Delete this rule then, and do the major by hand. docs/STATUS.md tracks it.
+      // solid-js 2 is HELD for a hand migration (2026-11-22). Solid 2 went
+      // stable on 2026-11-17 under NEW package names: the DOM runtime moved
+      // from `solid-js/web` to `@solidjs/web`, the Vite plugin from
+      // vite-plugin-solid to `@solidjs/vite-plugin` (3.x), and the compiler
+      // to `@solidjs/compiler` / `@solidjs/babel-plugin`. (The old names'
+      // 2.x/3.x lines, babel-preset-solid 2.0.0-rc and vite-plugin-solid
+      // 3.0.0-next, are abandoned prereleases.) A Renovate PR bumping
+      // `solid-js` alone can therefore never build. The migration is its own
+      // project: a reactivity rewrite across client-solid and solid-bindings,
+      // with @solidjs/testing-library still at 1.0.0-rc and no Solid 2
+      // release of solid-devtools or vitest-browser-solid. docs/STATUS.md
+      // tracks it. DROP CONDITION: delete this rule in the migration PR itself.
       matchPackageNames: ["solid-js"],
       matchUpdateTypes: ["major"],
       enabled: false,
