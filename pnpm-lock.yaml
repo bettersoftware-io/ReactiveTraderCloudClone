@@ -1099,8 +1099,8 @@ importers:
   packages/layout-dockview:
     dependencies:
       dockview:
-        specifier: 8.3.1
-        version: 8.3.1
+        specifier: 8.9.1
+        version: 8.9.1
     devDependencies:
       '@types/node':
         specifier: ^26.2.0
@@ -5307,11 +5307,11 @@ packages:
   dnssd-advertise@1.1.6:
     resolution: {integrity: sha512-Ndrrf6BMPalkQPd/zubL+4YghH2J9NspapQ09uDXwYbvOPkP0oaqf5CkcwJ0b50kS2O3ul6yVu+jz+RY62Cejg==}
 
-  dockview-core@8.3.1:
-    resolution: {integrity: sha512-6Loais9hlIRo25sTQSWGWlgbPr22ddoLBzpGDFaTnocawnC45twp5f2S2WxUz5/HPa/a65I4yxKUqZa8xrcc5Q==}
+  dockview-core@8.9.1:
+    resolution: {integrity: sha512-OzqB63P65qeSquFoyYjQi5yT85ERcmceaJ0+YdQL68IZJmBd5kAfe4UD9bl3xILuXJ1tlXIoExdZ+vLpv30u1g==}
 
-  dockview@8.3.1:
-    resolution: {integrity: sha512-2odBC9cDKcVCVx8Db86vq9s9JZKzbgvdkxDzcfsrD9nORLc5UqhLgLvVcJguorBv7CyEpKDzFO1JVLYWJCYrJA==}
+  dockview@8.9.1:
+    resolution: {integrity: sha512-y35BxYANBtHJ4q7AIkd2c1Oh2pPx3dsaMhm6s4YvMXyIWlklxHRZupXtN6bS8QuJ/hmy/5ih/Ow2oARbEx4Yog==}
 
   dom-accessibility-api@0.5.16:
     resolution: {integrity: sha512-X7BJ2yElsnOJ30pZF4uIIDfBEVgF4XEBxL9Bxhy6dnrm5hkzqmsWHGTiHqRiITNhMyFLyAiWndIJP7Z1NTteDg==}
@@ -12992,11 +12992,11 @@ snapshots:
 
   dnssd-advertise@1.1.6: {}
 
-  dockview-core@8.3.1: {}
+  dockview-core@8.9.1: {}
 
-  dockview@8.3.1:
+  dockview@8.9.1:
     dependencies:
-      dockview-core: 8.3.1
+      dockview-core: 8.9.1
 
   dom-accessibility-api@0.5.16: {}
 
