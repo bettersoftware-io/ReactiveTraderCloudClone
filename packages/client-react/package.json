@@ -46,7 +46,7 @@
     "@rtc/motion-core": "workspace:*",
     "@rtc/react-bindings": "workspace:*",
     "@rtc/web-boot": "workspace:*",
-    "motion": "^13.2.0",
+    "motion": "^14.14.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "rxjs": "^7.8"
