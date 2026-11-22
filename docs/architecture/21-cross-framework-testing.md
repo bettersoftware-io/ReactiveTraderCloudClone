@@ -414,7 +414,13 @@ across runs. The assert-only tiers surfaced this during the Solid port
 tiers on darwin. Neither tier's designers anticipated host-font
 non-determinism when the goldens were first built — the cross-framework
 assertion is what turned a latent CI flake into a tracked, understood
-limitation instead of an intermittent unexplained red.
+limitation instead of an intermittent unexplained red. **Resolved 2026-11-22:**
+the same cause resurfaced when the Playwright 1.65 container image swapped
+the face behind `ui-monospace`, which moved 10 classic goldens (#1131). The
+classic skin now uses bundled faces too (Inter + JetBrains Mono, registered
+in `@rtc/web-boot/fonts`), and the base `font-family` in both clients'
+`index.css` reads `var(--font-display)`, so no skin renders a host font any
+more. (The CI-only skips above went with the retired `ct-fallback` tier.)
 
 ## The fine print
 
