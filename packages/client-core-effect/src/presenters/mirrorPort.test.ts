@@ -46,9 +46,12 @@ describe("mirrorPort", () => {
     const a = stream.subscribe((value: number) => {
       first.push(value);
     });
-    // No seed: a replay-current port's value arrives a fiber hop later, not
-    // in this tick — the price `followPort` pays for not peeking.
-    expect(first).toEqual([]);
+    // No seed peek — ONE port call — yet a replay-current port's value
+    // still arrives in this tick: on effect 4 the producer runs
+    // synchronously up to its first suspension, and the value is already
+    // queued by then. (On effect 3 it arrived a fiber hop later on a host
+    // off the turn scheduler; this host is one.)
+    expect(first).toEqual([1]);
     expect(subscribes).toBe(1);
     await tick();
     expect(first).toEqual([1]);
@@ -67,12 +70,14 @@ describe("mirrorPort", () => {
     await tick();
     expect(inner.observed).toBe(false);
 
-    // A fresh period is a fresh port call with no replay of the old one.
+    // A fresh period is a fresh port call with no replay of the old one:
+    // the port has moved on, and only its current value is heard.
+    inner.next(2);
     const again: number[] = [];
     stream.subscribe((value: number) => {
       again.push(value);
     });
-    expect(again).toEqual([]);
+    expect(again).toEqual([2]);
     expect(subscribes).toBe(2);
     await Effect.runPromise(Scope.close(host.scope, Exit.void));
     await host.runtime.dispose();

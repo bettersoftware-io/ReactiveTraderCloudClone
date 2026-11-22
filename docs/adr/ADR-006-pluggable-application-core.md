@@ -507,8 +507,18 @@ Open questions this work found but did not fix are listed in
   check:core-bundle` locally, assert the eager/lazy split described in
   Decision 6 rather than "no foreign core in this one build"; gzip sizes per
   core chunk are still reported for visibility.
-- `effect` is pinned `^3.22.2` (published 2026-09-09; 4.0 was a release
-  candidate, not stable, at design time — a named follow-up).
+- `effect` was pinned `^3.22.2` (published 2026-09-09; 4.0 was a release
+  candidate, not stable, at design time — a named follow-up). Upgraded to
+  `^4.1.5` on 2026-11-22: an API migration (`Context.Service`, `Effect.catch`
+  / `catchCause`, `Runtime` → `Context` + `Effect.runForkWith`, `Fiber.runIn`
+  for effect 3's `runFork(…, { scope })`, effect 4's `Queue` + `Take` in
+  `bridge/in.ts`). Three effect-4 changes needed the bridge, not a rename:
+  the scheduler interface became `makeDispatcher()` (the turn scheduler is
+  its own one dispatcher); a `Queue` keeps the dispatcher of the fiber that
+  made it (so `runSync` and `fromObservables` make theirs on the turn); and a
+  fiber woken by a timer or callback resumes synchronously inside it (so the
+  hosts run on a turn clock and `rpc` resumes through `callbackOnTurn`,
+  `bridge/turnResume.ts`).
   `@effect/vitest` is **not** used: its peer range was `vitest ^3.2` while the
   repo ran `vitest ^4.1.10` (vitest `^5.0.3` since 2026-10-04). Timing tests use `effect`'s own `TestContext` /
   `TestClock` under plain vitest instead.

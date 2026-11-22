@@ -20,7 +20,7 @@ type ConflationEvent<T> =
  * followed by a `set` would let it interleave between them. */
 interface ConflationState<T> {
   readonly calm: Option.Option<boolean>;
-  readonly window: Option.Option<Fiber.RuntimeFiber<void>>;
+  readonly window: Option.Option<Fiber.Fiber<void>>;
   readonly pending: Option.Option<T>;
 }
 
@@ -29,7 +29,7 @@ type ConflationAction<T> =
   | { readonly kind: "none" }
   | { readonly kind: "emit"; readonly value: T }
   | { readonly kind: "emitAndOpen"; readonly value: T }
-  | { readonly kind: "interrupt"; readonly fiber: Fiber.RuntimeFiber<void> };
+  | { readonly kind: "interrupt"; readonly fiber: Fiber.Fiber<void> };
 
 /** The RxJS core's `conflateWhen(flag$, ms)` restated inside a `sharedFold`'s
  * `run`: a leading+trailing throttle gated by the calm flag. While calm, a
@@ -120,7 +120,7 @@ export function conflatedFold<T>(
         }
 
         function openWindow(): Effect.Effect<void> {
-          return Effect.fork(windowLoop()).pipe(
+          return Effect.forkChild(windowLoop()).pipe(
             Effect.flatMap((fiber) => {
               return Ref.update(state, (current) => {
                 return { ...current, window: Option.some(fiber) };

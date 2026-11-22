@@ -1,4 +1,4 @@
-import { Duration, Effect, Either } from "effect";
+import { Duration, Effect, Result } from "effect";
 
 import type {
   Machine,
@@ -33,16 +33,16 @@ function runSubmit(
     yield* run.write(() => {
       return SUBMITTING;
     });
-    const created = yield* Effect.either(rpc(deps.createRfq(input)));
+    const created = yield* Effect.result(rpc(deps.createRfq(input)));
 
-    if (Either.isLeft(created)) {
+    if (Result.isFailure(created)) {
       yield* run.write(() => {
         return EDITING;
       });
       return;
     }
 
-    const rfqId = created.right;
+    const rfqId = created.success;
     yield* run.write(() => {
       return { status: "confirmed", rfqId };
     });

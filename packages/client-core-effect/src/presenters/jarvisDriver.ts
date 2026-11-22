@@ -16,6 +16,7 @@ import {
   createChildHost,
   createHotStream,
   type EffectHost,
+  runForkIn,
 } from "#/bridge/out";
 import { createSyncRef } from "#/bridge/syncRef";
 
@@ -86,9 +87,10 @@ export function createJarvisDriver(
     );
   }
 
-  host.runtime.runFork(
+  runForkIn(
+    host.runtime,
     Effect.forever(Queue.take(batches).pipe(Effect.flatMap(applyBatch))),
-    { scope: host.scope },
+    host.scope,
   );
   const unlisten = deps.listenEvents((event: JarvisEvent) => {
     if (event.type === "command") {

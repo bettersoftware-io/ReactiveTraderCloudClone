@@ -5,6 +5,7 @@ import {
   type EffectHost,
   interruptFiber,
   reportOutOfBand,
+  runForkIn,
 } from "#/bridge/out";
 import type { SyncRef } from "#/bridge/syncRef";
 
@@ -48,7 +49,7 @@ export function createRunSlot<S>(
   ref: SyncRef<S>,
 ): RunSlot<S> {
   let active: object | null = null;
-  let activeFiber: Fiber.RuntimeFiber<void> | null = null;
+  let activeFiber: Fiber.Fiber<void> | null = null;
   let disposed = false;
 
   function end(): void {
@@ -82,17 +83,18 @@ export function createRunSlot<S>(
           return guarded(ref.write(next));
         },
       };
-      activeFiber = host.runtime.runFork(
+      activeFiber = runForkIn(
+        host.runtime,
         build(run).pipe(
-          Effect.catchAllCause((cause) => {
+          Effect.catchCause((cause) => {
             return Effect.sync(() => {
-              if (!Cause.isInterruptedOnly(cause)) {
+              if (!Cause.hasInterruptsOnly(cause)) {
                 reportOutOfBand(cause);
               }
             });
           }),
         ),
-        { scope: host.scope },
+        host.scope,
       );
     },
     end,

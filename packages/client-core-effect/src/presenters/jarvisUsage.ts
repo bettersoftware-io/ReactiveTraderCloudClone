@@ -8,6 +8,7 @@ import {
   fromPortIn,
   listenToStateStream,
   reportOutOfBand,
+  runForkIn,
 } from "#/bridge/out";
 import { createSyncRef } from "#/bridge/syncRef";
 
@@ -34,7 +35,8 @@ export function createJarvisUsagePresenter(
     }
 
     opened = true;
-    host.runtime.runFork(
+    runForkIn(
+      host.runtime,
       fromPortIn(host.scope)(port.usage$()).pipe(
         Stream.runForEach((snapshot) => {
           return Effect.sync(() => {
@@ -45,13 +47,13 @@ export function createJarvisUsagePresenter(
         }),
         // A failed usage port leaves the last snapshot showing and is
         // reported, never silently lost.
-        Effect.catchAllCause((cause) => {
+        Effect.catchCause((cause) => {
           return Effect.sync(() => {
             reportOutOfBand(cause);
           });
         }),
       ),
-      { scope: host.scope },
+      host.scope,
     );
   }
 

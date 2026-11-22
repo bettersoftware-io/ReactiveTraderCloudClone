@@ -15,6 +15,7 @@ import {
   fromPortIn,
   portEvents,
   reportOutOfBand,
+  runForkIn,
 } from "#/bridge/out";
 import { createSyncRef } from "#/bridge/syncRef";
 
@@ -51,10 +52,13 @@ export function createStaleFlagMachine<T>(
     closeScope(host.scope);
   }
 
-  host.runtime.runFork(
+  runForkIn(
+    host.runtime,
     Stream.runFoldEffect(
       events,
-      createStaleFlagAcc<T>(),
+      () => {
+        return createStaleFlagAcc<T>();
+      },
       (acc: StaleFlagAcc<T>, event) => {
         const next = reduceStaleFlag(acc, event);
         return ref
@@ -64,16 +68,16 @@ export function createStaleFlagMachine<T>(
           .pipe(Effect.as(next));
       },
     ).pipe(
-      Effect.catchAllCause((cause) => {
+      Effect.catchCause((cause) => {
         return Effect.sync(() => {
-          if (!Cause.isInterruptedOnly(cause)) {
+          if (!Cause.hasInterruptsOnly(cause)) {
             close();
             reportOutOfBand(cause);
           }
         });
       }),
     ),
-    { scope: host.scope },
+    host.scope,
   );
 
   return {

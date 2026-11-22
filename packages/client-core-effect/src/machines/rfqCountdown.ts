@@ -3,7 +3,7 @@ import { Duration, Effect } from "effect";
 import type { ReadOnlyMachine, RfqCountdownSeed } from "@rtc/core-api";
 import { RFQ_COUNTDOWN_INTERVAL_MS } from "@rtc/domain";
 
-import { closeScope, createDetachedHost } from "#/bridge/out";
+import { closeScope, createDetachedHost, runForkIn } from "#/bridge/out";
 import { createSyncRef } from "#/bridge/syncRef";
 
 /** `remainingMs` from `totalMs − elapsed` (read ONCE, at construction) down
@@ -21,7 +21,8 @@ export function createRfqCountdownMachine(
   const ref = createSyncRef(initial);
 
   if (initial > 0) {
-    host.runtime.runFork(
+    runForkIn(
+      host.runtime,
       Effect.gen(function* runCountdown() {
         for (let tick = 1; ; tick += 1) {
           yield* Effect.sleep(Duration.millis(RFQ_COUNTDOWN_INTERVAL_MS));
@@ -38,7 +39,7 @@ export function createRfqCountdownMachine(
           }
         }
       }),
-      { scope: host.scope },
+      host.scope,
     );
   }
 

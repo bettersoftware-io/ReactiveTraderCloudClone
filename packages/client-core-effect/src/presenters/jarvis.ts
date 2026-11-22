@@ -1,12 +1,4 @@
-import {
-  Cause,
-  Effect,
-  ExecutionStrategy,
-  Exit,
-  type Fiber,
-  Scope,
-  Stream,
-} from "effect";
+import { Cause, Effect, Exit, type Fiber, Scope, Stream } from "effect";
 
 import type {
   Stream as CoreStream,
@@ -48,6 +40,7 @@ import {
   interruptFiber,
   listenToStream,
   reportOutOfBand,
+  runForkIn,
 } from "#/bridge/out";
 import { createSyncRef } from "#/bridge/syncRef";
 
@@ -101,7 +94,7 @@ export function createJarvisMachine(
   const controller = createJarvisController();
   const ref = createSyncRef<JarvisState>(JARVIS_INITIAL_STATE);
   const events = createHotStream<JarvisEvent>();
-  let countdown: Fiber.RuntimeFiber<void> | null = null;
+  let countdown: Fiber.Fiber<void> | null = null;
   let closed = false;
 
   function apply(patch: JarvisPatch): void {
@@ -131,7 +124,8 @@ export function createJarvisMachine(
     }
 
     const totalTicks = confirmTotalTicks(confirmTimeoutMs);
-    countdown = host.runtime.runFork(
+    countdown = runForkIn(
+      host.runtime,
       Effect.forEach(
         Array.from({ length: totalTicks }, (_, index) => {
           return index + 1;
@@ -154,7 +148,7 @@ export function createJarvisMachine(
         },
         { discard: true },
       ),
-      { scope: host.scope },
+      host.scope,
     );
   }
 
@@ -200,7 +194,7 @@ export function createJarvisMachine(
       turnInFlight = true;
       apply(plan.start);
       const turnScope = host.runtime.runSync(
-        Scope.fork(host.scope, ExecutionStrategy.sequential),
+        Scope.fork(host.scope, "sequential"),
       );
 
       let asked: CoreStream<JarvisEvent>;
@@ -222,14 +216,15 @@ export function createJarvisMachine(
       }
 
       const replies = fromPortIn(turnScope)(asked);
-      host.runtime.runFork(
+      runForkIn(
+        host.runtime,
         replies.pipe(
           Stream.runForEach((event: JarvisEvent) => {
             return Effect.sync(() => {
               foldEvent(event, plan.origin);
             });
           }),
-          Effect.catchAll((error: unknown) => {
+          Effect.catch((error: unknown) => {
             // The turn ends as an error the user sees rather than hanging
             // "speaking" (the WS adapter already turns its own failures
             // into error events).
@@ -246,7 +241,7 @@ export function createJarvisMachine(
           }),
           // A defect (a throw inside a fold) is reported, and the queue still
           // moves on — `catchAll` above catches failures only.
-          Effect.catchAllCause((cause) => {
+          Effect.catchCause((cause) => {
             return Effect.sync(() => {
               reportOutOfBand(cause);
             });
@@ -258,7 +253,7 @@ export function createJarvisMachine(
             }),
           ),
         ),
-        { scope: host.scope },
+        host.scope,
       );
       return;
     }

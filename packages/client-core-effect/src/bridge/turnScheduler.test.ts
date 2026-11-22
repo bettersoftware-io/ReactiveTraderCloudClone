@@ -1,4 +1,4 @@
-import { Effect, type Fiber, Queue, Runtime } from "effect";
+import { Context, Effect, type Fiber, Queue } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { interruptFiber, runnerFor } from "#/bridge/out";
@@ -145,7 +145,7 @@ describe("bridge/turnScheduler", () => {
   });
 
   it("a value handed across three fibers arrives within one turn of entering the first", async () => {
-    const runner = runnerFor(Runtime.defaultRuntime);
+    const runner = runnerFor(Context.empty());
     const [entry, middle, exit] = [
       runner.runSync(Queue.unbounded<number>()),
       runner.runSync(Queue.unbounded<number>()),
@@ -156,7 +156,7 @@ describe("bridge/turnScheduler", () => {
     function relay(
       from: Queue.Queue<number>,
       to: Queue.Queue<number>,
-    ): Fiber.RuntimeFiber<never> {
+    ): Fiber.Fiber<never> {
       return runner.runFork(
         Queue.take(from).pipe(
           Effect.flatMap((value) => {
@@ -183,7 +183,7 @@ describe("bridge/turnScheduler", () => {
     ];
     await nextMacrotask();
 
-    Queue.unsafeOffer(entry, 7);
+    Queue.offerUnsafe(entry, 7);
     let arrivedByNextMicrotask: readonly number[] = [];
     queueMicrotask(() => {
       arrivedByNextMicrotask = [...arrived];

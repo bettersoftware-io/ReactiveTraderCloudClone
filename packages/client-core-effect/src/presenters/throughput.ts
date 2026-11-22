@@ -13,7 +13,12 @@ import {
   THROUGHPUT_MESSAGE_DISMISS_MS,
 } from "@rtc/domain";
 
-import { createChildHost, type EffectHost, interruptFiber } from "#/bridge/out";
+import {
+  createChildHost,
+  type EffectHost,
+  interruptFiber,
+  runForkIn,
+} from "#/bridge/out";
 import { rpc } from "#/bridge/rpc";
 import { createSyncRef } from "#/bridge/syncRef";
 import { createRunSlot, type Run } from "#/machines/runSlot";
@@ -44,7 +49,7 @@ export function createThroughputPresenter(
   const ref = createSyncRef(INITIAL);
   const writes = createRunSlot(host, ref);
   const load$ = ops.getThroughput();
-  let debounce: Fiber.RuntimeFiber<void> | null = null;
+  let debounce: Fiber.Fiber<void> | null = null;
   let debounceToken: object | null = null;
   let loadStarted = false;
   let disposed = false;
@@ -69,20 +74,21 @@ export function createThroughputPresenter(
     }
 
     loadStarted = true;
-    host.runtime.runFork(
+    runForkIn(
+      host.runtime,
       rpc(load$).pipe(
         Effect.flatMap((value) => {
           return ref.write((view) => {
             return { ...view, value, loading: false };
           });
         }),
-        Effect.catchAll(() => {
+        Effect.catch(() => {
           return ref.write((view) => {
             return { ...view, value: DEFAULT_THROUGHPUT, loading: false };
           });
         }),
       ),
-      { scope: host.scope },
+      host.scope,
     );
   }
 
@@ -100,7 +106,7 @@ export function createThroughputPresenter(
         text: throughputSetMessage(value),
         isError: false,
       }),
-      Effect.catchAll(() => {
+      Effect.catch(() => {
         return Effect.succeed<ThroughputMessage>({
           text: THROUGHPUT_SET_ERROR,
           isError: true,
@@ -140,7 +146,8 @@ export function createThroughputPresenter(
     // in the same batch could still fire. The token makes it a no-op.
     const token = {};
     debounceToken = token;
-    debounce = host.runtime.runFork(
+    debounce = runForkIn(
+      host.runtime,
       Effect.sleep(THROUGHPUT_DEBOUNCE_MS).pipe(
         Effect.andThen(
           Effect.sync(() => {
@@ -154,7 +161,7 @@ export function createThroughputPresenter(
           }),
         ),
       ),
-      { scope: host.scope },
+      host.scope,
     );
   }
 

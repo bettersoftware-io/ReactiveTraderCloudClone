@@ -29,7 +29,7 @@
     "@rtc/core-logic": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rx-state/core": "^0.1.4",
-    "effect": "^3.22.2",
+    "effect": "^4.1.5",
     "rxjs": "^7.8"
   },
   "devDependencies": {

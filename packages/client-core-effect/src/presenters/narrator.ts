@@ -23,6 +23,7 @@ import {
   leavingOnFailure,
   portEvents,
   reportOutOfBand,
+  runForkIn,
   switchedPortEvents,
 } from "#/bridge/out";
 
@@ -77,18 +78,19 @@ export function createNarrator(parent: EffectHost, deps: NarratorDeps): void {
     }
   }
 
-  host.runtime.runFork(
+  runForkIn(
+    host.runtime,
     fromPort(deps.preference$).pipe(
       Stream.runForEach((next: JarvisNarratorPreference) => {
         return Effect.sync(() => {
           preference = next;
         });
       }),
-      Effect.catchAll(() => {
+      Effect.catch(() => {
         return Effect.void;
       }),
     ),
-    { scope: host.scope },
+    host.scope,
   );
   const ticks = fromPort.merged<PriceTick>([
     switchedPortEvents(deps.pairs$, (pairs: readonly CurrencyPair[]) => {
@@ -101,7 +103,8 @@ export function createNarrator(parent: EffectHost, deps: NarratorDeps): void {
       });
     }),
   ]);
-  host.runtime.runFork(
+  runForkIn(
+    host.runtime,
     ticks.pipe(
       Stream.runForEach((tick: PriceTick) => {
         return Clock.currentTimeMillis.pipe(
@@ -112,10 +115,10 @@ export function createNarrator(parent: EffectHost, deps: NarratorDeps): void {
           }),
         );
       }),
-      Effect.catchAll(() => {
+      Effect.catch(() => {
         return Effect.void;
       }),
     ),
-    { scope: host.scope },
+    host.scope,
   );
 }

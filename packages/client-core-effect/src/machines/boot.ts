@@ -8,7 +8,12 @@ import type {
 import { bootProgress, nextBootVariant } from "@rtc/core-logic";
 import { BOOT_TICK_MS, type BootVariant } from "@rtc/domain";
 
-import { closeScope, createDetachedHost, interruptFiber } from "#/bridge/out";
+import {
+  closeScope,
+  createDetachedHost,
+  interruptFiber,
+  runForkIn,
+} from "#/bridge/out";
 import { createSyncRef } from "#/bridge/syncRef";
 
 export interface BootMachineDeps {
@@ -70,7 +75,7 @@ export function createBootMachine(
       yield* Effect.sleep(BOOT_TICK_MS);
     }
   });
-  const rampFiber = host.runtime.runFork(ramp, { scope: host.scope });
+  const rampFiber = runForkIn(host.runtime, ramp, host.scope);
 
   return {
     state$: warm.state$,

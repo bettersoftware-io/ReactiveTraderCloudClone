@@ -1,5 +1,6 @@
 import {
   Cause,
+  Context,
   Effect,
   Exit,
   Fiber,
@@ -34,6 +35,8 @@ import {
   portEvents,
   projectedChanges,
   reportOutOfBand,
+  runForkIn,
+  runnerFor,
   type SharedFold,
   scopedPortStream,
   sharedFold,
@@ -205,7 +208,12 @@ describe("bridge/out", () => {
   });
 
   it("streamToStream() unsubscribe still interrupts after the runtime is disposed", async () => {
-    const host = createHost();
+    // Effect 4's `ManagedRuntime` interrupts the fibers it ran when it is
+    // disposed, so a ManagedRuntime host can no longer leave this fiber
+    // live. This host's runner is the one the case is about: like a disposed
+    // ManagedRuntime it dies on every effect once disposed, while a fiber it
+    // started runs on.
+    const host = createDisposableHost();
     const { stream, wasInterrupted } = createNeverStream();
     const rejections: unknown[] = [];
 
@@ -222,7 +230,7 @@ describe("bridge/out", () => {
       // `dispose()` swaps the managed runtime's effect for a defect, so an
       // interrupt forked on IT would die instead of landing. The teardown
       // uses the global runtime precisely so this still works.
-      await host.runtime.dispose();
+      host.dispose();
       expect(wasInterrupted()).toBe(false);
 
       expect(() => {
@@ -755,7 +763,7 @@ describe("bridge/out", () => {
         runs += 1;
 
         if (runs === 1) {
-          return Effect.async<void, Error>((resume) => {
+          return Effect.callback<void, Error>((resume) => {
             failFirst = () => {
               resumedWithFailure = true;
               resume(Effect.fail(new Error("stale")));
@@ -1076,11 +1084,28 @@ describe("bridge/out", () => {
     expect(subject.observed).toBe(false);
   });
 
+  it("a host's runSync takes the turn for an effect that yields, and throws for one that cannot end synchronously", () => {
+    const host = createDetachedHost();
+    expect(
+      host.runtime.runSync(
+        Effect.yieldNow.pipe(Effect.andThen(Effect.succeed(5))),
+      ),
+    ).toBe(5);
+    expect(() => {
+      return host.runtime.runSync(Effect.never);
+    }).toThrow("runSync: the effect did not complete synchronously");
+    expect(() => {
+      return host.runtime.runSync(Effect.fail(new Error("typed")));
+    }).toThrow("typed");
+    closeScope(host.scope);
+  });
+
   it("createDetachedHost() runs effects on the default runtime under a scope of its own", async () => {
     const host = createDetachedHost();
     expect(host.runtime.runSync(Effect.succeed(3))).toBe(3);
     let interrupted = false;
-    host.runtime.runFork(
+    runForkIn(
+      host.runtime,
       Effect.never.pipe(
         Effect.onInterrupt(() => {
           return Effect.sync(() => {
@@ -1088,7 +1113,7 @@ describe("bridge/out", () => {
           });
         }),
       ),
-      { scope: host.scope },
+      host.scope,
     );
     await Effect.runPromise(Scope.close(host.scope, Exit.void));
     await tick();
@@ -1124,7 +1149,8 @@ describe("bridge/out", () => {
         }),
       ),
     );
-    host.runtime.runFork(
+    runForkIn(
+      host.runtime,
       Effect.never.pipe(
         Effect.onInterrupt(() => {
           return Effect.sync(() => {
@@ -1132,7 +1158,7 @@ describe("bridge/out", () => {
           });
         }),
       ),
-      { scope: host.scope },
+      host.scope,
     );
     closeScope(host.scope);
     closeScope(host.scope);
@@ -1145,13 +1171,14 @@ describe("bridge/out", () => {
     const subject = new Subject<number>();
     const host = createDetachedHost();
     const seen: number[] = [];
-    host.runtime.runFork(
+    runForkIn(
+      host.runtime,
       Stream.runForEach(fromPortIn(host.scope)(subject), (value) => {
         return Effect.sync(() => {
           seen.push(value);
         });
       }),
-      { scope: host.scope },
+      host.scope,
     );
     await tick();
     subject.next(1);
@@ -1173,7 +1200,7 @@ describe("bridge/out", () => {
     // A fiber forked into the scope AFTER the port: the close has to wait
     // for it to end before it reaches the port's finalizer, so only the
     // synchronous release can have unsubscribed by the next line.
-    host.runtime.runFork(Effect.never, { scope: host.scope });
+    runForkIn(host.runtime, Effect.never, host.scope);
     const closed = closeScopeAndWait(host.scope);
     expect(subject.observed).toBe(false);
     await closed;
@@ -1277,8 +1304,8 @@ describe("bridge/out", () => {
         scope,
         // Two yields make the finalizer finish on a later step than the
         // close starts on, with no timer involved.
-        Effect.yieldNow().pipe(
-          Effect.andThen(Effect.yieldNow()),
+        Effect.yieldNow.pipe(
+          Effect.andThen(Effect.yieldNow),
           Effect.andThen(
             Effect.sync(() => {
               finalized = true;
@@ -1306,16 +1333,18 @@ describe("bridge/out", () => {
       host.runtime.runSync(Queue.unbounded<number>()),
     ];
     const arrived: number[] = [];
-    host.runtime.runFork(
+    runForkIn(
+      host.runtime,
       Queue.take(entry).pipe(
         Effect.flatMap((value) => {
           return Queue.offer(exit, value);
         }),
         Effect.forever,
       ),
-      { scope: host.scope },
+      host.scope,
     );
-    host.runtime.runFork(
+    runForkIn(
+      host.runtime,
       Queue.take(exit).pipe(
         Effect.flatMap((value) => {
           return Effect.sync(() => {
@@ -1324,11 +1353,11 @@ describe("bridge/out", () => {
         }),
         Effect.forever,
       ),
-      { scope: host.scope },
+      host.scope,
     );
     await tick();
 
-    Queue.unsafeOffer(entry, 4);
+    Queue.offerUnsafe(entry, 4);
     let arrivedByNextMicrotask: readonly number[] = [];
     queueMicrotask(() => {
       arrivedByNextMicrotask = [...arrived];
@@ -1507,6 +1536,39 @@ describe("bridge/out", () => {
  * `runPromise`/`dispose`, which the cases drive directly. */
 interface TestHost extends EffectHost {
   runtime: ManagedRuntime.ManagedRuntime<never, never>;
+}
+
+interface DisposableHost extends EffectHost {
+  dispose(): void;
+}
+
+/** A host whose runner, once `dispose()` is called, dies on every effect it
+ * is handed — as a disposed `ManagedRuntime` does — while the fibers it
+ * started run on (which a disposed effect-4 `ManagedRuntime`'s do not). */
+function createDisposableHost(): DisposableHost {
+  const live = runnerFor(Context.empty());
+  let disposed = false;
+
+  function unlessDisposed<A, E>(
+    effect: Effect.Effect<A, E>,
+  ): Effect.Effect<A, E> {
+    return disposed ? Effect.die(new Error("runner disposed")) : effect;
+  }
+
+  return {
+    runtime: {
+      runSync: <A, E>(effect: Effect.Effect<A, E>): A => {
+        return live.runSync(unlessDisposed(effect));
+      },
+      runFork: <A, E>(effect: Effect.Effect<A, E>): Fiber.Fiber<A, E> => {
+        return live.runFork(unlessDisposed(effect));
+      },
+    },
+    scope: Scope.makeUnsafe(),
+    dispose: () => {
+      disposed = true;
+    },
+  };
 }
 
 /** A fold that keeps the running sum of what the port emits, from 0. */

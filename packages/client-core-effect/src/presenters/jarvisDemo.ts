@@ -21,7 +21,12 @@ import {
   type PowerSaverLevel,
 } from "@rtc/domain";
 
-import { createChildHost, type EffectHost, interruptFiber } from "#/bridge/out";
+import {
+  createChildHost,
+  type EffectHost,
+  interruptFiber,
+  runForkIn,
+} from "#/bridge/out";
 import { createSyncRef } from "#/bridge/syncRef";
 
 export interface JarvisDemoDeps {
@@ -43,7 +48,7 @@ type StepOutcome = "done" | "error";
  * run's fiber interrupt (itself scheduled) lands. */
 interface DemoRun {
   stopped: boolean;
-  fiber: Fiber.RuntimeFiber<void> | null;
+  fiber: Fiber.Fiber<void> | null;
 }
 
 /**
@@ -77,7 +82,7 @@ export function createJarvisDemo(
     step: JarvisDemoStep,
     run: DemoRun,
   ): Effect.Effect<StepOutcome> {
-    return Effect.async<StepOutcome>((resume) => {
+    return Effect.callback<StepOutcome>((resume) => {
       if (run.stopped) {
         resume(Effect.interrupt);
         return;
@@ -87,9 +92,9 @@ export function createJarvisDemo(
         step,
         lastEntryId(deps.jarvisStateNow().entries),
       );
-      let decline: Fiber.RuntimeFiber<void> | null = null;
+      let decline: Fiber.Fiber<void> | null = null;
 
-      // Every way the step ends releases the same things. `Effect.async`
+      // Every way the step ends releases the same things. `Effect.callback`
       // runs its returned canceler on interruption ONLY — a step that
       // settles normally must release here, or its listeners stay attached
       // to jarvis for the app's life.
@@ -111,7 +116,8 @@ export function createJarvisDemo(
         const signalled = watch.observeEvent(event);
 
         if (signalled === "decline") {
-          decline = host.runtime.runFork(
+          decline = runForkIn(
+            host.runtime,
             Effect.sleep(demoBeatMs(deps.powerSaverLevel())).pipe(
               Effect.andThen(
                 Effect.sync(() => {
@@ -119,7 +125,7 @@ export function createJarvisDemo(
                 }),
               ),
             ),
-            { scope: host.scope },
+            host.scope,
           );
           return;
         }
@@ -133,13 +139,10 @@ export function createJarvisDemo(
 
       return Effect.sync(release);
     }).pipe(
-      Effect.timeoutTo({
+      Effect.timeoutOrElse({
         duration: DEMO_STEP_TIMEOUT_MS,
-        onSuccess: (outcome: StepOutcome) => {
-          return outcome;
-        },
-        onTimeout: (): StepOutcome => {
-          return "error";
+        orElse: () => {
+          return Effect.succeed<StepOutcome>("error");
         },
       }),
     );
@@ -210,7 +213,7 @@ export function createJarvisDemo(
 
     const run: DemoRun = { stopped: false, fiber: null };
     active = run;
-    run.fiber = host.runtime.runFork(runDemo(run), { scope: host.scope });
+    run.fiber = runForkIn(host.runtime, runDemo(run), host.scope);
   }
 
   function stopDemo(): void {
