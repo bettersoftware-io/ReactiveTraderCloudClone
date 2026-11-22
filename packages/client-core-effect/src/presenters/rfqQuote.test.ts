@@ -21,7 +21,7 @@ describe("createRfqQuotePresenter", () => {
 
   it("requestQuote is lazy: the port sees nothing until the returned stream is subscribed", async () => {
     const pricing = createPricingPort();
-    const p = createRfqQuotePresenter(useHost(), pricing.port);
+    const p = createRfqQuotePresenter(createTrackedHost(), pricing.port);
     const quote = p.requestQuote("EURUSD", 4);
     await settle();
     expect(pricing.requests()).toEqual([]);
@@ -32,7 +32,7 @@ describe("createRfqQuotePresenter", () => {
 
   it("the result lands and the stream completes", async () => {
     const pricing = createPricingPort();
-    const p = createRfqQuotePresenter(useHost(), pricing.port);
+    const p = createRfqQuotePresenter(createTrackedHost(), pricing.port);
     const values: RfqQuoteResult[] = [];
     let completed = false;
     p.requestQuote("EURUSD", 4).subscribe({
@@ -53,7 +53,7 @@ describe("createRfqQuotePresenter", () => {
 
   it("unsubscribing before the result withdraws the port subscription", async () => {
     const pricing = createPricingPort();
-    const p = createRfqQuotePresenter(useHost(), pricing.port);
+    const p = createRfqQuotePresenter(createTrackedHost(), pricing.port);
     const subscription = p.requestQuote("EURUSD", 4).subscribe(() => {});
     await settle();
     expect(pricing.quotes.observed).toBe(true);
@@ -64,7 +64,7 @@ describe("createRfqQuotePresenter", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

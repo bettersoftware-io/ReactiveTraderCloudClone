@@ -32,7 +32,7 @@ describe("createRfqsPresenter", () => {
 
   it("rfqs$ appends each created RFQ and stays silent through an event that leaves the roster shallow-equal", async () => {
     const workflow = createWorkflowPort();
-    const p = createRfqsPresenter(useHost(), workflow.port);
+    const p = createRfqsPresenter(createTrackedHost(), workflow.port);
     const seen = collect(p.rfqs$);
     expect(seen).toEqual([]);
     workflow.events.next(START);
@@ -51,7 +51,7 @@ describe("createRfqsPresenter", () => {
 
   it("allQuotes$ ignores an RFQ event, and quotesForRfq$ is memoised per rfq id", async () => {
     const workflow = createWorkflowPort();
-    const p = createRfqsPresenter(useHost(), workflow.port);
+    const p = createRfqsPresenter(createTrackedHost(), workflow.port);
     expect(p.quotesForRfq$(1)).toBe(p.quotesForRfq$(1));
     const all = collect(p.allQuotes$);
     const forOne = collect(p.quotesForRfq$(1));
@@ -72,7 +72,7 @@ describe("createRfqsPresenter", () => {
 
   it("events$ is the raw event stream and replays the last event to a late joiner", async () => {
     const workflow = createWorkflowPort();
-    const p = createRfqsPresenter(useHost(), workflow.port);
+    const p = createRfqsPresenter(createTrackedHost(), workflow.port);
     const seen = collect(p.events$);
     const created: RfqEvent = {
       type: "rfqCreated",
@@ -87,7 +87,7 @@ describe("createRfqsPresenter", () => {
 
   it("workflow.events() is called ONCE, stays observed across zero subscribers and is released with the host scope", async () => {
     const workflow = createWorkflowPort();
-    const host = useHost();
+    const host = createTrackedHost();
     const p = createRfqsPresenter(host, workflow.port);
     expect(workflow.eventsCalls()).toBe(1);
     expect(workflow.events.observed).toBe(false);
@@ -107,7 +107,7 @@ describe("createRfqsPresenter", () => {
 
   it("createRfq is lazy, maps the UI input to the port request and completes after its one value", async () => {
     const workflow = createWorkflowPort();
-    const p = createRfqsPresenter(useHost(), workflow.port);
+    const p = createRfqsPresenter(createTrackedHost(), workflow.port);
     const created = p.createRfq({
       instrumentId: 7,
       dealerIds: [1, 2],
@@ -141,7 +141,7 @@ describe("createRfqsPresenter", () => {
 
   it("the two submission machines it builds yield their seed state synchronously", () => {
     const workflow = createWorkflowPort();
-    const p = createRfqsPresenter(useHost(), workflow.port);
+    const p = createRfqsPresenter(createTrackedHost(), workflow.port);
     const submission = p.createSubmission();
     const ticket = p.createTicketSubmission();
     expect(collect(submission.state$)).toEqual([{ status: "editing" }]);
@@ -152,7 +152,7 @@ describe("createRfqsPresenter", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

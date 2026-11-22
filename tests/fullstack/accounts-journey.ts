@@ -250,7 +250,7 @@ function callRpc(
   });
 }
 
-function describe(answer: Answer, field: string): string {
+function describeAnswer(answer: Answer, field: string): string {
   return `${answer.status} ${String(answer.body[field])}`;
 }
 
@@ -274,7 +274,7 @@ async function runRegistrationLeg(httpBase: string): Promise<string> {
   });
   assert(
     registered.status === 202 && registered.body.status === "code_sent",
-    `register (got ${describe(registered, "status")})`,
+    `register (got ${describeAnswer(registered, "status")})`,
   );
 
   const again = await post(httpBase, "/register", {
@@ -284,14 +284,14 @@ async function runRegistrationLeg(httpBase: string): Promise<string> {
   assert(
     again.status === registered.status &&
       JSON.stringify(again.body) === JSON.stringify(registered.body),
-    `re-register answers identically (got ${describe(again, "status")})`,
+    `re-register answers identically (got ${describeAnswer(again, "status")})`,
   );
 
   const unconfirmed = await post(httpBase, "/login", credentials);
   assert(
     unconfirmed.status === 401 &&
       unconfirmed.body.error === "invalid_credentials",
-    `login before confirming (got ${describe(unconfirmed, "error")})`,
+    `login before confirming (got ${describeAnswer(unconfirmed, "error")})`,
   );
 
   const wrongCode = await post(httpBase, "/confirm-email", {
@@ -301,7 +301,7 @@ async function runRegistrationLeg(httpBase: string): Promise<string> {
   });
   assert(
     wrongCode.status === 400 && wrongCode.body.error === "invalid_code",
-    `wrong code (got ${describe(wrongCode, "error")})`,
+    `wrong code (got ${describeAnswer(wrongCode, "error")})`,
   );
 
   const weak = await post(httpBase, "/confirm-email", {
@@ -323,13 +323,13 @@ async function runRegistrationLeg(httpBase: string): Promise<string> {
   });
   assert(
     confirmed.status === 200 && confirmed.body.status === "pending_approval",
-    `confirm (got ${describe(confirmed, "status")})`,
+    `confirm (got ${describeAnswer(confirmed, "status")})`,
   );
 
   const pending = await post(httpBase, "/login", credentials);
   assert(
     pending.status === 403 && pending.body.error === "pending_approval",
-    `login before approval (got ${describe(pending, "error")})`,
+    `login before approval (got ${describeAnswer(pending, "error")})`,
   );
   console.log(
     "  ✓ accounts: register → no password until confirmed → confirmed → pending approval",
@@ -348,7 +348,7 @@ async function runOriginLeg(httpBase: string): Promise<void> {
   );
   assert(
     foreign.status === 403 && foreign.body.error === "origin_not_allowed",
-    `foreign origin refused (got ${describe(foreign, "error")})`,
+    `foreign origin refused (got ${describeAnswer(foreign, "error")})`,
   );
   assert(
     foreign.headers.get("access-control-allow-origin") === null,
@@ -439,7 +439,7 @@ async function runSeededAccountsLeg(
   });
   assert(
     blocked.status === 403 && blocked.body.error === "blocked",
-    `blocked account (got ${describe(blocked, "error")})`,
+    `blocked account (got ${describeAnswer(blocked, "error")})`,
   );
 
   const active = await post(httpBase, "/login", {
@@ -466,7 +466,7 @@ async function runSeededAccountsLeg(
   });
   assert(
     requested.status === 202 && requested.body.status === "code_sent",
-    `request reset (got ${describe(requested, "status")})`,
+    `request reset (got ${describeAnswer(requested, "status")})`,
   );
 
   const reset = await post(httpBase, "/reset-password", {
@@ -476,7 +476,7 @@ async function runSeededAccountsLeg(
   });
   assert(
     reset.status === 200 && reset.body.status === "password_changed",
-    `reset password (got ${describe(reset, "status")})`,
+    `reset password (got ${describeAnswer(reset, "status")})`,
   );
   assert(
     (await closeCodeOfEndedSession(wsBase, freshToken)) === SESSION_ENDED_CODE,

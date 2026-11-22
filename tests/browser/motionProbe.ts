@@ -92,7 +92,7 @@ export async function sampleMotion(
     ].join("");
   }
 
-  function describe(animation: Animation): string {
+  function describeAnimation(animation: Animation): string {
     const name =
       animation instanceof CSSAnimation
         ? animation.animationName
@@ -114,7 +114,7 @@ export async function sampleMotion(
     for (let i = 0; i < options.samples; i += 1) {
       for (const animation of document.getAnimations()) {
         if (animation.playState !== "finished") {
-          const key = describe(animation);
+          const key = describeAnimation(animation);
           seen.set(key, (seen.get(key) ?? 0) + 1);
         }
       }

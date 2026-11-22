@@ -28,7 +28,11 @@ describe("createEquityPriceHistoryPresenter", () => {
 
   it("memoises per symbol and a never-mounted symbol seeds None", () => {
     const { port } = createPort();
-    const p = createEquityPriceHistoryPresenter(useHost(), port, calm(false));
+    const p = createEquityPriceHistoryPresenter(
+      createTrackedHost(),
+      port,
+      calm(false),
+    );
     expect(p.history$("MSFT")).toBe(p.history$("MSFT"));
     expect(p.history$("MSFT")).not.toBe(p.history$("AAPL"));
     const seen = collect(p.history$("AAPL"));
@@ -37,7 +41,11 @@ describe("createEquityPriceHistoryPresenter", () => {
 
   it("a Some seed: the retained window is delivered synchronously on resubscribe, and the port is released in between", async () => {
     const { port, push, observed } = createPort();
-    const p = createEquityPriceHistoryPresenter(useHost(), port, calm(false));
+    const p = createEquityPriceHistoryPresenter(
+      createTrackedHost(),
+      port,
+      calm(false),
+    );
     const stream = p.history$("MSFT");
     const first = stream.subscribe(() => {});
     push(createTick("MSFT", 1));
@@ -55,7 +63,7 @@ describe("createEquityPriceHistoryPresenter", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

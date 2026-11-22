@@ -45,7 +45,7 @@ describe("warm singletons", () => {
         return roster;
       },
     };
-    const host = useHost();
+    const host = createTrackedHost();
     const p = createCurrencyPairsPresenter(host, referenceData);
     expect(calls).toBe(1);
     const first: (readonly CurrencyPair[])[] = [];
@@ -70,7 +70,7 @@ describe("warm singletons", () => {
         return updates;
       },
     };
-    const p = createAnalyticsPresenter(useHost(), analytics);
+    const p = createAnalyticsPresenter(createTrackedHost(), analytics);
     const sub = p.position$.subscribe(() => {});
     const update: PositionUpdates = { currentPositions: [], history: [] };
     updates.next(update);
@@ -93,7 +93,7 @@ describe("warm singletons", () => {
         return roster;
       },
     };
-    const host = useHost();
+    const host = createTrackedHost();
     const p = createDealersPresenter(host, dealers);
     expect(calls).toBe(1);
     const sub = p.list$.subscribe(() => {});
@@ -123,7 +123,7 @@ describe("warm singletons", () => {
         return roster;
       },
     };
-    const host = useHost();
+    const host = createTrackedHost();
     const p = createInstrumentsPresenter(host, instruments);
     expect(calls).toBe(1);
     const sub = p.list$.subscribe(() => {});
@@ -153,7 +153,7 @@ describe("warm singletons", () => {
         return book;
       },
     };
-    const host = useHost();
+    const host = createTrackedHost();
     const p = createPositionsPresenter(host, positions);
     expect(calls).toBe(1);
     const sub = p.positions$.subscribe(() => {});
@@ -176,7 +176,7 @@ describe("warm singletons", () => {
 
   it("retained is not eager: the port Observable stays unsubscribed until the first subscriber", async () => {
     const roster = new Subject<readonly CurrencyPair[]>();
-    const p = createCurrencyPairsPresenter(useHost(), {
+    const p = createCurrencyPairsPresenter(createTrackedHost(), {
       getCurrencyPairs: () => {
         return roster;
       },
@@ -190,7 +190,7 @@ describe("warm singletons", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

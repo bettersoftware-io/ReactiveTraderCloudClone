@@ -21,7 +21,10 @@ describe("createPowerSaverPresenter (effect)", () => {
 
   it("isCalm$ conflates a calm to freeze transition (the fold drops an equal state, distinct from the RxJS core's map)", async () => {
     const preferences = new PreferencesSimulator({ powerSaverLevel: "off" });
-    const presenter = createPowerSaverPresenter(useHost(), preferences);
+    const presenter = createPowerSaverPresenter(
+      createTrackedHost(),
+      preferences,
+    );
     const seen: boolean[] = [];
     const sub = presenter.isCalm$.subscribe((v) => {
       seen.push(v);
@@ -36,7 +39,7 @@ describe("createPowerSaverPresenter (effect)", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

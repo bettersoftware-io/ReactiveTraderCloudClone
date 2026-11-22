@@ -27,7 +27,10 @@ describe("createThemePreferencePresenter (effect)", () => {
 
   it("without a colour-scheme source, 'system' resolves to light and mode$ still follows the preference", async () => {
     const preferences = new PreferencesSimulator({ themeMode: "system" });
-    const presenter = createThemePreferencePresenter(useHost(), preferences);
+    const presenter = createThemePreferencePresenter(
+      createTrackedHost(),
+      preferences,
+    );
     const seen: ThemeMode[] = [];
     const sub = presenter.mode$.subscribe((m) => {
       seen.push(m);
@@ -44,7 +47,7 @@ describe("createThemePreferencePresenter (effect)", () => {
   it("re-resolves live when the OS scheme flips under 'system', and de-duplicates", async () => {
     const prefersDark = new BehaviorSubject(true);
     const presenter = createThemePreferencePresenter(
-      useHost(),
+      createTrackedHost(),
       new PreferencesSimulator({ themeMode: "system" }),
       {
         prefersDark$: () => {
@@ -70,7 +73,10 @@ describe("createThemePreferencePresenter (effect)", () => {
 
   it("cycle() advances round the full ring, one step per call, from the stored value", async () => {
     const preferences = new PreferencesSimulator({ themeMode: "light" });
-    const presenter = createThemePreferencePresenter(useHost(), preferences);
+    const presenter = createThemePreferencePresenter(
+      createTrackedHost(),
+      preferences,
+    );
     const seen: string[] = [];
     const sub = presenter.modePreference$.subscribe((p) => {
       seen.push(p);
@@ -86,7 +92,7 @@ describe("createThemePreferencePresenter (effect)", () => {
 
   it("mode$ delivers nothing until the port's first preference, rather than resolving an invented default", async () => {
     const { port, themeMode } = createSilentThemeModePort();
-    const presenter = createThemePreferencePresenter(useHost(), port);
+    const presenter = createThemePreferencePresenter(createTrackedHost(), port);
     const seen: ThemeMode[] = [];
     const sub = presenter.mode$.subscribe((m) => {
       seen.push(m);
@@ -109,7 +115,10 @@ describe("createThemePreferencePresenter (effect)", () => {
   // as the RxJS and async cores do; each used to open its own.
   it("modePreference$ and mode$ held together share one subscription to the port", async () => {
     const counted = createCountedThemeModePort("dark");
-    const presenter = createThemePreferencePresenter(useHost(), counted.port);
+    const presenter = createThemePreferencePresenter(
+      createTrackedHost(),
+      counted.port,
+    );
     const preferences: ThemeModePreference[] = [];
     const modes: ThemeMode[] = [];
     const preferenceSub = presenter.modePreference$.subscribe((p) => {
@@ -140,7 +149,7 @@ describe("createThemePreferencePresenter (effect)", () => {
   it("re-subscribes to the colour-scheme source on a fresh warm period", async () => {
     const prefersDark = new BehaviorSubject(false);
     const presenter = createThemePreferencePresenter(
-      useHost(),
+      createTrackedHost(),
       new PreferencesSimulator({ themeMode: "system" }),
       {
         prefersDark$: () => {
@@ -165,7 +174,7 @@ describe("createThemePreferencePresenter (effect)", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

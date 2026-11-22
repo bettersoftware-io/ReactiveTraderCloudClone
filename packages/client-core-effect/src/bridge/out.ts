@@ -34,10 +34,10 @@ export {
 } from "#/bridge/in";
 
 /** What a host runs Effects with: the two operations every bridge helper
- * needs. A `ManagedRuntime` satisfies it structurally (the tests' `useHost`
- * keeps building one); `runnerFor` adapts a plain `Runtime` — what a Layer
- * captures with `Effect.runtime`, and what a detached machine host takes
- * from `Runtime.defaultRuntime`. */
+ * needs. A `ManagedRuntime` satisfies it structurally (the tests'
+ * `createTrackedHost` keeps building one); `runnerFor` adapts a plain
+ * `Runtime` — what a Layer captures with `Effect.runtime`, and what a
+ * detached machine host takes from `Runtime.defaultRuntime`. */
 export interface EffectRunner {
   runSync<A, E>(effect: Effect.Effect<A, E>): A;
   runFork<A, E>(

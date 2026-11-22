@@ -25,7 +25,7 @@ describe("watchlist presenter", () => {
 
   it("calls marketData.watchlist() ONCE, at construction, and keeps the roster warm across zero subscribers", async () => {
     const scripted = createScriptedMarketData();
-    const host = useHost();
+    const host = createTrackedHost();
     const p = createWatchlistPresenter(host, scripted.port);
     expect(scripted.watchlistCalls()).toBe(1);
     const roster: readonly EquityInstrument[] = [createInstrument("AAPL")];
@@ -45,7 +45,7 @@ describe("watchlist presenter", () => {
 
   it("quote$ is memoised per symbol: one port CALL per symbol ever, one SUBSCRIPTION per warm period", async () => {
     const scripted = createScriptedMarketData();
-    const p = createWatchlistPresenter(useHost(), scripted.port);
+    const p = createWatchlistPresenter(createTrackedHost(), scripted.port);
     expect(p.quote$("AAPL")).toBe(p.quote$("AAPL"));
     expect(p.quote$("AAPL")).not.toBe(p.quote$("MSFT"));
     // The port METHOD is called once per symbol, when the stream is
@@ -64,7 +64,7 @@ describe("watchlist presenter", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),
