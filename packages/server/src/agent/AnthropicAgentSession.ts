@@ -5,6 +5,7 @@ import type {
   BetaToolRunnerRequestOptions,
 } from "@anthropic-ai/sdk/lib/tools/BetaToolRunner";
 import type {
+  BetaMessageContentParam,
   BetaMessageParam,
   BetaRawContentBlockDelta,
   BetaRawMessageStreamEvent,
@@ -1076,7 +1077,7 @@ export class AnthropicAgentSession implements AgentSession {
         if (message.stop_reason === "pause_turn") {
           runner.pushMessages({
             role: "assistant",
-            content: message.content as unknown as BetaMessageParam["content"],
+            content: message.content as unknown as BetaMessageContentParam,
           });
         }
       }
