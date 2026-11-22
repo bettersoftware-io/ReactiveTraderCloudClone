@@ -12,9 +12,10 @@
  * #594) and the blank x86 first frame, made repeatable.
  *
  * It measures the way Playwright does (see visual-jitter.ts's "measurement
- * trap"): pixelmatch with a per-pixel colour threshold, counting only pixels
- * above it. A ratio of 0.01 means 1% of the full-page pixels differ. Pairs
- * whose dimensions differ report 1 — that is a layout change, not a nuance.
+ * trap"): through Playwright's own comparator (`lib/playwrightPixelDiff.ts`)
+ * with a per-pixel colour threshold, counting only pixels above it. A ratio
+ * of 0.01 means 1% of the full-page pixels differ. Pairs whose dimensions
+ * differ report 1 — that is a layout change, not a nuance.
  *
  * Usage:
  *   pnpm visual:engine-parity                 # the committed x86 `react/` set
@@ -34,10 +35,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 
-import pixelmatch from "pixelmatch";
-import { PNG } from "pngjs";
-
 import { type EnginePair, pairEngineGoldens } from "./lib/enginePairs.ts";
+import { differingPixelRatio } from "./lib/playwrightPixelDiff.ts";
 
 const PLAYWRIGHT_DEFAULT_PER_PIXEL_THRESHOLD = 0.2;
 const GOLDEN_SETS_ROOT = path.resolve(
@@ -141,25 +140,11 @@ async function collectPngKeys(root: string): Promise<string[]> {
 }
 
 function ratioBetween(aPath: string, bPath: string, perPixel: number): number {
-  const aBytes = readFileSync(aPath);
-  const bBytes = readFileSync(bPath);
-
-  if (aBytes.equals(bBytes)) {
-    return 0;
-  }
-
-  const a = PNG.sync.read(aBytes);
-  const b = PNG.sync.read(bBytes);
-
-  if (a.width !== b.width || a.height !== b.height) {
-    return 1;
-  }
-
-  const differing = pixelmatch(a.data, b.data, undefined, a.width, a.height, {
-    threshold: perPixel,
-  });
-
-  return differing / (a.width * a.height);
+  return differingPixelRatio(
+    readFileSync(aPath),
+    readFileSync(bPath),
+    perPixel,
+  );
 }
 
 function report(

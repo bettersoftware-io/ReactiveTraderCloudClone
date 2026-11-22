@@ -65,7 +65,7 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "@vitest/ui": "^5.1.1",
     "istanbul-lib-coverage": "^3.2.2",
-    "pixelmatch": "^7.2.0",
+    "playwright-core": "^1.65.1",
     "pngjs": "^7.0.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vitest": "^5.1.1"

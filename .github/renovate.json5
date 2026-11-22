@@ -66,20 +66,6 @@
       enabled: false,
     },
     {
-      // pixelmatch 8 is HELD (2026-11-22). v8 replaces the colour-difference
-      // formula, so it counts different pixels than Playwright's bundled
-      // comparator. tests/scripts/visual-jitter.ts and visual-engine-parity.ts
-      // must measure "the way Playwright does", because their numbers set the
-      // visual tier's maxDiffPixelRatio. Measured on the committed goldens:
-      // all 100 engine pairs moved, by up to +0.0012, against a 0.005 budget.
-      // syncpack keeps one version repo-wide, so the RN diff tests cannot
-      // move alone. DROP CONDITION: Playwright adopts the v8 metric, or those
-      // scripts switch to Playwright's own comparator. docs/STATUS.md tracks it.
-      matchPackageNames: ["pixelmatch"],
-      matchUpdateTypes: ["major"],
-      enabled: false,
-    },
-    {
       // React Native core moves as ONE unit. `react-native` and the official
       // `@react-native/*` satellites share a single version line, and the
       // ecosystem peers on that exact minor — jest-expo@58 requires

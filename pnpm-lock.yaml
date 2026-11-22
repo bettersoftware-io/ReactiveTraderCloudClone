@@ -770,8 +770,8 @@ importers:
         specifier: ^58.0.12
         version: 58.0.15(@babel/core@7.29.7(supports-color@11.0.0))(@react-native/jest-preset@0.88.1(@babel/core@7.29.7(supports-color@11.0.0))(react@19.3.1)(supports-color@11.0.0))(@types/react@19.3.0)(expo@58.0.26)(jest@30.5.2(@types/node@26.6.6)(supports-color@11.0.0))(react-native@0.88.1(@babel/core@7.29.7(supports-color@11.0.0))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@11.0.0))(supports-color@11.0.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@11.0.0))(react@19.3.1)(supports-color@11.0.0)
       pixelmatch:
-        specifier: ^7.2.0
-        version: 7.2.0
+        specifier: ^8.0.0
+        version: 8.0.0
       pngjs:
         specifier: ^7.0.0
         version: 7.0.0
@@ -1479,9 +1479,9 @@ importers:
       istanbul-lib-coverage:
         specifier: ^3.2.2
         version: 3.2.2
-      pixelmatch:
-        specifier: ^7.2.0
-        version: 7.2.0
+      playwright-core:
+        specifier: ^1.65.1
+        version: 1.65.1
       pngjs:
         specifier: ^7.0.0
         version: 7.0.0
@@ -7277,8 +7277,8 @@ packages:
     resolution: {integrity: sha512-TfySrs/5nm8fQJDcBDuUng3VOUKsd7S+zqvbOTiGXHfxX4wK31ard+hoNuvkicM/2YFzlpDgABOevKSsB4G/FA==}
     engines: {node: '>= 6'}
 
-  pixelmatch@7.2.0:
-    resolution: {integrity: sha512-xhcb4yHu9sM/G7foGzoLtXYcC0zHEaOXXjRKhGup0fw78Nf2Tkiapv4EQyMzrbcmQPsllAI7DbFY2UT7PlI9Pg==}
+  pixelmatch@8.0.0:
+    resolution: {integrity: sha512-cIqOLfh5k52us715qf3B3+kTOxZv+WDv77HN7xokLScYQGYQHi4m/ynoDIPpvF2LvCyUJGyvzY64i0QCXtzu1g==}
     hasBin: true
 
   pkce-challenge@5.0.1:
@@ -15291,7 +15291,7 @@ snapshots:
 
   pirates@4.0.7: {}
 
-  pixelmatch@7.2.0:
+  pixelmatch@8.0.0:
     dependencies:
       pngjs: 7.0.0
 

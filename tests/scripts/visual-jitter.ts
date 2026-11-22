@@ -22,8 +22,10 @@
  * invisible, and *below the per-pixel threshold Playwright applies before it
  * counts anything*. Under Playwright's own metric the wobble is exactly zero.
  *
- * So this script compares the way Playwright does: pixelmatch with the same
- * per-pixel `threshold`, and only pixels above it count toward the ratio.
+ * So this script compares the way Playwright does, literally: it calls
+ * Playwright's own screenshot comparator (`lib/playwrightPixelDiff.ts`) with
+ * the same per-pixel `threshold`, and only pixels above it count toward the
+ * ratio.
  * Anything else manufactures false alarms on gradients, shadows and glows.
  *
  * Usage — compare two or more downloaded golden trees:
@@ -45,8 +47,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 
-import pixelmatch from "pixelmatch";
-import { PNG } from "pngjs";
+import { differingPixelRatio } from "./lib/playwrightPixelDiff.ts";
 
 const PLAYWRIGHT_DEFAULT_PER_PIXEL_THRESHOLD = 0.2;
 
@@ -339,29 +340,11 @@ function worstRatioAcross(
 }
 
 function ratioBetween(aPath: string, bPath: string, perPixel: number): number {
-  const aBytes = readFileSync(aPath);
-  const bBytes = readFileSync(bPath);
-
-  // Fast path — the overwhelming majority of goldens are byte-identical, and
-  // decoding every one of ~1,500 PNGs would dominate the runtime for nothing.
-  if (aBytes.equals(bBytes)) {
-    return 0;
-  }
-
-  const a = PNG.sync.read(aBytes);
-  const b = PNG.sync.read(bBytes);
-
-  if (a.width !== b.width || a.height !== b.height) {
-    // Different dimensions are never jitter — that is a real layout change,
-    // and pixelmatch cannot compare them. Report the maximum so it stands out.
-    return 1;
-  }
-
-  const differing = pixelmatch(a.data, b.data, undefined, a.width, a.height, {
-    threshold: perPixel,
-  });
-
-  return differing / (a.width * a.height);
+  return differingPixelRatio(
+    readFileSync(aPath),
+    readFileSync(bPath),
+    perPixel,
+  );
 }
 
 function report(
