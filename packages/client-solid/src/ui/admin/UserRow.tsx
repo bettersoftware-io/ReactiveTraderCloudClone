@@ -1,10 +1,9 @@
+import type { JSX } from "@solidjs/web";
 import {
   type Accessor,
   createEffect,
   createMemo,
-  type JSX,
-  on,
-  onMount,
+  onSettled,
   Show,
   untrack,
 } from "solid-js";
@@ -92,29 +91,27 @@ function UserRowBody(props: UserRowBodyProps): JSX.Element {
   // still in this row): the administrator who moved on meanwhile is not
   // pulled back.
   createEffect(
-    on(
-      phase,
-      (current, previous) => {
-        if (previous === "renaming" && current !== "renaming") {
-          owedFocus = "rename";
-        } else if (previous === "confirmingDelete") {
-          owedFocus = current === "idle" ? "delete" : null;
-        }
+    phase,
+    (current, previous) => {
+      if (previous === "renaming" && current !== "renaming") {
+        owedFocus = "rename";
+      } else if (previous === "confirmingDelete") {
+        owedFocus = current === "idle" ? "delete" : null;
+      }
 
-        if (current !== "idle" || owedFocus === null) {
-          return;
-        }
+      if (current !== "idle" || owedFocus === null) {
+        return;
+      }
 
-        const target = owedFocus === "rename" ? renameButton : deleteButton;
+      const target = owedFocus === "rename" ? renameButton : deleteButton;
 
-        owedFocus = null;
+      owedFocus = null;
 
-        if (focusIsFree(row)) {
-          target?.focus();
-        }
-      },
-      { defer: true },
-    ),
+      if (focusIsFree(row)) {
+        target?.focus();
+      }
+    },
+    { defer: true },
   );
 
   return (
@@ -302,7 +299,7 @@ function UserRowActions(props: UserRowActionsProps): JSX.Element {
 function RenameField(props: RenameFieldProps): JSX.Element {
   let input!: HTMLInputElement;
 
-  onMount(() => {
+  onSettled(() => {
     input.focus();
   });
 
@@ -332,7 +329,7 @@ function RenameField(props: RenameFieldProps): JSX.Element {
         type="text"
         autocomplete="off"
         aria-label={ACCOUNT_ADMIN_COPY.nameLabel}
-        aria-invalid={props.draftError !== null}
+        aria-invalid={props.draftError !== null ? "true" : "false"}
         aria-describedby={props.draftError !== null ? errorId() : undefined}
         value={props.draft}
         onInput={editDraft}
@@ -379,7 +376,7 @@ function RowButton(props: RowButtonProps): JSX.Element {
       data-testid={`user-${stem()}-${props.account.id}`}
       data-tone={props.tone ?? "neutral"}
       data-busy={busy() ? "true" : "false"}
-      aria-busy={busy()}
+      aria-busy={busy() ? "true" : "false"}
       aria-label={describeRowActionLabel(
         props.action,
         props.account.displayName,

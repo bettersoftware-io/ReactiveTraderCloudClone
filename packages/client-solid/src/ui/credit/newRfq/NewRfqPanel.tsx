@@ -1,11 +1,5 @@
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  type JSX,
-  on,
-  Show,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createEffect, createMemo, createSignal, Show } from "solid-js";
 
 import {
   CREDIT_RFQ_EXPIRY_SECONDS,
@@ -48,17 +42,15 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
   // wiped exactly on that transition — not on every emission while editing,
   // and not on the initial mount (which already starts from EMPTY_VALUE).
   // `status` is tracked (not the whole `submission.state()`) per the
-  // reactivity amendment. No `defer`: on() records the previous input only
-  // on non-deferred runs (solid.js `on()`), so the first run must execute to
-  // seed `previous` — see the README's `solid/reactivity` section.
-  createEffect(
-    on(status, (currentStatus, previousStatus) => {
-      if (previousStatus === "confirmed" && currentStatus === "editing") {
-        setValue(EMPTY_VALUE);
-        setInstrumentOpen(false);
-      }
-    }),
-  );
+  // reactivity amendment: the memo's `===` stops a re-run on an emission that
+  // leaves the status alone, and the apply phase receives the previous
+  // status as its second argument (undefined on the first run).
+  createEffect(status, (currentStatus, previousStatus) => {
+    if (previousStatus === "confirmed" && currentStatus === "editing") {
+      setValue(EMPTY_VALUE);
+      setInstrumentOpen(false);
+    }
+  });
 
   const selectedInstrument = createMemo((): Instrument | null => {
     return (

@@ -1,13 +1,11 @@
+import type { JSX } from "@solidjs/web";
 import {
   createEffect,
   createMemo,
   createSignal,
   For,
-  type JSX,
-  on,
   onCleanup,
   Show,
-  untrack,
 } from "solid-js";
 
 import {
@@ -127,158 +125,133 @@ export function RfqsPanel(): JSX.Element {
 
   // React's sanctioned "adjust state during render" pattern (react.dev's
   // "You Might Not Need an Effect"), ported to an explicit Solid effect keyed
-  // off the narrowed id-set/filter memos above. `exiting`/`entering` are read
-  // via `untrack` where this effect needs their CURRENT value for its own
-  // bookkeeping — never tracked — so writing to them here can't re-trigger
-  // this same effect; it only re-runs when allIdsKey/matchingKey/filter/
-  // allIds/matchingIdSet actually change again. No `defer`: on() records the
-  // previous input only on non-deferred runs (solid.js `on()`), so the first
-  // run must execute to seed `previous` — see the README's `solid/reactivity`
-  // section.
+  // off the narrowed id-set/filter memos above. Everything the apply phase
+  // uses is read in the compute phase — including `exiting`/`entering`,
+  // which the apply phase itself writes. Such a write re-runs the effect,
+  // and that run is a no-op: it only acts when allIdsKey/matchingKey/filter
+  // actually changed since the previous run, which the apply phase receives
+  // as its second argument (undefined on the first run, which therefore
+  // changes nothing). Reading the current `exiting`/`entering` here, rather
+  // than in the apply phase, is what Solid 2 asks for: a read inside an
+  // effect's apply phase is untracked by construction and dev-warns.
   createEffect(
-    on(
-      () => {
-        return [
-          allIdsKey(),
-          matchingKey(),
-          filter(),
-          allIds(),
-          matchingIdSet(),
-        ] as const;
-      },
-      (
-        [
-          currentAllKey,
-          currentMatchingKey,
-          currentFilter,
-          currentAllIds,
-          currentMatchingIdSet,
-        ],
-        previous,
-      ) => {
-        const [
-          previousAllKey,
-          previousMatchingKey,
-          previousFilter,
-          previousAllIds,
-          previousMatchingIdSet,
-        ] = previous ?? [
-          currentAllKey,
-          currentMatchingKey,
-          currentFilter,
-          currentAllIds,
-          currentMatchingIdSet,
-        ];
+    (): RfqBookkeeping => {
+      return {
+        allKey: allIdsKey(),
+        matchingKey: matchingKey(),
+        filter: filter(),
+        allIds: allIds(),
+        matchingIdSet: matchingIdSet(),
+        rfqs: rfqs(),
+        dismissed: dismissed(),
+        exiting: exiting(),
+        entering: entering(),
+      };
+    },
+    (current, previous) => {
+      const before = previous ?? current;
+      const allChanged = current.allKey !== before.allKey;
+      const matchingChanged = current.matchingKey !== before.matchingKey;
+      const filterChanged = current.filter !== before.filter;
+      const inputsChanged = allChanged || matchingChanged || filterChanged;
 
-        const allChanged = currentAllKey !== previousAllKey;
-        const matchingChanged = currentMatchingKey !== previousMatchingKey;
-        const filterChanged = currentFilter !== previousFilter;
-        const inputsChanged = allChanged || matchingChanged || filterChanged;
+      if (!inputsChanged) {
+        return;
+      }
 
-        if (!inputsChanged) {
-          return;
-        }
+      const reduced = prefersReducedMotion();
 
-        const reduced = prefersReducedMotion();
+      // Auto-exit grace (PROTO exitAt/EXITING_RETAIN_MS): an id that
+      // dropped out of the MATCHING set without a filter change (a state
+      // transition, e.g. an RFQ expiring while LIVE is the active tab) is
+      // retained in `exiting` so its card can play the cardOut animation
+      // before it stops rendering. A filter change never auto-exits — the
+      // outgoing tab's cards are simply replaced (matching the prototype,
+      // which only retains state-transition and trash-click exits across
+      // the swap).
+      let exitingNow = current.exiting;
 
-        // Auto-exit grace (PROTO exitAt/EXITING_RETAIN_MS): an id that
-        // dropped out of the MATCHING set without a filter change (a state
-        // transition, e.g. an RFQ expiring while LIVE is the active tab) is
-        // retained in `exiting` so its card can play the cardOut animation
-        // before it stops rendering. A filter change never auto-exits — the
-        // outgoing tab's cards are simply replaced (matching the prototype,
-        // which only retains state-transition and trash-click exits across
-        // the swap).
-        let exitingNow = untrack(exiting);
+      if (!reduced && matchingChanged && !filterChanged) {
+        const allIdSet = new Set(current.allIds);
+        const dropped = [...before.matchingIdSet].filter((id) => {
+          return (
+            !current.matchingIdSet.has(id) &&
+            allIdSet.has(id) &&
+            !current.dismissed.has(id) &&
+            !exitingNow.has(id)
+          );
+        });
 
-        if (!reduced && matchingChanged && !filterChanged) {
-          const allIdSet = new Set(currentAllIds);
-          // dismissed() here (and in renderedIdsNow's filter below) is
-          // tracked only for ids where evaluation reaches it — deliberate:
-          // dismissed() itself feeds matchingKey/matchingIdSet via the
-          // matchingIds memo above, so a dismissed() change that matters
-          // here has already been picked up by that transitive dependency
-          // by the time this runs.
-          const dropped = [...previousMatchingIdSet].filter((id) => {
-            return (
-              !currentMatchingIdSet.has(id) &&
-              allIdSet.has(id) &&
-              !dismissed().has(id) &&
-              !exitingNow.has(id)
-            );
-          });
+        if (dropped.length > 0) {
+          const merged = new Map(exitingNow);
 
-          if (dropped.length > 0) {
-            const merged = new Map(exitingNow);
-
-            for (const id of dropped) {
-              merged.set(id, "auto");
-            }
-
-            exitingNow = merged;
-            setExiting(merged);
+          for (const id of dropped) {
+            merged.set(id, "auto");
           }
-        }
 
-        // Rendered = matches the active filter, plus anything mid exit
-        // animation; user-dismissed ids are gone for good. Mirrors the
-        // `rendered` memo below exactly.
-        const renderedIdsNow = rfqs()
-          .filter((r) => {
-            return (
-              !dismissed().has(r.id) &&
-              (matchesFilter(r.state, currentFilter) || exitingNow.has(r.id))
-            );
-          })
-          .sort((a, b) => {
-            return b.creationTimestamp - a.creationTimestamp;
-          })
-          .map((r) => {
-            return r.id;
+          exitingNow = merged;
+          setExiting(merged);
+        }
+      }
+
+      // Rendered = matches the active filter, plus anything mid exit
+      // animation; user-dismissed ids are gone for good. Mirrors the
+      // `rendered` memo below exactly.
+      const renderedIdsNow = current.rfqs
+        .filter((r) => {
+          return (
+            !current.dismissed.has(r.id) &&
+            (matchesFilter(r.state, current.filter) || exitingNow.has(r.id))
+          );
+        })
+        .sort((a, b) => {
+          return b.creationTimestamp - a.creationTimestamp;
+        })
+        .map((r) => {
+          return r.id;
+        });
+
+      // Prune any `entering` id that's no longer rendered (final review
+      // M-b): a card created under one filter gets an `entering` entry;
+      // if the user switches filters before its 0.46s entrance completes,
+      // the card unmounts without ever firing animationend, so nothing
+      // would otherwise clear its entry — orphaned in the map. If that
+      // same id later re-enters the rendered set via a STATE change with
+      // the filter unchanged (which shows plain, no entrance —
+      // enterCascadeAdditions deliberately omits it), the stale entry
+      // would incorrectly replay the entrance. Dropping ids the moment
+      // they leave `rendered` (same pass that computes the new additions)
+      // keeps `entering` in sync with what's actually mounted.
+      const renderedIdSet = new Set(renderedIdsNow);
+      const mergedEntering = new Map(current.entering);
+      let enteringChanged = false;
+
+      for (const id of mergedEntering.keys()) {
+        if (!renderedIdSet.has(id)) {
+          mergedEntering.delete(id);
+          enteringChanged = true;
+        }
+      }
+
+      if (!reduced) {
+        const additions = enterCascadeAdditions({
+          prevAllIds: new Set(before.allIds),
+          shownIds: renderedIdsNow,
+          filterChanged,
+        });
+
+        if (additions.size > 0) {
+          additions.forEach((delay, id) => {
+            mergedEntering.set(id, delay);
           });
-
-        // Prune any `entering` id that's no longer rendered (final review
-        // M-b): a card created under one filter gets an `entering` entry;
-        // if the user switches filters before its 0.46s entrance completes,
-        // the card unmounts without ever firing animationend, so nothing
-        // would otherwise clear its entry — orphaned in the map. If that
-        // same id later re-enters the rendered set via a STATE change with
-        // the filter unchanged (which shows plain, no entrance —
-        // enterCascadeAdditions deliberately omits it), the stale entry
-        // would incorrectly replay the entrance. Dropping ids the moment
-        // they leave `rendered` (same pass that computes the new additions)
-        // keeps `entering` in sync with what's actually mounted.
-        const renderedIdSet = new Set(renderedIdsNow);
-        const mergedEntering = new Map(untrack(entering));
-        let enteringChanged = false;
-
-        for (const id of mergedEntering.keys()) {
-          if (!renderedIdSet.has(id)) {
-            mergedEntering.delete(id);
-            enteringChanged = true;
-          }
+          enteringChanged = true;
         }
+      }
 
-        if (!reduced) {
-          const additions = enterCascadeAdditions({
-            prevAllIds: new Set(previousAllIds),
-            shownIds: renderedIdsNow,
-            filterChanged,
-          });
-
-          if (additions.size > 0) {
-            additions.forEach((delay, id) => {
-              mergedEntering.set(id, delay);
-            });
-            enteringChanged = true;
-          }
-        }
-
-        if (enteringChanged) {
-          setEntering(mergedEntering);
-        }
-      },
-    ),
+      if (enteringChanged) {
+        setEntering(mergedEntering);
+      }
+    },
   );
 
   // Rendered = matches the active filter, plus anything mid exit animation;
@@ -353,7 +326,7 @@ export function RfqsPanel(): JSX.Element {
       return;
     }
 
-    const reason = untrack(exiting).get(rfqId);
+    const reason = exiting().get(rfqId);
     setExiting((prev) => {
       if (!prev.has(rfqId)) {
         return prev;
@@ -438,6 +411,21 @@ export function RfqsPanel(): JSX.Element {
  * dismissed for good on animationend) or a state transition that pushed it
  * out of the active filter ("auto", merely stops rendering). */
 type ExitReason = "remove" | "auto";
+
+/** Everything the enter/exit bookkeeping effect reads, captured in its
+ * compute phase: the narrowed id keys and filter it acts on a change of,
+ * and the current lists and animation maps it derives the writes from. */
+interface RfqBookkeeping {
+  readonly allKey: string;
+  readonly matchingKey: string;
+  readonly filter: CreditRfqFilter;
+  readonly allIds: readonly number[];
+  readonly matchingIdSet: ReadonlySet<number>;
+  readonly rfqs: readonly Rfq[];
+  readonly dismissed: ReadonlySet<number>;
+  readonly exiting: ReadonlyMap<number, ExitReason>;
+  readonly entering: ReadonlyMap<number, number>;
+}
 
 function matchesFilter(state: RfqState, filter: CreditRfqFilter): boolean {
   switch (filter) {

@@ -1,4 +1,5 @@
-import { createEffect, type JSX, type ParentProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createEffect, type ParentProps } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
@@ -23,18 +24,21 @@ export function ThemeProvider(props: ParentProps): JSX.Element {
   const { mode, modePreference, cycle: cycleMode } = useThemePreference();
   const { skin, setSkin } = useThemeSkinPreference();
 
-  createEffect(() => {
-    applyTokens(themeTokens[skin()][mode()]);
-    document.documentElement.dataset.skin = skin();
-    document.documentElement.dataset.mode = mode();
-  });
+  createEffect(
+    () => {
+      return { currentSkin: skin(), currentMode: mode() };
+    },
+    ({ currentSkin, currentMode }) => {
+      applyTokens(themeTokens[currentSkin][currentMode]);
+      document.documentElement.dataset.skin = currentSkin;
+      document.documentElement.dataset.mode = currentMode;
+    },
+  );
 
   return (
-    <ThemeContext.Provider
-      value={{ skin, mode, modePreference, setSkin, cycleMode }}
-    >
+    <ThemeContext value={{ skin, mode, modePreference, setSkin, cycleMode }}>
       {props.children}
-    </ThemeContext.Provider>
+    </ThemeContext>
   );
 }
 

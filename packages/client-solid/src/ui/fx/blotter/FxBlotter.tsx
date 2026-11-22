@@ -1,11 +1,5 @@
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  For,
-  type JSX,
-  Show,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
 
 import {
   applyFilters,
@@ -79,14 +73,10 @@ export function FxBlotter(): JSX.Element {
   });
 
   // The CSV chip lives in FxBlotterHead; it calls exportCsv() from context,
-  // which invokes whatever handler was last registered here. This
-  // createEffect has ZERO tracked dependencies on purpose: processedTrades()
-  // is read only inside the registered closure below, never in the effect
-  // body itself, so the effect runs exactly once, at mount — an onMount in
-  // effect clothing. The registered closure reads processedTrades() live at
-  // click time instead, so the exported rows are always current without the
-  // effect ever re-registering the handler.
-  createEffect(() => {
+  // which invokes whatever handler was last registered here — once, after
+  // mount. The closure reads processedTrades() live at click time, so the
+  // exported rows are always current without ever re-registering.
+  onSettled(() => {
     setExportCsvHandler(() => {
       exportFxToCsv(processedTrades());
     });
@@ -161,7 +151,7 @@ export function FxBlotter(): JSX.Element {
                 </For>
                 <Show when={processedTrades().length === 0}>
                   <tr>
-                    <td colSpan={COLUMNS.length} class={styles.emptyCell}>
+                    <td colspan={COLUMNS.length} class={styles.emptyCell}>
                       {trades().length === 0
                         ? "No trades yet"
                         : "No trades match the current filters"}

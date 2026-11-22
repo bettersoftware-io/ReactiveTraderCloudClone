@@ -1,4 +1,5 @@
-import { createEffect, createMemo, type JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createEffect, createMemo } from "solid-js";
 
 import type {
   EqChartType,
@@ -110,7 +111,28 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
   // compare keeps paging), and the handler side fires both loads, relying
   // on CandleSeriesPresenter's per-(symbol|timeframe) single-flight/
   // exhaustion/cooldown to no-op the ineligible one.
-  createEffect(() => {
+  //
+  // The handler props are read in the compute phase too: a prop read in the
+  // apply phase is untracked by construction (and dev-warns), and the apply
+  // phase needs only the handlers this run's request goes to.
+  createEffect(
+    (): BackfillTrigger => {
+      return {
+        request: backfillRequest(),
+        loadOlder: props.onLoadOlder,
+        loadOlderCompare: props.onLoadOlderCompare,
+      };
+    },
+    ({ request, loadOlder, loadOlderCompare }) => {
+      if (request === "both") {
+        loadOlder();
+      } else if (request === "compare") {
+        loadOlderCompare?.();
+      }
+    },
+  );
+
+  function backfillRequest(): BackfillRequest {
     const viewport = g.viewport();
     const span = viewport.end - viewport.start;
     const nearLeftEdge = viewport.start < span;
@@ -123,8 +145,7 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
       !cb.historyExhausted;
 
     if (nearLeftEdge && (primaryEligible || compareEligible)) {
-      props.onLoadOlder();
-      return;
+      return "both";
     }
 
     // The compare catch-up gate — the near-edge trigger's sibling
@@ -150,45 +171,51 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
       windowFirstTime !== undefined &&
       compareFirstTime > windowFirstTime
     ) {
-      props.onLoadOlderCompare?.();
+      return "compare";
     }
-  });
+
+    return null;
+  }
 
   // Backfill prepend detection — same "an effect, not a tracked computation
   // feeding render" call as the near-edge fetch trigger above: every
   // trendline anchor is a candle INDEX, so a prepend (the series growing
   // while its first candle got OLDER) shifts every existing index by the
   // prepended count, or every drawing silently drifts onto the wrong
-  // candles as older history loads in underneath it. `prevWatermark` is a
-  // plain outer-scope `let`, but starts `null` and is only ever populated
-  // from INSIDE the effect below — seeding it here instead (reading
-  // `props.candles` at setup time, outside any tracked scope) is exactly
-  // the untracked-reactive-read the solid/reactivity lint rule exists to
-  // catch. The createComputed inside `createChartGestures` folds the
-  // VIEWPORT through the identical growth-direction fork; this one folds
-  // the DRAWINGS machine's anchor indices through the same fork, one level
-  // up (CandleChart, not the gesture primitive), since only the caller
-  // knows about drawings at all.
-  let prevWatermark: PrependWatermark | null = null;
+  // candles as older history loads in underneath it. The previous
+  // watermark is the apply phase's second argument — undefined on the first
+  // run, which is therefore a no-op; nothing is seeded at setup time, where
+  // reading `props.candles` would be an untracked reactive read. The
+  // viewport's compute inside `createChartGestures` folds the VIEWPORT
+  // through the identical growth-direction fork; this one folds the
+  // DRAWINGS machine's anchor indices through the same fork, one level up
+  // (CandleChart, not the gesture primitive), since only the caller knows
+  // about drawings at all.
+  createEffect(
+    (): PrependWatermark => {
+      return {
+        len: props.candles.length,
+        firstTime: props.candles[0]?.time,
+        shiftAnchors: props.onShiftAnchors ?? NOOP_SHIFT_ANCHORS,
+      };
+    },
+    ({ len, firstTime, shiftAnchors }, prev) => {
+      if (prev === undefined) {
+        return;
+      }
 
-  createEffect(() => {
-    const len = props.candles.length;
-    const firstTime = props.candles[0]?.time;
-    const prev = prevWatermark ?? { len, firstTime };
+      const grewBy = len - prev.len;
 
-    prevWatermark = { len, firstTime };
-
-    const grewBy = len - prev.len;
-
-    if (
-      grewBy > 0 &&
-      prev.firstTime !== undefined &&
-      firstTime !== undefined &&
-      firstTime < prev.firstTime
-    ) {
-      (props.onShiftAnchors ?? NOOP_SHIFT_ANCHORS)(grewBy);
-    }
-  });
+      if (
+        grewBy > 0 &&
+        prev.firstTime !== undefined &&
+        firstTime !== undefined &&
+        firstTime < prev.firstTime
+      ) {
+        shiftAnchors(grewBy);
+      }
+    },
+  );
 
   const historyStart = createMemo((): boolean => {
     return props.historyExhausted && g.viewport().start === 0;
@@ -477,12 +504,27 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
   );
 }
 
-/** The candle series' length + first-candle time as of the last effect run
- * — the prepend-detection effect's own watermark, compared against the
- * current run's values to tell a backfill prepend from a live append. */
+/** Which history page(s) the near-edge trigger asks for this run: the
+ * primary (and, via the presenter's per-series gates, the comparison too), the
+ * comparison alone, or none. */
+type BackfillRequest = "both" | "compare" | null;
+
+/** The candle series' length + first-candle time as of an effect run — the
+ * prepend-detection effect's watermark, compared against the previous run's
+ * to tell a backfill prepend from a live append. */
 interface PrependWatermark {
   readonly len: number;
   readonly firstTime: number | undefined;
+  /** The handler a prepend this run is reported to. */
+  readonly shiftAnchors: (by: number) => void;
+}
+
+/** The near-edge trigger's run: what to page, and the handlers to page it
+ * through. */
+interface BackfillTrigger {
+  readonly request: BackfillRequest;
+  readonly loadOlder: () => void;
+  readonly loadOlderCompare: (() => void) | undefined;
 }
 
 export interface CandleChartProps {

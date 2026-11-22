@@ -1,10 +1,4 @@
-import {
-  type Accessor,
-  createEffect,
-  createSignal,
-  onCleanup,
-  onMount,
-} from "solid-js";
+import { type Accessor, createEffect, createSignal, onSettled } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
@@ -77,17 +71,23 @@ export function useJarvisDrivenPulse(): JarvisDrivenPulse {
   let appliedSeen = 0;
   let hostEl: HTMLElement | undefined;
 
-  createEffect(() => {
-    const appliedCount = driverState().lastBatch.filter((outcome) => {
-      return outcome.status === "applied";
-    }).length;
+  createEffect(
+    () => {
+      return {
+        appliedCount: driverState().lastBatch.filter((outcome) => {
+          return outcome.status === "applied";
+        }).length,
+        freeze: isFreeze(),
+      };
+    },
+    ({ appliedCount, freeze }) => {
+      if (appliedCount > appliedSeen && !freeze && !prefersReducedMotion()) {
+        setPulsing(true);
+      }
 
-    if (appliedCount > appliedSeen && !isFreeze() && !prefersReducedMotion()) {
-      setPulsing(true);
-    }
-
-    appliedSeen = appliedCount;
-  });
+      appliedSeen = appliedCount;
+    },
+  );
 
   // Ignore animationend events BUBBLING from a descendant — e.g. every FX
   // tile's own tick-flash animation (TilePrice.module.css) bubbles through
@@ -106,7 +106,7 @@ export function useJarvisDrivenPulse(): JarvisDrivenPulse {
     hostEl = el;
   }
 
-  onMount(() => {
+  onSettled(() => {
     if (!hostEl) {
       return;
     }
@@ -115,10 +115,10 @@ export function useJarvisDrivenPulse(): JarvisDrivenPulse {
     el.addEventListener("animationend", clearPulse);
     el.addEventListener("webkitAnimationEnd", clearPulse);
 
-    onCleanup(() => {
+    return () => {
       el.removeEventListener("animationend", clearPulse);
       el.removeEventListener("webkitAnimationEnd", clearPulse);
-    });
+    };
   });
 
   return { pulsing, ref: bindPulseTarget };

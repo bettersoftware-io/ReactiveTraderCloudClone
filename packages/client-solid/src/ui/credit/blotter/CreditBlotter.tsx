@@ -1,10 +1,10 @@
+import type { JSX } from "@solidjs/web";
 import {
   createEffect,
   createMemo,
   createSignal,
   For,
-  type JSX,
-  on,
+  onSettled,
   Show,
 } from "solid-js";
 
@@ -81,28 +81,25 @@ export function CreditBlotter(): JSX.Element {
     new Set(),
   );
 
-  // No `defer`: on() records the previous input only on non-deferred runs
-  // (solid.js `on()`), so the first run must execute to seed `previous` —
-  // see the README's `solid/reactivity` section.
+  // The apply phase receives the previous compute value as its second
+  // argument (undefined on the first run, which therefore marks nothing).
   createEffect(
-    on(
-      () => {
-        return [tradeIdsKey(), tradeIds()] as const;
-      },
-      ([currentKey, currentIds], previous) => {
-        const [previousKey, previousIds] = previous ?? [currentKey, currentIds];
+    () => {
+      return [tradeIdsKey(), tradeIds()] as const;
+    },
+    ([currentKey, currentIds], previous) => {
+      const [previousKey, previousIds] = previous ?? [currentKey, currentIds];
 
-        if (currentKey === previousKey) {
-          return;
-        }
+      if (currentKey === previousKey) {
+        return;
+      }
 
-        const previousIdSet = new Set(previousIds);
-        const justAppeared = currentIds.filter((id) => {
-          return !previousIdSet.has(id);
-        });
-        setNewTradeIds(new Set(justAppeared));
-      },
-    ),
+      const previousIdSet = new Set(previousIds);
+      const justAppeared = currentIds.filter((id) => {
+        return !previousIdSet.has(id);
+      });
+      setNewTradeIds(new Set(justAppeared));
+    },
   );
 
   function cycleSortColumn(column: keyof CreditTrade): void {
@@ -151,14 +148,10 @@ export function CreditBlotter(): JSX.Element {
 
   // The CSV chip lives in CreditBlotterHead now (mirrors FxBlotter's
   // handoff); it calls exportCsv() from context, which invokes whatever
-  // handler was last registered here. This createEffect has ZERO tracked
-  // dependencies on purpose: processedTrades() is read only inside the
-  // registered closure below, never in the effect body itself, so the
-  // effect runs exactly once, at mount — an onMount in effect clothing. The
-  // registered closure reads processedTrades() live at click time instead,
-  // so the exported rows are always current without the effect ever
-  // re-registering the handler.
-  createEffect(() => {
+  // handler was last registered here — once, after mount. The closure reads
+  // processedTrades() live at click time, so the exported rows are always
+  // current without ever re-registering.
+  onSettled(() => {
     setExportCsvHandler(() => {
       // PROTO useCreditRfqs.ts downloadCsv("credit-trades.csv", …).
       exportToCsv(
@@ -268,7 +261,7 @@ export function CreditBlotter(): JSX.Element {
             </For>
             <Show when={processedTrades().length === 0}>
               <tr>
-                <td colSpan={CREDIT_COLUMNS.length} class={styles.emptyCell}>
+                <td colspan={CREDIT_COLUMNS.length} class={styles.emptyCell}>
                   {trades().length === 0
                     ? "No credit trades yet"
                     : "No credit trades match the current filters"}

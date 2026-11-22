@@ -1,11 +1,5 @@
-import {
-  type Accessor,
-  createEffect,
-  createMemo,
-  For,
-  type JSX,
-  onCleanup,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, createEffect, createMemo, For } from "solid-js";
 
 import {
   type BootDrawCtx,
@@ -60,84 +54,90 @@ export function BootSequence(props: BootSequenceProps): JSX.Element {
     return state().variant;
   });
 
-  createEffect(() => {
-    const currentVariant = variant();
-    const canvas = canvasEl;
+  createEffect(
+    () => {
+      // Each read here is tracked: the effect re-runs when the variant, the
+      // power-saver / forced-boot switches, or the theme mode/skin flip
+      // mid-boot (the async preference hydration must rebuild the draw
+      // context on fresh tokens), tearing the loop down through the cleanup
+      // the apply phase returns. Freeze (an explicit power-saver opt-out of
+      // all motion) always skips the boot canvas rAF loop; otherwise honour
+      // prefers-reduced-motion unless forceBootAnimation overrides it — it
+      // overrides only the accessibility signal, never an explicit Freeze.
+      return {
+        currentVariant: variant(),
+        freeze: isFreeze(),
+        forceOn: forced(),
+        currentMode: mode(),
+        currentSkin: skin(),
+      };
+    },
+    ({ currentVariant, freeze, forceOn, currentMode, currentSkin }) => {
+      const canvas = canvasEl;
 
-    const prefersReduced =
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+      const prefersReduced =
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ??
+        false;
 
-    // Read both signals unconditionally so each is tracked: the effect (a
-    // plain createEffect, not `on()`-wrapped) re-runs when either flips
-    // mid-boot, tearing the loop down via the onCleanup below. Freeze (an
-    // explicit power-saver opt-out of all motion) always skips the boot
-    // canvas rAF loop; otherwise honour prefers-reduced-motion unless
-    // forceBootAnimation overrides it — it overrides only the accessibility
-    // signal, never an explicit Freeze.
-    const freeze = isFreeze();
-    const forceOn = forced();
-    // Track mode AND skin before any early return: either flipping (the async
-    // preference hydration) must rebuild the draw context on fresh tokens.
-    const currentMode = mode();
-    const currentSkin = skin();
+      if (freeze || (prefersReduced && !forceOn)) {
+        return;
+      }
 
-    if (freeze || (prefersReduced && !forceOn)) {
-      return;
-    }
+      // Initial resize (mirrors prototype _drawBoot outer resize())
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      const ctx = canvas.getContext("2d");
 
-    // Initial resize (mirrors prototype _drawBoot outer resize())
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-    const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        return; // jsdom / no-GPU: render chrome only
+      }
 
-    if (!ctx) {
-      return; // jsdom / no-GPU: render chrome only
-    }
+      // Straight from the token store, keyed by the tracked skin×mode — the
+      // same values ThemeProvider paints on :root. Reading the painted CSS
+      // vars via getComputedStyle here would hide this effect's real
+      // dependency on the theme behind a side channel (and needed per-token
+      // fallbacks).
+      const tokens = themeTokens[currentSkin][currentMode];
+      const d: BootDrawCtx = {
+        canvas,
+        ctx,
+        start: performance.now(),
+        accent: tokens["--accent-primary"],
+        accent2: tokens["--accent-2"],
+        buy: tokens["--accent-positive"],
+        sell: tokens["--accent-negative"],
+        pointer: { mx: 0, my: 0 },
+        light: currentMode === "light",
+      };
 
-    // Straight from the token store, keyed by the tracked skin×mode — the
-    // same values ThemeProvider paints on :root. Reading the painted CSS vars
-    // via getComputedStyle here would hide this effect's real dependency on
-    // the theme behind a side channel (and needed per-token fallbacks).
-    const tokens = themeTokens[currentSkin][currentMode];
-    const d: BootDrawCtx = {
-      canvas,
-      ctx,
-      start: performance.now(),
-      accent: tokens["--accent-primary"],
-      accent2: tokens["--accent-2"],
-      buy: tokens["--accent-positive"],
-      sell: tokens["--accent-negative"],
-      pointer: { mx: 0, my: 0 },
-      light: currentMode === "light",
-    };
+      // PROTO: the cursor-tracked variants (layers/jarvis/topo) listen on
+      // window mousemove and normalize to -1..1. One listener here feeds the
+      // shared pointer for whichever variant reads it; removed with the loop.
+      function updatePointerPosition(e: MouseEvent): void {
+        d.pointer.mx = (e.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
+        d.pointer.my = (e.clientY / Math.max(1, window.innerHeight)) * 2 - 1;
+      }
 
-    // PROTO: the cursor-tracked variants (layers/jarvis/topo) listen on
-    // window mousemove and normalize to -1..1. One listener here feeds the
-    // shared pointer for whichever variant reads it; removed with the loop.
-    function updatePointerPosition(e: MouseEvent): void {
-      d.pointer.mx = (e.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
-      d.pointer.my = (e.clientY / Math.max(1, window.innerHeight)) * 2 - 1;
-    }
+      window.addEventListener("mousemove", updatePointerPosition);
 
-    window.addEventListener("mousemove", updatePointerPosition);
+      // Factories run once per boot (geo/topo precompute geometry here); the
+      // returned closure draws one frame.
+      const frame = DRAW[currentVariant](d);
+      let raf = 0;
 
-    // Factories run once per boot (geo/topo precompute geometry here); the
-    // returned closure draws one frame.
-    const frame = DRAW[currentVariant](d);
-    let raf = 0;
+      function loop(): void {
+        frame();
+        raf = requestAnimationFrame(loop);
+      }
 
-    function loop(): void {
-      frame();
-      raf = requestAnimationFrame(loop);
-    }
+      loop();
 
-    loop();
-
-    onCleanup(() => {
-      window.removeEventListener("mousemove", updatePointerPosition);
-      cancelAnimationFrame(raf);
-    });
-  });
+      return () => {
+        window.removeEventListener("mousemove", updatePointerPosition);
+        cancelAnimationFrame(raf);
+      };
+    },
+  );
 
   const visibleLines = createMemo((): readonly string[] => {
     return BOOT_LOG_LINES.slice(0, visibleLineCount(state().progress));

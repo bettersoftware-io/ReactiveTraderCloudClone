@@ -1,11 +1,5 @@
-import {
-  createEffect,
-  createSignal,
-  For,
-  type JSX,
-  onCleanup,
-  Show,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { THEME_SKINS, type ThemeSkin } from "@rtc/domain";
 
@@ -37,8 +31,8 @@ export function ThemePicker(): JSX.Element {
   const [open, setOpen] = createSignal(false);
   let anchorEl!: HTMLDivElement;
 
-  createEffect(() => {
-    if (!open()) {
+  createEffect(open, (isOpen) => {
+    if (!isOpen) {
       return;
     }
 
@@ -57,10 +51,10 @@ export function ThemePicker(): JSX.Element {
     document.addEventListener("mousedown", closePickerOnOutsideClick);
     document.addEventListener("keydown", closePickerOnEscape);
 
-    onCleanup(() => {
+    return () => {
       document.removeEventListener("mousedown", closePickerOnOutsideClick);
       document.removeEventListener("keydown", closePickerOnEscape);
-    });
+    };
   });
 
   function selectSkin(next: ThemeSkin): void {
@@ -86,7 +80,7 @@ export function ThemePicker(): JSX.Element {
           type="button"
           data-testid="skin-picker"
           aria-haspopup="listbox"
-          aria-expanded={open()}
+          aria-expanded={open() ? "true" : "false"}
           aria-label="Theme skin"
           class={styles.trigger}
           onClick={toggleThemePicker}
@@ -118,7 +112,7 @@ export function ThemePicker(): JSX.Element {
                   <button
                     type="button"
                     role="option"
-                    aria-selected={active()}
+                    aria-selected={active() ? "true" : "false"}
                     data-skin={s}
                     data-active={active() ? "true" : "false"}
                     class={styles.skinRow}

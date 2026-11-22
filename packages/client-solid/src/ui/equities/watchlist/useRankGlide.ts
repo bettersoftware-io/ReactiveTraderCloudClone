@@ -1,10 +1,4 @@
-import {
-  type Accessor,
-  createEffect,
-  createSignal,
-  on,
-  onMount,
-} from "solid-js";
+import { type Accessor, createEffect, createSignal, untrack } from "solid-js";
 
 import {
   coalesceOrder,
@@ -159,8 +153,12 @@ export function useRankGlide(
   let prevRank: Record<string, number> | undefined;
   let gliding = false;
   let pending: readonly string[] | null = null;
+  // Seeded ONCE from the first candidate, deliberately untracked: from then
+  // on `committed` follows `candidate` only through the coalescing effect
+  // below (a writable derived `createSignal(candidate)` would instead reset
+  // to every new candidate, defeating the buffering).
   const [committed, setCommitted] = createSignal<readonly string[]>(
-    candidate(),
+    untrack(candidate),
   );
 
   // Decide whether to commit `candidate()` now or buffer it — runs whenever
@@ -168,20 +166,29 @@ export function useRankGlide(
   // buffered until the in-flight glide settles (see the glide effect's
   // `.finished` handling below) — that's what coalesces a burst of rapid
   // candidates into at most one reorder per glide window (I4 fix).
+  //
+  // The current `committed` is read in the compute phase too (a read in the
+  // apply phase would be untracked and dev-warns), so a commit re-runs this
+  // effect; that run finds the candidate already committed (the commit came
+  // from this effect, or is the buffered latest candidate the glide effect
+  // released) and returns.
   createEffect(
-    on(candidate, (current) => {
-      if (sameOrder(current, committed())) {
+    () => {
+      return { current: candidate(), committedNow: committed() };
+    },
+    ({ current, committedNow }) => {
+      if (sameOrder(current, committedNow)) {
         return;
       }
 
-      const decision = coalesceOrder(committed(), pending, current, gliding);
+      const decision = coalesceOrder(committedNow, pending, current, gliding);
 
       pending = decision.bufferedPending;
 
-      if (!sameOrder(decision.committed, committed())) {
+      if (!sameOrder(decision.committed, committedNow)) {
         setCommitted(decision.committed);
       }
-    }),
+    },
   );
 
   // Mirrors the React original's useLayoutEffect: keyed on `committed` (not
@@ -189,10 +196,19 @@ export function useRankGlide(
   // committed order to the current one, so it must fire exactly when
   // `committed` actually changes, never for a candidate that got buffered
   // instead (nothing moved in the DOM yet).
+  //
+  // The root element and the freeze tier are read in the compute phase, so
+  // either changing re-runs the effect against an unchanged order — which
+  // glides nothing (every row keeps its rank) and re-records the same ranks.
   createEffect(
-    on(committed, (order) => {
-      const rootEl = root();
-
+    () => {
+      return {
+        order: committed(),
+        rootEl: root(),
+        frozen: freeze?.() ?? false,
+      };
+    },
+    ({ order, rootEl, frozen }) => {
       if (rootEl != null) {
         const nodes = Array.from(
           rootEl.querySelectorAll<HTMLElement>("[data-watch-sym]"),
@@ -201,7 +217,7 @@ export function useRankGlide(
 
         if (
           !prefersReducedMotion() &&
-          !(freeze?.() ?? false) &&
+          !frozen &&
           prevRank != null &&
           nodes.length > 0
         ) {
@@ -270,15 +286,8 @@ export function useRankGlide(
           });
         }
       }
-    }),
+    },
   );
-
-  onMount(() => {
-    // No teardown needed: the effects above hold no subscriptions outside
-    // Solid's own reactive graph (WAAPI animations settle or get GC'd with
-    // their nodes) — this onMount only documents that the hook is meant to be
-    // used within a live component tree, mirroring useFlipGrid's ownership.
-  });
 
   return committed;
 }

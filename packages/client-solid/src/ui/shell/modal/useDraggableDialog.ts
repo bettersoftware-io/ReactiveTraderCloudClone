@@ -1,9 +1,9 @@
+import type { JSX } from "@solidjs/web";
 import {
   type Accessor,
   createEffect,
   createMemo,
   createSignal,
-  type JSX,
 } from "solid-js";
 
 import { clampDragOffset, type DragOffset } from "@rtc/motion-core";
@@ -40,8 +40,8 @@ export function useDraggableDialog(
   let dialogEl: HTMLDivElement | undefined;
   let drag: DragOrigin | null = null;
 
-  createEffect(() => {
-    if (!options.open()) {
+  createEffect(options.open, (open) => {
+    if (!open) {
       setOffset(ZERO_OFFSET);
     }
   });

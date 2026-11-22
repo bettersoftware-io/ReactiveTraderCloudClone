@@ -1,11 +1,12 @@
+import type { JSX } from "@solidjs/web";
 import {
   type Accessor,
   createEffect,
   createMemo,
-  type JSX,
   Match,
   Show,
   Switch,
+  untrack,
 } from "solid-js";
 
 import type { OrderTicketIntents, OrderTicketState } from "@rtc/core-api";
@@ -66,21 +67,25 @@ export function OrderTicket(props: OrderTicketProps): JSX.Element {
   });
   // Per-mount machine — instantiated ONCE with whatever `sym()` resolves to at
   // setup (mirrors the react original's "frozen at first render" machine).
-  const ticket = useOrderTicket(sym());
+  // A deliberate one-time snapshot, hence `untrack`: the symbol reaches the
+  // machine later only through the sync effect below.
+  const ticket = useOrderTicket(untrack(sym));
 
   const formSymbol = createMemo((): string | undefined => {
     const s = ticket.state();
     return s.phase === "editing" ? s.form.symbol : undefined;
   });
 
-  createEffect(() => {
-    const fs = formSymbol();
-    const current = sym();
-
-    if (fs !== undefined && fs !== current) {
-      ticket.setSymbol(current);
-    }
-  });
+  createEffect(
+    () => {
+      return { fs: formSymbol(), current: sym() };
+    },
+    ({ fs, current }) => {
+      if (fs !== undefined && fs !== current) {
+        ticket.setSymbol(current);
+      }
+    },
+  );
 
   return (
     <Show when={sym()} keyed>

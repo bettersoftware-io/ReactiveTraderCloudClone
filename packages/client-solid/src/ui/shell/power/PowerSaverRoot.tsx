@@ -1,4 +1,5 @@
-import { createEffect, type JSX, onCleanup } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createEffect, onCleanup } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
@@ -17,13 +18,18 @@ export function PowerSaverRoot(): JSX.Element {
   const { usePowerSaver } = useViewModel();
   const { level, isCalm } = usePowerSaver();
 
-  createEffect(() => {
-    document.documentElement.dataset.powerSaver = level();
-    document.documentElement.style.setProperty(
-      "--fx-play",
-      isCalm() ? "paused" : "running",
-    );
-  });
+  createEffect(
+    () => {
+      return { level: level(), calm: isCalm() };
+    },
+    ({ level: current, calm }) => {
+      document.documentElement.dataset.powerSaver = current;
+      document.documentElement.style.setProperty(
+        "--fx-play",
+        calm ? "paused" : "running",
+      );
+    },
+  );
 
   onCleanup(() => {
     delete document.documentElement.dataset.powerSaver;

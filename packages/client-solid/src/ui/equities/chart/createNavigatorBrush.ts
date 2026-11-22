@@ -1,4 +1,4 @@
-import { type Accessor, createComputed } from "solid-js";
+import { type Accessor, createEffect } from "solid-js";
 
 import {
   type ChartViewport,
@@ -39,7 +39,7 @@ interface BrushOrigin {
   readonly startViewport: ChartViewport;
 }
 
-/** The series-growth `createComputed`'s seeded accumulator — mirrors
+/** What the series-growth effect compares run to run — mirrors
  * createChartGestures' own SeriesGrowthSnapshot (C1). */
 interface SeriesGrowthSnapshot {
   readonly len: number;
@@ -50,8 +50,8 @@ interface SeriesGrowthSnapshot {
  * The navigator strip's brush shell (ADR-005, spec §3.2): translates strip
  * pointer gestures into the pure @rtc/motion-core viewport ops and writes
  * the result back through `applyViewport` — the SECOND writer to
- * useChartGestures' one viewport cell. Deliberately zero effects and zero
- * state cells: synthetic pointer handlers + pointer capture + this one
+ * useChartGestures' one viewport cell. Deliberately zero state cells and one
+ * bookkeeping effect: synthetic pointer handlers + pointer capture + this one
  * drag-origin ref are the whole surface.
  */
 export function createNavigatorBrush(
@@ -69,32 +69,33 @@ export function createNavigatorBrush(
   // viewport that no longer matches reality. `firstCandleTime` is OPTIONAL:
   // an existing 3-arg caller reads `firstTime` as `undefined` on every run,
   // so `prepended` below can never satisfy its `!== undefined` guards —
-  // collapsing to exactly today's behaviour. Seeded with the CURRENT
-  // seriesLen()/firstCandleTime() so the first run is a no-op.
-  createComputed(
-    (prev: SeriesGrowthSnapshot) => {
-      const len = seriesLen();
-      const firstTime = firstCandleTime?.();
-
-      if (len !== prev.len || firstTime !== prev.firstTime) {
-        const grewBy = len - prev.len;
-        const prepended =
-          grewBy > 0 &&
-          prev.firstTime !== undefined &&
-          firstTime !== undefined &&
-          firstTime < prev.firstTime;
-
-        if (prepended && brushOrigin) {
-          brushOrigin = {
-            ...brushOrigin,
-            startViewport: shiftForPrepend(brushOrigin.startViewport, grewBy),
-          };
-        }
+  // collapsing to exactly today's behaviour. The apply phase receives the
+  // previous snapshot as its second argument — undefined on the first run,
+  // which is therefore a no-op. Runs before the next pointer event, the only
+  // reader of `brushOrigin`.
+  createEffect(
+    (): SeriesGrowthSnapshot => {
+      return { len: seriesLen(), firstTime: firstCandleTime?.() };
+    },
+    ({ len, firstTime }, prev) => {
+      if (prev === undefined) {
+        return;
       }
 
-      return { len, firstTime };
+      const grewBy = len - prev.len;
+      const prepended =
+        grewBy > 0 &&
+        prev.firstTime !== undefined &&
+        firstTime !== undefined &&
+        firstTime < prev.firstTime;
+
+      if (prepended && brushOrigin) {
+        brushOrigin = {
+          ...brushOrigin,
+          startViewport: shiftForPrepend(brushOrigin.startViewport, grewBy),
+        };
+      }
     },
-    { len: seriesLen(), firstTime: firstCandleTime?.() },
   );
 
   function startBrush(e: PointerEvent): void {

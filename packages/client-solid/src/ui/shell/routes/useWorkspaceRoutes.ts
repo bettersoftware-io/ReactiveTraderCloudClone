@@ -21,16 +21,25 @@ export function useWorkspaceRoutes(
     return;
   }
 
+  // The tabs the user may see, as of the last nav state the effect below
+  // received. The sync asks `canShow` from inside `observe` — called from
+  // that effect's apply phase, where a reactive read is untracked by
+  // construction (and dev-warns) — and from its Back/Forward listener, so it
+  // reads this plain copy, which the effect refreshes before every
+  // `observe`.
+  let visibleTabs: readonly WorkspaceTab[] = [];
+
   const sync = createWorkspaceRouteSync({
     routes,
     canShow: (tab: WorkspaceTab): boolean => {
-      return navState().visibleTabs.includes(tab);
+      return visibleTabs.includes(tab);
     },
     switchTab,
   });
 
-  createEffect(() => {
-    sync.observe(navState().activeTab);
+  createEffect(navState, (nav) => {
+    visibleTabs = nav.visibleTabs;
+    sync.observe(nav.activeTab);
   });
   onCleanup(() => {
     sync.dispose();

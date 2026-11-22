@@ -1,9 +1,9 @@
+import type { JSX } from "@solidjs/web";
 import {
   type Accessor,
   createSignal,
   For,
-  type JSX,
-  onMount,
+  onSettled,
   Show,
   untrack,
 } from "solid-js";
@@ -134,7 +134,7 @@ function SavedKeyReadout(props: SavedKeyReadoutProps): JSX.Element {
   );
   let replaceRef: HTMLButtonElement | undefined;
 
-  onMount(() => {
+  onSettled(() => {
     if (props.focusOnMount) {
       replaceRef?.focus();
     }
@@ -309,7 +309,7 @@ function KeyForm(props: KeyFormProps): JSX.Element {
   );
   let keyRef: HTMLInputElement | undefined;
 
-  onMount(() => {
+  onSettled(() => {
     if (props.focusOnMount) {
       keyRef?.focus();
     }
@@ -401,8 +401,8 @@ function KeyForm(props: KeyFormProps): JSX.Element {
           type="password"
           autocomplete="new-password"
           autocapitalize="off"
-          spellcheck={false}
-          maxLength={JARVIS_KEY_MAX_CHARS}
+          spellcheck="false"
+          maxlength={JARVIS_KEY_MAX_CHARS}
           aria-label="API key"
           placeholder="Paste your API key"
           onInput={noteKeyTyped}

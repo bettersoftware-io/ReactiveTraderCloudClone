@@ -1,5 +1,4 @@
-import { createRoot, type JSX } from "solid-js";
-import { insert } from "solid-js/web";
+import { type JSX, render } from "@solidjs/web";
 
 /** The core host's `mount` / `unmount` pair over one container, plus the
  * teardown for a fatal swap — the Solid twin of client-react's
@@ -15,21 +14,15 @@ export interface SolidTreeMount {
   destroy(): void;
 }
 
-/** The disposer of the reactive root a mount is building, captured as soon
- * as the root exists so a failed render can still be torn down. */
-interface BuiltRoot {
-  dispose: (() => void) | null;
-}
-
 /**
  * Creates the mount the client's view renders every composition into.
  *
- * It does what `solid-js/web`'s `render` does — a reactive root that inserts
- * the tree into the container — except on failure: `render` returns its
- * disposer only on success, so a tree that throws while rendering leaves its
- * partly built root (and any subscription it opened on the new core's
- * presenters) alive. Here the disposer is captured first and called before
- * the error is rethrown.
+ * Solid 2's `render` is all a mount needs: it registers the container for
+ * Solid's delegated events, flushes, so the tree is in the DOM when it
+ * returns, and — unlike Solid 1's, which handed its disposer back only on
+ * success — disposes the partly built root of a tree that throws while
+ * rendering (and any subscription it opened on the new core's presenters)
+ * before rethrowing. The mount only empties the container on that path too.
  */
 export function createSolidTreeMount(rootEl: HTMLElement): SolidTreeMount {
   let disposeTree: (() => void) | null = null;
@@ -43,20 +36,12 @@ export function createSolidTreeMount(rootEl: HTMLElement): SolidTreeMount {
 
   return {
     mount: (tree: () => JSX.Element): void => {
-      const built: BuiltRoot = { dispose: null };
-
       try {
-        createRoot((dispose) => {
-          built.dispose = dispose;
-          insert(rootEl, tree());
-        });
+        disposeTree = render(tree, rootEl);
       } catch (error) {
-        built.dispose?.();
         rootEl.textContent = "";
         throw error;
       }
-
-      disposeTree = built.dispose;
     },
     unmount,
     destroy: unmount,

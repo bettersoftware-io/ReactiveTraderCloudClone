@@ -1,4 +1,5 @@
-import { createSignal, type JSX, onMount, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createSignal, onSettled, Show } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
@@ -49,7 +50,7 @@ export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
     peekPreferencesReopen?.() === true,
   );
 
-  onMount(() => {
+  onSettled(() => {
     takePreferencesReopen?.();
   });
 

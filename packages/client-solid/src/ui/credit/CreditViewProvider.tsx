@@ -1,4 +1,5 @@
-import { createSignal, type JSX, type ParentProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createSignal, type ParentProps } from "solid-js";
 
 import {
   CreditViewContext,
@@ -30,11 +31,7 @@ export function CreditViewProvider(props: ParentProps): JSX.Element {
     setExportCsvHandler,
   };
 
-  return (
-    <CreditViewContext.Provider value={value}>
-      {props.children}
-    </CreditViewContext.Provider>
-  );
+  return <CreditViewContext value={value}>{props.children}</CreditViewContext>;
 }
 
 function noop(): void {}

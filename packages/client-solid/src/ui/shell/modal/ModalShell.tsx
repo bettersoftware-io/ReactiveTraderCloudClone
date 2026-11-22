@@ -1,4 +1,5 @@
-import { createEffect, type JSX, onCleanup, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createEffect, createMemo, Show } from "solid-js";
 
 import { useDraggableDialog } from "./useDraggableDialog";
 
@@ -35,19 +36,26 @@ export function ModalShell(props: ModalShellProps): JSX.Element {
   // land in it and not on whatever opened it. The dialog itself, not its
   // first control: nothing is activated by a stray Enter. When it closes,
   // focus goes back to where it was, if that element is still on the page.
-  createEffect(() => {
-    if (!props.open) {
+  // Gated through a memo: an effect re-runs its apply (and its cleanup)
+  // whenever its compute re-runs, equal value or not, and a refocus on an
+  // unchanged `open` would steal focus from inside the dialog.
+  const isOpen = createMemo((): boolean => {
+    return props.open;
+  });
+
+  createEffect(isOpen, (open) => {
+    if (!open) {
       return;
     }
 
     const opener = document.activeElement;
     dialogEl?.focus();
 
-    onCleanup(() => {
+    return () => {
       if (opener instanceof HTMLElement && opener.isConnected) {
         opener.focus();
       }
-    });
+    };
   });
 
   function closeModal(): void {
@@ -61,7 +69,7 @@ export function ModalShell(props: ModalShellProps): JSX.Element {
           ref={holdDialog}
           role="dialog"
           aria-label={props.ariaLabel}
-          tabIndex={-1}
+          tabindex={-1}
           class={styles.dialog}
           style={dialogStyle()}
         >

@@ -1,4 +1,5 @@
-import { createSignal, type JSX, type ParentProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createSignal, type ParentProps } from "solid-js";
 
 import {
   type BlotterTab,
@@ -38,11 +39,7 @@ export function FxViewProvider(props: ParentProps): JSX.Element {
     setExportCsvHandler,
   };
 
-  return (
-    <FxViewContext.Provider value={value}>
-      {props.children}
-    </FxViewContext.Provider>
-  );
+  return <FxViewContext value={value}>{props.children}</FxViewContext>;
 }
 
 function noop(): void {}

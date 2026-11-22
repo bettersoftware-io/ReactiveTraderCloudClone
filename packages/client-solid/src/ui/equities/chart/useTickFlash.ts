@@ -35,11 +35,21 @@ const IDLE: TickFlash = { flashOn: false, dir: "up" };
 export function useTickFlash(
   value: Accessor<number | null>,
 ): Accessor<TickFlash> {
-  let prevValue: number | null = value();
+  // The previous run's value; `undefined` until the memo's first run, which
+  // therefore records the value and reports idle (no previous value to
+  // compare against). Seeded inside the memo, not here: a read in the hook's
+  // body would be an untracked read in the caller's component body.
+  let prevValue: number | null | undefined;
   let prevFlash: TickFlash = IDLE;
 
   return createMemo((): TickFlash => {
     const current = value();
+
+    if (prevValue === undefined) {
+      prevValue = current;
+
+      return prevFlash;
+    }
 
     if (current === prevValue) {
       return prevFlash;

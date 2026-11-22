@@ -1,4 +1,4 @@
-import { type Accessor, createEffect, on, onCleanup, onMount } from "solid-js";
+import { type Accessor, createEffect, onSettled } from "solid-js";
 
 import {
   DRIFT_PX,
@@ -27,9 +27,9 @@ import {
  * whole component function (and so rebuilds the array from current values)
  * every render; Solid components run their body once, so a plain array built
  * from accessor calls at the call site (`useFlipGrid([filter()])`) would
- * freeze at mount. Passing a function lets the effect below call `deps()`
- * fresh on every run, re-reading whatever signals the caller closes over —
- * Solid's `on()` then tracks exactly those signals, the direct analogue of
+ * freeze at mount. Passing a function lets the effect below use `deps` as its
+ * compute phase, re-reading whatever signals the caller closes over on every
+ * run — so the effect tracks exactly those signals, the direct analogue of
  * React's dependency array.
  *
  * No-ops (skips measuring/animating) when the browser/OS prefers reduced
@@ -43,10 +43,8 @@ import {
  * their setup body exactly once — a plain boolean captured at the call site
  * (`freeze: isFreeze()`) would read the preference once at mount and never
  * see a later toggle (the same trap AmbientBackground.tsx's `vars` memo
- * comment documents). Reading it via a call INSIDE the deps-change callback
- * below (an untracked read inside `on()`'s callback) picks up the CURRENT
- * value at the moment of the next FLIP pass, which is the only moment it
- * matters.
+ * comment documents). The deps-change effect below reads it in its compute
+ * phase, beside `deps`, so each FLIP pass sees the CURRENT value.
  */
 export function useFlipGrid(
   deps: () => unknown[],
@@ -67,7 +65,7 @@ export function useFlipGrid(
   // resized — both change tile sizes, which ResizeObserver sees) just
   // refreshes the stored origins so the NEXT deps-change FLIP doesn't glide
   // in from a stale position.
-  onMount(() => {
+  onSettled(() => {
     function resnapshot(): void {
       // getBoundingClientRect includes in-flight WAAPI transforms, so a
       // refresh that lands mid-glide would store a transformed rect as the
@@ -91,23 +89,26 @@ export function useFlipGrid(
     });
     window.addEventListener("resize", resnapshot);
 
-    onCleanup(() => {
+    return () => {
       window.removeEventListener("resize", resnapshot);
       ro?.disconnect();
       observer = null;
-    });
+    };
   });
 
+  // The freeze tier is read in the compute phase beside `deps` (a read in
+  // the apply phase would be untracked and dev-warns), so flipping it re-runs
+  // the pass against an unchanged grid — which re-measures the same origins
+  // and glides nothing.
   createEffect(
-    on(deps, () => {
+    () => {
+      return { frozen: freeze?.() ?? false, deps: deps() };
+    },
+    ({ frozen }) => {
       const nextPositions = measurePositions(elements);
       const prevPositions = positions;
 
-      if (
-        prevPositions.size > 0 &&
-        !prefersReducedMotion() &&
-        !(freeze?.() ?? false)
-      ) {
+      if (prevPositions.size > 0 && !prefersReducedMotion() && !frozen) {
         for (const { key, dx, dy } of flipDeltas(
           prevPositions,
           nextPositions,
@@ -154,7 +155,7 @@ export function useFlipGrid(
 
       exitedNodes.clear();
       positions = nextPositions;
-    }),
+    },
   );
 
   function register(key: string): (el: HTMLElement | null) => void {
