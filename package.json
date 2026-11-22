@@ -97,7 +97,7 @@
     "check:deps": "depcruise --config .dependency-cruiser.mts packages tests",
     "lint:eslint": "eslint . --max-warnings 0",
     "lint:eslint:types": "eslint . --config eslint.config.typed.mts --max-warnings 0",
-    "lint:css": "stylelint \"packages/*/src/**/*.css\" --max-warnings 0",
+    "lint:css": "stylelint --config stylelint.config.mts \"packages/*/src/**/*.css\" --max-warnings 0",
     "visual:jitter": "pnpm --filter @rtc/tests visual:jitter",
     "jarvis:smoke:live": "pnpm --filter @rtc/tests jarvis:smoke:live",
     "visual:engine-parity": "pnpm --filter @rtc/tests visual:engine-parity"
@@ -117,7 +117,7 @@
     "github-slugger": "^2.0.0",
     "knip": "^6.47.0",
     "playwright": "^1.65.1",
-    "stylelint": "^17.13.0",
+    "stylelint": "^18.1.0",
     "stylelint-declaration-strict-value": "^1.13.0",
     "syncpack": "^15.3.2",
     "turbo": "^2.11.13",

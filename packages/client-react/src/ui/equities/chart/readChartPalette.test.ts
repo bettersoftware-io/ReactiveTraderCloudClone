@@ -1,12 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { CHART_PALETTE_TOKENS } from "@rtc/motion-core";
 
 import { readChartPalette } from "./readChartPalette";
 
+// Every element is attached to the document: a disconnected element has no
+// computed style (browsers and jsdom ≥ 31 return "" for every property), and
+// the chart only ever reads its palette off a mounted canvas host.
+afterEach(() => {
+  document.body.replaceChildren();
+});
+
 describe("readChartPalette", () => {
   it("reads tokens set on the element's inline style", () => {
-    const el = document.createElement("div");
+    const el = document.body.appendChild(document.createElement("div"));
     el.style.setProperty(CHART_PALETTE_TOKENS.up, "#0f0");
     el.style.setProperty(CHART_PALETTE_TOKENS.down, "#f00");
 
@@ -17,7 +24,7 @@ describe("readChartPalette", () => {
   });
 
   it("reads an unset token as an empty string", () => {
-    const el = document.createElement("div");
+    const el = document.body.appendChild(document.createElement("div"));
 
     const palette = readChartPalette(el);
 
@@ -25,7 +32,7 @@ describe("readChartPalette", () => {
   });
 
   it("reads every declared palette key", () => {
-    const el = document.createElement("div");
+    const el = document.body.appendChild(document.createElement("div"));
 
     const palette = readChartPalette(el);
 
