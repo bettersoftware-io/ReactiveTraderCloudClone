@@ -1,4 +1,4 @@
-import { Cause, Effect, type Fiber, Option, Stream } from "effect";
+import { Cause, Effect, type Fiber, Option, Result, Stream } from "effect";
 
 import type {
   AnimationDirector,
@@ -38,6 +38,7 @@ import {
   type PortEvents,
   portEvents,
   reportOutOfBand,
+  runForkIn,
   sharedFold,
   switchedPortEvents,
 } from "#/bridge/out";
@@ -199,7 +200,7 @@ export function createAuthPresenter(
   // commit (the contract's "just before" cases pass with the token check
   // removed — an equivalent mutant today). `app.dispose()` closes `host`'s
   // scope, which interrupts whatever is still in flight.
-  const attempts = new Set<Fiber.RuntimeFiber<void>>();
+  const attempts = new Set<Fiber.Fiber<void>>();
   let live: object = {};
 
   function cancelAttempts(): void {
@@ -219,7 +220,8 @@ export function createAuthPresenter(
   ): void {
     const outcome$ = deps.auth.login(username, password);
     const token = live;
-    const fiber = host.runtime.runFork(
+    const fiber = runForkIn(
+      host.runtime,
       rpc(outcome$).pipe(
         Effect.flatMap((outcome) => {
           return Effect.sync(() => {
@@ -228,15 +230,15 @@ export function createAuthPresenter(
             }
           });
         }),
-        Effect.catchAllCause((cause) => {
+        Effect.catchCause((cause) => {
           return Effect.sync(() => {
-            if (!Cause.isInterruptedOnly(cause)) {
+            if (!Cause.hasInterruptsOnly(cause)) {
               reportOutOfBand(cause);
             }
           });
         }),
       ),
-      { scope: host.scope },
+      host.scope,
     );
     attempts.add(fiber);
     // Called at once when the fiber has already ended (a port that answered
@@ -427,10 +429,12 @@ export function createAnimationDirector(
       ]);
 
       return intents.pipe(
-        Stream.filterMap((intent) => {
-          return intent;
+        Stream.filterMap((intent: Option.Option<AnimationIntent>) => {
+          return Result.fromOption(intent, () => {
+            return intent;
+          });
         }),
-        Stream.runForEach((intent) => {
+        Stream.runForEach((intent: AnimationIntent) => {
           return update(() => {
             return intent;
           });

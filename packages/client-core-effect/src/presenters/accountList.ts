@@ -57,7 +57,7 @@ export function createAccountListPresenter(
       return Effect.suspend(() => {
         return rpc(port.listAccounts());
       }).pipe(
-        Effect.catchAll(() => {
+        Effect.catch(() => {
           return Effect.succeed(UNAVAILABLE);
         }),
         Effect.flatMap((outcome: AccountListOutcome) => {

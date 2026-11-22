@@ -128,175 +128,174 @@ import { AppPortsTag, HostLive, HostTag, presenterLayer } from "#/services";
 
 // One tag per native presenter. The key is the member's name in
 // `Presenters`, so a tag reads as the member it resolves to.
-export const ConnectionTag = Context.GenericTag<ConnectionStatusPresenter>(
+export const ConnectionTag = Context.Service<ConnectionStatusPresenter>(
   "@rtc/client-core-effect/connection",
 );
-export const ThemePreferenceTag = Context.GenericTag<ThemePreferencePresenter>(
+export const ThemePreferenceTag = Context.Service<ThemePreferencePresenter>(
   "@rtc/client-core-effect/themePreference",
 );
 export const ThemeSkinPreferenceTag =
-  Context.GenericTag<ThemeSkinPreferencePresenter>(
+  Context.Service<ThemeSkinPreferencePresenter>(
     "@rtc/client-core-effect/themeSkinPreference",
   );
 export const ViewModePreferenceTag =
-  Context.GenericTag<ViewModePreferencePresenter>(
+  Context.Service<ViewModePreferencePresenter>(
     "@rtc/client-core-effect/viewModePreference",
   );
-export const PowerSaverTag = Context.GenericTag<PowerSaverPresenter>(
+export const PowerSaverTag = Context.Service<PowerSaverPresenter>(
   "@rtc/client-core-effect/powerSaver",
 );
 export const CreditRfqFilterPreferenceTag =
-  Context.GenericTag<CreditRfqFilterPreferencePresenter>(
+  Context.Service<CreditRfqFilterPreferencePresenter>(
     "@rtc/client-core-effect/creditRfqFilterPreference",
   );
 export const EqWatchlistSortPreferenceTag =
-  Context.GenericTag<EqWatchlistSortPreferencePresenter>(
+  Context.Service<EqWatchlistSortPreferencePresenter>(
     "@rtc/client-core-effect/eqWatchlistSortPreference",
   );
 export const EqBlotterViewPreferenceTag =
-  Context.GenericTag<EqBlotterViewPreferencePresenter>(
+  Context.Service<EqBlotterViewPreferencePresenter>(
     "@rtc/client-core-effect/eqBlotterViewPreference",
   );
-export const BootPreferenceTag = Context.GenericTag<BootPreferencePresenter>(
+export const BootPreferenceTag = Context.Service<BootPreferencePresenter>(
   "@rtc/client-core-effect/bootPreference",
 );
 export const LoginWaitPreferencesTag =
-  Context.GenericTag<LoginWaitPreferencesPresenter>(
+  Context.Service<LoginWaitPreferencesPresenter>(
     "@rtc/client-core-effect/loginWaitPreferences",
   );
-export const JarvisPreferencesTag =
-  Context.GenericTag<JarvisPreferencesPresenter>(
-    "@rtc/client-core-effect/jarvisPreferences",
-  );
+export const JarvisPreferencesTag = Context.Service<JarvisPreferencesPresenter>(
+  "@rtc/client-core-effect/jarvisPreferences",
+);
 export const AnimatedBackgroundTag =
-  Context.GenericTag<AnimatedBackgroundPresenter>(
+  Context.Service<AnimatedBackgroundPresenter>(
     "@rtc/client-core-effect/animatedBackground",
   );
-export const AmbientStyleTag = Context.GenericTag<AmbientStylePresenter>(
+export const AmbientStyleTag = Context.Service<AmbientStylePresenter>(
   "@rtc/client-core-effect/ambientStyle",
 );
-export const ChartSubstrateTag = Context.GenericTag<ChartSubstratePresenter>(
+export const ChartSubstrateTag = Context.Service<ChartSubstratePresenter>(
   "@rtc/client-core-effect/chartSubstrate",
 );
-export const LayoutEngineTag = Context.GenericTag<LayoutEnginePresenter>(
+export const LayoutEngineTag = Context.Service<LayoutEnginePresenter>(
   "@rtc/client-core-effect/layoutEngine",
 );
 export const ForceBootAnimationTag =
-  Context.GenericTag<ForceBootAnimationPresenter>(
+  Context.Service<ForceBootAnimationPresenter>(
     "@rtc/client-core-effect/forceBootAnimation",
   );
-export const PriceStreamTag = Context.GenericTag<PriceStreamPresenter>(
+export const PriceStreamTag = Context.Service<PriceStreamPresenter>(
   "@rtc/client-core-effect/priceStream",
 );
 export const EquityPriceHistoryTag =
-  Context.GenericTag<EquityPriceHistoryPresenter>(
+  Context.Service<EquityPriceHistoryPresenter>(
     "@rtc/client-core-effect/equityPriceHistory",
   );
-export const PriceHistoryTag = Context.GenericTag<PriceHistoryPresenter>(
+export const PriceHistoryTag = Context.Service<PriceHistoryPresenter>(
   "@rtc/client-core-effect/priceHistory",
 );
-export const CurrencyPairsTag = Context.GenericTag<CurrencyPairsPresenter>(
+export const CurrencyPairsTag = Context.Service<CurrencyPairsPresenter>(
   "@rtc/client-core-effect/currencyPairs",
 );
-export const BlotterTag = Context.GenericTag<BlotterPresenter>(
+export const BlotterTag = Context.Service<BlotterPresenter>(
   "@rtc/client-core-effect/blotter",
 );
-export const AnalyticsTag = Context.GenericTag<AnalyticsPresenter>(
+export const AnalyticsTag = Context.Service<AnalyticsPresenter>(
   "@rtc/client-core-effect/analytics",
 );
-export const ExecutionTag = Context.GenericTag<TradeExecutionPresenter>(
+export const ExecutionTag = Context.Service<TradeExecutionPresenter>(
   "@rtc/client-core-effect/execution",
 );
-export const RfqsTag = Context.GenericTag<RfqsPresenter>(
+export const RfqsTag = Context.Service<RfqsPresenter>(
   "@rtc/client-core-effect/rfqs",
 );
-export const DealersTag = Context.GenericTag<DealersPresenter>(
+export const DealersTag = Context.Service<DealersPresenter>(
   "@rtc/client-core-effect/dealers",
 );
-export const InstrumentsTag = Context.GenericTag<InstrumentsPresenter>(
+export const InstrumentsTag = Context.Service<InstrumentsPresenter>(
   "@rtc/client-core-effect/instruments",
 );
-export const RfqQuoteTag = Context.GenericTag<RfqQuotePresenter>(
+export const RfqQuoteTag = Context.Service<RfqQuotePresenter>(
   "@rtc/client-core-effect/rfqQuote",
 );
-export const WatchlistTag = Context.GenericTag<WatchlistPresenter>(
+export const WatchlistTag = Context.Service<WatchlistPresenter>(
   "@rtc/client-core-effect/watchlist",
 );
-export const CandleSeriesTag = Context.GenericTag<CandleSeriesPresenter>(
+export const CandleSeriesTag = Context.Service<CandleSeriesPresenter>(
   "@rtc/client-core-effect/candleSeries",
 );
-export const DepthTag = Context.GenericTag<DepthPresenter>(
+export const DepthTag = Context.Service<DepthPresenter>(
   "@rtc/client-core-effect/depth",
 );
-export const OrdersBlotterTag = Context.GenericTag<OrdersBlotterPresenter>(
+export const OrdersBlotterTag = Context.Service<OrdersBlotterPresenter>(
   "@rtc/client-core-effect/ordersBlotter",
 );
-export const PositionsTag = Context.GenericTag<PositionsPresenter>(
+export const PositionsTag = Context.Service<PositionsPresenter>(
   "@rtc/client-core-effect/positions",
 );
-export const EqWorkspaceTag = Context.GenericTag<
+export const EqWorkspaceTag = Context.Service<
   Machine<EqWorkspaceState, EqWorkspaceIntents>
 >("@rtc/client-core-effect/eqWorkspace");
-export const EqDrawingsTag = Context.GenericTag<
+export const EqDrawingsTag = Context.Service<
   Machine<EqDrawingsState, EqDrawingsIntents>
 >("@rtc/client-core-effect/eqDrawings");
-const ThroughputTag = Context.GenericTag<ThroughputPresenter>(
+const ThroughputTag = Context.Service<ThroughputPresenter>(
   "@rtc/client-core-effect/throughput",
 );
 
-const ThroughputMetricTag = Context.GenericTag<ThroughputMetricPresenter>(
+const ThroughputMetricTag = Context.Service<ThroughputMetricPresenter>(
   "@rtc/client-core-effect/throughputMetric",
 );
 
-const LatencyMetricTag = Context.GenericTag<LatencyPresenter>(
+const LatencyMetricTag = Context.Service<LatencyPresenter>(
   "@rtc/client-core-effect/latencyMetric",
 );
 
-const ErrorRateMetricTag = Context.GenericTag<ErrorRatePresenter>(
+const ErrorRateMetricTag = Context.Service<ErrorRatePresenter>(
   "@rtc/client-core-effect/errorRateMetric",
 );
 
-const TopologyTag = Context.GenericTag<ServiceTopologyPresenter>(
+const TopologyTag = Context.Service<ServiceTopologyPresenter>(
   "@rtc/client-core-effect/topology",
 );
 
-const EventLogTag = Context.GenericTag<EventLogPresenter>(
+const EventLogTag = Context.Service<EventLogPresenter>(
   "@rtc/client-core-effect/eventLog",
 );
 
-const SessionsTag = Context.GenericTag<SessionsPresenter>(
+const SessionsTag = Context.Service<SessionsPresenter>(
   "@rtc/client-core-effect/sessions",
 );
 
-const SessionsKpiTag = Context.GenericTag<SessionsKpiPresenter>(
+const SessionsKpiTag = Context.Service<SessionsKpiPresenter>(
   "@rtc/client-core-effect/sessionsKpi",
 );
 
-const WorkspaceNavTag = Context.GenericTag<
+const WorkspaceNavTag = Context.Service<
   Machine<WorkspaceNavState, WorkspaceNavIntents>
 >("@rtc/client-core-effect/workspaceNav");
 
-const BootGateTag = Context.GenericTag<BootGatePresenter>(
+const BootGateTag = Context.Service<BootGatePresenter>(
   "@rtc/client-core-effect/bootGate",
 );
 
-const AuthTag = Context.GenericTag<EndableAuthPresenter>(
+const AuthTag = Context.Service<EndableAuthPresenter>(
   "@rtc/client-core-effect/auth",
 );
 
-const AccountListTag = Context.GenericTag<AccountListPresenter>(
+const AccountListTag = Context.Service<AccountListPresenter>(
   "@rtc/client-core-effect/accountList",
 );
 
-const JarvisOwnKeyTag = Context.GenericTag<JarvisOwnKeyPresenter>(
+const JarvisOwnKeyTag = Context.Service<JarvisOwnKeyPresenter>(
   "@rtc/client-core-effect/jarvisOwnKey",
 );
 
-const AnimationDirectorTag = Context.GenericTag<AnimationDirector>(
+const AnimationDirectorTag = Context.Service<AnimationDirector>(
   "@rtc/client-core-effect/animationDirector",
 );
 
-const IncidentTag = Context.GenericTag<Machine<IncidentState, IncidentIntents>>(
+const IncidentTag = Context.Service<Machine<IncidentState, IncidentIntents>>(
   "@rtc/client-core-effect/incident",
 );
 

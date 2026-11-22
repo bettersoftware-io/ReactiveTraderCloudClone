@@ -1,6 +1,8 @@
 import { Effect } from "effect";
 import type { Observable, Subscription } from "rxjs";
 
+import { callbackOnTurn } from "#/bridge/turnResume";
+
 /** One-shot RPC shape: the first value of an Observable port method.
  *
  * The RPC primitive for the one-shot ports (`execution.executeTrade`):
@@ -13,9 +15,11 @@ import type { Observable, Subscription } from "rxjs";
  * `subscription` binding exists and with more emissions still to come — so
  * the handlers route through `endSubscription`, which tolerates the
  * not-yet-assigned holder, and `settled` keeps the later `next`/`complete`
- * from resuming an already-resumed fiber. */
+ * from resuming an already-resumed fiber. Every answer — a synchronous one
+ * included — resumes the fiber on the turn scheduler, never inside the
+ * port's `next` or the caller's run (`callbackOnTurn`, which says why). */
 export function rpc<T>(source: Observable<T>): Effect.Effect<T, unknown> {
-  return Effect.async<T, unknown>((resume) => {
+  return callbackOnTurn<T, unknown>((resume) => {
     let subscription: Subscription | undefined;
     let settled = false;
 

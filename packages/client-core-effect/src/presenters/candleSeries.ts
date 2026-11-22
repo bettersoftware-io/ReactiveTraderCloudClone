@@ -20,6 +20,7 @@ import {
   type FromPort,
   type HotStream,
   portEvents,
+  runForkIn,
   sharedFold,
 } from "#/bridge/out";
 import { rpc } from "#/bridge/rpc";
@@ -191,7 +192,8 @@ export function createCandleSeriesPresenter(
     // `loading` is set true INSIDE the forked effect rather than
     // synchronously: every consumer reads it after a settle, and one writer
     // per cell keeps the ordering against `ensuring`'s clear obvious.
-    host.runtime.runFork(
+    runForkIn(
+      host.runtime,
       state.loading
         .write(() => {
           return true;
@@ -226,7 +228,7 @@ export function createCandleSeriesPresenter(
             }),
           ),
         ),
-      { scope: host.scope },
+      host.scope,
     );
   }
 

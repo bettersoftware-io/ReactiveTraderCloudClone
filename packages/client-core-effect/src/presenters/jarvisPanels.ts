@@ -46,6 +46,7 @@ import {
   oneEvent,
   portEvents,
   projectedChanges,
+  runForkIn,
   sharedFold,
   switchedPortEvents,
 } from "#/bridge/out";
@@ -84,7 +85,8 @@ export function createJarvisPanelsMachine(
   // `fromPortIn` subscribes the events NOW, at construction, buffering until
   // the fiber below drains them: the base's `jarvis.events$` is hot, and a
   // turn sent before a lazily-subscribing fiber had started would be lost.
-  host.runtime.runFork(
+  runForkIn(
+    host.runtime,
     fromPortIn(host.scope)(events$).pipe(
       Stream.runForEach((event) => {
         return Effect.sync(() => {
@@ -96,7 +98,7 @@ export function createJarvisPanelsMachine(
         });
       }),
     ),
-    { scope: host.scope },
+    host.scope,
   );
 
   return {

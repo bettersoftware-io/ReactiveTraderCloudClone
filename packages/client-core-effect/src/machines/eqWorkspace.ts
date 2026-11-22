@@ -23,6 +23,7 @@ import {
   type EffectHost,
   fromPortIn,
   reportOutOfBand,
+  runForkIn,
 } from "#/bridge/out";
 import { createSyncRef } from "#/bridge/syncRef";
 
@@ -96,7 +97,8 @@ export function createEqWorkspaceMachine(
     // source is released by `dispose()` whether or not the roster ever
     // arrived.
     const roster = fromPortIn(host.scope)(roster$);
-    host.runtime.runFork(
+    runForkIn(
+      host.runtime,
       roster.pipe(
         Stream.map(firstWatchlistSymbol),
         Stream.filter((sym) => {
@@ -108,15 +110,15 @@ export function createEqWorkspaceMachine(
             return reduceEqWorkspace(state, { kind: "seed", sym });
           });
         }),
-        Effect.catchAllCause((cause) => {
+        Effect.catchCause((cause) => {
           return Effect.sync(() => {
-            if (!Cause.isInterruptedOnly(cause)) {
+            if (!Cause.hasInterruptsOnly(cause)) {
               reportOutOfBand(cause);
             }
           });
         }),
       ),
-      { scope: host.scope },
+      host.scope,
     );
   }
 

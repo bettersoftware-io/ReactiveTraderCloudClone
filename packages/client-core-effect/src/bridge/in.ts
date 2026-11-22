@@ -1,5 +1,15 @@
-import { Chunk, Effect, Queue, Scope, Stream, Take } from "effect";
+import {
+  Effect,
+  Exit,
+  Queue,
+  Scheduler,
+  Scope,
+  Stream,
+  type Take,
+} from "effect";
 import type { Observable, Unsubscribable } from "rxjs";
+
+import { turnScheduler } from "#/bridge/turnScheduler";
 
 /** Push an Observable into an Effect Stream, subscribing SYNCHRONOUSLY, as a
  * side effect of calling `fromObservable` itself — not lazily, on first
@@ -38,12 +48,12 @@ import type { Observable, Unsubscribable } from "rxjs";
  * already-unsubscribed source).
  *
  * BURSTS TRAVEL WHOLE. Everything the source emits in one turn is drained
- * together and sent downstream as ONE chunk (`drainBurst` +
- * `joinConsecutiveValues` below). `Stream.merge`, `mergeAll` and `flatMap`
- * hand each CHUNK from one fiber to another as a step of its own, so a burst
- * that enters as fifty single-value chunks (what the obvious
- * `Stream.fromQueue(queue).pipe(Stream.flattenTake)` produces: one chunk per
- * `Take`) costs fifty hand-overs at every merge it crosses.
+ * together and sent downstream as ONE chunk (`Stream.fromQueue`'s
+ * `takeAll` + `joinConsecutiveValues` below). `Stream.merge`, `mergeAll` and
+ * `flatMap` hand each CHUNK from one fiber to another as a step of its own,
+ * so a burst that enters as fifty single-value chunks (what effect 3's
+ * obvious `Stream.fromQueue(queue).pipe(Stream.flattenTake)` produced: one
+ * chunk per `Take`) costs fifty hand-overs at every merge it crosses.
  *
  * What that has cost, MEASURED 2026-10-04 on the pricing simulator's replay
  * of 50 historical ticks per pair on subscribe (React client, nine tiles):
@@ -60,9 +70,7 @@ import type { Observable, Unsubscribable } from "rxjs";
  *   537 ms).
  *
  * So this is a saving of fiber steps now; the one-turn guarantee is the
- * scheduler's. A waiting `take` is handed the burst's first value alone,
- * hence the `takeAll` that follows it. This file's chunk tests pin the
- * joining.
+ * scheduler's. This file's chunk tests pin the joining.
  *
  * The calling rule, stated as what to DO: call it inside a `sharedFold`'s
  * `run`, once per warm period. Never at presenter construction, never
@@ -405,20 +413,28 @@ export function fromObservables<E>(
   sources: readonly PortEvents<E>[],
   scope?: Scope.Scope,
 ): Stream.Stream<E, unknown> {
-  const queue = Effect.runSync(Queue.unbounded<Take.Take<E, unknown>>());
+  // Made on the turn scheduler: effect 4's `Queue` hands a value to a
+  // waiting taker through the dispatcher of the fiber that MADE it, so a
+  // queue made on `Effect.runSync`'s throwaway scheduler would deliver off
+  // the turn.
+  const queue = Effect.runSync(
+    Queue.unbounded<Take.Take<E, unknown>>().pipe(
+      Effect.provideService(Scheduler.Scheduler, turnScheduler),
+    ),
+  );
   let live = sources.length;
   const sink: EventSink<E> = {
     emit: (event: E) => {
-      Queue.unsafeOffer(queue, Take.of(event));
+      Queue.offerUnsafe(queue, [event]);
     },
     fail: (error: unknown) => {
-      Queue.unsafeOffer(queue, Take.fail(error));
+      Queue.offerUnsafe(queue, Exit.fail(error));
     },
     end: () => {
       live -= 1;
 
       if (live === 0) {
-        Queue.unsafeOffer(queue, Take.end);
+        Queue.offerUnsafe(queue, Exit.void);
       }
     },
   };
@@ -453,19 +469,13 @@ export function fromObservables<E>(
     holdForSynchronousRelease(scope, subscription);
   }
 
-  // One drain = everything the source emitted in one turn. A parked `take`
-  // is handed the burst's FIRST value alone (the queue completes a waiting
-  // taker with one element), so the rest is collected with `takeAll` once
-  // this fiber resumes — by then the source's synchronous loop has finished
-  // and the whole burst is queued.
-  const drainBurst = Queue.take(queue).pipe(
-    Effect.zipWith(Queue.takeAll(queue), (first, rest) => {
-      return Chunk.prepend(rest, first);
-    }),
-  );
-
-  return Stream.repeatEffectChunk(drainBurst).pipe(
-    Stream.mapChunks(joinConsecutiveValues),
+  // One drain = everything the source emitted in one turn: a pull of
+  // `Stream.fromQueue` is a `Queue.takeAll`, which waits for the first value
+  // and then takes every one queued behind it — by the time the waiting
+  // fiber resumes, the source's synchronous loop has finished and the whole
+  // burst is queued.
+  return Stream.fromQueue(queue).pipe(
+    Stream.mapArray(joinConsecutiveValues),
     Stream.flattenTake,
     Stream.ensuring(
       Effect.sync(() => {
@@ -529,34 +539,36 @@ export function releasePorts(scope: Scope.Scope): void {
  * turn travels downstream as a single chunk. A terminal `Take` (end or
  * failure) stays where it was, after the values that preceded it. */
 function joinConsecutiveValues<T>(
-  takes: Chunk.Chunk<Take.Take<T, unknown>>,
-): Chunk.Chunk<Take.Take<T, unknown>> {
+  takes: NonEmpty<Take.Take<T, unknown>>,
+): NonEmpty<Take.Take<T, unknown>> {
   const joined: Take.Take<T, unknown>[] = [];
   let values: T[] = [];
 
   function flushValues(): void {
-    if (values.length > 0) {
-      joined.push(Take.chunk(Chunk.unsafeFromArray(values)));
+    if (isNonEmpty(values)) {
+      joined.push(values);
       values = [];
     }
   }
 
   for (const take of takes) {
-    Take.match(take, {
-      onEnd: () => {
-        flushValues();
-        joined.push(take);
-      },
-      onFailure: () => {
-        flushValues();
-        joined.push(take);
-      },
-      onSuccess: (chunk: Chunk.Chunk<T>) => {
-        values.push(...chunk);
-      },
-    });
+    if (Exit.isExit(take)) {
+      flushValues();
+      joined.push(take);
+    } else {
+      values.push(...take);
+    }
   }
 
   flushValues();
-  return Chunk.unsafeFromArray(joined);
+
+  // `takes` is not empty, so neither is what it joins into.
+  return isNonEmpty(joined) ? joined : takes;
+}
+
+/** What a `Take` carries its values in, and what one queue drain is. */
+type NonEmpty<T> = readonly [T, ...T[]];
+
+function isNonEmpty<T>(items: readonly T[]): items is NonEmpty<T> {
+  return items.length > 0;
 }

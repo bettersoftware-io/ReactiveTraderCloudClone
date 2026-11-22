@@ -1,4 +1,4 @@
-import { Chunk, Effect, Exit, Scope, Stream } from "effect";
+import { Effect, Exit, Fiber, Scope, Stream } from "effect";
 import {
   BehaviorSubject,
   of,
@@ -26,7 +26,7 @@ describe("bridge/in", () => {
     const values = await Effect.runPromise(
       Stream.runCollect(fromObservable(of(1, 2, 3))),
     );
-    expect(Chunk.toArray(values)).toEqual([1, 2, 3]);
+    expect(values).toEqual([1, 2, 3]);
   });
 
   it("fromObservable() subscribes the source synchronously under runFork", async () => {
@@ -67,7 +67,7 @@ describe("bridge/in", () => {
       setTimeout(resume, 0);
     });
     source.next(1);
-    await Effect.runPromise(Effect.fromFiber(fiber));
+    await Effect.runPromise(Fiber.join(fiber));
     expect(source.observed).toBe(false);
   });
 
@@ -635,9 +635,9 @@ function listenTo<E>(source: PortEvents<E>): Heard {
 function collectChunks<T>(stream: Stream.Stream<T, unknown>): T[][] {
   const chunks: T[][] = [];
   Effect.runFork(
-    Stream.runForEachChunk(stream, (chunk) => {
+    Stream.runForEachArray(stream, (chunk: readonly T[]) => {
       return Effect.sync(() => {
-        chunks.push(Chunk.toArray(chunk));
+        chunks.push([...chunk]);
       });
     }),
   );

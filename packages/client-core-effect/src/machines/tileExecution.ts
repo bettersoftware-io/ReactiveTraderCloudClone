@@ -60,7 +60,7 @@ function runExecution(
     yield* run.write(() => {
       return STARTED_TILE_EXECUTION;
     });
-    yield* Effect.fork(
+    yield* Effect.forkChild(
       Effect.sleep(Duration.millis(TOO_LONG_THRESHOLD_MS)).pipe(
         Effect.andThen(
           run.write((current) => {
@@ -74,7 +74,7 @@ function runExecution(
     const outcome = yield* Effect.race(
       rpc(deps.execute(input)).pipe(
         Effect.map(finishedTileExecution),
-        Effect.catchAll(() => {
+        Effect.catch(() => {
           return Effect.succeed(TIMED_OUT_TILE_EXECUTION);
         }),
       ),

@@ -51,9 +51,12 @@ export function mirrorPort<T, U>(
  * whose producer is one `fromPort`. For a keyed wire stream — `mirrorPort`'s
  * `peekCurrent` is a subscribe + unsubscribe, which on a server-refcounted
  * per-symbol stream is subscribe/unsubscribe/subscribe on the wire at the
- * start of every warm period. The price: the first value arrives a fiber
- * hop after subscribe, never in the caller's tick. A late joiner still
- * replays the latest synchronously; equal consecutive values conflate. */
+ * start of every warm period. The price: no seed, so a subscriber hears
+ * nothing until the producer has folded the port's first value — inside the
+ * caller's `subscribe` only when the port replays on subscribe (the
+ * producer runs synchronously up to its first suspension, and the fold
+ * settles before `subscribe` returns). A late joiner still replays the
+ * latest synchronously; equal consecutive values conflate. */
 export function followPort<T>(
   host: EffectHost,
   source: CoreStream<T>,

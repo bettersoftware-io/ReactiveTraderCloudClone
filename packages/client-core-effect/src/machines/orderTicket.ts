@@ -130,7 +130,7 @@ export function createOrderTicketMachine(
                 Stream.runForEach((order: EquityOrder) => {
                   return run.guarded(offer(orderToTicketPhase(order)));
                 }),
-                Effect.catchAll((failure: unknown) => {
+                Effect.catch((failure: unknown) => {
                   return run.guarded(offer(placeFailureToTicketPhase(failure)));
                 }),
               ),

@@ -68,7 +68,7 @@ export function createAccountAccessMachine(
   function send(request: AccountRequest): void {
     slot.start((run: Run<AccountAccessState>) => {
       return rpc(callAccountFlow(accounts, request)).pipe(
-        Effect.catchAll(() => {
+        Effect.catch(() => {
           return Effect.succeed(UNAVAILABLE);
         }),
         Effect.flatMap((outcome: AccountFlowOutcome) => {

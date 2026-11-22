@@ -36,6 +36,7 @@ import {
   type EffectHost,
   interruptFiber,
   reportOutOfBand,
+  runForkIn,
   type WarmStateStream,
 } from "#/bridge/out";
 import { peek } from "#/bridge/peek";
@@ -408,7 +409,7 @@ function createPersistDebounce(
   isClosed: () => boolean,
   write: () => void,
 ): PersistDebounce {
-  let pending: Fiber.RuntimeFiber<void> | null = null;
+  let pending: Fiber.Fiber<void> | null = null;
   // A kick not yet written. `pending` alone cannot say so: it keeps the
   // fiber after that fiber wrote.
   let unwritten = false;
@@ -429,7 +430,8 @@ function createPersistDebounce(
       }
 
       unwritten = true;
-      pending = host.runtime.runFork(
+      pending = runForkIn(
+        host.runtime,
         Effect.sleep(WORKSPACE_PERSIST_DEBOUNCE_MS).pipe(
           Effect.andThen(
             Effect.sync(() => {
@@ -440,7 +442,7 @@ function createPersistDebounce(
             }),
           ),
         ),
-        { scope: host.scope },
+        host.scope,
       );
     },
     writePending: () => {

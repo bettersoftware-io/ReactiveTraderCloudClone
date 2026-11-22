@@ -62,7 +62,7 @@ function runQuote(
       deps.requestQuote(pair.symbol, pair.pipsPosition),
     ).pipe(
       Effect.map(Option.some),
-      Effect.catchAll(() => {
+      Effect.catch(() => {
         return Effect.succeed(Option.none<RfqQuoteResult>());
       }),
     );

@@ -3,7 +3,7 @@ import { Duration, Effect } from "effect";
 import type { ReadOnlyMachine } from "@rtc/core-api";
 import { BLOTTER_ROW_HIGHLIGHT_MS } from "@rtc/domain";
 
-import { closeScope, createDetachedHost } from "#/bridge/out";
+import { closeScope, createDetachedHost, runForkIn } from "#/bridge/out";
 import { createSyncRef } from "#/bridge/syncRef";
 
 /** `isNew` at once, then `false` after `BLOTTER_ROW_HIGHLIGHT_MS` on a fiber
@@ -16,7 +16,8 @@ export function createRowHighlightMachine(
   const ref = createSyncRef(isNew);
 
   if (isNew) {
-    host.runtime.runFork(
+    runForkIn(
+      host.runtime,
       Effect.sleep(Duration.millis(BLOTTER_ROW_HIGHLIGHT_MS)).pipe(
         Effect.andThen(
           ref.write(() => {
@@ -24,7 +25,7 @@ export function createRowHighlightMachine(
           }),
         ),
       ),
-      { scope: host.scope },
+      host.scope,
     );
   }
 

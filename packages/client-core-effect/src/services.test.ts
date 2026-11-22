@@ -1,6 +1,7 @@
 import { Effect, Exit, ManagedRuntime, Scope } from "effect";
 import { describe, expect, it } from "vitest";
 
+import { runForkIn } from "#/bridge/out";
 import { HostLive, HostTag } from "#/services";
 
 describe("HostLive", () => {
@@ -9,7 +10,8 @@ describe("HostLive", () => {
     const host = runtime.runSync(HostTag);
     expect(host.runtime.runSync(Effect.succeed(1))).toBe(1);
     let interrupted = false;
-    host.runtime.runFork(
+    runForkIn(
+      host.runtime,
       Effect.never.pipe(
         Effect.onInterrupt(() => {
           return Effect.sync(() => {
@@ -17,7 +19,7 @@ describe("HostLive", () => {
           });
         }),
       ),
-      { scope: host.scope },
+      host.scope,
     );
     await runtime.dispose();
     expect(interrupted).toBe(true);

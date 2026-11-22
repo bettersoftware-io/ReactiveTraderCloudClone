@@ -68,7 +68,7 @@ export function createAccountActionMachine(
       return Effect.suspend(() => {
         return rpc(accountList.admin.actOn(accountId, request));
       }).pipe(
-        Effect.catchAll(() => {
+        Effect.catch(() => {
           return Effect.succeed(UNAVAILABLE);
         }),
         Effect.flatMap((outcome: AccountActionOutcome) => {
