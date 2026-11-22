@@ -130,7 +130,7 @@ export function appPage(): AppPage {
       return screen.getByTestId(testId).textContent ?? "";
     },
     click(testId: string): void {
-      screen.getByTestId(testId).click();
+      fireEvent.click(screen.getByTestId(testId));
     },
     isActiveTab(testId: string): boolean {
       return screen.getByTestId(testId).getAttribute("data-active") === "true";

@@ -230,7 +230,7 @@ export function inhouseLayoutEnginePage(): InhouseLayoutEnginePage {
       return node(testId).textContent ?? "";
     },
     click(testId: string): void {
-      node(testId).click();
+      fireEvent.click(node(testId));
     },
     pointerDown(testId: string, init: PointerInit): void {
       fireEvent.pointerDown(node(testId), init);

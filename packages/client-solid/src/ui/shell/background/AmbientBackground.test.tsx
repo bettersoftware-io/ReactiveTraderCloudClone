@@ -13,7 +13,7 @@
  * src/specs/shell/background/) covers the same branch cross-framework; this
  * file covers it once more locally so a Solid-only regression fails fast.
  */
-import { createSignal } from "solid-js";
+import { createSignal, flush } from "solid-js";
 import { describe, expect, it } from "vitest";
 
 import { ambientBackgroundPage } from "#tests/ui/pages/AmbientBackgroundPage";
@@ -21,8 +21,14 @@ import { ambientBackgroundPage } from "#tests/ui/pages/AmbientBackgroundPage";
 describe("AmbientBackground — animated-background preference", () => {
   it("flips --amb-play (and data-animated) live when the preference toggles after mount", () => {
     const [enabled, setEnabled] = createSignal(false);
-    const [level] = createSignal("off" as const);
-    const [ambientStyle] = createSignal<"aurora" | "rays">("rays");
+
+    function level(): "off" {
+      return "off";
+    }
+
+    function ambientStyle(): "aurora" | "rays" {
+      return "rays";
+    }
 
     page.mountLive({ enabled, level, ambientStyle });
 
@@ -31,11 +37,13 @@ describe("AmbientBackground — animated-background preference", () => {
 
     // Toggle ON after mount — the layers must start drifting.
     setEnabled(true);
+    flush();
     expect(page.ambPlay()).toBe("running");
     expect(page.animatedAttr()).toBe("true");
 
     // And back OFF — they must pause again.
     setEnabled(false);
+    flush();
     expect(page.ambPlay()).toBe("paused");
     expect(page.animatedAttr()).toBe("false");
   });

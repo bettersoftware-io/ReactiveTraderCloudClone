@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal, flush } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
 import { flipGridPage } from "#tests/ui/pages/UseFlipGridPage";
@@ -14,6 +14,7 @@ describe("useFlipGrid", () => {
 
     // Settle the hook's stored origin at left=0 via a first deps change.
     setDep("EUR");
+    flush();
 
     // The grid moves WITHOUT a deps change (the window resizes)...
     tile.rect.left = 100;
@@ -23,6 +24,7 @@ describe("useFlipGrid", () => {
     // the post-resize origin (100 → 150 = -50px), not the stale one (0).
     tile.rect.left = 150;
     setDep("USD");
+    flush();
 
     expect(tile.animate).toHaveBeenCalledWith(
       [{ transform: "translate(-50px, 0px)" }, { transform: "none" }],
@@ -46,6 +48,7 @@ describe("useFlipGrid", () => {
     });
     result.register("EURUSD")(tile.el);
     setDep("EUR");
+    flush();
 
     // A glide is still running when the resize refresh fires: the mid-glide
     // rect (left=100) must NOT be stored as the new origin.
@@ -58,6 +61,7 @@ describe("useFlipGrid", () => {
     tile.running = [];
     tile.rect.left = 150;
     setDep("USD");
+    flush();
 
     expect(tile.animate).toHaveBeenCalledWith(
       [{ transform: "translate(-150px, 0px)" }, { transform: "none" }],
@@ -81,6 +85,7 @@ describe("useFlipGrid", () => {
     );
     result.register("EURUSD")(first.el);
     setDep("EUR");
+    flush();
 
     // A second tile appears at left=300 (right edge also 300 — zero-size
     // fake rects) with no stored origin: it must slide in from the stage's
@@ -90,6 +95,7 @@ describe("useFlipGrid", () => {
     stage.el.appendChild(entering.el);
     result.register("GBPUSD")(entering.el);
     setDep("USD");
+    flush();
 
     expect(entering.animate).toHaveBeenCalledWith(
       [
@@ -119,6 +125,7 @@ describe("useFlipGrid", () => {
     result.register("EURUSD")(first.el);
     result.register("GBPUSD")(leaving.el);
     setDep("EUR");
+    flush();
 
     // GBPUSD leaves; a fresh EURJPY enters. Neither element is inside a
     // [data-flip-stage] container (detached nodes), so both use DRIFT_PX.
@@ -126,6 +133,7 @@ describe("useFlipGrid", () => {
     const entering = createTile();
     result.register("EURJPY")(entering.el);
     setDep("USD");
+    flush();
 
     expect(entering.animate).toHaveBeenCalledWith(
       [
@@ -166,9 +174,11 @@ describe("useFlipGrid", () => {
     });
     result.register("EURUSD")(tile.el);
     setDep("EUR");
+    flush();
 
     tile.rect.left = 80;
     setDep("USD");
+    flush();
     expect(tile.animate).toHaveBeenCalled();
 
     globalThis.ResizeObserver = original;
@@ -194,9 +204,11 @@ describe("useFlipGrid", () => {
     );
     result.register("EURUSD")(tile.el);
     setDep("EUR");
+    flush();
 
     tile.rect.left = 150;
     setDep("USD");
+    flush();
 
     expect(tile.animate).not.toHaveBeenCalled();
   });
@@ -209,10 +221,12 @@ describe("useFlipGrid", () => {
     });
     result.register("EURUSD")(first.el);
     setDep("EUR");
+    flush();
 
     const entering = createTile();
     result.register("GBPUSD")(entering.el);
     setDep("USD");
+    flush();
 
     expect(entering.animate).not.toHaveBeenCalled();
   });
@@ -230,6 +244,7 @@ describe("useFlipGrid", () => {
     leaving.el.setAttribute("data-testid", "tile-GBPUSD");
     const leavingChild = document.createElement("span");
     leavingChild.setAttribute("data-testid", "tile-GBPUSD-price");
+    flush();
     leaving.el.appendChild(leavingChild);
     stage.el.appendChild(survivor.el);
     stage.el.appendChild(leaving.el);
@@ -251,12 +266,14 @@ describe("useFlipGrid", () => {
     result.register("EURUSD")(survivor.el);
     result.register("GBPUSD")(leaving.el);
     setDep("EUR");
+    flush();
 
     // The filter drops GBPUSD: Solid unmounts it (ref cleanup) and the node
     // leaves the DOM before the next FLIP pass.
     leaving.el.remove();
     result.register("GBPUSD")(null);
     setDep("USD");
+    flush();
 
     // Ghost: re-appended to body, pinned at its old rect, falling to the
     // stage's bottom border (600 - (100 + 0 height) = 500px) while fading.
@@ -308,6 +325,7 @@ interface FakeStage {
 function createStage(rect: StageRect): FakeStage {
   const el = document.createElement("div");
   el.setAttribute("data-flip-stage", "");
+  flush();
 
   el.getBoundingClientRect = (): DOMRect => {
     return {

@@ -239,7 +239,7 @@ function createdBy(produced: unknown): CreatedComponent {
 // the REAL `App`, which the shared `setup.ts` pulls into EVERY test file's
 // module graph — including this one — before this file's own body (and its
 // hoisted `vi.mock` below) ever runs. `../appPanelRegistry` therefore gets
-// evaluated once already, with its `solid-js/web` import bound to the REAL
+// evaluated once already, with its `@solidjs/web` import bound to the REAL
 // `createComponent` — an ESM live binding vi.mock cannot rewrite in an
 // already-executed module. `vi.resetModules()` + importing BOTH the registry
 // AND every panel it maps to fresh (together, in the same wave, inside
@@ -251,9 +251,9 @@ function createdBy(produced: unknown): CreatedComponent {
 
 // Replaces only the JSX transform's component-construction seam, so a registry
 // thunk reports which component it would build (and with which props) instead
-// of building it. Every other solid-js/web export is passed through untouched.
-vi.mock("solid-js/web", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("solid-js/web")>();
+// of building it. Every other @solidjs/web export is passed through untouched.
+vi.mock("@solidjs/web", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@solidjs/web")>();
 
   return {
     ...actual,

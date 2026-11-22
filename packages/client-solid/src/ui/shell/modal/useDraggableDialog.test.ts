@@ -7,7 +7,7 @@
  * reset — against a fixed, deterministic dialog rect and viewport so every
  * clamped offset below is an exact computed value, not a loose bound.
  */
-import { createSignal } from "solid-js";
+import { createSignal, flush } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { draggableDialogPage } from "#tests/ui/pages/UseDraggableDialogPage";
@@ -66,6 +66,7 @@ describe("useDraggableDialog", () => {
 
     const nodragEl = document.createElement("button");
     nodragEl.setAttribute("data-nodrag", "");
+    flush();
     document.body.appendChild(nodragEl);
 
     result.headerProps.onPointerDown(
@@ -87,6 +88,7 @@ describe("useDraggableDialog", () => {
 
     const nodragEl = document.createElement("button");
     nodragEl.setAttribute("data-nodrag", "");
+    flush();
     const icon = document.createElement("span");
     nodragEl.appendChild(icon);
     document.body.appendChild(nodragEl);
@@ -116,6 +118,7 @@ describe("useDraggableDialog", () => {
     expect(result.offset()).toEqual({ x: 40, y: 20 });
 
     setOpen(false);
+    flush();
 
     expect(result.offset()).toEqual({ x: 0, y: 0 });
   });

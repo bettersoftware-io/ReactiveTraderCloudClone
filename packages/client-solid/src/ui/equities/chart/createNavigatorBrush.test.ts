@@ -1,4 +1,4 @@
-import { batch, createSignal } from "solid-js";
+import { createSignal, flush } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
 import { type ChartViewport, panBy, shiftForPrepend } from "@rtc/motion-core";
@@ -127,13 +127,12 @@ describe("createNavigatorBrush", () => {
     result.stripProps.onPointerDown(brushEvent("window", 450));
 
     // A 300-candle backfill prepend lands mid-drag: first time got OLDER,
-    // length grew by 300. Batched so createComputed observes both signals'
-    // new values in the same run, matching React's single simultaneous
-    // rerender.
-    batch(() => {
-      setSeriesLen(NEW_SERIES_LEN);
-      setFirstCandleTime(700_000);
-    });
+    // length grew by 300. Written in one turn, so the series-growth effect
+    // observes both signals' new values in the same run, matching React's
+    // single simultaneous rerender.
+    setSeriesLen(NEW_SERIES_LEN);
+    setFirstCandleTime(700_000);
+    flush();
 
     result.stripProps.onPointerMove(moveEvent(400));
 

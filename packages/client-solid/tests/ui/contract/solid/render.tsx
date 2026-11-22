@@ -9,6 +9,7 @@ import type {
 } from "@ui-contract/harness/component";
 import type { World } from "@ui-contract/harness/world";
 import type { BehaviorSubject } from "rxjs";
+import { flush } from "solid-js";
 
 import { ViewModelProvider } from "@rtc/solid-bindings";
 
@@ -37,11 +38,13 @@ interface RenderArgs {
  * other mounted component, not a global wrapper, so the harness can mount it
  * standalone with the `boot-gate-child` test double).
  *
- * `flushSync`/`flushAsync` stay part of the returned `MountedRoot` purely to
- * honour the `UiContractDriver` contract (`mount.ts`'s `buildContext` calls
- * `rendered.flushSync?.(fn) ?? fn()` unconditionally) — Solid commits
- * synchronously (no batching boundary to flush across, unlike React's
- * `act()`), so both are plain passthroughs.
+ * `flushSync`/`flushAsync` run the harness's mutation, then Solid's
+ * `flush()`: Solid 2 applies writes at the next microtask, so a World push
+ * (a BehaviorSubject emission the bindings forward as a signal write) would
+ * otherwise not reach the DOM before the spec's next synchronous assertion —
+ * the same job React's `act()` does in the react driver. Fired DOM events
+ * get the same treatment from the `eventWrapper` that
+ * tests/setup/flush-after-each-event.ts installs.
  */
 export const solidDriver: UiContractDriver = {
   render(
@@ -61,7 +64,7 @@ export const solidDriver: UiContractDriver = {
     const { container, unmount } = solidRender(() => {
       return (
         <ViewModelProvider viewModel={viewModel}>
-          <LiveMetricsContext.Provider value={FROZEN_LIVE_METRICS}>
+          <LiveMetricsContext value={FROZEN_LIVE_METRICS}>
             <ThemeProvider>
               <FxViewProvider>
                 <CreditViewProvider>
@@ -69,7 +72,7 @@ export const solidDriver: UiContractDriver = {
                 </CreditViewProvider>
               </FxViewProvider>
             </ThemeProvider>
-          </LiveMetricsContext.Provider>
+          </LiveMetricsContext>
         </ViewModelProvider>
       );
     });
@@ -77,14 +80,13 @@ export const solidDriver: UiContractDriver = {
     return {
       root: container,
       unmount,
-      // Solid commits synchronously — no React-style `act()` batching
-      // boundary exists to flush across — so this is a plain passthrough
-      // kept only so the driver satisfies the UiContractDriver contract.
       flushSync: (fn: () => void) => {
         fn();
+        flush();
       },
       flushAsync: async (fn: () => Promise<void>) => {
         await fn();
+        flush();
       },
     };
   },

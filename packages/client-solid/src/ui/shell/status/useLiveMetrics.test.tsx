@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { flush } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ViewModel } from "@rtc/solid-bindings";
@@ -68,16 +68,19 @@ describe("useLiveMetrics (solid)", () => {
     const cb = rafCb;
     rafCb = null;
     cb?.(ts);
+    flush();
   }
 });
 
 /** Minimal ViewModel stub. The hook no longer reads the ViewModel at all —
  *  the provider is kept so the freeze test above renders under a
- *  freeze-shaped ViewModel (with `isFreeze` as a real signal, matching
- *  production's `Accessor<boolean>` shape) and pins the diagnostics
- *  exemption. */
+ *  freeze-shaped ViewModel (with `isFreeze` an `Accessor<boolean>`, the
+ *  production shape) and pins the diagnostics exemption. */
 function viewModelWith(isFreeze: boolean): ViewModel {
-  const [freeze] = createSignal(isFreeze);
+  function freeze(): boolean {
+    return isFreeze;
+  }
+
   return {
     usePowerSaver: () => {
       return {

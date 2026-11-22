@@ -26,10 +26,12 @@ afterEach(() => {
   page.removeContainers();
 });
 
-// Solid's `render` throws a render error, but the reactive root it was
-// building is never disposed: `render` hands its disposer back only on
-// success. The tree mount must dispose whatever the failed mount created
-// (subscriptions on the new core's presenters included) before rethrowing.
+// A tree that throws while rendering must not leave its partly built
+// reactive root alive: the tree mount disposes whatever the failed mount
+// created (subscriptions on the new core's presenters included) before
+// rethrowing. (Solid 1's `render` handed its disposer back only on success;
+// Solid 2's disposes on failure itself — these cases pin the outcome, not
+// who provides it.)
 describe("createSolidTreeMount", () => {
   it("disposes what a failed first render created, then throws, leaving the container empty", () => {
     const rootEl = page.createContainer();
