@@ -37,7 +37,7 @@
     "solid-js": "^1.9.20"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "^1.65.1",
     "@rtc/client-core-rxjs": "workspace:*",
     "@rtc/devtools-app": "workspace:*",
     "@rtc/ui-contract": "workspace:*",
@@ -49,7 +49,7 @@
     "@vitest/coverage-istanbul": "^5.1.1",
     "@vitest/ui": "^5.1.1",
     "jsdom": "^30.0.1",
-    "playwright": "^1.60.0",
+    "playwright": "^1.65.1",
     "solid-devtools": "^0.34.5",
     "vite": "^8.3.8",
     "vite-plugin-solid": "^2.11.17",
