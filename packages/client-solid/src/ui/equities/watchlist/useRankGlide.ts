@@ -141,7 +141,8 @@ function prefersReducedMotion(): boolean {
  * useFlipGrid's `deps` thunk — Solid components run their setup body once, so
  * a plain ref/array captured at the call site would freeze at mount. Passing
  * accessors lets the effects below re-read the caller's current ref/array
- * fresh every run. `options.freeze` follows the same accessor shape for the
+ * fresh every run. `root` is a plain ref getter (the caller's element
+ * variable), read when the glide effect applies — never a signal. `options.freeze` follows the same accessor shape for the
  * same reason (see useFlipGrid's doc comment) — a plain boolean captured at
  * the call site would never see a later power-saver toggle. */
 export function useRankGlide(
@@ -197,18 +198,23 @@ export function useRankGlide(
   // `committed` actually changes, never for a candidate that got buffered
   // instead (nothing moved in the DOM yet).
   //
-  // The root element and the freeze tier are read in the compute phase, so
-  // either changing re-runs the effect against an unchanged order — which
-  // glides nothing (every row keeps its rank) and re-records the same ranks.
+  // The freeze tier is read in the compute phase beside `committed`, so
+  // flipping it re-runs the effect against an unchanged order — which glides
+  // nothing (every row keeps its rank) and re-records the same ranks.
+  //
+  // The ROOT, unlike them, is read in the apply phase: it is the caller's DOM
+  // ref, not a reactive source, and it is only assigned once the rows are
+  // rendered — after this effect's first compute has run, in the component
+  // body. Read there, the first run saw no root, recorded no ranks, and the
+  // first real re-sort (the quotes landing just after mount) glided nothing,
+  // where React's layout effect — and this hook under Solid 1 — glide it.
   createEffect(
     () => {
-      return {
-        order: committed(),
-        rootEl: root(),
-        frozen: freeze?.() ?? false,
-      };
+      return { order: committed(), frozen: freeze?.() ?? false };
     },
-    ({ order, rootEl, frozen }) => {
+    ({ order, frozen }) => {
+      const rootEl = root();
+
       if (rootEl != null) {
         const nodes = Array.from(
           rootEl.querySelectorAll<HTMLElement>("[data-watch-sym]"),
