@@ -19,7 +19,7 @@
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "0.125.0",
+    "@anthropic-ai/sdk": "1.12.0",
     "@better-software/rx-ws-effects": "^0.1.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@rtc/agent-tools": "workspace:*",
@@ -30,10 +30,10 @@
   },
   "devDependencies": {
     "@types/ws": "^8.18.1",
-    "@vitest/coverage-v8": "^5.0.5",
-    "@vitest/ui": "^5.0.5",
+    "@vitest/coverage-v8": "^5.1.1",
+    "@vitest/ui": "^5.1.1",
     "tsc-alias": "1.9.10",
     "tsx": "^4",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.1"
   }
 }

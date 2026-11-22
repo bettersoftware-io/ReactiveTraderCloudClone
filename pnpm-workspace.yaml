@@ -476,6 +476,15 @@ packageExtensions:
 # exported unchanged by @vitest/browser@5, so it runs on vitest 5 as published.
 # Upstream PR advancedtw/vitest-browser-solid#6 (open since 2026-09-06) widens
 # the peer to `^4.0.0 || ^5.0.0`; delete this block once a release carries it.
+#
+# vite-plugin-solid@2.11.17 (latest) peers on @testing-library/jest-dom up to
+# `^7.0.0`. jest-dom 8.0.0's only breaking change drops vitest < 5 (this repo
+# is on vitest 5); the plugin only resolves the bare `@testing-library/jest-dom/vitest`
+# specifier from the project root and injects it as a setup file, and 8.0.0
+# still exports that subpath — verified 2026-11-22 by a probe test asserting
+# `toBeInTheDocument()` under client-solid's and solid-bindings' configs.
+# Delete that entry once a vite-plugin-solid release widens the peer.
 peerDependencyRules:
   allowedVersions:
     "vitest-browser-solid>vitest": "^5.0.0"
+    "vite-plugin-solid>@testing-library/jest-dom": "^8.0.0"

@@ -1,3 +1,5 @@
+import type { Config } from "stylelint";
+
 /**
  * Stylelint — the CSS counterpart to the ESLint/Biome split.
  *
@@ -13,7 +15,12 @@
  *   2. naming-convention policy (CSS Modules class names + design-token names),
  *   3. design-token enforcement for text colour.
  *
- * @type {import('stylelint').Config}
+ * Loaded only through an explicit `--config stylelint.config.mts` (`pnpm
+ * lint:css`): stylelint 18 loads TypeScript configs by Node's type stripping,
+ * but its cosmiconfig search list names `stylelint.config.ts` and never
+ * `.mts` — and `.ts` would not be ESM here, the root package.json having no
+ * `"type"`. Without the flag, stylelint finds no config — or, in a worktree
+ * under `.claude/worktrees/`, walks up to the primary checkout's.
  */
 export default {
   plugins: ["stylelint-declaration-strict-value"],
@@ -88,4 +95,4 @@ export default {
       },
     },
   ],
-};
+} satisfies Config;

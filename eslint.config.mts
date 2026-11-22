@@ -193,17 +193,15 @@ export default tseslint.config(
     // is checked by nothing. The selector matches the file's root node, so
     // every JavaScript file ESLint reaches is reported once, at line 1.
     //
-    // The two exemptions are files a third-party loader reads and that loader
-    // takes no TypeScript (both measured 2026-10-04): stylelint 17 (cosmiconfig:
-    // `No loader specified for extension ".mts"`), and Jest 29, which reads a
-    // `.ts` config only through `ts-node` and rejects any other extension.
-    // Adding a file here needs the same kind of reason — a loader that cannot
-    // read TypeScript — never "it was quicker to write".
+    // The one exemption is a file a third-party loader reads and that loader
+    // takes no TypeScript (measured 2026-10-04): Jest 29, which reads a `.ts`
+    // config only through `ts-node` and rejects any other extension. (The
+    // other, `stylelint.config.mjs`, left with stylelint 18, whose loader runs
+    // `.mts` through Node's type stripping.) Adding a file here needs the same
+    // kind of reason — a loader that cannot read TypeScript — never "it was
+    // quicker to write".
     files: ["**/*.{js,mjs,cjs,jsx}"],
-    ignores: [
-      "stylelint.config.mjs",
-      "packages/client-react-native/jest.config.js",
-    ],
+    ignores: ["packages/client-react-native/jest.config.js"],
     languageOptions: {
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
