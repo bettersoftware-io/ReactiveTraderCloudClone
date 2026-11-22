@@ -7,9 +7,9 @@ import { describe, expect, it } from "vitest";
 import { FONT_LOAD_SPECS } from "#/fonts";
 
 describe("the font manifest", () => {
-  it("lists a face for each of the 15 stylesheets it imports", () => {
-    expect(FONT_LOAD_SPECS).toHaveLength(15);
-    expect(specsOfImports(readFontsSource())).toHaveLength(15);
+  it("lists a face for each of the 19 stylesheets it imports", () => {
+    expect(FONT_LOAD_SPECS).toHaveLength(19);
+    expect(specsOfImports(readFontsSource())).toHaveLength(19);
   });
 
   it("force-loads exactly the faces its imports register, in order", () => {

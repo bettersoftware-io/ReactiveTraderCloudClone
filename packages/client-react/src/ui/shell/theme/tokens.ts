@@ -170,9 +170,9 @@ const darkTokens: ThemeTokens = {
   "--aurora-b": "transparent",
   "--aurora-opacity": "0",
 
-  "--font-display": "system-ui, sans-serif",
-  "--font-mono": "ui-monospace, monospace",
-  "--font-logo": "system-ui, sans-serif",
+  "--font-display": "'Inter', sans-serif",
+  "--font-mono": "'JetBrains Mono', monospace",
+  "--font-logo": "'Inter', sans-serif",
 
   "--tile": "var(--bg-tile)",
   "--tile-shadow": "none",
@@ -226,9 +226,9 @@ const lightTokens: ThemeTokens = {
   "--aurora-b": "transparent",
   "--aurora-opacity": "0",
 
-  "--font-display": "system-ui, sans-serif",
-  "--font-mono": "ui-monospace, monospace",
-  "--font-logo": "system-ui, sans-serif",
+  "--font-display": "'Inter', sans-serif",
+  "--font-mono": "'JetBrains Mono', monospace",
+  "--font-logo": "'Inter', sans-serif",
 
   "--tile": "var(--bg-tile)",
   "--tile-shadow": "none",
