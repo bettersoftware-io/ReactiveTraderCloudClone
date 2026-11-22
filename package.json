@@ -1,7 +1,7 @@
 {
   "name": "@rtc/root",
   "private": true,
-  "packageManager": "pnpm@12.6.0+sha512.3ef68f951cb111ac204b4a5a16f0b2ddf0da56a96e0413e81d855d9f0b55ef926714709028e1cd00c405c2c5fb7b9e8ec4dc46777c805d0373c2f2ff00fd20ec",
+  "packageManager": "pnpm@12.22.0+sha512.894940a3d9a57dfa6fd373990fb4e41e09c2f2d76d982ed1d75275d39267f988fb4e2d40900cbe9921c68d97c67aa1a1096d276633db248f7b34927ac9ddb7a4",
   "devEngines": {
     "runtime": {
       "name": "node",
@@ -106,23 +106,23 @@
     "@biomejs/biome": "2.5.15",
     "@manypkg/cli": "^0.25.1",
     "@types/node": "^26.2.0",
-    "@typescript-eslint/rule-tester": "8.71.1",
-    "@typescript-eslint/utils": "8.71.1",
+    "@typescript-eslint/rule-tester": "8.73.0",
+    "@typescript-eslint/utils": "8.73.0",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "dependency-cruiser": "^18.0.0",
-    "eslint": "^10.5.0",
+    "dependency-cruiser": "^18.8.0",
+    "eslint": "^10.15.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-solid": "^0.18.0",
+    "eslint-plugin-solid": "^0.18.1",
     "github-slugger": "^2.0.0",
-    "knip": "^6.17.1",
-    "playwright": "^1.60.0",
+    "knip": "^6.47.0",
+    "playwright": "^1.65.1",
     "stylelint": "^18.1.0",
     "stylelint-declaration-strict-value": "^1.13.0",
     "syncpack": "^15.3.2",
-    "turbo": "^2.4",
+    "turbo": "^2.11.13",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "typescript-eslint": "8.71.1",
-    "vitest": "^5.0.5"
+    "typescript-eslint": "8.73.0",
+    "vitest": "^5.1.1"
   }
 }

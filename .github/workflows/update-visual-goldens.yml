@@ -64,7 +64,7 @@ jobs:
     permissions:
       # The auto-commit step pushes regenerated goldens to the dispatched branch.
       contents: write
-    container: mcr.microsoft.com/playwright:v1.63.0-noble
+    container: mcr.microsoft.com/playwright:v1.65.1-noble
     env:
       SCENARIO_PATTERN: ${{ inputs.scenario_pattern }}
     steps:
