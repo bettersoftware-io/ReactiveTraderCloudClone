@@ -635,7 +635,7 @@ importers:
         version: 0.4.1
       '@expo-google-fonts/ibm-plex-mono':
         specifier: ^0.4.1
-        version: 0.4.1
+        version: 0.4.2
       '@expo-google-fonts/ibm-plex-sans':
         specifier: ^0.4.1
         version: 0.4.1
@@ -2528,8 +2528,8 @@ packages:
   '@expo-google-fonts/chakra-petch@0.4.1':
     resolution: {integrity: sha512-a0Lf+kHUO1UrCWTylvfssuoIpyoU+4ey8HoHmu0XSutFbq2FqkAGYChaiaHksQqayqv+X2R7cUKcBY+4zFqr1w==}
 
-  '@expo-google-fonts/ibm-plex-mono@0.4.1':
-    resolution: {integrity: sha512-/yYz1mPZq8Nd4tSiH0SBDPEdJUqiOGBwVgSrQvLuw7SPh6C7ezBzmi6eFyHY4QaQwjHDmOLSBKsxzq8ZDFXVAg==}
+  '@expo-google-fonts/ibm-plex-mono@0.4.2':
+    resolution: {integrity: sha512-Dlk7pBVjH13tNo2urBUcYpHnpGayEs8Uz06tKT3Gl+AenXzzbjtyzmx4PWi7HCJHsrIFvMWd79+W78NBbyrNKQ==}
 
   '@expo-google-fonts/ibm-plex-sans@0.4.1':
     resolution: {integrity: sha512-allsuhZbvKoKDTB/U8creFVYYzhI97Nw9MgyyNjFzqISNc/sURpA7ZY37Rr+IRI567OV9BWQ/ioUCjAQrVGRbw==}
@@ -9815,7 +9815,7 @@ snapshots:
 
   '@expo-google-fonts/chakra-petch@0.4.1': {}
 
-  '@expo-google-fonts/ibm-plex-mono@0.4.1': {}
+  '@expo-google-fonts/ibm-plex-mono@0.4.2': {}
 
   '@expo-google-fonts/ibm-plex-sans@0.4.1': {}
 
