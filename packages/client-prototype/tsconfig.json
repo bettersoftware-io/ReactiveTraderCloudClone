@@ -9,7 +9,7 @@
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["node"],
-    "paths": { "#/*": ["./src/*"], "#tests/*": ["./tests/*"] }
+    "paths": { "#/*": ["./src/*"] }
   },
   "include": ["src", "tests"],
   "exclude": ["dist"]
