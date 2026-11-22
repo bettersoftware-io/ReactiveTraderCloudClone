@@ -1,4 +1,5 @@
-import { type JSX, untrack } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { untrack } from "solid-js";
 
 import { createLayoutMachine } from "@rtc/client-core-rxjs";
 import type { LayoutPort, PanelId } from "@rtc/core-api";

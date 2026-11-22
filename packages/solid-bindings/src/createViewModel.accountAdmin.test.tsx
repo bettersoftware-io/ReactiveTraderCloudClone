@@ -1,4 +1,5 @@
 import { renderHook } from "@solidjs/testing-library";
+import { flush } from "solid-js";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -49,6 +50,7 @@ describe("createViewModel — useAccountAction", () => {
 
     result.intents.startRename("Ann");
 
+    flush();
     expect(result.state()).toEqual({
       phase: "renaming",
       draft: "Ann",
@@ -57,6 +59,7 @@ describe("createViewModel — useAccountAction", () => {
 
     result.intents.cancel();
 
+    flush();
     expect(result.state()).toEqual({ phase: "idle" });
   });
 

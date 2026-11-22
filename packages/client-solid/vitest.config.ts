@@ -1,15 +1,21 @@
 import { fileURLToPath } from "node:url";
 
-import solid from "vite-plugin-solid";
+import solid from "@solidjs/vite-plugin";
 import { defineConfig } from "vitest/config";
 
 // @testing-library/jest-dom is a devDependency even though no test here calls
-// its matchers directly: vite-plugin-solid auto-injects a jest-dom vitest
+// its matchers directly: @solidjs/vite-plugin auto-injects a jest-dom vitest
 // setup file, and pnpm's strict linking fails at install time if the package
 // isn't an explicit dependency of this workspace (see solid-bindings'
 // vitest.config.ts for the full explanation).
 export default defineConfig({
-  plugins: [solid()],
+  // refresh: false — HMR has no meaning in a one-shot test run, and the
+  // plugin's refresh wrapper (on whenever vitest's dev server reports
+  // `serve`) re-reports a component's render-time throw as an UNCAUGHT
+  // exception besides the one `render` rethrows to its caller: the
+  // solidTreeMount failed-render cases then fail the whole run. Same setting
+  // as the contract tier's config.
+  plugins: [solid({ refresh: false })],
   resolve: {
     alias: {
       // The shared scenario/goldenPath matrix (@rtc/ui-contract) —
@@ -42,8 +48,13 @@ export default defineConfig({
     ],
     // Node 26 ships a native (experimental, flag-gated) localStorage/
     // sessionStorage accessor pair that shadows jsdom's own Storage inside
-    // vitest — see the shim's header comment for the full story.
-    setupFiles: ["./tests/setup/jsdom-storage.ts"],
+    // vitest — see the shim's header comment for the full story. The second
+    // file applies each fired test event's writes before the next line runs
+    // (Solid 2 applies writes per microtask) — see its header.
+    setupFiles: [
+      "./tests/setup/jsdom-storage.ts",
+      "./tests/setup/flush-after-each-event.ts",
+    ],
     passWithNoTests: true,
   },
 });

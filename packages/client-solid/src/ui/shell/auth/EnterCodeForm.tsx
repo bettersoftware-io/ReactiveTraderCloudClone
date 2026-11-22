@@ -1,4 +1,5 @@
-import { createSignal, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createSignal, Show } from "solid-js";
 
 import type { AccountAccessState, CodeInput } from "@rtc/core-api";
 import {
@@ -147,7 +148,7 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
 
   return (
     <>
-      <form class={styles.form} noValidate onSubmit={submitCode}>
+      <form class={styles.form} novalidate onSubmit={submitCode}>
         <Show
           when={!asksEmail()}
           fallback={
@@ -185,7 +186,7 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
             data-testid="login-code"
             class={styles.input}
             type="text"
-            inputMode="numeric"
+            inputmode="numeric"
             autocomplete="one-time-code"
             {...fieldAriaProps("code", codeError())}
             value={code()}

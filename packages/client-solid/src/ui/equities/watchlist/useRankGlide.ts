@@ -1,10 +1,4 @@
-import {
-  type Accessor,
-  createEffect,
-  createSignal,
-  on,
-  onMount,
-} from "solid-js";
+import { type Accessor, createEffect, createSignal, untrack } from "solid-js";
 
 import {
   coalesceOrder,
@@ -147,7 +141,8 @@ function prefersReducedMotion(): boolean {
  * useFlipGrid's `deps` thunk — Solid components run their setup body once, so
  * a plain ref/array captured at the call site would freeze at mount. Passing
  * accessors lets the effects below re-read the caller's current ref/array
- * fresh every run. `options.freeze` follows the same accessor shape for the
+ * fresh every run. `root` is a plain ref getter (the caller's element
+ * variable), read when the glide effect applies — never a signal. `options.freeze` follows the same accessor shape for the
  * same reason (see useFlipGrid's doc comment) — a plain boolean captured at
  * the call site would never see a later power-saver toggle. */
 export function useRankGlide(
@@ -159,8 +154,12 @@ export function useRankGlide(
   let prevRank: Record<string, number> | undefined;
   let gliding = false;
   let pending: readonly string[] | null = null;
+  // Seeded ONCE from the first candidate, deliberately untracked: from then
+  // on `committed` follows `candidate` only through the coalescing effect
+  // below (a writable derived `createSignal(candidate)` would instead reset
+  // to every new candidate, defeating the buffering).
   const [committed, setCommitted] = createSignal<readonly string[]>(
-    candidate(),
+    untrack(candidate),
   );
 
   // Decide whether to commit `candidate()` now or buffer it — runs whenever
@@ -168,20 +167,29 @@ export function useRankGlide(
   // buffered until the in-flight glide settles (see the glide effect's
   // `.finished` handling below) — that's what coalesces a burst of rapid
   // candidates into at most one reorder per glide window (I4 fix).
+  //
+  // The current `committed` is read in the compute phase too (a read in the
+  // apply phase would be untracked and dev-warns), so a commit re-runs this
+  // effect; that run finds the candidate already committed (the commit came
+  // from this effect, or is the buffered latest candidate the glide effect
+  // released) and returns.
   createEffect(
-    on(candidate, (current) => {
-      if (sameOrder(current, committed())) {
+    () => {
+      return { current: candidate(), committedNow: committed() };
+    },
+    ({ current, committedNow }) => {
+      if (sameOrder(current, committedNow)) {
         return;
       }
 
-      const decision = coalesceOrder(committed(), pending, current, gliding);
+      const decision = coalesceOrder(committedNow, pending, current, gliding);
 
       pending = decision.bufferedPending;
 
-      if (!sameOrder(decision.committed, committed())) {
+      if (!sameOrder(decision.committed, committedNow)) {
         setCommitted(decision.committed);
       }
-    }),
+    },
   );
 
   // Mirrors the React original's useLayoutEffect: keyed on `committed` (not
@@ -189,8 +197,22 @@ export function useRankGlide(
   // committed order to the current one, so it must fire exactly when
   // `committed` actually changes, never for a candidate that got buffered
   // instead (nothing moved in the DOM yet).
+  //
+  // The freeze tier is read in the compute phase beside `committed`, so
+  // flipping it re-runs the effect against an unchanged order — which glides
+  // nothing (every row keeps its rank) and re-records the same ranks.
+  //
+  // The ROOT, unlike them, is read in the apply phase: it is the caller's DOM
+  // ref, not a reactive source, and it is only assigned once the rows are
+  // rendered — after this effect's first compute has run, in the component
+  // body. Read there, the first run saw no root, recorded no ranks, and the
+  // first real re-sort (the quotes landing just after mount) glided nothing,
+  // where React's layout effect — and this hook under Solid 1 — glide it.
   createEffect(
-    on(committed, (order) => {
+    () => {
+      return { order: committed(), frozen: freeze?.() ?? false };
+    },
+    ({ order, frozen }) => {
       const rootEl = root();
 
       if (rootEl != null) {
@@ -201,7 +223,7 @@ export function useRankGlide(
 
         if (
           !prefersReducedMotion() &&
-          !(freeze?.() ?? false) &&
+          !frozen &&
           prevRank != null &&
           nodes.length > 0
         ) {
@@ -270,15 +292,8 @@ export function useRankGlide(
           });
         }
       }
-    }),
+    },
   );
-
-  onMount(() => {
-    // No teardown needed: the effects above hold no subscriptions outside
-    // Solid's own reactive graph (WAAPI animations settle or get GC'd with
-    // their nodes) — this onMount only documents that the hook is meant to be
-    // used within a live component tree, mirroring useFlipGrid's ownership.
-  });
 
   return committed;
 }

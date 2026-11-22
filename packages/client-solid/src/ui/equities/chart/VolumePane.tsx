@@ -1,9 +1,7 @@
-import { type Accessor, Index, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, For, Show } from "solid-js";
 
 import {
-  type Canvas2D,
-  type CanvasSize,
-  type ChartPalette,
   drawVolumeScene,
   type VolumeBarVm,
   type VolumeSceneBar,
@@ -25,7 +23,7 @@ export function VolumePane(props: VolumePaneProps): JSX.Element {
       <Show
         when={props.canvasBars}
         fallback={
-          <Index each={props.bars}>
+          <For keyed={false} each={props.bars}>
             {(b: Accessor<VolumeBarVm>): JSX.Element => {
               return (
                 <div
@@ -36,20 +34,15 @@ export function VolumePane(props: VolumePaneProps): JSX.Element {
                 />
               );
             }}
-          </Index>
+          </For>
         }
       >
         {(canvasBars: Accessor<readonly VolumeSceneBar[]>): JSX.Element => {
           return (
             <SceneCanvas
               testid="chart-canvas-volume"
-              draw={(
-                ctx: Canvas2D,
-                palette: ChartPalette,
-                size: CanvasSize,
-              ) => {
-                drawVolumeScene(ctx, canvasBars(), palette, size);
-              }}
+              scene={canvasBars()}
+              draw={drawVolumeScene}
             />
           );
         }}

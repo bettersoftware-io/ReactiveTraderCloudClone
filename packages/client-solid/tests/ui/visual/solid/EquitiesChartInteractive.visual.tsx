@@ -1,4 +1,5 @@
-import { createMemo, type JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo } from "solid-js";
 
 import type { EqDrawing, EqIndicatorId } from "@rtc/core-api";
 import type { Candle } from "@rtc/domain";

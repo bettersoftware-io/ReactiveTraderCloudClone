@@ -1,4 +1,4 @@
-import { batch, createSignal } from "solid-js";
+import { createSignal, flush } from "solid-js";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { DockLayoutStore, PanelId } from "@rtc/core-api";
@@ -36,10 +36,12 @@ afterEach(() => {
  * twin of `client-react`'s identically-named spec; see that file's describe doc
  * for what each question is and why none of it is assumed.
  *
- * The one-commit act is a `batch(...)` here rather than a `rerender` — Solid's
- * component bodies run once, so the layer-2 signals and the reset counter are
- * written together inside one batch, which is this framework's analogue of the
- * single React commit and the same shape Task 5's `load` will produce. */
+ * The one-commit act is one synchronous turn of writes, then `flush()`, rather
+ * than a `rerender` — Solid's component bodies run once, so the layer-2
+ * signals and the reset counter are written together and applied in one
+ * flush (Solid 2 batches every write of a turn), which is this framework's
+ * analogue of the single React commit and the same shape Task 5's `load`
+ * will produce. */
 describe("DockviewLayoutEngine preset load (layoutResets rebuild)", () => {
   // The premise every case below rests on — see the react twin.
   it("loads between two engine-written blobs that differ structurally", () => {
@@ -94,10 +96,9 @@ describe("DockviewLayoutEngine preset load (layoutResets rebuild)", () => {
     expect(page.sharesGroupInDom("fx-rates", "fx-blotter")).toBe(false);
 
     recorded.store.save("fx", preset);
-    batch(() => {
-      setCollapsed(["fx-analytics"]);
-      setLayoutResets(1);
-    });
+    setCollapsed(["fx-analytics"]);
+    setLayoutResets(1);
+    flush();
 
     // The preset's OWN shape, in the live DOM: three groups because fx-rates
     // and fx-blotter now share one, which the "fx" seed's conversion can
@@ -143,10 +144,9 @@ describe("DockviewLayoutEngine preset load (layoutResets rebuild)", () => {
     expect(preset).not.toContain("rtcStripGeometry");
 
     recorded.store.save("fx", preset);
-    batch(() => {
-      setCollapsed(["fx-analytics"]);
-      setLayoutResets(1);
-    });
+    setCollapsed(["fx-analytics"]);
+    setLayoutResets(1);
+    flush();
 
     await page.waitFor(() => {
       expect(page.stripMarked("fx-analytics")).toBe(true);
@@ -191,10 +191,9 @@ describe("DockviewLayoutEngine preset load (layoutResets rebuild)", () => {
     // Forget the deliberate preset write itself, so what remains recorded is
     // exactly the writes the ENGINES made across the rebuild.
     recorded.forgetSaves();
-    batch(() => {
-      setCollapsed(["fx-analytics"]);
-      setLayoutResets(1);
-    });
+    setCollapsed(["fx-analytics"]);
+    setLayoutResets(1);
+    flush();
 
     // The replayed collapse changes the fresh engine's geometry, so a save
     // IS due once the engine's 250 ms debounce elapses. Waiting for it (rather
@@ -257,10 +256,9 @@ describe("DockviewLayoutEngine preset load (layoutResets rebuild)", () => {
     expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
 
     recorded.store.save("fx", preset);
-    batch(() => {
-      setCollapsed(["fx-analytics"]);
-      setLayoutResets(1);
-    });
+    setCollapsed(["fx-analytics"]);
+    setLayoutResets(1);
+    flush();
 
     // The preset's 3 groups plus the re-reconciled docked panel.
     await page.waitFor(() => {
@@ -326,10 +324,9 @@ describe("DockviewLayoutEngine preset load (layoutResets rebuild)", () => {
     expect(page.bodyVisible("fx-positions-body")).toBe(false);
     expect(page.bodyVisible("fx-rates-body")).toBe(true);
 
-    batch(() => {
-      setClosed([]);
-      setLayoutResets(1);
-    });
+    setClosed([]);
+    setLayoutResets(1);
+    flush();
 
     await page.waitFor(() => {
       expect(page.bodyVisible("fx-positions-body")).toBe(true);

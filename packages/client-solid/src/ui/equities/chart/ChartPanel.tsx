@@ -1,4 +1,5 @@
-import { createMemo, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo, createRenderEffect, Show } from "solid-js";
 
 import type { EqDrawing } from "@rtc/core-api";
 import { CANDLE_DEFAULT_VISIBLE, type CandleTimeframe } from "@rtc/domain";
@@ -90,6 +91,14 @@ interface ChartBodyProps {
   timeframe: CandleTimeframe;
 }
 
+/** The chart's primary series and comparison symbol, as plain values — see
+ * `series` in ChartBody. */
+interface SeriesTargets {
+  symbol: string;
+  timeframe: CandleTimeframe;
+  compare: string | null;
+}
+
 function ChartBody(props: ChartBodyProps): JSX.Element {
   const {
     useEqWorkspace,
@@ -175,29 +184,49 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
     return CANDLE_DEFAULT_VISIBLE[props.timeframe];
   });
 
+  // The series the paging and anchor-shift handlers below act on, as plain
+  // values. CandleChart calls those handlers from its effects' apply phase,
+  // which is untracked by construction — a reactive read there dev-warns and
+  // tracks nothing — so they read this copy, which a render effect keeps
+  // current (render effects run before every user effect of the same flush,
+  // so a handler never sees a series a pending change has already replaced).
+  const series: SeriesTargets = {
+    symbol: "",
+    timeframe: "1D",
+    compare: null,
+  };
+
+  createRenderEffect(
+    (): SeriesTargets => {
+      return {
+        symbol: props.symbol,
+        timeframe: props.timeframe,
+        compare: state().compare,
+      };
+    },
+    (current) => {
+      Object.assign(series, current);
+    },
+  );
+
   // Pages every series the chart is rendering: the primary always, plus
   // the comparison when one is set — ineligible series are safe no-ops in
-  // CandleSeriesPresenter.loadOlder. Reads the compare symbol at CALL time
-  // (event-handler scope), so no reactive wrapper is needed.
+  // CandleSeriesPresenter.loadOlder.
   function loadOlderForChart(): void {
-    loadOlderCandles(props.symbol, props.timeframe);
-    const sym = state().compare;
+    loadOlderCandles(series.symbol, series.timeframe);
 
-    if (sym !== null) {
-      loadOlderCandles(sym, props.timeframe);
+    if (series.compare !== null) {
+      loadOlderCandles(series.compare, series.timeframe);
     }
   }
 
   // Pages ONLY the comparison — the catch-up gate's intent (a compare
   // activated or swapped after the primary already backfilled must page
   // itself level with the visible window WITHOUT the primary fetching
-  // pages nobody scrolled to). Reads the compare symbol at CALL time, like
-  // loadOlderForChart above.
+  // pages nobody scrolled to).
   function loadOlderForCompare(): void {
-    const sym = state().compare;
-
-    if (sym !== null) {
-      loadOlderCandles(sym, props.timeframe);
+    if (series.compare !== null) {
+      loadOlderCandles(series.compare, series.timeframe);
     }
   }
 
@@ -214,7 +243,7 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
   }
 
   function shiftAnchorsForSelectedSymbol(by: number): void {
-    shiftAnchors(props.symbol, by);
+    shiftAnchors(series.symbol, by);
   }
 
   return (

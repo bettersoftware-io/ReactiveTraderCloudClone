@@ -1,5 +1,5 @@
+import { render } from "@solidjs/web";
 import { VisualScenario } from "@ui-visual";
-import { render } from "solid-js/web";
 
 // The real app's global stylesheet, in the same last-import position that
 // src/main.tsx loads it from — mirroring react's own host

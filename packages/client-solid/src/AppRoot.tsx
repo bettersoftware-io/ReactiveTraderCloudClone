@@ -1,4 +1,5 @@
-import { type JSX, type ParentProps, untrack } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type ParentProps, untrack } from "solid-js";
 
 import type { RouteHistory } from "@rtc/core-api";
 import type { DemoAccount } from "@rtc/domain";

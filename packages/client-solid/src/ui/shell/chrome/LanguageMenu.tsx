@@ -2,7 +2,9 @@
 // The language list below is a fixed, uncontrolled list (Reactive Trader.dc.html:790):
 // there is no i18n backend, so picking a language does nothing but relabel the
 // trigger — presence only.
-import { createSignal, For, type JSX, Show } from "solid-js";
+
+import type { JSX } from "@solidjs/web";
+import { createSignal, For, Show } from "solid-js";
 
 import styles from "./HeaderChrome.module.css";
 
@@ -34,14 +36,14 @@ export function LanguageMenu(): JSX.Element {
         type="button"
         data-testid="language-toggle"
         aria-label="Language"
-        aria-expanded={open()}
+        aria-expanded={open() ? "true" : "false"}
         class={styles.langTrigger}
         onClick={toggleLanguageMenu}
       >
         <svg
           viewBox="0 0 24 24"
           class={styles.globe}
-          aria-hidden={true}
+          aria-hidden="true"
           fill="none"
           stroke="var(--text-secondary)"
           stroke-width="1.5"
@@ -67,7 +69,7 @@ export function LanguageMenu(): JSX.Element {
                 <button
                   type="button"
                   role="menuitemradio"
-                  aria-checked={active()}
+                  aria-checked={active() ? "true" : "false"}
                   data-testid={`language-option-${lang.code}`}
                   data-active={active() ? "true" : "false"}
                   class={styles.langOption}

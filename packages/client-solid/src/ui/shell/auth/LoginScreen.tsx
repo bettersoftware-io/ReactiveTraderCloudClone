@@ -1,11 +1,5 @@
-import {
-  type Accessor,
-  createMemo,
-  type JSX,
-  Match,
-  Show,
-  Switch,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, createMemo, Match, Show, Switch } from "solid-js";
 
 import type { AccountAccessState } from "@rtc/core-api";
 import { describeAccountAccessTitle } from "@rtc/core-logic";

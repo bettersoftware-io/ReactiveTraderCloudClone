@@ -1,4 +1,5 @@
-import { ErrorBoundary, type JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { Errored } from "solid-js";
 
 import styles from "./PanelErrorBoundary.module.css";
 
@@ -9,8 +10,8 @@ import styles from "./PanelErrorBoundary.module.css";
  * client (see the React file's own comment + CandleSeriesPresenter.ts for the
  * other layers of that fix).
  *
- * Solid ships a built-in `ErrorBoundary` (unlike React, which has no hook
- * equivalent and needs a class component): it wraps evaluation of its
+ * Solid ships a built-in error boundary, `Errored` (unlike React, which has
+ * no hook equivalent and needs a class component): it wraps evaluation of its
  * `children` — which, per Solid's props-as-getters model, only actually runs
  * the wrapped component's body when the getter is read — in a try/catch, so a
  * synchronous render-phase throw from a descendant (`registry[panelId]?.()`
@@ -22,7 +23,7 @@ export function PanelErrorBoundary(
   props: PanelErrorBoundaryProps,
 ): JSX.Element {
   return (
-    <ErrorBoundary
+    <Errored
       fallback={() => {
         return (
           <div class={styles.errorState} data-testid="panel-error">
@@ -33,7 +34,7 @@ export function PanelErrorBoundary(
       }}
     >
       {props.children}
-    </ErrorBoundary>
+    </Errored>
   );
 }
 

@@ -1,4 +1,5 @@
-import { createMemo, type JSX, Show, untrack } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo, Show, untrack } from "solid-js";
 
 import type { LayoutPanelInstance, LayoutState } from "@rtc/core-api";
 import { PANEL_SPECS, visibleRootOf } from "@rtc/core-logic";
@@ -214,7 +215,6 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
     (): readonly LayoutPanelInstance[] => {
       return state().instances;
     },
-    undefined,
     { equals: sameInstanceIds },
   );
 
@@ -252,10 +252,9 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
   // previous closure for every id still open (sound: an instance id encodes
   // its symbol) and drops the ones that closed.
   const instanceRegistry = createMemo(
-    (previous: PanelRegistry): PanelRegistry => {
+    (previous: PanelRegistry = {}): PanelRegistry => {
       return reuseRegistryEntries(previous, instanceRegistryFor(instances()));
     },
-    {},
   );
 
   // The Dockview engine's own merges: the in-house slices plus the instance

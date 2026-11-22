@@ -4,11 +4,17 @@
 // GREEN: the two helpers land in toSignal.ts and the nine pure-subscription
 // ViewModel hooks are rewritten on top of them.
 //
-// The `factoryCalls` suite at the bottom is a later RED→GREEN round: the first
+// The `sourceCalls` suite at the bottom is a later RED→GREEN round: the first
 // version of `toKeyedSignal` took an opaque `() => StateObservable<T>` thunk
 // and re-subscribed on ANY tracked read inside it, not on a change of the key
 // VALUE. Those cases measured 1 mount + 2 rebuilds under an unrelated upstream
-// update; they pin the `===` gate that fixed it.
+// update; they pin the `===` gate that fixed it. (Under Solid 1 they counted
+// the keyed `state()` FACTORY's calls, because each rebuild evicted and
+// rebuilt the cached instance. Solid 2 runs a memo's new compute before the
+// previous run's cleanup, so the old subscription outlives the new one's
+// subscribe and the refcount never reaches 0: a rebuild no longer evicts, it
+// churns a subscription. The cases now count the calls the seam makes to
+// `source`, which is the rebuild itself.)
 //
 // These cover the SEAM itself (resolve + keyed resubscribe). The hook-level
 // witnesses — accessor form, mixed two-argument form — live in
@@ -16,7 +22,7 @@
 
 import { type StateObservable, state } from "@rx-state/core";
 import { BehaviorSubject } from "rxjs";
-import { createRoot, createSignal } from "solid-js";
+import { createRoot, createSignal, flush } from "solid-js";
 import { describe, expect, it } from "vitest";
 
 import { readMaybeAccessor, toKeyedSignal } from "#/toSignal";
@@ -46,6 +52,7 @@ describe("readMaybeAccessor", () => {
     expect(readMaybeAccessor(readSymbol)).toBe("EURUSD");
     symbol = "GBPUSD";
 
+    flush();
     expect(readMaybeAccessor(readSymbol)).toBe("GBPUSD");
   });
 
@@ -54,207 +61,157 @@ describe("readMaybeAccessor", () => {
   });
 });
 
+// Solid 2 rules these cases follow: a signal write inside an owned scope (the
+// `createRoot` callback is one) throws in dev, so each case builds its
+// signals and the keyed signal inside `createUnderRoot` and WRITES outside
+// it; and a write is applied at the next microtask, so a case `flush()`es before it
+// reads what the write changed.
 describe("toKeyedSignal", () => {
   it("reads the seeded value for the initial key", () => {
     const world = createKeyedWorld();
-
-    createRoot((dispose) => {
-      const [key] = createSignal("a");
-      const value = toKeyedSignal(
-        () => {
-          return key();
-        },
-        (k) => {
-          return world.keyed(k);
-        },
-      );
-
-      expect(value()).toBe("a1");
-      dispose();
+    const { value, dispose } = createUnderRoot(() => {
+      return {
+        value: toKeyedSignal(
+          () => {
+            return "a";
+          },
+          (k) => {
+            return world.keyed(k);
+          },
+        ),
+      };
     });
+
+    expect(value()).toBe("a1");
+    dispose();
   });
 
   it("switches to the other key's value when the key signal changes", () => {
     const world = createKeyedWorld();
+    const { value, setKey, dispose } = mountOnKeySignal(world);
 
-    createRoot((dispose) => {
-      const [key, setKey] = createSignal("a");
-      const value = toKeyedSignal(
-        () => {
-          return key();
-        },
-        (k) => {
-          return world.keyed(k);
-        },
-      );
+    expect(value()).toBe("a1");
+    setKey("b");
+    flush();
 
-      expect(value()).toBe("a1");
-      setKey("b");
-
-      expect(value()).toBe("b1");
-      dispose();
-    });
+    expect(value()).toBe("b1");
+    dispose();
   });
 
   it("keeps tracking the NEW key's later emissions after a key change", () => {
     const world = createKeyedWorld();
+    const { value, setKey, dispose } = mountOnKeySignal(world);
 
-    createRoot((dispose) => {
-      const [key, setKey] = createSignal("a");
-      const value = toKeyedSignal(
-        () => {
-          return key();
-        },
-        (k) => {
-          return world.keyed(k);
-        },
-      );
+    setKey("b");
+    flush();
+    world.b$.next("b2");
+    flush();
 
-      setKey("b");
-      world.b$.next("b2");
-
-      expect(value()).toBe("b2");
-      dispose();
-    });
+    expect(value()).toBe("b2");
+    dispose();
   });
 
   it("releases the previous key's subscription on a key change", () => {
     const world = createKeyedWorld();
+    const { setKey, dispose } = mountOnKeySignal(world);
 
-    createRoot((dispose) => {
-      const [key, setKey] = createSignal("a");
-      const value = toKeyedSignal(
-        () => {
-          return key();
-        },
-        (k) => {
-          return world.keyed(k);
-        },
-      );
+    expect(world.keyed("a").getRefCount()).toBe(1);
+    setKey("b");
+    flush();
 
-      value();
-
-      expect(world.keyed("a").getRefCount()).toBe(1);
-      setKey("b");
-      value();
-
-      expect(world.keyed("a").getRefCount()).toBe(0);
-      expect(world.keyed("b").getRefCount()).toBe(1);
-      dispose();
-    });
+    expect(world.keyed("a").getRefCount()).toBe(0);
+    expect(world.keyed("b").getRefCount()).toBe(1);
+    dispose();
   });
 
   it("ignores later emissions on the key it moved away from", () => {
     const world = createKeyedWorld();
+    const { value, setKey, dispose } = mountOnKeySignal(world);
 
-    createRoot((dispose) => {
-      const [key, setKey] = createSignal("a");
-      const value = toKeyedSignal(
-        () => {
-          return key();
-        },
-        (k) => {
-          return world.keyed(k);
-        },
-      );
+    setKey("b");
+    flush();
+    world.a$.next("a2");
+    flush();
 
-      setKey("b");
-      world.a$.next("a2");
-
-      expect(value()).toBe("b1");
-      dispose();
-    });
+    expect(value()).toBe("b1");
+    dispose();
   });
 
   it("subscribes once and never resubscribes for a plain (untracked) key", () => {
     const world = createKeyedWorld();
-
-    createRoot((dispose) => {
-      const value = toKeyedSignal("a", (k) => {
-        return world.keyed(k);
-      });
-
-      expect(value()).toBe("a1");
-      world.a$.next("a2");
-
-      expect(value()).toBe("a2");
-      expect(world.keyed("a").getRefCount()).toBe(1);
-      dispose();
+    const { value, dispose } = createUnderRoot(() => {
+      return {
+        value: toKeyedSignal("a", (k) => {
+          return world.keyed(k);
+        }),
+      };
     });
+
+    expect(value()).toBe("a1");
+    world.a$.next("a2");
+    flush();
+
+    expect(value()).toBe("a2");
+    expect(world.keyed("a").getRefCount()).toBe(1);
+    dispose();
   });
 
   it("unsubscribes the current key when the owner is disposed", () => {
     const world = createKeyedWorld();
+    const { setKey, dispose } = mountOnKeySignal(world);
 
-    createRoot((dispose) => {
-      const [key, setKey] = createSignal("a");
-      const value = toKeyedSignal(
-        () => {
-          return key();
-        },
-        (k) => {
-          return world.keyed(k);
-        },
-      );
-
-      value();
-      setKey("b");
-      value();
-      dispose();
-    });
+    setKey("b");
+    flush();
+    dispose();
 
     expect(world.keyed("a").getRefCount()).toBe(0);
     expect(world.keyed("b").getRefCount()).toBe(0);
   });
 });
 
-// The `===` gate. Every case here counts INVOCATIONS OF THE SOURCE FACTORY,
-// because that is what a rebuild actually costs: `@rx-state/core` evicts a
-// keyed `StateObservable` at refcount 0, so a second invocation for the same
-// key means the cached instance was torn down and rebuilt — and for
-// `CandleSeriesPresenter` that discards every backfilled page (its stitched$
-// `defer` resets `older$`/`exhausted$` on each fresh subscription cycle).
+// The `===` gate. Every case here counts the seam's calls to `source`: each
+// one is a rebuild — a fresh `toSignal`, a subscribe to the new instance and
+// an unsubscribe from the old — for a key whose value never moved.
 describe("toKeyedSignal — resubscribes on the key VALUE, not on any tracked read", () => {
   it("does not rebuild when a tracked upstream signal changes but the key does not", () => {
     const world = createCountingWorld();
-
-    createRoot((dispose) => {
+    const { value, setWorkspace, dispose } = createUnderRoot(() => {
       const [workspace, setWorkspace] = createSignal({
         sel: "a",
         chartType: "candle",
       });
 
-      const value = toKeyedSignal(
-        () => {
-          return workspace().sel;
-        },
-        (k) => {
-          return world.keyed(k);
-        },
-      );
-
-      value();
-
-      expect(world.factoryCalls).toBe(1);
-
-      // Unrelated field replaced twice — the whole object is a new reference
-      // each time (EqWorkspaceMachine returns `{ ...s, chartType }`), so the
-      // key accessor re-runs, but `sel` is unchanged.
-      setWorkspace({ sel: "a", chartType: "line" });
-      value();
-      setWorkspace({ sel: "a", chartType: "bar" });
-      value();
-
-      expect(world.factoryCalls).toBe(1);
-      expect(value()).toBe("a1");
-      dispose();
+      return {
+        setWorkspace,
+        value: toKeyedSignal(
+          () => {
+            return workspace().sel;
+          },
+          (k) => {
+            return world.keyed(k);
+          },
+        ),
+      };
     });
+
+    expect(world.sourceCalls).toBe(1);
+
+    // Unrelated field replaced twice — the whole object is a new reference
+    // each time (EqWorkspaceMachine returns `{ ...s, chartType }`), so the
+    // key accessor re-runs, but `sel` is unchanged.
+    setWorkspace({ sel: "a", chartType: "line" });
+    flush();
+    setWorkspace({ sel: "a", chartType: "bar" });
+    flush();
+
+    expect(world.sourceCalls).toBe(1);
+    expect(value()).toBe("a1");
+    dispose();
   });
 
   it("ChartPanel shape: a coarse state object churning in unrelated fields keeps the series subscription", () => {
     const world = createCountingWorld();
-
-    createRoot((dispose) => {
+    const { setWorkspace, dispose } = createUnderRoot(() => {
       // `<ChartBody symbol={state().sel} timeframe={state().timeframe} />` —
       // both props are getters over the WHOLE eqWorkspace state object.
       const [workspace, setWorkspace] = createSignal({
@@ -273,145 +230,195 @@ describe("toKeyedSignal — resubscribes on the key VALUE, not on any tracked re
         },
       };
 
-      const candles = toKeyedSignal(
-        () => {
-          return props.symbol;
-        },
-        () => {
-          return props.timeframe;
-        },
-        (sym, tf) => {
-          return world.keyed(`${sym}|${tf}`);
-        },
-      );
-
-      candles();
-
-      expect(world.factoryCalls).toBe(1);
-
-      // toggleIndicator, then toggleYScale — neither touches sel/timeframe.
-      setWorkspace({
-        sel: "a",
-        timeframe: "1D",
-        indicators: ["sma"],
-        yScale: "linear",
-      });
-      candles();
-      setWorkspace({
-        sel: "a",
-        timeframe: "1D",
-        indicators: ["sma"],
-        yScale: "log",
-      });
-      candles();
-
-      expect(world.factoryCalls).toBe(1);
-      dispose();
+      return {
+        setWorkspace,
+        candles: toKeyedSignal(
+          () => {
+            return props.symbol;
+          },
+          () => {
+            return props.timeframe;
+          },
+          (sym, tf) => {
+            return world.keyed(`${sym}|${tf}`);
+          },
+        ),
+      };
     });
+
+    expect(world.sourceCalls).toBe(1);
+
+    // toggleIndicator, then toggleYScale — neither touches sel/timeframe.
+    setWorkspace({
+      sel: "a",
+      timeframe: "1D",
+      indicators: ["sma"],
+      yScale: "linear",
+    });
+    flush();
+    setWorkspace({
+      sel: "a",
+      timeframe: "1D",
+      indicators: ["sma"],
+      yScale: "log",
+    });
+    flush();
+
+    expect(world.sourceCalls).toBe(1);
+    dispose();
   });
 
   it("still rebuilds exactly once when the key value really changes", () => {
     const world = createCountingWorld();
-
-    createRoot((dispose) => {
+    const { value, setWorkspace, dispose } = createUnderRoot(() => {
       const [workspace, setWorkspace] = createSignal({
         sel: "a",
         chartType: "candle",
       });
 
-      const value = toKeyedSignal(
-        () => {
-          return workspace().sel;
-        },
-        (k) => {
-          return world.keyed(k);
-        },
-      );
-
-      value();
-      setWorkspace({ sel: "b", chartType: "candle" });
-
-      expect(value()).toBe("b1");
-      expect(world.factoryCalls).toBe(2);
-      dispose();
+      return {
+        setWorkspace,
+        value: toKeyedSignal(
+          () => {
+            return workspace().sel;
+          },
+          (k) => {
+            return world.keyed(k);
+          },
+        ),
+      };
     });
+
+    setWorkspace({ sel: "b", chartType: "candle" });
+    flush();
+
+    expect(value()).toBe("b1");
+    expect(world.sourceCalls).toBe(2);
+    dispose();
   });
 
   it("two-key form: a symbol change and a timeframe change each rebuild exactly once", () => {
     const world = createCountingWorld();
-
-    createRoot((dispose) => {
+    const { setSymbol, setTimeframe, dispose } = createUnderRoot(() => {
       const [symbol, setSymbol] = createSignal("a");
       const [timeframe, setTimeframe] = createSignal("1D");
-      const value = toKeyedSignal(
-        () => {
-          return symbol();
-        },
-        () => {
-          return timeframe();
-        },
-        (sym, tf) => {
-          return world.keyed(`${sym}|${tf}`);
-        },
-      );
 
-      value();
-
-      expect(world.factoryCalls).toBe(1);
-      setSymbol("b");
-      value();
-
-      expect(world.factoryCalls).toBe(2);
-      setTimeframe("1W");
-      value();
-
-      expect(world.factoryCalls).toBe(3);
-      dispose();
+      return {
+        setSymbol,
+        setTimeframe,
+        value: toKeyedSignal(
+          () => {
+            return symbol();
+          },
+          () => {
+            return timeframe();
+          },
+          (sym, tf) => {
+            return world.keyed(`${sym}|${tf}`);
+          },
+        ),
+      };
     });
+
+    expect(world.sourceCalls).toBe(1);
+    setSymbol("b");
+    flush();
+
+    expect(world.sourceCalls).toBe(2);
+    setTimeframe("1W");
+    flush();
+
+    expect(world.sourceCalls).toBe(3);
+    dispose();
   });
 
   it("an object key compares by reference: the same instance re-read does not rebuild", () => {
     const world = createCountingWorld();
     const eurusd = { symbol: "a" };
-
-    createRoot((dispose) => {
+    const { setWrapper, dispose } = createUnderRoot(() => {
       const [wrapper, setWrapper] = createSignal({ pair: eurusd, hovered: 0 });
-      const value = toKeyedSignal(
-        () => {
-          return wrapper().pair;
-        },
-        (pair: PairKey) => {
-          return world.keyed(pair.symbol);
-        },
-      );
 
-      value();
-      setWrapper({ pair: eurusd, hovered: 1 });
-      value();
-
-      expect(world.factoryCalls).toBe(1);
-      dispose();
+      return {
+        setWrapper,
+        value: toKeyedSignal(
+          () => {
+            return wrapper().pair;
+          },
+          (pair: PairKey) => {
+            return world.keyed(pair.symbol);
+          },
+        ),
+      };
     });
+
+    setWrapper({ pair: eurusd, hovered: 1 });
+    flush();
+
+    expect(world.sourceCalls).toBe(1);
+    dispose();
   });
 
   it("invokes the source factory exactly once for a plain value key", () => {
     const world = createCountingWorld();
-
-    createRoot((dispose) => {
-      const value = toKeyedSignal("a", (k) => {
-        return world.keyed(k);
-      });
-
-      value();
-      world.a$.next("a2");
-      value();
-
-      expect(world.factoryCalls).toBe(1);
-      expect(value()).toBe("a2");
-      dispose();
+    const { value, dispose } = createUnderRoot(() => {
+      return {
+        value: toKeyedSignal("a", (k) => {
+          return world.keyed(k);
+        }),
+      };
     });
+
+    world.a$.next("a2");
+    flush();
+
+    expect(world.sourceCalls).toBe(1);
+    expect(value()).toBe("a2");
+    dispose();
   });
 });
+
+/** Runs `build` under a fresh root and hands back what it built plus the
+ * root's `dispose` — so a case can write to its signals from OUTSIDE the
+ * owned scope, as an event handler would. */
+function createUnderRoot<T extends object>(build: () => T): Rooted<T> {
+  return createRoot((dispose) => {
+    return { ...build(), dispose };
+  });
+}
+
+/** What `createUnderRoot` built, plus the root's `dispose`. */
+type Rooted<T> = T & RootDisposer;
+
+interface RootDisposer {
+  dispose: () => void;
+}
+
+interface KeySignalMount {
+  value: () => string;
+  setKey: (key: string) => void;
+  dispose: () => void;
+}
+
+/** The common shape: one key signal starting at "a", keying `world`. */
+function mountOnKeySignal(world: KeyedWorld): KeySignalMount {
+  return createUnderRoot(() => {
+    const [key, setKey] = createSignal("a");
+
+    return {
+      setKey: (next: string): void => {
+        setKey(next);
+      },
+      value: toKeyedSignal(
+        () => {
+          return key();
+        },
+        (k) => {
+          return world.keyed(k);
+        },
+      ),
+    };
+  });
+}
 
 /** A reference-compared object key, standing in for `CurrencyPair`. */
 interface PairKey {
@@ -438,28 +445,25 @@ function createKeyedWorld(): KeyedWorld {
 }
 
 interface CountingWorld extends KeyedWorld {
-  /** Invocations of the keyed `state()` factory. `@rx-state/core` calls it
-   * once per CACHED instance, so a second call for the same key proves the
-   * instance was evicted at refcount 0 and rebuilt. */
-  readonly factoryCalls: number;
+  /** Calls the seam made to `keyed` — one per (re)build of the keyed
+   * subscription. */
+  readonly sourceCalls: number;
 }
 
 function createCountingWorld(): CountingWorld {
-  const a$ = new BehaviorSubject("a1");
-  const b$ = new BehaviorSubject("b1");
-  let factoryCalls = 0;
-  const keyed = state((key: string) => {
-    factoryCalls += 1;
-
-    return key.startsWith("a") ? a$ : b$;
-  }, "");
+  const world = createKeyedWorld();
+  let sourceCalls = 0;
 
   return {
-    a$,
-    b$,
-    keyed,
-    get factoryCalls(): number {
-      return factoryCalls;
+    a$: world.a$,
+    b$: world.b$,
+    keyed: (key: string): StateObservable<string> => {
+      sourceCalls += 1;
+
+      return world.keyed(key.startsWith("a") ? "a" : "b");
+    },
+    get sourceCalls(): number {
+      return sourceCalls;
     },
   };
 }

@@ -1,4 +1,4 @@
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 import type { EqWatchlistSort } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";

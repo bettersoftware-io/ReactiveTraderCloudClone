@@ -1,10 +1,5 @@
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  type JSX,
-  Show,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createEffect, createMemo, createSignal, Show } from "solid-js";
 
 import { MAX_PANEL_INSTANCES } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -73,9 +68,7 @@ export function WatchlistRow(props: WatchlistRowProps): JSX.Element {
   let prevLast: number | undefined;
   const [tick, setTick] = createSignal<TickPulse>({ nonce: 0, up: true });
 
-  createEffect(() => {
-    const q = quote();
-
+  createEffect(quote, (q) => {
     if (!q) {
       return;
     }
@@ -142,13 +135,11 @@ export function WatchlistRow(props: WatchlistRowProps): JSX.Element {
       <span data-rank-glow="true" aria-hidden="true" class={styles.rankGlow} />
       <Show when={pulseKey()} keyed>
         {(_nonce: number): JSX.Element => {
-          const up = tick().up;
-
           return (
             <span
               data-testid={`watch-flash-${props.symbol}`}
               data-flash="true"
-              data-up={up ? "true" : "false"}
+              data-up={tick().up ? "true" : "false"}
               class={styles.flashPulse}
               aria-hidden="true"
             />
@@ -181,7 +172,9 @@ export function WatchlistRow(props: WatchlistRowProps): JSX.Element {
           aria-label={openChartLabel(props.symbol, props.chartUnavailable)}
           title={openChartLabel(props.symbol, props.chartUnavailable)}
           disabled={props.chartUnavailable !== undefined}
-          aria-disabled={props.chartUnavailable !== undefined}
+          aria-disabled={
+            props.chartUnavailable !== undefined ? "true" : "false"
+          }
           onClick={openChart}
         >
           📈

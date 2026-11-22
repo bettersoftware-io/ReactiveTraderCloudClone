@@ -1,11 +1,5 @@
-import {
-  createMemo,
-  createSignal,
-  For,
-  type JSX,
-  Show,
-  untrack,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo, createSignal, For, Show, untrack } from "solid-js";
 
 import type { WorkspaceTab } from "@rtc/core-api";
 import { PANEL_SPECS, staticPanelIdsFor } from "@rtc/core-logic";
@@ -68,7 +62,7 @@ export function ViewMenu(props: ViewMenuProps): JSX.Element {
         type="button"
         data-testid="view-menu-toggle"
         aria-label="View"
-        aria-expanded={open()}
+        aria-expanded={open() ? "true" : "false"}
         class={styles.iconButton}
         onClick={toggleViewMenu}
       >
@@ -118,8 +112,8 @@ export function ViewMenu(props: ViewMenuProps): JSX.Element {
                       type="button"
                       data-testid={`view-menu-row-${panelId}`}
                       role="menuitemcheckbox"
-                      aria-checked={isVisible()}
-                      aria-disabled={isFloor()}
+                      aria-checked={isVisible() ? "true" : "false"}
+                      aria-disabled={isFloor() ? "true" : "false"}
                       disabled={isFloor()}
                       class={styles.viewRow}
                       onClick={togglePanelRow}

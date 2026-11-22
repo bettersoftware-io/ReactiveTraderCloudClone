@@ -1,11 +1,5 @@
-import {
-  type Accessor,
-  createSignal,
-  For,
-  type JSX,
-  Show,
-  untrack,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, createSignal, For, Show, untrack } from "solid-js";
 
 import type {
   LayoutPresetNameProblem,
@@ -221,7 +215,7 @@ export function LayoutPresetsSection(
                     type="button"
                     data-testid={`view-menu-layout-${preset.id}`}
                     role="menuitem"
-                    aria-disabled={!preset.readable}
+                    aria-disabled={!preset.readable ? "true" : "false"}
                     disabled={!preset.readable}
                     class={styles.row}
                     onClick={loadThisPreset}

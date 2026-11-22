@@ -13,7 +13,7 @@
  * documented jsdom quirk uses for the react side), not the unprefixed
  * `animationend`, to match what the hook actually subscribes to.
  */
-import { createSignal } from "solid-js";
+import { createSignal, flush } from "solid-js";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { DriveOutcome, JarvisDriverState } from "@rtc/core-api";
@@ -35,6 +35,7 @@ describe("useJarvisDrivenPulse — descendant animationend guard", () => {
     setBatch([
       { command: { kind: "switchTab", tab: "equities" }, status: "applied" },
     ]);
+    flush();
 
     expect(page.wrapperDrivenAttr("wrapper")).toBe("true");
 
@@ -70,6 +71,7 @@ describe("useJarvisDrivenPulse — reduced-motion gate", () => {
           status: "applied",
         },
       ]);
+      flush();
 
       expect(page.wrapperDrivenAttr("wrapper")).toBe("false");
     } finally {

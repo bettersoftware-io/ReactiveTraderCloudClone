@@ -1,3 +1,4 @@
+import type { JSX } from "@solidjs/web";
 import { fixtures } from "@ui-visual-shared/fixtures";
 // Side-effect import: pins the wall clock before anything below renders. This
 // module is the single import surface the playwright tier routes through
@@ -6,14 +7,7 @@ import { fixtures } from "@ui-visual-shared/fixtures";
 // tiers — see freezeClock.ts.
 import "@ui-visual-shared/freezeClock";
 import { scenarios } from "@ui-visual-shared/scenarios";
-import {
-  createSignal,
-  type JSX,
-  onCleanup,
-  onMount,
-  Show,
-  untrack,
-} from "solid-js";
+import { createSignal, onCleanup, onSettled, Show, untrack } from "solid-js";
 
 import { ViewModelProvider } from "@rtc/solid-bindings";
 // Importing the font manifest registers the app's real @fontsource web fonts, so
@@ -81,7 +75,7 @@ export function VisualScenario(props: VisualScenarioProps): JSX.Element {
   // null→content transition. Mirrors react's VisualScenario.tsx exactly.
   const [fontsReady, setFontsReady] = createSignal(false);
 
-  onMount(() => {
+  onSettled(() => {
     let cancelled = false;
 
     void Promise.all(
@@ -100,9 +94,9 @@ export function VisualScenario(props: VisualScenarioProps): JSX.Element {
 
     // Solid's onMount ignores returned functions (unlike react's useEffect);
     // the disposal guard must register via onCleanup.
-    onCleanup(() => {
+    return () => {
       cancelled = true;
-    });
+    };
   });
 
   // The whole tree below is built once from this name, and a fresh
@@ -161,7 +155,7 @@ export function VisualScenario(props: VisualScenarioProps): JSX.Element {
         {/* Freeze the cosmetic FPS/MEM readouts (PR #231) so status-bar crops
             are deterministic — mirrors react's VisualScenario and the contract
             tier's render harness. */}
-        <LiveMetricsContext.Provider value={FROZEN_LIVE_METRICS}>
+        <LiveMetricsContext value={FROZEN_LIVE_METRICS}>
           <ThemeProvider>
             {/* FxBlotter/LiveRatesPanel/CreditBlotter (and any future FX/credit
                 panel) read useFxView()/useCreditView() for their tab/filter
@@ -190,7 +184,7 @@ export function VisualScenario(props: VisualScenarioProps): JSX.Element {
               </CreditViewProvider>
             </FxViewProvider>
           </ThemeProvider>
-        </LiveMetricsContext.Provider>
+        </LiveMetricsContext>
       </ViewModelProvider>
     </Show>
   );

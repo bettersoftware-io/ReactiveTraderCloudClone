@@ -1,4 +1,5 @@
-import { type Accessor, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, Show } from "solid-js";
 
 import type { PositionUpdates } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";

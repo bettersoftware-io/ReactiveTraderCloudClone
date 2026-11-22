@@ -1,10 +1,9 @@
 import {
   type Accessor,
-  createComputed,
   createMemo,
   createSignal,
   onCleanup,
-  onMount,
+  onSettled,
 } from "solid-js";
 
 import type { EqDrawTool } from "@rtc/core-api";
@@ -166,9 +165,10 @@ interface DragOrigin {
   readonly downClient: { readonly x: number; readonly y: number };
 }
 
-/** The series-growth `createComputed`'s seeded accumulator: the previous
- * length and first-candle-time, compared fresh against the accessors on
- * every run to fork on the growth DIRECTION (append vs. backfill prepend). */
+/** The series-growth fold's accumulator: the previous length and
+ * first-candle-time, compared fresh against the accessors on every run of the
+ * viewport's compute to fork on the growth DIRECTION (append vs. backfill
+ * prepend). */
 interface SeriesGrowthSnapshot {
   readonly len: number;
   readonly firstTime: number | undefined;
@@ -183,13 +183,16 @@ interface SeriesGrowthSnapshot {
  *
  * SOLID PORT NOTE: the React original folds series-length growth in via the
  * "adjust state during render" recipe (a stored `prevLen` state compared
- * during render). Solid has no render phase to hook that into — instead a
- * `createComputed` (the primitive built for exactly this "run before
- * dependents observe the new value" ordering) watches `seriesLen()` directly
- * and folds each transition through `followLive` the moment it changes. The
- * wheel listener needs no analogous `[seriesLen]`-keyed re-bind either: it
- * closes over the `seriesLen` ACCESSOR and calls it fresh on every notch, so
- * one `onMount` (not an effect re-run per length change) is enough.
+ * during render). Solid has no render phase to hook that into — instead the
+ * viewport is a WRITABLE DERIVED signal (`createSignal(fn)`): its compute
+ * watches `seriesLen()` directly and folds each transition through
+ * `followLive` before any dependent observes the new length, and the
+ * gestures' own writes (pan, zoom, reset) land through its setter; the
+ * compute receives the CURRENT viewport, a gesture's write included, as its
+ * previous value. The wheel listener needs no analogous `[seriesLen]`-keyed
+ * re-bind either: it closes over the `seriesLen` ACCESSOR and calls it fresh
+ * on every notch, so one `onSettled` (not an effect re-run per length change)
+ * is enough.
  */
 export function createChartGestures(
   seriesLen: Accessor<number>,
@@ -197,8 +200,74 @@ export function createChartGestures(
   firstCandleTime?: Accessor<number | undefined>,
   draw?: DrawGestureSlots,
 ): ChartGestures {
+  // The last length/first-candle-time the viewport's compute folded; null
+  // until its first run.
+  let lastGrowth: SeriesGrowthSnapshot | null = null;
+
+  // New candles arriving (seriesLen grows tick-by-tick) fold in here: a
+  // live-edge viewport slides with the new bars; a panned-away one holds
+  // still so the user's view doesn't jump. The first run seeds the default
+  // window over the current series.
   const [viewport, setViewport] = createSignal<ChartViewport>(
-    defaultViewport(seriesLen(), defaultVisible()),
+    (vp?: ChartViewport): ChartViewport => {
+      const len = seriesLen();
+      const firstTime = firstCandleTime?.();
+      const prev = lastGrowth;
+
+      lastGrowth = { len, firstTime };
+
+      // prev.len === 0 is the solid-bindings placeholder before the candle
+      // presenter's real emission lands — not a genuine one-tick delta.
+      // Treating it as one via `followLive` slides the degenerate {0,0}
+      // initial viewport by the FULL new length, landing on a zero-width
+      // window exactly at the series end: `resolveWindow` then renders
+      // nothing (empty candles/labels/NaN prices) and `isAtLiveEdge` reads
+      // permanently true, so the plot can never pan away from "live" at all.
+      // Snap straight to the real default window instead — this is the very
+      // first time real data exists, so there is no panned-away position to
+      // preserve yet.
+      if (vp === undefined || prev === null || prev.len === 0) {
+        return defaultViewport(len, defaultVisible());
+      }
+
+      if (len === prev.len && firstTime === prev.firstTime) {
+        return vp;
+      }
+
+      // Growth DIRECTION fork: the series growing while its first candle got
+      // OLDER is a backfill prepend — every index shifted, so the viewport
+      // translates with them (holds a panned-away view still AND keeps an
+      // at-edge view at the edge, one code path). Anything else is the live
+      // append fold, unchanged.
+      const grewBy = len - prev.len;
+      const prepended =
+        grewBy > 0 &&
+        prev.firstTime !== undefined &&
+        firstTime !== undefined &&
+        firstTime < prev.firstTime;
+
+      if (prepended) {
+        // C1: a prepend landing MID-DRAG must also shift the drag's cached
+        // origin, or the next pointermove's panBy(dragOrigin.startViewport,
+        // ...) recomputes from a viewport that no longer matches reality —
+        // snapping the view back by `grewBy` candles and re-triggering the
+        // near-edge fetch on every subsequent move, draining the whole depth
+        // cap in one continuous drag. `dragOrigin` is a plain `let`, so
+        // reassigning it here (in the compute, which runs before dependents
+        // observe the new viewport) is the direct analogue of the React
+        // shell's render-time ref write.
+        if (dragOrigin) {
+          dragOrigin = {
+            ...dragOrigin,
+            startViewport: shiftForPrepend(dragOrigin.startViewport, grewBy),
+          };
+        }
+
+        return shiftForPrepend(vp, grewBy);
+      }
+
+      return followLive(vp, prev.len, len);
+    },
   );
   const [cursor, setCursor] = createSignal<ChartCursor | null>(null);
   const [draft, setDraft] = createSignal<DrawDraft | null>(null);
@@ -250,87 +319,14 @@ export function createChartGestures(
 
   onCleanup(dropPendingViewportWrite);
 
-  // New candles arriving (seriesLen grows tick-by-tick) fold in via a
-  // createComputed watching the live length directly: a live-edge viewport
-  // slides with the new bars; a panned-away one holds still so the user's
-  // view doesn't jump. Seeded with the CURRENT seriesLen()/firstCandleTime()
-  // so the first run (prev.len === len) is a no-op, matching the initial
-  // state above.
-  createComputed(
-    (prev: SeriesGrowthSnapshot) => {
-      const len = seriesLen();
-      const firstTime = firstCandleTime?.();
-
-      if (len !== prev.len || firstTime !== prev.firstTime) {
-        setViewport((vp) => {
-          // prev.len === 0 is the solid-bindings placeholder before the
-          // candle presenter's real emission lands — not a genuine one-tick
-          // delta. Treating it as one via `followLive` slides the degenerate
-          // {0,0} initial viewport by the FULL new length, landing on a
-          // zero-width window exactly at the series end: `resolveWindow`
-          // then renders nothing (empty candles/labels/NaN prices) and
-          // `isAtLiveEdge` reads permanently true, so the plot can never pan
-          // away from "live" at all. Snap straight to the real default
-          // window instead — this is the very first time real data exists,
-          // so there is no panned-away position to preserve yet.
-          if (prev.len === 0) {
-            return defaultViewport(len, defaultVisible());
-          }
-
-          // Growth DIRECTION fork: the series growing while its first
-          // candle got OLDER is a backfill prepend — every index shifted,
-          // so the viewport translates with them (holds a panned-away view
-          // still AND keeps an at-edge view at the edge, one code path).
-          // Anything else is the live append fold, unchanged.
-          const grewBy = len - prev.len;
-          const prepended =
-            grewBy > 0 &&
-            prev.firstTime !== undefined &&
-            firstTime !== undefined &&
-            firstTime < prev.firstTime;
-
-          if (prepended) {
-            // C1: a prepend landing MID-DRAG must also shift the drag's
-            // cached origin, or the next pointermove's
-            // panBy(dragOrigin.startViewport, ...) recomputes from a
-            // viewport that no longer matches reality — snapping the view
-            // back by `grewBy` candles and re-triggering the near-edge
-            // fetch on every subsequent move, draining the whole depth cap
-            // in one continuous drag. `dragOrigin` is a plain `let`, so
-            // reassigning it here (inside this createComputed, which already
-            // runs synchronously before dependents observe the new
-            // viewport) is the direct analogue of the React shell's
-            // render-time ref write.
-            if (dragOrigin) {
-              dragOrigin = {
-                ...dragOrigin,
-                startViewport: shiftForPrepend(
-                  dragOrigin.startViewport,
-                  grewBy,
-                ),
-              };
-            }
-
-            return shiftForPrepend(vp, grewBy);
-          }
-
-          return followLive(vp, prev.len, len);
-        });
-      }
-
-      return { len, firstTime };
-    },
-    { len: seriesLen(), firstTime: firstCandleTime?.() },
-  );
-
-  // A native listener (not Solid's `on:wheel`, which is just as passive as
+  // A native listener (not Solid's `onWheel`, which is just as passive as
   // React's synthetic onWheel) is the only way to actually block the page
   // scroll while the wheel zooms the plot — `preventDefault()` on a
   // passively-registered listener logs a console error instead of stopping
-  // it. Attached once via onMount: by the time it runs, `plotRef` has
+  // it. Attached once via onSettled: by the time it runs, `plotRef` has
   // already been assigned (Solid assigns `ref=` synchronously during element
-  // creation, before mount effects flush), so `plotEl` is populated here.
-  onMount(() => {
+  // creation, before the tree settles), so `plotEl` is populated here.
+  onSettled(() => {
     const maybeEl = plotEl;
 
     if (!maybeEl) {
@@ -363,9 +359,9 @@ export function createChartGestures(
 
     el.addEventListener("wheel", zoomByWheelNotch, { passive: false });
 
-    onCleanup(() => {
+    return () => {
       el.removeEventListener("wheel", zoomByWheelNotch);
-    });
+    };
   });
 
   function plotRef(el: HTMLDivElement): void {

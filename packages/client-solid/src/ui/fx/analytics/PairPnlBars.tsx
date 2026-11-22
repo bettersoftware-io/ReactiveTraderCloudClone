@@ -1,4 +1,5 @@
-import { createMemo, createSignal, For, type JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo, createSignal, For } from "solid-js";
 
 import {
   type CurrencyPairPosition,

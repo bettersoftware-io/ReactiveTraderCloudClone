@@ -1,4 +1,5 @@
-import { type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { Show } from "solid-js";
 
 import styles from "./PreferencesContent.module.css";
 
@@ -24,7 +25,7 @@ export function PrefToggle(props: PrefToggleProps): JSX.Element {
       <button
         type="button"
         role="switch"
-        aria-checked={props.on}
+        aria-checked={props.on ? "true" : "false"}
         aria-label={props.label}
         data-testid={props.testid}
         data-on={props.on ? "true" : "false"}

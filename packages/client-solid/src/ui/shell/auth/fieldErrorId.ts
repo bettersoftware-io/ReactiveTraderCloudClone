@@ -6,9 +6,12 @@ export function fieldErrorId(field: AccountField): string {
   return `login-field-error-${field}`;
 }
 
-/** The accessibility pair a checked input carries. */
+/** The accessibility pair a checked input carries. `aria-invalid` is the
+ * attribute's own string: Solid 2 writes a boolean attribute value as
+ * presence/absence, so `false` would drop the attribute rather than say
+ * "false". */
 export interface FieldAriaProps {
-  readonly "aria-invalid": boolean;
+  readonly "aria-invalid": "true" | "false";
   readonly "aria-describedby": string | undefined;
 }
 
@@ -19,7 +22,7 @@ export function fieldAriaProps(
   error: string | null,
 ): FieldAriaProps {
   return {
-    "aria-invalid": error !== null,
+    "aria-invalid": error === null ? "false" : "true",
     "aria-describedby": error === null ? undefined : fieldErrorId(field),
   };
 }

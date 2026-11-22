@@ -33,8 +33,9 @@
     "@rtc/motion-core": "workspace:*",
     "@rtc/solid-bindings": "workspace:*",
     "@rtc/web-boot": "workspace:*",
+    "@solidjs/web": "^2.0.3",
     "rxjs": "^7.8",
-    "solid-js": "^1.9.20"
+    "solid-js": "^2.0.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
@@ -42,7 +43,9 @@
     "@rtc/devtools-app": "workspace:*",
     "@rtc/ui-contract": "workspace:*",
     "@rx-state/core": "^0.1.4",
-    "@solidjs/testing-library": "^0.8.10",
+    "@solidjs/testing-library": "1.0.0-rc.2",
+    "@solidjs/vite-plugin": "^3.0.1",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^8.0.0",
     "@types/node": "^26.2.0",
     "@vitest/browser-playwright": "5.1.1",
@@ -50,10 +53,7 @@
     "@vitest/ui": "^5.1.1",
     "jsdom": "^31.0.1",
     "playwright": "^1.65.1",
-    "solid-devtools": "^0.34.5",
     "vite": "^8.3.8",
-    "vite-plugin-solid": "^2.11.17",
-    "vitest": "^5.1.1",
-    "vitest-browser-solid": "1.0.1"
+    "vitest": "^5.1.1"
   }
 }

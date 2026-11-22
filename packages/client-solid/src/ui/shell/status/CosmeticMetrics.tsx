@@ -1,7 +1,9 @@
 // FPS + MEM are LIVE (useLiveMetrics, react-scan-style rAF meter); the rest of
 // the footer is decorative static chrome. A frozen provider under the harnesses
 // keeps goldens byte-identical.
-import { For, type JSX } from "solid-js";
+
+import type { JSX } from "@solidjs/web";
+import { type Accessor, For } from "solid-js";
 
 import { useLiveMetrics } from "./useLiveMetrics";
 
@@ -32,14 +34,17 @@ export function CosmeticMetrics(): JSX.Element {
 
   return (
     <div data-testid="cosmetic-metrics" class={styles.metrics}>
-      <For each={cells()}>
-        {(m: MetricCell) => {
+      {/* Keyed by label: `cells()` builds fresh objects on every live tick,
+       * so identity keying would rebuild all eight cells' DOM each second —
+       * by label, a tick updates the two live cells' text in place. */}
+      <For each={cells()} keyed={keyOfCell}>
+        {(m: Accessor<MetricCell>) => {
           return (
             <span class={styles.metric}>
               <span class={styles.metricSep}>│</span>
-              <span class={styles.metricLabel}>{m.label}</span>
-              <span class={styles.metricValue} data-tone={m.tone}>
-                {m.value}
+              <span class={styles.metricLabel}>{m().label}</span>
+              <span class={styles.metricValue} data-tone={m().tone}>
+                {m().value}
               </span>
             </span>
           );
@@ -51,6 +56,11 @@ export function CosmeticMetrics(): JSX.Element {
       <span class={styles.clock}>{CLOCK} UTC</span>
     </div>
   );
+}
+
+/** A cell's identity across ticks: its label (each appears once). */
+function keyOfCell(cell: MetricCell): string {
+  return cell.label;
 }
 
 interface MetricCell {

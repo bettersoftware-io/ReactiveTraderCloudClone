@@ -1,4 +1,10 @@
-import { cleanup, render, screen, waitFor } from "@solidjs/testing-library";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@solidjs/testing-library";
 
 import type {
   DockLayoutStore,
@@ -171,7 +177,7 @@ export function dockviewLayoutEngineBridgePage(): DockviewLayoutEngineBridgePage
       return control instanceof HTMLButtonElement ? control.disabled : null;
     },
     clickControl(testId: string): void {
-      screen.getByTestId(testId).click();
+      fireEvent.click(screen.getByTestId(testId));
     },
     touchDock(): void {
       // `.dockview-theme-rtc` is the literal class the bridge puts on its

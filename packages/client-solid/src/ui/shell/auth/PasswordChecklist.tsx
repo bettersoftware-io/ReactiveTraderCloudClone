@@ -1,4 +1,5 @@
-import { Index, type JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { For } from "solid-js";
 
 import {
   describePasswordChecklist,
@@ -24,7 +25,7 @@ export function PasswordChecklist(props: PasswordChecklistProps): JSX.Element {
 
   return (
     <ul data-testid="login-password-checklist" class={styles.checklist}>
-      <Index each={rows()}>
+      <For keyed={false} each={rows()}>
         {(row: () => PasswordChecklistRow) => {
           return (
             <li
@@ -38,7 +39,7 @@ export function PasswordChecklist(props: PasswordChecklistProps): JSX.Element {
             </li>
           );
         }}
-      </Index>
+      </For>
     </ul>
   );
 }

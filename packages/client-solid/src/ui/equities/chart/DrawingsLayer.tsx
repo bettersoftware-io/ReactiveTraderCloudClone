@@ -1,4 +1,5 @@
-import { type Accessor, Index, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, For, Show } from "solid-js";
 
 import type { DrawingHandle, DrawingSceneItem } from "@rtc/motion-core";
 
@@ -32,7 +33,7 @@ export function DrawingsLayer(props: DrawingsLayerProps): JSX.Element {
         preserveAspectRatio="none"
         aria-hidden="true"
       >
-        <Index each={props.items}>
+        <For keyed={false} each={props.items}>
           {(item: Accessor<DrawingSceneItem>): JSX.Element => {
             return (
               <Show when={item()} keyed>
@@ -68,7 +69,7 @@ export function DrawingsLayer(props: DrawingsLayerProps): JSX.Element {
                           vector-effect="non-scaling-stroke"
                         />
                       )}
-                      <Index each={it.handles}>
+                      <For keyed={false} each={it.handles}>
                         {(h: Accessor<DrawingHandle>): JSX.Element => {
                           return (
                             <circle
@@ -80,14 +81,14 @@ export function DrawingsLayer(props: DrawingsLayerProps): JSX.Element {
                             />
                           );
                         }}
-                      </Index>
+                      </For>
                     </>
                   );
                 }}
               </Show>
             );
           }}
-        </Index>
+        </For>
       </svg>
     </Show>
   );

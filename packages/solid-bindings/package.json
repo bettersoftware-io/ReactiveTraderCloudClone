@@ -29,17 +29,18 @@
     "@rtc/core-api": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rx-state/core": "^0.1.4",
+    "@solidjs/web": "^2.0.3",
     "rxjs": "^7.8",
-    "solid-js": "^1.9.20"
+    "solid-js": "^2.0.3"
   },
   "devDependencies": {
     "@rtc/client-adapters": "workspace:*",
     "@rtc/client-core-rxjs": "workspace:*",
-    "@solidjs/testing-library": "^0.8.10",
+    "@solidjs/testing-library": "1.0.0-rc.2",
+    "@solidjs/vite-plugin": "^3.0.1",
     "@testing-library/jest-dom": "^8.0.0",
     "jsdom": "^31.0.1",
     "tsc-alias": "1.9.10",
-    "vite-plugin-solid": "^2.11.17",
     "vitest": "^5.1.1"
   }
 }

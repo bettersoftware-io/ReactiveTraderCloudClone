@@ -1,10 +1,5 @@
-import {
-  createEffect,
-  createSignal,
-  type JSX,
-  onCleanup,
-  onMount,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createEffect, createSignal, onSettled } from "solid-js";
 
 import type { Canvas2D, CanvasSize, ChartPalette } from "@rtc/motion-core";
 
@@ -12,20 +7,24 @@ import { readChartPalette } from "./readChartPalette";
 
 import styles from "./SceneCanvas.module.css";
 
-/** An absolutely-filling canvas that repaints via the `draw` slot whenever
- * the slot identity, the observed box size, or the device pixel ratio
- * changes — never on a rAF loop, so a quiet stream (and power-saver
- * Freeze) costs zero. The palette is re-read from the CSS cascade on every
- * repaint, so theme switches correct themselves on the next draw. Solid
- * twin of the React `SceneCanvas`: `props.draw` is read INSIDE the effect
- * (not destructured), so a new scene closure from the caller re-runs the
- * paint — the same "slot identity change repaints" contract, expressed as
- * a tracked read instead of a dependency array. */
-export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
+/** An absolutely-filling canvas that repaints `scene` through the `draw`
+ * slot whenever the scene, the slot, the observed box size, or the device
+ * pixel ratio changes — never on a rAF loop, so a quiet stream (and
+ * power-saver Freeze) costs zero. The palette is re-read from the CSS cascade
+ * on every repaint, so theme switches correct themselves on the next draw.
+ *
+ * Solid twin of the React `SceneCanvas`, whose `draw` closure binds the
+ * scene, so a new scene is a new slot identity and the effect repaints. Here
+ * the scene is its own prop, read in the effect's compute phase beside
+ * `draw`: Solid 2 runs the paint in the apply phase, which tracks nothing, so
+ * a scene read inside the paint would never repaint on a new scene (and
+ * dev-warns). The same "a new scene repaints" contract, expressed as a
+ * tracked read instead of a dependency array. */
+export function SceneCanvas<S>(props: SceneCanvasProps<S>): JSX.Element {
   let canvas: HTMLCanvasElement | undefined;
   const [box, setBox] = createSignal<CanvasSize | null>(null);
 
-  onMount(() => {
+  onSettled(() => {
     if (!canvas) {
       return;
     }
@@ -38,30 +37,34 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
       }
     });
     observer.observe(canvas);
-    onCleanup(() => {
+
+    return () => {
       observer.disconnect();
-    });
+    };
   });
 
-  createEffect(() => {
-    const size = box();
-    const ctx = canvas?.getContext("2d");
-    const paint = props.draw;
+  createEffect(
+    () => {
+      return { size: box(), scene: props.scene, paint: props.draw };
+    },
+    ({ size, scene, paint }) => {
+      const ctx = canvas?.getContext("2d");
 
-    if (!canvas || !ctx || !size || size.w === 0 || size.h === 0) {
-      return;
-    }
+      if (!canvas || !ctx || !size || size.w === 0 || size.h === 0) {
+        return;
+      }
 
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(size.w * dpr);
-    canvas.height = Math.round(size.h * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // The real CanvasRenderingContext2D satisfies Canvas2D structurally —
-    // its style properties are covered by Canvas2D's divergent read/write
-    // accessor types (see the interface doc in @rtc/motion-core), so this
-    // direct pass is also the compile-time pin that keeps the two in sync.
-    paint(ctx, readChartPalette(canvas), size);
-  });
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(size.w * dpr);
+      canvas.height = Math.round(size.h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // The real CanvasRenderingContext2D satisfies Canvas2D structurally —
+      // its style properties are covered by Canvas2D's divergent read/write
+      // accessor types (see the interface doc in @rtc/motion-core), so this
+      // direct pass is also the compile-time pin that keeps the two in sync.
+      paint(ctx, scene, readChartPalette(canvas), size);
+    },
+  );
 
   return (
     <canvas
@@ -73,11 +76,13 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
   );
 }
 
-export interface SceneCanvasProps {
-  /** Paints one frame — the region binds its scene into this slot, so a
-   * new scene object is a new slot identity and the effect repaints. */
+export interface SceneCanvasProps<S> {
+  /** The scene to paint; a new scene repaints. */
+  readonly scene: S;
+  /** Paints `scene` as one frame. */
   readonly draw: (
     ctx: Canvas2D,
+    scene: S,
     palette: ChartPalette,
     size: CanvasSize,
   ) => void;

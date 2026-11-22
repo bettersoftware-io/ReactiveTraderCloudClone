@@ -568,14 +568,15 @@ deployed Solid app"):
   even in a production build, so the extension can walk the (minified) tree with
   **no build-time wiring**.
 
-- **Official Solid DevTools does _not_ work against the deployed Solid client.**
-  It requires the `solid-devtools` package plus its Vite plugin, and this repo
-  wires that **dev-only**: `client-solid/vite.config.ts`'s `devtools()` plugin
-  (`solid-devtools/vite`) has an `apply()` gate that skips production, and
-  `client-solid/src/main.tsx`'s `import "solid-devtools"` resolves to a **no-op
-  module** (`index_noop.js`) in a production build. So the production Solid
-  bundle ships **no** solid-devtools runtime, and the extension has nothing to
-  hook.
+- **Official Solid DevTools does _not_ work against the Solid client at all
+  today.** It requires the `solid-devtools` package plus its Vite plugin, which
+  have no Solid 2 release. Until the Solid 2 migration (2026-11-22) this repo
+  wired them **dev-only** — `client-solid/vite.config.ts`'s `devtools()` plugin
+  (`solid-devtools/vite`) had an `apply()` gate that skipped production, and
+  `client-solid/src/main.tsx`'s `import "solid-devtools"` resolved to a no-op
+  module in a production build — so even then the production Solid bundle
+  shipped **no** solid-devtools runtime. The migration removed both; re-wiring
+  them, dev-only as before, waits on a Solid 2 release (docs/STATUS.md).
 
 **The RTC inspector page turns this default off for itself.** The extension's
 backend serialises every component's props on every commit; the inspector
@@ -613,8 +614,9 @@ the MV3 extension ([§20.6](#206-serving-topology)): React under app id
 `rtc-web`, Solid under `rtc-web-solid`.
 
 **If official Solid DevTools in production is ever wanted** (e.g. to inspect the
-reactive graph of a deployed build), un-gate `solid-devtools/vite` so it also
-applies on `build` and ships the real runtime instead of the no-op — accepting
+reactive graph of a deployed build), once it is wired again, un-gate
+`solid-devtools/vite` so it also applies on `build` and ships the real runtime
+instead of the no-op — accepting
 the always-on reactivity cost above. Prefer gating that behind a separate,
 opt-in "inspectable" build rather than the default production bundle. Not
 planned: for deployed-build inspection the dormant RTC inspector is the

@@ -1,4 +1,4 @@
-import { batch, createSignal } from "solid-js";
+import { createSignal, flush } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
 import type { EqDrawTool } from "@rtc/core-api";
@@ -136,6 +136,7 @@ describe("createChartGestures", () => {
 
     setSeriesLen(SERIES_LEN + 5);
 
+    flush();
     expect(result.viewport()).toEqual({
       start: SERIES_LEN - DEFAULT_VISIBLE + 5,
       end: SERIES_LEN + 5,
@@ -152,6 +153,7 @@ describe("createChartGestures", () => {
 
     setSeriesLen(SERIES_LEN + 5);
 
+    flush();
     expect(result.viewport()).toEqual(panned);
     expect(result.atLiveEdge()).toBe(false);
   });
@@ -171,6 +173,7 @@ describe("createChartGestures", () => {
 
     setSeriesLen(SERIES_LEN);
 
+    flush();
     expect(result.viewport()).toEqual({
       start: SERIES_LEN - DEFAULT_VISIBLE,
       end: SERIES_LEN,
@@ -193,12 +196,12 @@ describe("createChartGestures", () => {
     const panned = result.viewport();
 
     // 300 older candles arrive: first time got OLDER, length grew by 300.
-    // Batched so createComputed observes both signals' new values in the
-    // same run, matching React's single simultaneous rerender.
-    batch(() => {
-      setSeriesLen(SERIES_LEN + 300);
-      setFirstCandleTime(700_000);
-    });
+    // Written in one turn, so the viewport's compute observes both signals'
+    // new values in the same run, matching React's single simultaneous
+    // rerender.
+    setSeriesLen(SERIES_LEN + 300);
+    setFirstCandleTime(700_000);
+    flush();
 
     expect(result.viewport()).toEqual({
       start: panned.start + 300,
@@ -215,10 +218,9 @@ describe("createChartGestures", () => {
 
     const result = page.mount(seriesLen, fixedDefaultVisible, firstCandleTime);
 
-    batch(() => {
-      setSeriesLen(SERIES_LEN + 300);
-      setFirstCandleTime(700_000);
-    });
+    setSeriesLen(SERIES_LEN + 300);
+    setFirstCandleTime(700_000);
+    flush();
 
     expect(result.viewport()).toEqual({
       start: SERIES_LEN + 300 - DEFAULT_VISIBLE,
@@ -229,11 +231,16 @@ describe("createChartGestures", () => {
 
   it("appends with an unchanged firstCandleTime still follow the live edge (regression pin)", () => {
     const [seriesLen, setSeriesLen] = createSignal(SERIES_LEN);
-    const [firstCandleTime] = createSignal<number | undefined>(1_000_000);
+
+    function firstCandleTime(): number | undefined {
+      return 1_000_000;
+    }
+
     const result = page.mount(seriesLen, fixedDefaultVisible, firstCandleTime);
 
     setSeriesLen(SERIES_LEN + 5);
 
+    flush();
     expect(result.viewport()).toEqual({
       start: SERIES_LEN - DEFAULT_VISIBLE + 5,
       end: SERIES_LEN + 5,
@@ -241,7 +248,7 @@ describe("createChartGestures", () => {
   });
 
   it("C1: a prepend landing MID-DRAG shifts the cached drag origin, so the next move lands where the same drag delta would in the shifted frame (no snap-back)", () => {
-    // Regression: the createComputed's `prepended` branch used to shift the
+    // Regression: the series-growth fold's `prepended` branch used to shift the
     // live `viewport` signal by +grewBy but leave `dragOrigin.startViewport`
     // untouched. The next pointermove's panBy(dragOrigin.startViewport, ...)
     // then recomputed an ABSOLUTE viewport from the STALE (unshifted) origin,
@@ -259,10 +266,9 @@ describe("createChartGestures", () => {
     // A 300-candle backfill prepend lands mid-drag: first time got OLDER,
     // length grew by 300 — the same growth-direction fork as the render-time
     // series-growth tests above.
-    batch(() => {
-      setSeriesLen(SERIES_LEN + 300);
-      setFirstCandleTime(700_000);
-    });
+    setSeriesLen(SERIES_LEN + 300);
+    setFirstCandleTime(700_000);
+    flush();
 
     // Same drag delta as "pointer drag pans the viewport..." below (+50px of
     // 500px width) — dragging right pans backward (earlier).
@@ -454,6 +460,7 @@ describe("createChartGestures", () => {
       // trailing frame before asserting the clamped result.
       result.applyViewport({ start: -10, end: 40 });
       frames.flush();
+      flush();
       expect(result.viewport()).toEqual({ start: 0, end: 50 });
     } finally {
       frames.restore();
@@ -485,6 +492,7 @@ describe("createChartGestures", () => {
       expect(result.viewport().start).toBe(afterLeading);
 
       frames.flush();
+      flush();
 
       // The trailing frame applies only the LAST move's viewport (dx = +50
       // of 500px width against the drag-origin viewport).
@@ -517,6 +525,7 @@ describe("createChartGestures", () => {
 
       result.resetToLive();
       frames.flush();
+      flush();
 
       // The reset stands: the pending move-to-90 write was dropped with the
       // frame, not applied on top of the reset.

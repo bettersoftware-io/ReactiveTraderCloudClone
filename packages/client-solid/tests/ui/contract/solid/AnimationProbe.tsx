@@ -1,5 +1,5 @@
+import type { JSX } from "@solidjs/web";
 import type { AnimationProbeProps } from "@ui-contract/pages/shell/motion/AnimationProbePage";
-import type { JSX } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 

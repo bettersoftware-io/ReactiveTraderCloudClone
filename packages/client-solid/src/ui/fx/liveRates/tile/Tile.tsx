@@ -1,4 +1,5 @@
-import { type Accessor, createMemo, type JSX, Show, untrack } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, createMemo, Show, untrack } from "solid-js";
 
 import {
   type CurrencyPair,

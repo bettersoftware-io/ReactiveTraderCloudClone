@@ -3,14 +3,13 @@ import { createRequire } from "node:module";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import devtools from "solid-devtools/vite";
+import solid from "@solidjs/vite-plugin";
 import {
   defineConfig,
   type Plugin,
   type ResolvedConfig,
   type ViteDevServer,
 } from "vite";
-import solid from "vite-plugin-solid";
 
 /** Serve the built `@rtc/devtools-app` inspector at /devtools/ in dev (Vite
  * middleware) and copy it into dist/devtools at build time. Same-origin is
@@ -275,11 +274,7 @@ export default defineConfig({
       process.env.VITE_CORE_IMPL || "rxjs",
     ),
   },
-  // solid-devtools must precede vite-plugin-solid (its own docs say so): it
-  // needs to see + transform source before the solid compiler runs. Dev-only —
-  // the plugin's `apply()` gate skips it for `vite build` / production mode.
   plugins: [
-    devtools({ autoname: true }),
     solid(),
     devtoolsPanel(),
     ...(leanDeps ? [dropDepSourcemaps()] : []),

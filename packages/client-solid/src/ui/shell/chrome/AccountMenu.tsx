@@ -1,4 +1,5 @@
-import { type Accessor, createSignal, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, createSignal, Show } from "solid-js";
 
 import type { SessionUser } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -68,7 +69,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
               type="button"
               data-testid="account-toggle"
               aria-label="Account"
-              aria-expanded={open()}
+              aria-expanded={open() ? "true" : "false"}
               class={styles.accountTrigger}
               onClick={toggleAccountMenu}
             >

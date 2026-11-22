@@ -6,7 +6,7 @@
  * jsdom's getContext("2d") returns null.
  */
 
-import { createSignal } from "solid-js";
+import { createSignal, flush } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ViewModel } from "@rtc/solid-bindings";
@@ -133,9 +133,10 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     page.mount({
       viewModel: createHooks({
         usePowerSaver: () => {
-          const [level] = createSignal("freeze" as const);
           return {
-            level,
+            level: (): "freeze" => {
+              return "freeze";
+            },
             isCalm: () => {
               return true;
             },
@@ -244,6 +245,7 @@ describe("BootSequence — boot log lines (visibility by progress)", () => {
 
     // progress 50 -> lines 0-3 visible (thresholds 9, 20, 32, 43, 55, 66, 77)
     setProgress(50);
+    flush();
     expect(page.hasText(/BOOT> initializing kernel/)).toBe(true);
     expect(page.hasText(/BOOT> mounting secure enclave/)).toBe(true);
     expect(page.hasText(/NET > linking pricing engine/)).toBe(true);
@@ -252,6 +254,7 @@ describe("BootSequence — boot log lines (visibility by progress)", () => {
 
     // progress 100 -> all 7 lines, final line has data-online="true"
     setProgress(100);
+    flush();
     expect(page.hasText(/BOOT> initializing kernel/)).toBe(true);
     expect(page.hasText(/BOOT> mounting secure enclave/)).toBe(true);
     expect(page.hasText(/NET > linking pricing engine/)).toBe(true);
@@ -311,27 +314,25 @@ function createCtxStub(): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
-/** Builds the mocked ViewModel for `ViewModelContext.Provider`. Plain
+/** Builds the mocked ViewModel for `ViewModelContext`. Plain
  * data-returning helper (not a component — returns `ViewModel`, never JSX),
  * so it stays outside the JSX tree. `bootSequencePage().mount` nests
- * `<BootSequence/>` directly under `<ViewModelContext.Provider>` inside its
+ * `<BootSequence/>` directly under `<ViewModelContext>` inside its
  * own render function (never pre-built and threaded through), so the Solid
  * compiler defers its construction until the Provider's own render — a plain
  * function taking an already-evaluated JSX.Element argument would run
  * BootSequence's body (and its useViewModel() call) before the Provider
  * exists.
  *
- * The default `state` is a REAL Solid signal (matching the production shape:
- * `toSignal` returns a tracked accessor), NOT a plain closure — a plain
- * function is invisible to Solid's dependency tracking, so effects that
- * over-subscribe to the whole state object would never re-run in tests and
- * the over-tracking bug class stays masked. */
+ * The default `state` is a constant accessor: nothing in these cases writes
+ * it (a case that drives the boot state supplies its own signal through
+ * `partialHooks`), so a signal would only ever hold its seed. */
 function createHooks(partialHooks: Partial<ViewModel> = {}): ViewModel {
-  const [state] = createSignal<TestBootState>({
-    variant: "core",
-    progress: 0,
-    done: false,
-  });
+  const idle: TestBootState = { variant: "core", progress: 0, done: false };
+
+  function state(): TestBootState {
+    return idle;
+  }
 
   return {
     useBootSequence: (_onDone: () => void) => {
@@ -347,9 +348,10 @@ function createHooks(partialHooks: Partial<ViewModel> = {}): ViewModel {
       };
     },
     usePowerSaver: () => {
-      const [level] = createSignal("off" as const);
       return {
-        level,
+        level: (): "off" => {
+          return "off";
+        },
         isCalm: () => {
           return false;
         },

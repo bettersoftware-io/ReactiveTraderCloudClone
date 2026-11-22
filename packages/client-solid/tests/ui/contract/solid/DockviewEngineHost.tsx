@@ -1,4 +1,5 @@
-import { createMemo, createSignal, type JSX, Show, untrack } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo, createSignal, Show, untrack } from "solid-js";
 
 import type { DockLayoutStore, PanelId, PanelSpec } from "@rtc/core-api";
 import { InMemoryDockLayoutStore, PANEL_SPECS } from "@rtc/core-logic";
@@ -100,21 +101,17 @@ export function DockviewEngineHost(
   // cleared BEFORE the bridge sees the bumped count. A memo, not an effect:
   // it recomputes ahead of every effect, so the bridge's reset effect (which
   // reads this through its `layoutResets` prop) always loads the cleared
-  // store. Seeded with the mount-time count, so mounting clears nothing.
-  const layoutResets = createMemo(
-    (cleared: number): number => {
-      const next = props.layoutResets ?? 0;
+  // store. Its first run (no previous count) clears nothing, so mounting
+  // clears nothing.
+  const layoutResets = createMemo((cleared?: number): number => {
+    const next = props.layoutResets ?? 0;
 
-      if (next !== cleared) {
-        store.clear("fx");
-      }
+    if (cleared !== undefined && next !== cleared) {
+      store.clear("fx");
+    }
 
-      return next;
-    },
-    untrack((): number => {
-      return props.layoutResets ?? 0;
-    }),
-  );
+    return next;
+  });
 
   function headRegistry(): Partial<Record<PanelId, () => JSX.Element>> {
     return props.withHeads
@@ -153,8 +150,8 @@ export function DockviewEngineHost(
         closed={[]}
         docked={(props.docked as readonly PanelId[] | undefined) ?? []}
         instances={[]}
-        // `0` unless a case bumps it through `setProps` — the reset effect's
-        // `on()` then fires against a store the memo above already cleared.
+        // `0` unless a case bumps it through `setProps` — the reset effect
+        // then fires against a store the memo above already cleared.
         layoutResets={layoutResets()}
         onMaximize={(id: PanelId) => {
           recordIntent(`maximize:${id}`);

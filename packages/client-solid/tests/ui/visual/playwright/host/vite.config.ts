@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 
+import solid from "@solidjs/vite-plugin";
 import { defineConfig } from "vite";
-import solid from "vite-plugin-solid";
 
 // Root is this host dir; @ui-visual resolves to the Solid render target two
 // levels up — the framework-swap seam, react's host points this alias at

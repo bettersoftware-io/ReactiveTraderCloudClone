@@ -1,5 +1,5 @@
 import { render, renderHook } from "@solidjs/testing-library";
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 import { type ViewModel, ViewModelContext } from "@rtc/solid-bindings";
 
@@ -48,11 +48,7 @@ export function mountThemeProvider(skin: ThemeSkin): void {
   } as unknown as ViewModel;
 
   function Wrapper(props: WrapperProps): JSX.Element {
-    return (
-      <ViewModelContext.Provider value={hooks}>
-        {props.children}
-      </ViewModelContext.Provider>
-    );
+    return <ViewModelContext value={hooks}>{props.children}</ViewModelContext>;
   }
 
   render(() => {

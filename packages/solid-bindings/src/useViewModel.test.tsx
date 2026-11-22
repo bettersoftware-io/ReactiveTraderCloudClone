@@ -1,5 +1,5 @@
 import { renderHook } from "@solidjs/testing-library";
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { describe, expect, it } from "vitest";
 
 import type { ViewModel } from "#/createViewModel";
@@ -7,12 +7,12 @@ import { useViewModel } from "#/useViewModel";
 import { ViewModelProvider } from "#/ViewModelProvider";
 
 describe("useViewModel", () => {
-  it("throws when rendered outside a ViewModelProvider", () => {
+  it("throws Solid's ContextNotFoundError, naming the context, when rendered outside a ViewModelProvider", () => {
     expect(() => {
       renderHook(() => {
         return useViewModel();
       });
-    }).toThrow("useViewModel must be used within ViewModelProvider");
+    }).toThrow('Context "ViewModel" has no provider above this read');
   });
 
   it("returns the ViewModel supplied by ViewModelProvider", () => {

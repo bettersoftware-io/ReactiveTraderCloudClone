@@ -7,7 +7,7 @@
     "declaration": false,
     "declarationMap": false,
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "@solidjs/web",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     // "@ui-visual-shared" and "@ui-visual" are unused by anything under
     // `include` (src/ only) — they're here solely so knip's TypeScript path

@@ -1,11 +1,13 @@
 import { render, renderHook } from "@solidjs/testing-library";
-import type { Accessor } from "solid-js";
+import { type Accessor, flush } from "solid-js";
 
 import {
   type ChartGestures,
   createChartGestures,
   type DrawGestureSlots,
 } from "#/ui/equities/chart/createChartGestures";
+
+import { thenFlush } from "./thenFlush";
 
 interface ChartGesturesHarnessHandle {
   readonly state: ChartGestures;
@@ -75,6 +77,30 @@ function wheelEvent(init: WheelEventInit): FakeWheelEvent {
   });
 }
 
+/** The gestures with every entry point (event handler or imperative intent)
+ * followed by a flush, so a test reads each one's outcome as the next event
+ * would. Accessors pass through untouched. */
+function flushingAfterEachEntryPoint(g: ChartGestures): ChartGestures {
+  return {
+    ...g,
+    plotProps: {
+      onPointerDown: thenFlush(g.plotProps.onPointerDown),
+      onPointerMove: thenFlush(g.plotProps.onPointerMove),
+      onPointerUp: thenFlush(g.plotProps.onPointerUp),
+      onPointerCancel: thenFlush(g.plotProps.onPointerCancel),
+      onPointerLeave: thenFlush(g.plotProps.onPointerLeave),
+      onDblClick: thenFlush(g.plotProps.onDblClick),
+      onKeyDown: thenFlush(g.plotProps.onKeyDown),
+    },
+    paneHoverProps: {
+      onPointerMove: thenFlush(g.paneHoverProps.onPointerMove),
+      onPointerLeave: thenFlush(g.paneHoverProps.onPointerLeave),
+    },
+    resetToLive: thenFlush(g.resetToLive),
+    applyViewport: thenFlush(g.applyViewport),
+  };
+}
+
 /** The framework surface for `createChartGestures.test.ts`. */
 export function chartGesturesPage(): UseChartGesturesPage {
   return {
@@ -93,7 +119,7 @@ export function chartGesturesPage(): UseChartGesturesPage {
         );
       });
 
-      return result;
+      return flushingAfterEachEntryPoint(result);
     },
     mountHarness(
       seriesLen: Accessor<number>,
@@ -115,12 +141,13 @@ export function chartGesturesPage(): UseChartGesturesPage {
             throw new Error("ChartGestures harness not ready");
           }
 
-          return gestures;
+          return flushingAfterEachEntryPoint(gestures);
         },
         dispatchWheel(deltaY: number, clientX: number): boolean {
           const event = wheelEvent({ deltaY, clientX });
 
           el.dispatchEvent(event);
+          flush();
 
           return event.defaultPrevented;
         },

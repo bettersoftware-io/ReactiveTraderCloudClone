@@ -1,4 +1,5 @@
-import { createMemo, type JSX, Match, Show, Switch } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo, Match, Show, Switch } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 

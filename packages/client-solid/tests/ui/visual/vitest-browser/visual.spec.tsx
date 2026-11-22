@@ -3,7 +3,8 @@ import { scenarioActionFor } from "@ui-visual-shared/scenarioActions";
 import { scenarios } from "@ui-visual-shared/scenarios";
 import { expect, test } from "vitest";
 import { userEvent } from "vitest/browser";
-import { render } from "vitest-browser-solid";
+
+import { renderIntoPage } from "./renderIntoPage";
 
 // Solid's coverage-only visual tier. It walks the SAME shared scenario manifest
 // and interaction table as the plain-Playwright tier
@@ -13,10 +14,10 @@ import { render } from "vitest-browser-solid";
 // so this tier's entire job is to let istanbul watch which of `src/ui` the
 // golden matrix actually renders. See vitest-browser.coverage.config.ts.
 //
-// Two API differences from the react twin, both from vitest-browser-solid:
-// `render` is SYNCHRONOUS (no async act to await), and it takes a component
-// FACTORY rather than an element — `render(() => <X />)`, which is also how
-// Solid keeps the component's reactive scope owned by the renderer.
+// Two API differences from the react twin, both from `renderIntoPage`: it is
+// SYNCHRONOUS (no async act to await), and it takes a component FACTORY rather
+// than an element — `renderIntoPage(() => <X />)`, which is also how Solid
+// keeps the component's reactive scope owned by the renderer.
 
 for (const [name] of Object.entries(scenarios)) {
   const action = scenarioActionFor(name);
@@ -36,7 +37,7 @@ for (const [name] of Object.entries(scenarios)) {
     }
 
     try {
-      const screen = render(() => {
+      const screen = renderIntoPage(() => {
         return <VisualScenario name={name} />;
       });
 

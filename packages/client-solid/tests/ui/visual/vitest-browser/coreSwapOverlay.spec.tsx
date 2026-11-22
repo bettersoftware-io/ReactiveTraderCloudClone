@@ -1,10 +1,11 @@
 import { expect, test } from "vitest";
-import { render } from "vitest-browser-solid";
 
 import {
   CoreSwapOverlay,
   type CoreSwapOverlayProps,
 } from "#/ui/shell/core/CoreSwapOverlay";
+
+import { renderIntoPage } from "./renderIntoPage";
 
 // The core-swap overlay's stylesheet, read back from a real browser. jsdom
 // applies no CSS, and the pixel tier captures one still frame, so nothing
@@ -55,7 +56,7 @@ test("revealing: the fade-out is an opacity transition of the swap's exitMs, eas
 async function renderedStyle(
   phase: NonNullable<CoreSwapOverlayProps["swap"]>["phase"],
 ): Promise<CSSStyleDeclaration> {
-  const screen = render(() => {
+  const screen = renderIntoPage(() => {
     return (
       <CoreSwapOverlay
         swap={{

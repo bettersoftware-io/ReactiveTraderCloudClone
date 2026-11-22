@@ -1,10 +1,8 @@
-import { type Accessor, Index, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, For, Show } from "solid-js";
 
 import type { ChartSubstrate } from "@rtc/domain";
 import {
-  type Canvas2D,
-  type CanvasSize,
-  type ChartPalette,
   type ChartPoint,
   type ChartVarStyle,
   drawPaneScene,
@@ -64,7 +62,7 @@ export function IndicatorPane(props: IndicatorPaneProps): JSX.Element {
             preserveAspectRatio="none"
             aria-hidden="true"
           >
-            <Index each={props.scene.guides}>
+            <For keyed={false} each={props.scene.guides}>
               {(g: Accessor<PaneGuide>): JSX.Element => {
                 return (
                   <line
@@ -76,7 +74,7 @@ export function IndicatorPane(props: IndicatorPaneProps): JSX.Element {
                   />
                 );
               }}
-            </Index>
+            </For>
             <Show when={props.scene.histogram.length > 0}>
               <path
                 class={styles.histogram}
@@ -87,7 +85,7 @@ export function IndicatorPane(props: IndicatorPaneProps): JSX.Element {
                 )}
               />
             </Show>
-            <Index each={props.scene.lines}>
+            <For keyed={false} each={props.scene.lines}>
               {(ln: Accessor<PaneLine>): JSX.Element => {
                 return (
                   <polyline
@@ -98,15 +96,14 @@ export function IndicatorPane(props: IndicatorPaneProps): JSX.Element {
                   />
                 );
               }}
-            </Index>
+            </For>
           </svg>
         }
       >
         <SceneCanvas
           testid="chart-canvas-pane"
-          draw={(ctx: Canvas2D, palette: ChartPalette, size: CanvasSize) => {
-            drawPaneScene(ctx, props.scene, palette, size);
-          }}
+          scene={props.scene}
+          draw={drawPaneScene}
         />
       </Show>
       <Show when={props.crosshairStyle}>
@@ -124,7 +121,7 @@ export function IndicatorPane(props: IndicatorPaneProps): JSX.Element {
         {(readout: () => readonly PaneReadoutRow[]): JSX.Element => {
           return (
             <div class={styles.readout} data-testid="chart-pane-readout">
-              <Index each={readout()}>
+              <For keyed={false} each={readout()}>
                 {(row: Accessor<PaneReadoutRow>): JSX.Element => {
                   return (
                     <span>
@@ -132,7 +129,7 @@ export function IndicatorPane(props: IndicatorPaneProps): JSX.Element {
                     </span>
                   );
                 }}
-              </Index>
+              </For>
             </div>
           );
         }}

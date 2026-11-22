@@ -1,12 +1,5 @@
-import {
-  createMemo,
-  For,
-  type JSX,
-  onCleanup,
-  onMount,
-  Show,
-  untrack,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo, For, onSettled, Show, untrack } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
@@ -122,16 +115,16 @@ export function RfqCard(props: RfqCardProps): JSX.Element {
   // one function; unlike the React port, this isn't split into a separate
   // "OnCancel" handler because Solid has no `onAnimationCancel` JSX event to
   // split it onto in the first place.
-  onMount(() => {
+  onSettled(() => {
     cardEl.addEventListener("animationend", settleCardTransition);
     cardEl.addEventListener("webkitAnimationEnd", settleCardTransition);
     cardEl.addEventListener("animationcancel", settleCardTransition);
 
-    onCleanup(() => {
+    return () => {
       cardEl.removeEventListener("animationend", settleCardTransition);
       cardEl.removeEventListener("webkitAnimationEnd", settleCardTransition);
       cardEl.removeEventListener("animationcancel", settleCardTransition);
-    });
+    };
   });
 
   function acceptQuote(quoteId: number) {

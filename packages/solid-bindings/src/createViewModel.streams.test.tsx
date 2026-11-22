@@ -9,7 +9,7 @@
 
 import { renderHook, waitFor } from "@solidjs/testing-library";
 import { BehaviorSubject, type Observable, of } from "rxjs";
-import { createSignal } from "solid-js";
+import { createSignal, flush } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -160,6 +160,7 @@ describe("createViewModel — preferences", () => {
     expect(result.modePreference()).toBe("dark");
 
     result.cycle();
+    flush();
     expect(result.modePreference()).toBe("light");
   });
 
@@ -171,6 +172,7 @@ describe("createViewModel — preferences", () => {
 
     expect(result.skin()).toBe("holo");
     result.setSkin("classic");
+    flush();
     expect(result.skin()).toBe("classic");
   });
 
@@ -182,6 +184,7 @@ describe("createViewModel — preferences", () => {
 
     expect(result.style()).toBe("aurora");
     result.setStyle("rays");
+    flush();
     expect(result.style()).toBe("rays");
   });
 
@@ -193,6 +196,7 @@ describe("createViewModel — preferences", () => {
 
     expect(result.enabled()).toBe(true);
     result.toggle();
+    flush();
     expect(result.enabled()).toBe(false);
   });
 
@@ -207,16 +211,19 @@ describe("createViewModel — preferences", () => {
     expect(result.isFreeze()).toBe(false);
 
     result.cycle();
+    flush();
     expect(result.level()).toBe("calm");
     expect(result.isCalm()).toBe(true);
     expect(result.isFreeze()).toBe(false);
 
     result.cycle();
+    flush();
     expect(result.level()).toBe("freeze");
     expect(result.isCalm()).toBe(true);
     expect(result.isFreeze()).toBe(true);
 
     result.cycle();
+    flush();
     expect(result.level()).toBe("off");
   });
 
@@ -227,6 +234,7 @@ describe("createViewModel — preferences", () => {
     });
 
     result.setLevel("freeze");
+    flush();
     expect(result.level()).toBe("freeze");
     expect(result.isFreeze()).toBe(true);
   });
@@ -239,6 +247,7 @@ describe("createViewModel — preferences", () => {
 
     expect(result.enabled()).toBe(true);
     result.toggle();
+    flush();
     expect(result.enabled()).toBe(false);
   });
 
@@ -250,6 +259,7 @@ describe("createViewModel — preferences", () => {
 
     expect(result.viewMode()).toBe("chart");
     result.setViewMode("price");
+    flush();
     expect(result.viewMode()).toBe("price");
   });
 
@@ -261,6 +271,7 @@ describe("createViewModel — preferences", () => {
 
     expect(result.filter()).toBe("live");
     result.setFilter("closed");
+    flush();
     expect(result.filter()).toBe("closed");
   });
 
@@ -272,6 +283,7 @@ describe("createViewModel — preferences", () => {
 
     expect(result.sort()).toBe("chg");
     result.cycle();
+    flush();
     expect(result.sort()).toBe("price");
   });
 
@@ -283,6 +295,7 @@ describe("createViewModel — preferences", () => {
 
     expect(result.view()).toBe("orders");
     result.setView("positions");
+    flush();
     expect(result.view()).toBe("positions");
   });
 
@@ -302,6 +315,7 @@ describe("createViewModel — preferences", () => {
     // client-core-rxjs's ThroughputPresenter.test.ts), so the accessor must show
     // the new value immediately after the intent.
     result.setValue(250);
+    flush();
     expect(result.value()).toBe(250);
   });
 
@@ -323,16 +337,20 @@ describe("createViewModel — preferences", () => {
 
     result.login("demo", "pw");
 
+    flush();
     expect(result.state().status).toBe("authenticated");
     expect(result.state().user).toEqual(DEMO_USER);
 
     result.lock();
+    flush();
     expect(result.state().locked).toBe(true);
 
     result.unlock("pw");
+    flush();
     expect(result.state().locked).toBe(false);
 
     result.logout();
+    flush();
     expect(result.state().status).toBe("unauthenticated");
     expect(result.state().user).toBeNull();
   });
@@ -359,8 +377,10 @@ describe("createViewModel — preferences", () => {
 
     expect(result.visible()).toBe(false);
     result.reboot();
+    flush();
     expect(result.visible()).toBe(true);
     result.dismiss();
+    flush();
     expect(result.visible()).toBe(false);
   });
 
@@ -372,8 +392,10 @@ describe("createViewModel — preferences", () => {
 
     expect(result.state().active).toEqual([]);
     result.inject("errorBurst");
+    flush();
     expect(result.state().active).toEqual(["errorBurst"]);
     result.clear();
+    flush();
     expect(result.state().active).toEqual([]);
   });
 });
@@ -484,10 +506,12 @@ describe("createViewModel — candle backfill", () => {
     });
 
     loading$.next(true);
+    flush();
     expect(result()).toEqual({ loadingOlder: true, historyExhausted: false });
 
     loading$.next(false);
     exhausted$.next(true);
+    flush();
     expect(result()).toEqual({ loadingOlder: false, historyExhausted: true });
   });
 });
@@ -523,6 +547,7 @@ describe("createViewModel — ops/telemetry streams", () => {
     await waitFor(() => {
       expect(result()).not.toBeNull();
     });
+    flush();
     expect(result()).toEqual({
       windowStartMs: 0,
       windowEndMs: 0,
@@ -559,6 +584,7 @@ describe("createViewModel — ops/telemetry streams", () => {
       },
       { timeout: 3_000 },
     );
+    flush();
     expect(result.panels.panels()[0]).toMatchObject({
       panelId: "panel-scripted-1",
       title: "GBP Volatility",
@@ -604,6 +630,7 @@ describe("createViewModel — ops/telemetry streams", () => {
       },
       { timeout: 3_000 },
     );
+    flush();
     expect(result.panelData()).toMatchObject({ kind: "line" });
   }, 8_000);
 
@@ -695,6 +722,7 @@ describe("createViewModel — ops/telemetry streams", () => {
     await waitFor(() => {
       expect(result().length).toBeGreaterThan(0);
     });
+    flush();
     expect(result().at(-1)?.value).toBeGreaterThanOrEqual(0);
   });
 });
@@ -712,9 +740,10 @@ describe("createViewModel — accessor keys", () => {
       throw new Error("KNOWN_CURRENCY_PAIRS is unexpectedly short");
     }
 
-    const [pair] = createSignal(eurusd);
     const { result } = renderHook(() => {
-      return vm.usePrice(pair);
+      return vm.usePrice(() => {
+        return eurusd;
+      });
     });
 
     expect(result()?.symbol).toBe(eurusd.symbol);
@@ -735,6 +764,7 @@ describe("createViewModel — accessor keys", () => {
 
     setPair(gbpusd);
 
+    flush();
     expect(result()?.symbol).toBe(gbpusd.symbol);
   });
 
@@ -748,6 +778,7 @@ describe("createViewModel — accessor keys", () => {
     expect(result()?.symbol).toBe("AAPL");
     setSymbol("MSFT");
 
+    flush();
     expect(result()?.symbol).toBe("MSFT");
   });
 
@@ -761,6 +792,7 @@ describe("createViewModel — accessor keys", () => {
     expect(result()?.symbol).toBe("AAPL");
     setSymbol("MSFT");
 
+    flush();
     expect(result()?.symbol).toBe("MSFT");
   });
 
@@ -777,6 +809,7 @@ describe("createViewModel — accessor keys", () => {
     const appleSpacing = result()[1].time - result()[0].time;
     setSymbol("MSFT");
 
+    flush();
     expect(result()).toHaveLength(CANDLE_HISTORY_TOTAL);
     // Still "1W" after the symbol change — the literal key is untracked and
     // must not be lost when the accessor key re-runs the source.
@@ -793,6 +826,7 @@ describe("createViewModel — accessor keys", () => {
     const weekSpacing = result()[1].time - result()[0].time;
     setTimeframe("1M");
 
+    flush();
     expect(result()[1].time - result()[0].time).not.toBe(weekSpacing);
   });
 
@@ -810,6 +844,7 @@ describe("createViewModel — accessor keys", () => {
     expect(quoteIds(result())).toEqual([11]);
     setRfqId(2);
 
+    flush();
     expect(quoteIds(result())).toEqual([22]);
   });
 
@@ -823,6 +858,7 @@ describe("createViewModel — accessor keys", () => {
     setRfqId(2);
     world.quotesFor(1).next([quoteWithId(99)]);
 
+    flush();
     expect(quoteIds(result())).toEqual([22]);
   });
 
@@ -836,6 +872,7 @@ describe("createViewModel — accessor keys", () => {
     expect(result()?.kind).toBe("tickUp");
     setTarget("tile:GBPUSD");
 
+    flush();
     expect(result()?.kind).toBe("fill");
   });
 
@@ -852,6 +889,7 @@ describe("createViewModel — accessor keys", () => {
       kind: "tickDown",
     });
 
+    flush();
     expect(result()?.kind).toBe("fill");
   });
 
@@ -865,6 +903,7 @@ describe("createViewModel — accessor keys", () => {
     expect(gaugeLabel(result())).toBe("panel-one");
     setPanelId("p2");
 
+    flush();
     expect(gaugeLabel(result())).toBe("panel-two");
   });
 
@@ -880,10 +919,12 @@ describe("createViewModel — accessor keys", () => {
     expect(result()).toEqual({ loadingOlder: true, historyExhausted: false });
     setSymbol("MSFT");
 
+    flush();
     expect(result()).toEqual({ loadingOlder: false, historyExhausted: true });
     setSymbol("AAPL");
     setTimeframe("1W");
 
+    flush();
     expect(result()).toEqual({ loadingOlder: false, historyExhausted: false });
   });
 
@@ -905,6 +946,7 @@ describe("createViewModel — accessor keys", () => {
     expect(everyTickSymbol(result())).toEqual([eurusd.symbol]);
     setSymbol(gbpusd.symbol);
 
+    flush();
     expect(everyTickSymbol(result())).toEqual([gbpusd.symbol]);
   });
 });

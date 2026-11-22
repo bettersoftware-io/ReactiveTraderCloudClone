@@ -231,7 +231,7 @@ const config: IConfiguration = {
         "@rtc/client-adapters (the adapters) is framework-free by contract — no React/DOM/RN modules.",
       from: { path: "^packages/client-adapters/src" },
       to: {
-        path: "(^|node_modules/)(react|react-dom|react-native|solid-js)(/|$)",
+        path: "(^|node_modules/)(react|react-dom|react-native|solid-js|@solidjs/[^/]+)(/|$)",
       },
     },
     {
@@ -266,7 +266,9 @@ const config: IConfiguration = {
       comment:
         "@rtc/web-boot may touch the DOM (it reads localStorage, window and document), but it is framework-free by contract: no React or Solid, which each client supplies for itself.",
       from: { path: "^packages/web-boot/src" },
-      to: { path: "(^|node_modules/)(react|react-dom|solid-js)(/|$)" },
+      to: {
+        path: "(^|node_modules/)(react|react-dom|solid-js|@solidjs/[^/]+)(/|$)",
+      },
     },
     {
       name: "web-boot-only-in-web-clients",
@@ -368,7 +370,7 @@ const config: IConfiguration = {
         "An application core is framework-free: no React/DOM/RN/Solid modules.",
       from: { path: "^packages/client-core-(rxjs|async|effect)/src" },
       to: {
-        path: "(^|node_modules/)(react|react-dom|react-native|solid-js)(/|$)",
+        path: "(^|node_modules/)(react|react-dom|react-native|solid-js|@solidjs/[^/]+)(/|$)",
       },
     },
     {
@@ -447,7 +449,7 @@ const config: IConfiguration = {
       name: "solid-bindings-no-apps",
       severity: "error",
       comment:
-        "@rtc/solid-bindings is the Solid↔RxJS bridge (the Solid counterpart of react-bindings) — it may depend only on core-api/domain (+ solid-js/@rx-state/core/rxjs), and on the adapters and the RxJS core from its tests (bindings-name-no-core), never on an app or the server.",
+        "@rtc/solid-bindings is the Solid↔RxJS bridge (the Solid counterpart of react-bindings) — it may depend only on core-api/domain (+ solid-js/@solidjs/web/@rx-state/core/rxjs), and on the adapters and the RxJS core from its tests (bindings-name-no-core), never on an app or the server.",
       from: { path: "^packages/solid-bindings/src" },
       to: {
         path: "^packages/",
@@ -471,7 +473,7 @@ const config: IConfiguration = {
       from: {
         path: "^packages/(client-react|client-react-native|client-prototype|react-bindings)/src",
       },
-      to: { path: "node_modules/solid-js/" },
+      to: { path: "node_modules/(solid-js|@solidjs/[^/]+)/" },
     },
     {
       name: "clients-never-import-each-other",

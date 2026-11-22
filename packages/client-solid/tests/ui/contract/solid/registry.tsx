@@ -1,3 +1,4 @@
+import type { JSX } from "@solidjs/web";
 import {
   AmbientBackground,
   AnalyticsHead,
@@ -101,7 +102,7 @@ import type {
   ComponentToken,
   MountedComponent,
 } from "@ui-contract/harness/component";
-import type { Accessor, JSX } from "solid-js";
+import type { Accessor } from "solid-js";
 
 import type {
   EqChartType,

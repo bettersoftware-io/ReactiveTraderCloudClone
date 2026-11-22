@@ -1,5 +1,5 @@
 import { render, screen } from "@solidjs/testing-library";
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 import { type ViewModel, ViewModelContext } from "@rtc/solid-bindings";
 
@@ -34,9 +34,9 @@ export function bootSequencePage(): BootSequencePage {
       // named-boundary fix, as UseJarvisDrivenPulsePage.
       function BootSequenceUnderTest(): JSX.Element {
         return (
-          <ViewModelContext.Provider value={props.viewModel}>
+          <ViewModelContext value={props.viewModel}>
             <BootSequence onDone={props.onDone} />
-          </ViewModelContext.Provider>
+          </ViewModelContext>
         );
       }
 

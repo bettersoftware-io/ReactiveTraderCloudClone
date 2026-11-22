@@ -1,16 +1,15 @@
+import { type JSX, Portal } from "@solidjs/web";
 import {
   type Accessor,
   createEffect,
   createMemo,
+  createRenderEffect,
   createSignal,
   For,
-  type JSX,
-  on,
   onCleanup,
-  onMount,
+  onSettled,
   Show,
 } from "solid-js";
-import { Portal } from "solid-js/web";
 
 import type {
   DockLayoutStore,
@@ -64,7 +63,7 @@ import styles from "./DockviewLayoutEngine.module.css";
  * ordinary prop and rebuilds the engine IN PLACE: the reset effect below
  * disposes the current engine and resets `mounted`/`groups`/`strips`/
  * `applied`/`appliedDocked`/`appliedInstances` to their initial values
- * before calling the SAME `buildEngine()` the initial `onMount` uses, from
+ * before calling the SAME `buildEngine()` the initial `onSettled` uses, from
  * the tab's now-cleared blob.
  *
  * SUPPRESSION GUARD (fix round 1, review Critical C1): `createDockEngine`'s
@@ -137,6 +136,38 @@ export function DockviewLayoutEngine(
 
   function titleOf(panelId: PanelId): string {
     return specs()[panelId]?.title ?? panelId;
+  }
+
+  // What the ENGINE reads of the props, as plain values. The engine is not
+  // reactive: it pulls a panel's title, maximize scope and fixed width, and
+  // whether a panel is docked, through the callbacks below whenever it needs
+  // them — and it does so from inside the effects further down (adding a
+  // panel, a rebuild), whose apply phase is untracked by construction, so a
+  // prop read there dev-warns and tracks nothing. A render effect keeps this
+  // copy current instead: render effects run before every user effect of the
+  // same flush, so the engine never reads a value a pending change has
+  // already replaced. (The JSX below still reads the props themselves.)
+  const engineInputs: EngineInputs = {
+    specs: PANEL_SPECS,
+    docked: [],
+    instances: [],
+  };
+
+  createRenderEffect(
+    (): EngineInputs => {
+      return {
+        specs: specs(),
+        docked: props.docked,
+        instances: props.instances,
+      };
+    },
+    (current) => {
+      Object.assign(engineInputs, current);
+    },
+  );
+
+  function engineTitleOf(panelId: PanelId): string {
+    return engineInputs.specs[panelId]?.title ?? panelId;
   }
 
   function collapsePanel(panelId: PanelId) {
@@ -229,9 +260,8 @@ export function DockviewLayoutEngine(
       // them: `.dv-groupview`, the same internal class name `Layout.ts`'s
       // drag helper already keys off (`.dv-tab`). A no-op for a static
       // panel (never in `props.docked`), whose group may legitimately be
-      // shared/stacked with siblings. Reading `props.docked` here (rather
-      // than a ref, react's twin) is correct for the same reason `titleOf`/
-      // `specs()` above read straight through the reactive prop getter.
+      // shared/stacked with siblings. Read from `engineInputs` (react's twin
+      // reads a ref): the engine calls this, from inside effects.
       //
       // RESIDUAL, deliberately not fixed: the tag is a snapshot of "solo at
       // mount", not a live truth. Dockview's cross-group drag-and-drop is
@@ -252,7 +282,7 @@ export function DockviewLayoutEngine(
       // it with another panel's id is never wrongly erased.
       let taggedGroup: HTMLElement | null = null;
 
-      if (props.docked.includes(panelId)) {
+      if (engineInputs.docked.includes(panelId)) {
         taggedGroup = element.closest<HTMLElement>(".dv-groupview");
         taggedGroup?.setAttribute("data-testid", `panel-${panelId}`);
       }
@@ -308,15 +338,15 @@ export function DockviewLayoutEngine(
         // there; only a rebuild (a workspace reset) or remount (a tab
         // switch) creates a new one.
         title: (id: string): string => {
-          return titleOf(id as PanelId);
+          return engineTitleOf(id as PanelId);
         },
         // The in-house maximizeBoundaryPath reads the same spec field: rail
         // panels fill their own column, everything else the whole dock.
         maximizeScope: (id: string): DockMaximizeScope => {
-          return specs()[id as PanelId]?.maximizeScope ?? "root";
+          return engineInputs.specs[id as PanelId]?.maximizeScope ?? "root";
         },
         fixedWidth: (id: string): number | undefined => {
-          return specs()[id as PanelId]?.fixedWidthPx;
+          return engineInputs.specs[id as PanelId]?.fixedWidthPx;
         },
         mount: mountInto("body"),
         mountTab: mountInto("tab"),
@@ -352,7 +382,10 @@ export function DockviewLayoutEngine(
       // channels MUST be listed: an unlisted dynamic id the blob restored is
       // deleted as an orphan, so an instance missing here loses its blob
       // position.
-      dynamicPanels: dynamicPanelsOf(props.docked, props.instances),
+      dynamicPanels: dynamicPanelsOf(
+        engineInputs.docked,
+        engineInputs.instances,
+      ),
     });
     applied = [];
     appliedDocked = [];
@@ -383,7 +416,7 @@ export function DockviewLayoutEngine(
     });
   }
 
-  onMount(() => {
+  onSettled(() => {
     buildEngine();
   });
 
@@ -415,7 +448,7 @@ export function DockviewLayoutEngine(
   // to `[]` INSIDE this effect, so whenever the collapse/docked effects DO
   // run against the fresh engine, they diff against an empty baseline, not a
   // stale one; (2) `buildEngine()`'s own construction-time `dynamicPanels`
-  // reconciliation reads `props.docked` directly, restoring docked
+  // reconciliation reads the docked set (via `engineInputs`), restoring docked
   // membership even on a tick where `props.docked` itself never changed
   // value (so that effect need not re-run at all for docking to survive);
   // and (3) `setLiveEngine` inside `buildEngine()` gives the maximize/
@@ -424,84 +457,84 @@ export function DockviewLayoutEngine(
   // those props themselves changed this tick — the same re-apply react's
   // `liveEngine` state provides there.
   //
-  // `on()` without `defer`, per the README's "bookkeeping createEffect"
-  // idiom: the mount-time call compares `layoutResets` against itself
-  // (`previous ?? current`), a deliberate no-op that also seeds `previous`
-  // for the first REAL bump — no `layoutResets === undefined` special case
-  // needed. The onMount effect above already built the engine for THIS run.
+  // No `defer`, per the README's "bookkeeping createEffect" idiom: the
+  // mount-time apply compares `layoutResets` against itself
+  // (`previous ?? current`, `previous` being undefined on the first run), a
+  // deliberate no-op — no `layoutResets === undefined` special case needed.
+  // The onSettled above already builds the engine for THIS mount.
   createEffect(
-    on(
-      () => {
-        return props.layoutResets;
-      },
-      (resets, previousResets) => {
-        if ((previousResets ?? resets) === resets) {
-          return;
-        }
+    () => {
+      return props.layoutResets;
+    },
+    (resets, previousResets) => {
+      if ((previousResets ?? resets) === resets) {
+        return;
+      }
 
-        suppressSave = true;
+      suppressSave = true;
 
-        // MINOR (fix round 2): `try`/`finally` around the whole dispose-
-        // then-rebuild span — a throwing `createDockEngine` (or a throwing
-        // old engine `dispose()`) must not leave `suppressSave` stuck
-        // `true` for the rest of the session, silently dropping every
-        // later save.
-        try {
-          const disposed = engine;
-          engine = null;
-          setLiveEngine(null);
-          // Unregister BEFORE disposing the outgoing engine — the
-          // onCleanup's identical ordering above, and for the identical
-          // reason: a save triggered by the dispose flush below must find
-          // no source at all, never one that would read the torn-down
-          // engine.
-          props.onSnapshotSourceChange?.(props.tab, null);
-          disposed?.dispose();
-          setMounted([]);
-          setGroups(0);
-          setStrips({});
-          // Popped state clears with the engine that owned those windows.
-          // The rebuilt engine will NOT re-announce an empty set: its
-          // `publishPoppedPanels` starts at `lastPopped = []` and only fires
-          // on a CHANGE, so a fresh engine with no popouts is silent —
-          // leaving a stale `poppedHere` to grey a docked panel's controls
-          // forever. Same reason `setStrips({})` sits directly above.
-          setPopped([]);
-          // A reset rebuilds from the tab's now-CLEARED blob (a fresh
-          // default seed), so any panel that was floating cannot still be —
-          // clear it proactively for the identical reason `setPopped([])`
-          // does: the fresh engine's own `publishFloatingPanels` starts at
-          // `lastFloating = []` and fires only on a CHANGE, so a fresh dock
-          // with no floats is silent, and without this the stale
-          // `floatingHere` would hide collapse/maximize on a panel that is
-          // no longer floating anywhere.
-          setFloating([]);
-          setAttached([]);
-          applied = [];
-          appliedDocked = [];
-          appliedInstances = [];
-          buildEngine();
-        } finally {
-          suppressSave = false;
-        }
-      },
-    ),
+      // MINOR (fix round 2): `try`/`finally` around the whole dispose-
+      // then-rebuild span — a throwing `createDockEngine` (or a throwing
+      // old engine `dispose()`) must not leave `suppressSave` stuck
+      // `true` for the rest of the session, silently dropping every
+      // later save.
+      try {
+        const disposed = engine;
+        engine = null;
+        setLiveEngine(null);
+        // Unregister BEFORE disposing the outgoing engine — the
+        // onCleanup's identical ordering above, and for the identical
+        // reason: a save triggered by the dispose flush below must find
+        // no source at all, never one that would read the torn-down
+        // engine.
+        props.onSnapshotSourceChange?.(props.tab, null);
+        disposed?.dispose();
+        setMounted([]);
+        setGroups(0);
+        setStrips({});
+        // Popped state clears with the engine that owned those windows.
+        // The rebuilt engine will NOT re-announce an empty set: its
+        // `publishPoppedPanels` starts at `lastPopped = []` and only fires
+        // on a CHANGE, so a fresh engine with no popouts is silent —
+        // leaving a stale `poppedHere` to grey a docked panel's controls
+        // forever. Same reason `setStrips({})` sits directly above.
+        setPopped([]);
+        // A reset rebuilds from the tab's now-CLEARED blob (a fresh
+        // default seed), so any panel that was floating cannot still be —
+        // clear it proactively for the identical reason `setPopped([])`
+        // does: the fresh engine's own `publishFloatingPanels` starts at
+        // `lastFloating = []` and fires only on a CHANGE, so a fresh dock
+        // with no floats is silent, and without this the stale
+        // `floatingHere` would hide collapse/maximize on a panel that is
+        // no longer floating anywhere.
+        setFloating([]);
+        setAttached([]);
+        applied = [];
+        appliedDocked = [];
+        appliedInstances = [];
+        buildEngine();
+      } finally {
+        suppressSave = false;
+      }
+    },
   );
 
-  createEffect(() => {
-    const currentEngine = liveEngine();
-    const maximized = props.maximized;
+  createEffect(
+    () => {
+      return { currentEngine: liveEngine(), maximized: props.maximized };
+    },
+    ({ currentEngine, maximized }) => {
+      if (currentEngine === null) {
+        return;
+      }
 
-    if (currentEngine === null) {
-      return;
-    }
-
-    if (maximized !== null) {
-      currentEngine.maximizePanel(maximized);
-    } else {
-      currentEngine.exitMaximize();
-    }
-  });
+      if (maximized !== null) {
+        currentEngine.maximizePanel(maximized);
+      } else {
+        currentEngine.exitMaximize();
+      }
+    },
+  );
 
   // The docked set is a SET, not a single id, so — like `collapsed` below —
   // this diffs against the last applied list rather than re-asserting the
@@ -511,31 +544,33 @@ export function DockviewLayoutEngine(
   // initial pass over a freshly built engine re-adds ids already present via
   // construction-time `dynamicPanels` reconciliation — safe, since
   // `addDynamicPanel` no-ops on an existing id.
-  createEffect(() => {
-    const currentEngine = liveEngine();
-    const docked = props.docked;
-
-    if (currentEngine === null) {
-      return;
-    }
-
-    for (const panelId of docked) {
-      if (!appliedDocked.includes(panelId)) {
-        currentEngine.addDynamicPanel({
-          id: panelId,
-          initialPx: DOCK_COLUMN_INITIAL_PX,
-        });
+  createEffect(
+    () => {
+      return { currentEngine: liveEngine(), docked: props.docked };
+    },
+    ({ currentEngine, docked }) => {
+      if (currentEngine === null) {
+        return;
       }
-    }
 
-    for (const panelId of appliedDocked) {
-      if (!docked.includes(panelId)) {
-        currentEngine.removeDynamicPanel(panelId);
+      for (const panelId of docked) {
+        if (!appliedDocked.includes(panelId)) {
+          currentEngine.addDynamicPanel({
+            id: panelId,
+            initialPx: DOCK_COLUMN_INITIAL_PX,
+          });
+        }
       }
-    }
 
-    appliedDocked = docked;
-  });
+      for (const panelId of appliedDocked) {
+        if (!docked.includes(panelId)) {
+          currentEngine.removeDynamicPanel(panelId);
+        }
+      }
+
+      appliedDocked = docked;
+    },
+  );
 
   // The layout machine's chart instances — the docked effect's twin on its
   // own channel, declared beside it (before the collapse effect, which may
@@ -544,55 +579,62 @@ export function DockviewLayoutEngine(
   // `eq-chart:` namespace, so dropping an instance can never take a
   // Jarvis-docked panel with it. Reading `liveEngine()` re-runs this on a
   // rebuild, exactly like the docked effect.
-  createEffect(() => {
-    const currentEngine = liveEngine();
-    const instanceIds = instanceIdsOf(props.instances);
-
-    if (currentEngine === null) {
-      return;
-    }
-
-    for (const panelId of instanceIds) {
-      if (!appliedInstances.includes(panelId)) {
-        currentEngine.addDynamicPanel(instancePanelOf(panelId));
+  createEffect(
+    () => {
+      return {
+        currentEngine: liveEngine(),
+        instanceIds: instanceIdsOf(props.instances),
+      };
+    },
+    ({ currentEngine, instanceIds }) => {
+      if (currentEngine === null) {
+        return;
       }
-    }
 
-    for (const panelId of appliedInstances) {
-      if (!instanceIds.includes(panelId) && isInstanceId(panelId)) {
-        currentEngine.removeDynamicPanel(panelId);
+      for (const panelId of instanceIds) {
+        if (!appliedInstances.includes(panelId)) {
+          currentEngine.addDynamicPanel(instancePanelOf(panelId));
+        }
       }
-    }
 
-    appliedInstances = instanceIds;
-  });
+      for (const panelId of appliedInstances) {
+        if (!instanceIds.includes(panelId) && isInstanceId(panelId)) {
+          currentEngine.removeDynamicPanel(panelId);
+        }
+      }
+
+      appliedInstances = instanceIds;
+    },
+  );
 
   // `collapsed` is a SET, not a single id like `maximized`, so this diffs
   // against the last applied list rather than re-asserting the whole thing:
   // `collapsePanel` remembers the pre-collapse geometry on the FIRST call for
   // a panel, so blanket-reapplying is safe but pointless work every render.
-  createEffect(() => {
-    const currentEngine = liveEngine();
-    const collapsed = props.collapsed;
-
-    if (currentEngine === null) {
-      return;
-    }
-
-    for (const panelId of collapsed) {
-      if (!applied.includes(panelId)) {
-        currentEngine.collapsePanel(panelId);
+  createEffect(
+    () => {
+      return { currentEngine: liveEngine(), collapsed: props.collapsed };
+    },
+    ({ currentEngine, collapsed }) => {
+      if (currentEngine === null) {
+        return;
       }
-    }
 
-    for (const panelId of applied) {
-      if (!collapsed.includes(panelId)) {
-        currentEngine.expandPanel(panelId);
+      for (const panelId of collapsed) {
+        if (!applied.includes(panelId)) {
+          currentEngine.collapsePanel(panelId);
+        }
       }
-    }
 
-    applied = collapsed;
-  });
+      for (const panelId of applied) {
+        if (!collapsed.includes(panelId)) {
+          currentEngine.expandPanel(panelId);
+        }
+      }
+
+      applied = collapsed;
+    },
+  );
 
   // The WHOLE set of this tab's panels living outside the grid (floating or
   // popped out), reported on every change so a Jarvis layout command on one
@@ -602,9 +644,14 @@ export function DockviewLayoutEngine(
   // the effect re-reports on every `floating`/`popped` write, and the
   // component-level cleanup reports `[]` — on unmount the engine, and every
   // window/float it owned, is gone, so nothing is detached any more.
-  createEffect(() => {
-    props.onDetachedPanelsChange?.(props.tab, [...floating(), ...popped()]);
-  });
+  createEffect(
+    () => {
+      return [...floating(), ...popped()];
+    },
+    (detached) => {
+      props.onDetachedPanelsChange?.(props.tab, detached);
+    },
+  );
 
   onCleanup(() => {
     props.onDetachedPanelsChange?.(props.tab, []);
@@ -625,24 +672,26 @@ export function DockviewLayoutEngine(
   // reading the signal here is the parallel hardening, matching every OTHER
   // engine-dependent effect above (maximize/docked/instances/collapsed all
   // read `liveEngine()` already).
-  createEffect(() => {
-    const currentEngine = liveEngine();
-    const closed = props.closed;
-
-    if (currentEngine === null) {
-      return;
-    }
-
-    for (const panelId of seedPanelIdsOf(
-      createDefaultLayoutPort(props.tab).initial.root,
-    )) {
-      if (closed.includes(panelId)) {
-        currentEngine.closePanel(panelId);
-      } else {
-        currentEngine.reopenPanel(panelId);
+  createEffect(
+    () => {
+      return { currentEngine: liveEngine(), closed: props.closed };
+    },
+    ({ currentEngine, closed }) => {
+      if (currentEngine === null) {
+        return;
       }
-    }
-  });
+
+      for (const panelId of seedPanelIdsOf(
+        createDefaultLayoutPort(props.tab).initial.root,
+      )) {
+        if (closed.includes(panelId)) {
+          currentEngine.closePanel(panelId);
+        } else {
+          currentEngine.reopenPanel(panelId);
+        }
+      }
+    },
+  );
 
   // `data-collapsed` witnesses that the collapse set reached this bridge —
   // identically for both clients — while the strip itself is a real
@@ -878,6 +927,14 @@ export interface DockviewLayoutEngineProps {
     tab: WorkspaceTab,
     source: (() => string) | null,
   ) => void;
+}
+
+/** The props the dock engine reads through its callbacks, as plain values —
+ * see `engineInputs` in the component. */
+interface EngineInputs {
+  specs: Readonly<Record<PanelId, PanelSpec>>;
+  docked: readonly PanelId[];
+  instances: readonly LayoutPanelInstance[];
 }
 
 interface MountedSlot {

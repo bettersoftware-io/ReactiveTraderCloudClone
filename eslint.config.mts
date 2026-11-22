@@ -1,7 +1,7 @@
 import type { TSESLint } from "@typescript-eslint/utils";
 import prettier from "eslint-config-prettier";
 import reactHooks from "eslint-plugin-react-hooks";
-import solid from "eslint-plugin-solid";
+import solidV2 from "eslint-plugin-solid/configs/v2";
 import tseslint from "typescript-eslint";
 
 import { classFilenameMatch } from "./eslint-rules/class-filename-match.mts";
@@ -774,22 +774,29 @@ export default tseslint.config(
     rules: { "rtc/name-jsx-handlers": "error" },
   },
   {
-    // eslint-plugin-solid's recommended rules — Solid's JSX has different
+    // eslint-plugin-solid's Solid 2.0 config (`configs/v2`, the one the
+    // official Solid 2.0 templates ship) — Solid's JSX has different
     // reactivity semantics than React's (no re-render on prop/state change;
     // props are getters backed by a proxy), so it needs its own lint pass
     // (no-destructure, reactivity, jsx-uses-vars, …) rather than reusing the
-    // react-hooks block above. Scoped to the two Solid packages only.
+    // react-hooks block above. `v2` sets `settings.solid.version: 2`, which
+    // switches the version-aware rules (`reactivity`, `imports`,
+    // `event-handlers`, …) to 2.0 semantics, and adds the 2.0 rules
+    // (`removed-api`, `no-single-arg-create-effect`,
+    // `no-write-in-pure-computation`, `no-boolean-enumerated-attribute`, …).
+    // The 1.x `recommended` config this replaced reads a Solid 2 codebase
+    // with 1.x rules. Scoped to the two Solid packages only.
     files: [
       "packages/client-solid/**/*.{ts,tsx}",
       "packages/solid-bindings/**/*.{ts,tsx}",
     ],
-    ...solid.configs["flat/recommended"],
-    // eslint-plugin-solid 0.18.1 types its own `sourceType` as `string`
-    // (0.18.0 said `"module"`), which the config type rejects. The value is
+    ...solidV2,
+    // eslint-plugin-solid (0.18.1 to 0.20.1 at least) types its own
+    // `sourceType` as `string`, which the config type rejects. The value is
     // unchanged; restating it here gives it its literal type back. Drop this
     // override once the plugin's types say `"module"` again.
     languageOptions: {
-      ...solid.configs["flat/recommended"].languageOptions,
+      ...solidV2.languageOptions,
       sourceType: "module",
     },
   },

@@ -1,6 +1,7 @@
 import { state } from "@rx-state/core";
+import type { JSX } from "@solidjs/web";
 import type { BehaviorSubject } from "rxjs";
-import { type Accessor, type JSX, untrack } from "solid-js";
+import { type Accessor, untrack } from "solid-js";
 
 import { toSignal } from "@rtc/solid-bindings/toSignal";
 

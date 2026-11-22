@@ -1,4 +1,5 @@
-import { type Accessor, createUniqueId, Index, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, createUniqueId, For, Show } from "solid-js";
 
 import type { ChartKind, ChartPoint, IndicatorId } from "@rtc/motion-core";
 
@@ -53,7 +54,7 @@ export function SvgPathLayer(props: SvgPathLayerProps): JSX.Element {
           points={toPointsAttr(props.linePoints)}
         />
       </Show>
-      <Index each={props.indicatorPaths}>
+      <For keyed={false} each={props.indicatorPaths}>
         {(p: Accessor<IndicatorPath>): JSX.Element => {
           return (
             <polyline
@@ -65,7 +66,7 @@ export function SvgPathLayer(props: SvgPathLayerProps): JSX.Element {
             />
           );
         }}
-      </Index>
+      </For>
       <Show when={(props.comparePoints ?? EMPTY_POINTS).length > 1}>
         <polyline
           data-testid="chart-compare-line"

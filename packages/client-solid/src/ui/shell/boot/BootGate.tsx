@@ -1,10 +1,5 @@
-import {
-  createEffect,
-  createSignal,
-  type JSX,
-  type ParentProps,
-  Show,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createEffect, createSignal, type ParentProps, Show } from "solid-js";
 
 import styles from "@rtc/boot-splash/styles/BootGate.module.css";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -42,32 +37,43 @@ export function BootGate(props: ParentProps): JSX.Element {
     setDone(true);
   }
 
-  createEffect(() => {
-    // A splash that is gone is not done: the next one (⟳ Reboot HUD) starts
-    // over.
-    if (!visible()) {
-      setDone(false);
-      return;
-    }
+  createEffect(
+    () => {
+      return {
+        shown: visible(),
+        finished: done(),
+        freeze: isFreeze(),
+        forcedOn: forced(),
+      };
+    },
+    ({ shown, finished, freeze, forcedOn }) => {
+      // A splash that is gone is not done: the next one (⟳ Reboot HUD)
+      // starts over.
+      if (!shown) {
+        setDone(false);
+        return;
+      }
 
-    if (!done()) {
-      return;
-    }
+      if (!finished) {
+        return;
+      }
 
-    const reduce = window.matchMedia?.(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+      const reduce = window.matchMedia?.(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
 
-    // Reduced motion (and NOT forced) or power-saver Freeze: the splash
-    // jump-cuts to opacity 0 with no transition (freeze's catch-all sets
-    // `transition-property: none`, so no transitionend ever arrives) — dismiss
-    // it directly. Freeze wins over forced, which overrides only the
-    // accessibility signal. Otherwise the transition runs (restored when
-    // forced — see BootSequence.module.css) and dismissOnOpacityEnd dismisses.
-    if (isFreeze() || (reduce && !forced())) {
-      dismiss();
-    }
-  });
+      // Reduced motion (and NOT forced) or power-saver Freeze: the splash
+      // jump-cuts to opacity 0 with no transition (freeze's catch-all sets
+      // `transition-property: none`, so no transitionend ever arrives) —
+      // dismiss it directly. Freeze wins over forced, which overrides only
+      // the accessibility signal. Otherwise the transition runs (restored
+      // when forced — see BootSequence.module.css) and dismissOnOpacityEnd
+      // dismisses.
+      if (freeze || (reduce && !forcedOn)) {
+        dismiss();
+      }
+    },
+  );
 
   function dismissOnOpacityEnd(event: TransitionEvent): void {
     // Only the splash root animates opacity; ignore the progress-bar/skip

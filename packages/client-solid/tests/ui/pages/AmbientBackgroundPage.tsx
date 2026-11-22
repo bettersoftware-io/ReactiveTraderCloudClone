@@ -78,9 +78,9 @@ export function ambientBackgroundPage(): AmbientBackgroundPage {
 
       render(() => {
         return (
-          <ViewModelContext.Provider value={hooks}>
+          <ViewModelContext value={hooks}>
             <AmbientBackground />
-          </ViewModelContext.Provider>
+          </ViewModelContext>
         );
       });
     },
@@ -110,9 +110,9 @@ export function ambientBackgroundPage(): AmbientBackgroundPage {
 
       render(() => {
         return (
-          <ViewModelContext.Provider value={hooks}>
+          <ViewModelContext value={hooks}>
             <AmbientBackground />
-          </ViewModelContext.Provider>
+          </ViewModelContext>
         );
       });
     },

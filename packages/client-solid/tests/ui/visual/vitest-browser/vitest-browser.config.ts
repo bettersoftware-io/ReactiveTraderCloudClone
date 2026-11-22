@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 
+import solid from "@solidjs/vite-plugin";
 import { playwright } from "@vitest/browser-playwright";
-import solid from "vite-plugin-solid";
 import { defineConfig } from "vitest/config";
 
 // The Solid twin of client-react's vitest-browser tier — with one deliberate
@@ -17,7 +17,7 @@ import { defineConfig } from "vitest/config";
 // runners, and the same SCENARIO_PATTERN filter.
 
 export default defineConfig({
-  // `vite-plugin-solid` compiles the JSX; the package's own vite.config.ts uses
+  // `@solidjs/vite-plugin` compiles the JSX; the package's own vite.config.ts uses
   // the same plugin for the app build.
   plugins: [solid()],
   resolve: {

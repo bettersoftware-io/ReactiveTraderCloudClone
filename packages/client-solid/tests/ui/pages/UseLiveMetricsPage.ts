@@ -1,5 +1,6 @@
 import { renderHook } from "@solidjs/testing-library";
-import { type Accessor, createComponent, type JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, createComponent } from "solid-js";
 
 import { type ViewModel, ViewModelContext } from "@rtc/solid-bindings";
 
@@ -35,7 +36,7 @@ export function liveMetricsPage(): UseLiveMetricsPage {
   return {
     mount(props: UseLiveMetricsMountProps): Accessor<LiveMetrics> {
       function Providers(wrapped: ProvidersProps): JSX.Element {
-        return createComponent(ViewModelContext.Provider, {
+        return createComponent(ViewModelContext, {
           value: props.viewModel,
           get children(): JSX.Element {
             // Read inside the tracked children getter, not destructured up
@@ -45,7 +46,7 @@ export function liveMetricsPage(): UseLiveMetricsPage {
               return wrapped.children;
             }
 
-            return createComponent(LiveMetricsContext.Provider, {
+            return createComponent(LiveMetricsContext, {
               value: props.liveMetrics,
               get children(): JSX.Element {
                 return wrapped.children;

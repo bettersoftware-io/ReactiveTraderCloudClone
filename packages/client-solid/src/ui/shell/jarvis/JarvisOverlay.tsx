@@ -1,11 +1,10 @@
+import type { JSX } from "@solidjs/web";
 import {
   type Accessor,
   createEffect,
   createMemo,
   createSignal,
   For,
-  type JSX,
-  onCleanup,
   Show,
 } from "solid-js";
 
@@ -87,8 +86,15 @@ export function JarvisOverlay(): JSX.Element {
     close();
   }
 
-  createEffect(() => {
-    if (!state().open) {
+  // Gated through a memo: `state()` emits on every Jarvis event, and an
+  // effect re-runs its apply (and its cleanup) whenever its compute re-runs,
+  // equal value or not — the listener would churn on every reply chunk.
+  const isOpen = createMemo((): boolean => {
+    return state().open;
+  });
+
+  createEffect(isOpen, (open) => {
+    if (!open) {
       return;
     }
 
@@ -107,24 +113,26 @@ export function JarvisOverlay(): JSX.Element {
 
     document.addEventListener("keydown", closeOnEscape);
 
-    onCleanup(() => {
+    return () => {
       document.removeEventListener("keydown", closeOnEscape);
-    });
+    };
   });
 
   // Auto-scroll to the newest entry — a DOM view-effect (ADR-005-sanctioned),
   // reacting to both `open` (so it fires again as soon as the message list
   // mounts) and `entries.length` (so it fires only when the list grows).
-  createEffect(() => {
-    const open = state().open;
-    const count = state().entries.length;
+  createEffect(
+    () => {
+      return { open: state().open, count: state().entries.length };
+    },
+    ({ open, count }) => {
+      if (!open || !listRef || count === 0) {
+        return;
+      }
 
-    if (!open || !listRef || count === 0) {
-      return;
-    }
-
-    listRef.scrollTop = listRef.scrollHeight;
-  });
+      listRef.scrollTop = listRef.scrollHeight;
+    },
+  );
 
   // The chip sampler rotates deterministically off `state().openCount` — a
   // `createMemo`, not an inline call in JSX, so the dead-arm branch trap the
@@ -221,7 +229,7 @@ export function JarvisOverlay(): JSX.Element {
             type="button"
             data-testid="jarvis-guide-toggle"
             aria-label="Demo guide"
-            aria-pressed={guideOpen()}
+            aria-pressed={guideOpen() ? "true" : "false"}
             class={styles.guideToggle}
             onClick={toggleGuide}
           >
@@ -579,7 +587,7 @@ export function JarvisOverlay(): JSX.Element {
               class={styles.input}
               placeholder="Ask J.A.R.V.I.S — markets · trades · execution…"
               value={inputValue()}
-              maxLength={JARVIS_MESSAGE_MAX_CHARS}
+              maxlength={JARVIS_MESSAGE_MAX_CHARS}
               disabled={speaking()}
               onInput={updateDraft}
               onChange={updateDraft}
@@ -644,7 +652,7 @@ export function JarvisOverlay(): JSX.Element {
                   return (
                     <button
                       type="button"
-                      aria-pressed={active()}
+                      aria-pressed={active() ? "true" : "false"}
                       aria-label={SKIN_LABEL[skin]}
                       data-skin={skin}
                       data-active={active() ? "true" : "false"}

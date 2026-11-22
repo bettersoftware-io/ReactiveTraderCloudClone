@@ -1,11 +1,5 @@
-import {
-  createEffect,
-  createSignal,
-  For,
-  type JSX,
-  onCleanup,
-  Show,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { describeBrainPill } from "@rtc/core-logic";
 import {
@@ -84,17 +78,17 @@ export function JarvisBrainPill(): JSX.Element {
     closeMenuToPill();
   }
 
-  createEffect(() => {
-    if (!menuOpen()) {
+  createEffect(menuOpen, (isOpen) => {
+    if (!isOpen) {
       return;
     }
 
     document.addEventListener("keydown", closeMenuOnEscape, true);
     focusCheckedOption(menuRef);
 
-    onCleanup(() => {
+    return () => {
       document.removeEventListener("keydown", closeMenuOnEscape, true);
-    });
+    };
   });
 
   function chooseBrain(brain: JarvisBrain): void {
@@ -109,7 +103,7 @@ export function JarvisBrainPill(): JSX.Element {
         type="button"
         data-testid="jarvis-brain-pill"
         aria-haspopup="menu"
-        aria-expanded={menuOpen()}
+        aria-expanded={menuOpen() ? "true" : "false"}
         class={styles.pill}
         onClick={toggleMenu}
       >
@@ -197,7 +191,7 @@ function BrainOptions(props: BrainOptionsProps): JSX.Element {
           <button
             type="button"
             role="menuitemradio"
-            aria-checked={brain === props.effectiveBrain}
+            aria-checked={brain === props.effectiveBrain ? "true" : "false"}
             data-testid={`jarvis-brain-option-${brain}`}
             class={styles.option}
             disabled={props.gated.includes(brain)}

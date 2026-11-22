@@ -35,8 +35,8 @@ export function useAccountRoutes(
     registrationAvailable,
   });
 
-  createEffect(() => {
-    sync.observe(account.state());
+  createEffect(account.state, (state) => {
+    sync.observe(state);
   });
   onCleanup(() => {
     sync.dispose();

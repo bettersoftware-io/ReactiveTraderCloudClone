@@ -1,4 +1,5 @@
-import { For, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { For, Show } from "solid-js";
 
 import styles from "./PreferencesContent.module.css";
 
@@ -37,7 +38,7 @@ export function PrefSegment(props: PrefSegmentProps): JSX.Element {
             return (
               <button
                 type="button"
-                aria-pressed={active()}
+                aria-pressed={active() ? "true" : "false"}
                 disabled={optionDisabled()}
                 title={option.title}
                 data-testid={`${props.testid}-${option.value}`}

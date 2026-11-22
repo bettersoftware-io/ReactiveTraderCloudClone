@@ -1,11 +1,9 @@
-import { type Accessor, Index, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, For, Show } from "solid-js";
 
 import type { EqChartType } from "@rtc/core-api";
 import type { ChartSubstrate } from "@rtc/domain";
 import {
-  type Canvas2D,
-  type CanvasSize,
-  type ChartPalette,
   type ChartVarStyle,
   type ChartVm,
   type CrosshairVm,
@@ -90,7 +88,7 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
       <div
         class={styles.plot}
         data-testid="chart-plot"
-        tabIndex={0}
+        tabindex={0}
         role="application"
         aria-label="Price chart"
         ref={props.plotRef}
@@ -106,7 +104,7 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
           when={props.substrate === "canvas" && props.canvasPlot}
           fallback={
             <>
-              <Index each={props.vm.grid}>
+              <For keyed={false} each={props.vm.grid}>
                 {(gr: Accessor<ChartVm["grid"][number]>): JSX.Element => {
                   return (
                     <div
@@ -116,7 +114,7 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
                     />
                   );
                 }}
-              </Index>
+              </For>
               <Show when={props.kind === "candles"}>
                 <CandleBars candles={props.vm.candles} />
               </Show>
@@ -145,13 +143,8 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
                     canvasPlot().scene.compareLinePoints.length > 0,
                   ),
                 }}
-                draw={(
-                  ctx: Canvas2D,
-                  palette: ChartPalette,
-                  size: CanvasSize,
-                ) => {
-                  drawPlotScene(ctx, canvasPlot(), palette, size);
-                }}
+                scene={canvasPlot()}
+                draw={drawPlotScene}
               />
             );
           }}
@@ -162,7 +155,7 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
             the order flipped, a bright canvas line crossing a glyph paints
             over its antialiasing fringe — a one-pixel divergence the strict
             chart-canvas golden caught (2026-08-17). */}
-        <Index each={props.vm.labels}>
+        <For keyed={false} each={props.vm.labels}>
           {(l: Accessor<ChartVm["labels"][number]>): JSX.Element => {
             return (
               <div
@@ -174,7 +167,7 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
               </div>
             );
           }}
-        </Index>
+        </For>
         <CrosshairOverlay
           vm={props.cross}
           showHorizontal={props.showHorizontal ?? true}
@@ -189,7 +182,7 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
         </Show>
       </div>
       <VolumePane bars={props.volumeBars} canvasBars={props.canvasVolume} />
-      <Index each={props.panes ?? []}>
+      <For keyed={false} each={props.panes ?? []}>
         {(p: Accessor<PaneVm>): JSX.Element => {
           return (
             <IndicatorPane
@@ -202,7 +195,7 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
             />
           );
         }}
-      </Index>
+      </For>
       <TimeAxis labels={props.vm.timeLabels} />
       <NavigatorStrip nav={props.nav} brushProps={props.navProps} />
     </div>

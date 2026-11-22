@@ -1,11 +1,5 @@
-// Solid Devtools runtime: registers this app with the browser extension.
-// Static import per the package's own docs — the vite plugin's `apply()` gate
-// (see vite.config.ts) resolves this to a real no-op module at build time
-// (the package's export map falls back to `index_noop.js` once the plugin
-// isn't intercepting the specifier), so it's safe to leave unguarded here.
-import "solid-devtools";
-import { createSignal } from "solid-js";
-import { render } from "solid-js/web";
+import { render } from "@solidjs/web";
+import { createSignal, flush } from "solid-js";
 
 import {
   type Composition,
@@ -74,9 +68,10 @@ function createSolidView(page: WebClientPage): WebClientView {
     unmount: tree.unmount,
     destroy: tree.destroy,
     showOverlay: (swap: CoreSwapView | null, fade: CoverTimings): void => {
-      // A signal write renders synchronously, so the cover is in the DOM
-      // before the host's next step.
+      // Solid 2 applies a write at the next microtask; `flush()` applies it
+      // now, so the cover is in the DOM before the host's next step.
       setOverlay({ swap, fade });
+      flush();
     },
   };
 }

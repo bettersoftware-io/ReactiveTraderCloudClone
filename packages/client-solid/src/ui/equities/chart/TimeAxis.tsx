@@ -1,4 +1,5 @@
-import { type Accessor, Index, type JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, For } from "solid-js";
 
 import type { TimeLabelVm } from "@rtc/motion-core";
 
@@ -12,7 +13,7 @@ import styles from "./TimeAxis.module.css";
 export function TimeAxis(props: TimeAxisProps): JSX.Element {
   return (
     <div class={styles.axis}>
-      <Index each={props.labels}>
+      <For keyed={false} each={props.labels}>
         {(l: Accessor<TimeLabelVm>): JSX.Element => {
           return (
             <div
@@ -24,7 +25,7 @@ export function TimeAxis(props: TimeAxisProps): JSX.Element {
             </div>
           );
         }}
-      </Index>
+      </For>
     </div>
   );
 }

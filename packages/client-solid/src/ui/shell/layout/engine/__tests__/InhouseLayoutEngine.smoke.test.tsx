@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal, flush } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { LayoutState } from "@rtc/core-api";
@@ -496,6 +496,7 @@ describe("InhouseLayoutEngine", () => {
       const ratesBodyBefore = page.nodeSnapshot("rates-body");
 
       setLayoutState({ ...state, collapsed: ["fx-analytics"] });
+      flush();
 
       expect(page.stripFlag("panel-fx-analytics")).toBe(true);
       expect(page.exists("analytics-body")).toBe(false);
@@ -505,6 +506,7 @@ describe("InhouseLayoutEngine", () => {
       expect(page.sameNode(ratesBodyBefore, ratesBodyAfter)).toBe(true);
 
       setLayoutState({ ...state, collapsed: [] });
+      flush();
       expect(page.stripFlag("panel-fx-analytics")).toBe(false);
       expect(page.exists("analytics-body")).toBe(true);
     });
@@ -515,6 +517,7 @@ describe("InhouseLayoutEngine", () => {
       page.mountLive(layoutState, registry, { onRestore });
 
       setLayoutState({ ...state, maximized: "fx-rates" });
+      flush();
 
       expect(page.maximizedFlag("panel-fx-rates")).toBe(true);
       expect(page.stripFlag("panel-fx-analytics")).toBe(true);
@@ -524,6 +527,7 @@ describe("InhouseLayoutEngine", () => {
       expect(onRestore).toHaveBeenCalled();
 
       setLayoutState({ ...state, maximized: null });
+      flush();
       expect(page.stripFlag("panel-fx-analytics")).toBe(false);
       expect(page.exists("analytics-body")).toBe(true);
     });

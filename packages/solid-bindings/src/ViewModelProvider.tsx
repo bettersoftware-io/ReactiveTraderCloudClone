@@ -1,4 +1,4 @@
-import { type JSX, untrack } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 import type { ViewModel } from "#/createViewModel";
 import { ViewModelContext } from "#/ViewModelContext";
@@ -14,21 +14,16 @@ interface ViewModelProviderProps {
  * wiring. Props are read via `props.viewModel`/`props.children` (never
  * destructured in the parameter list or the body) — Solid props are
  * reactive getters backed by a proxy, and destructuring would snapshot the
- * value once instead of tracking it. */
+ * value once instead of tracking it.
+ *
+ * Solid 2's context provider (the context object itself) reads its `value`
+ * once, when it mounts, so a mounted Provider is never re-valued. Correct
+ * here because every call site (AppRoot, the contract render() helper,
+ * VisualScenario) mounts a fresh Provider around a fresh ViewModel. */
 export function ViewModelProvider(props: ViewModelProviderProps): JSX.Element {
-  // Snapshot, unavoidably: Solid's own `createProvider` reads `props.value`
-  // inside an `untrack` (solid.js, `createRenderEffect(() => res =
-  // untrack(() => { ...[id]: props.value }))`), so this one JSX position is a
-  // snapshot however it is written. Correct because every call site (AppRoot,
-  // the contract render() helper, VisualScenario) mounts a fresh Provider
-  // around a fresh ViewModel, never re-values a mounted one.
   return (
-    <ViewModelContext.Provider
-      value={untrack((): ViewModel => {
-        return props.viewModel;
-      })}
-    >
+    <ViewModelContext value={props.viewModel}>
       {props.children}
-    </ViewModelContext.Provider>
+    </ViewModelContext>
   );
 }

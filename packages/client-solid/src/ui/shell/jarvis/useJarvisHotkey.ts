@@ -1,4 +1,4 @@
-import { onCleanup, onMount } from "solid-js";
+import { onSettled } from "solid-js";
 
 /**
  * Global ⌘/Ctrl+J hotkey — toggles the J.A.R.V.I.S overlay from anywhere in
@@ -18,7 +18,7 @@ export function useJarvisHotkey(
   toggle: () => void,
   available: () => boolean,
 ): void {
-  onMount(() => {
+  onSettled(() => {
     function toggleJarvisOnHotkey(event: KeyboardEvent): void {
       if (
         (event.metaKey || event.ctrlKey) &&
@@ -36,8 +36,8 @@ export function useJarvisHotkey(
 
     document.addEventListener("keydown", toggleJarvisOnHotkey);
 
-    onCleanup(() => {
+    return () => {
       document.removeEventListener("keydown", toggleJarvisOnHotkey);
-    });
+    };
   });
 }
