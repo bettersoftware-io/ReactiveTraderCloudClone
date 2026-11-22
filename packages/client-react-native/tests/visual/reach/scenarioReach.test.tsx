@@ -1,5 +1,6 @@
 import { expect, test } from "@jest/globals";
 import { render } from "@testing-library/react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { SCENARIOS } from "../scenarios";
@@ -21,10 +22,17 @@ import { SCENARIOS } from "../scenarios";
  * tree, which catches a fixture that silently renders nothing (a golden of a
  * blank frame passes forever).
  *
- * `SafeAreaProvider` stands in for the app root the framed fixtures assume
- * (`ShellHeader`/`RadialCommandDock` read `useSafeAreaInsets`); the metrics
- * are the iPhone 17's, matching the golden device, though nothing here
- * measures layout.
+ * `GestureHandlerRootView` and `SafeAreaProvider` stand in for the app root
+ * the capture route renders under (`app/_layout.tsx` owns the gesture root;
+ * `ShellHeader`/`RadialCommandDock` read `useSafeAreaInsets`). Without the
+ * gesture root, `lock/hold`'s `HoldToUnlockRing` throws: a `GestureDetector`
+ * must sit under one. The safe-area metrics are the iPhone 17's, matching the
+ * golden device, though nothing here measures layout.
+ *
+ * Until Expo 58.0.26 (2026-11-22) this smoke was weaker than it reads: the
+ * host renders its scene only once the fonts load (`fontsReady ? children :
+ * null`), and under jest they never did, so every test mounted the empty
+ * surface alone. They load now, and the scenes really mount.
  */
 const IPHONE_17_METRICS = {
   frame: { x: 0, y: 0, width: 402, height: 874 },
@@ -34,9 +42,11 @@ const IPHONE_17_METRICS = {
 for (const scenario of SCENARIOS) {
   test(`mounts ${scenario.id}`, async () => {
     const result = await render(
-      <SafeAreaProvider initialMetrics={IPHONE_17_METRICS}>
-        {scenario.build()}
-      </SafeAreaProvider>,
+      <GestureHandlerRootView>
+        <SafeAreaProvider initialMetrics={IPHONE_17_METRICS}>
+          {scenario.build()}
+        </SafeAreaProvider>
+      </GestureHandlerRootView>,
     );
     expect(result.toJSON()).not.toBeNull();
     await result.unmount();
