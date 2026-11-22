@@ -1,4 +1,4 @@
-import { Context, Effect } from "effect";
+import { Context, Effect, Exit } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { interruptFiber, runnerFor } from "#/bridge/out";
@@ -48,15 +48,17 @@ describe("bridge/turnResume", () => {
     expect(fired).toBe(true);
   });
 
-  it("callbackOnTurn() takes a resume made during register at once", () => {
+  it("callbackOnTurn() takes even a resume made during register on the turn — the fiber suspends first, as on effect 3", async () => {
     const runner = runnerFor(Context.empty());
-    expect(
-      runner.runSync(
-        callbackOnTurn<number>((resume) => {
-          resume(Effect.succeed(3));
-        }),
-      ),
-    ).toBe(3);
+    const answered = callbackOnTurn<number>((resume) => {
+      resume(Effect.succeed(3));
+    });
+    const fiber = runner.runFork(answered);
+    expect(fiber.pollUnsafe()).toBeUndefined();
+    await Promise.resolve();
+    expect(fiber.pollUnsafe()).toEqual(Exit.succeed(3));
+    // A host's runSync still answers: it settles the turn before reading.
+    expect(runner.runSync(answered)).toBe(3);
   });
 
   it("the turn clock reads time from the default clock, yields for a zero sleep and never wakes from an endless one", async () => {

@@ -15,9 +15,9 @@ import { callbackOnTurn } from "#/bridge/turnResume";
  * `subscription` binding exists and with more emissions still to come — so
  * the handlers route through `endSubscription`, which tolerates the
  * not-yet-assigned holder, and `settled` keeps the later `next`/`complete`
- * from resuming an already-resumed fiber. An answer that arrives later
- * resumes the fiber on the turn scheduler, not inside the port's `next`
- * (`callbackOnTurn`). */
+ * from resuming an already-resumed fiber. Every answer — a synchronous one
+ * included — resumes the fiber on the turn scheduler, never inside the
+ * port's `next` or the caller's run (`callbackOnTurn`, which says why). */
 export function rpc<T>(source: Observable<T>): Effect.Effect<T, unknown> {
   return callbackOnTurn<T, unknown>((resume) => {
     let subscription: Subscription | undefined;

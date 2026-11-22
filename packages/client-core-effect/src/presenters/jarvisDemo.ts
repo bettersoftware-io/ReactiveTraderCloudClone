@@ -28,6 +28,7 @@ import {
   runForkIn,
 } from "#/bridge/out";
 import { createSyncRef } from "#/bridge/syncRef";
+import { callbackOnTurn } from "#/bridge/turnResume";
 
 export interface JarvisDemoDeps {
   readonly jarvisStateNow: () => JarvisState;
@@ -82,7 +83,7 @@ export function createJarvisDemo(
     step: JarvisDemoStep,
     run: DemoRun,
   ): Effect.Effect<StepOutcome> {
-    return Effect.callback<StepOutcome>((resume) => {
+    return callbackOnTurn<StepOutcome>((resume) => {
       if (run.stopped) {
         resume(Effect.interrupt);
         return;
@@ -94,7 +95,7 @@ export function createJarvisDemo(
       );
       let decline: Fiber.Fiber<void> | null = null;
 
-      // Every way the step ends releases the same things. `Effect.callback`
+      // Every way the step ends releases the same things. `callbackOnTurn`
       // runs its returned canceler on interruption ONLY — a step that
       // settles normally must release here, or its listeners stay attached
       // to jarvis for the app's life.

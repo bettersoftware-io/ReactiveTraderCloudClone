@@ -1,5 +1,5 @@
 import { Effect, Exit, Layer, ManagedRuntime, Scope } from "effect";
-import { Observable, Subject } from "rxjs";
+import { Observable, of, Subject } from "rxjs";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -10,7 +10,7 @@ import {
   type MarketDataPort,
 } from "@rtc/domain";
 
-import type { EffectHost } from "#/bridge/out";
+import { closeScope, createDetachedHost, type EffectHost } from "#/bridge/out";
 import { createCandleSeriesPresenter } from "#/presenters/candleSeries";
 
 describe("candleSeries presenter", () => {
@@ -187,6 +187,47 @@ describe("candleSeries presenter", () => {
       afterClose.push(value);
     });
     expect(afterClose).toEqual([false]);
+  });
+
+  it("loadOlder over a port that answers synchronously lands the page a turn later, never inside the call: loadingOlder$ is seen in flight first", async () => {
+    // The equities simulator's `candleHistory` is a synchronous `of(page)`.
+    // On a production host (the turn scheduler) the page must still cross
+    // a turn: a UI that calls `loadOlder` from an effect keyed on
+    // `loadingOlder$` hangs when the whole fetch — loading on, the page,
+    // loading off — runs inside its call (e2e `equitiesChart.spec.ts`).
+    const host = createDetachedHost();
+    const scripted = createScriptedCandles();
+    const page = createCandles(
+      CANDLE_HISTORY_PAGE,
+      T0 - CANDLE_HISTORY_PAGE * STEP_MS,
+      STEP_MS,
+    );
+
+    const p = createCandleSeriesPresenter(host, {
+      ...scripted.port,
+      candleHistory: () => {
+        return of(page);
+      },
+    });
+    const seen: (readonly Candle[])[] = [];
+    p.candles$("AAPL").subscribe((series: readonly Candle[]) => {
+      seen.push(series);
+    });
+    scripted.emitCandles("AAPL", "1D", createCandles(3, T0, STEP_MS));
+    await tick();
+    const loading: boolean[] = [];
+    p.loadingOlder$("AAPL").subscribe((value: boolean) => {
+      loading.push(value);
+    });
+
+    p.loadOlder("AAPL");
+
+    expect(loading.at(-1)).toBe(true);
+    expect(seen.at(-1)).toHaveLength(3);
+    await tick();
+    expect(loading).toEqual([false, true, false]);
+    expect(seen.at(-1)).toHaveLength(3 + CANDLE_HISTORY_PAGE);
+    closeScope(host.scope);
   });
 
   it("loadOlder before the series has emitted asks for nothing — there is no anchor yet", async () => {

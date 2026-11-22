@@ -2,45 +2,42 @@ import { Clock, Duration, Effect } from "effect";
 
 import { turnScheduler } from "#/bridge/turnScheduler";
 
-/** `Effect.callback`, with a resume that arrives LATER — from a port's
- * emission, a timer, any callback outside the fiber — taken on the turn
- * scheduler instead of in the caller's stack.
+/** `Effect.callback`, with every resume taken on the turn scheduler instead
+ * of in the caller's stack — a resume made DURING `register` (a port that
+ * answers synchronously) as much as one that arrives later (a port's
+ * emission, a timer).
  *
- * Why. Effect 3 resumed a suspended fiber on its scheduler, so a fiber
- * woken by a port or a timer ran its next step in the core's next turn
- * (`bridge/turnScheduler.ts`). Effect 4 resumes it SYNCHRONOUSLY, inside
- * whatever called `resume`: a port's `next` would run the fiber's
- * continuation re-entrantly before the port's own emission returned, and a
- * timer's callback would run it before the code that fired the timer could
- * act — a machine disposed in the same turn its redirect timer fired still
- * redirected (`rfqSubmission.test.ts`). Taken on the turn, the step lands
- * where it landed on effect 3, and an interrupt that arrives first still
- * wins (a resume after the fiber was interrupted is ignored).
+ * Why. Effect 3 handed EVERY resume of an async boundary to the fiber's
+ * scheduler (`FiberRuntime.initiateAsync` → `tell`), even one made inside
+ * the registration, so crossing `rpc` always cost the fiber one hop to the
+ * core's next turn (`bridge/turnScheduler.ts`). Effect 4 resumes it
+ * SYNCHRONOUSLY, inside whatever called `resume`, and one made during
+ * `register` never suspends at all. Two things broke that way:
  *
- * A resume made DURING `register` is still taken at once, as both versions
- * take it: the fiber has not suspended yet. */
+ * - a timer's callback ran the fiber's continuation before the code that
+ *   fired the timer could act — a machine disposed in the same turn its
+ *   redirect timer fired still redirected (`rfqSubmission.test.ts`);
+ * - over a port that answers synchronously (the equities simulator's
+ *   `candleHistory`) the whole of `loadOlder` — loading on, the page,
+ *   loading off — ran inside the UI's call, so the chart's near-edge
+ *   effect never saw `loadingOlder$` in flight, and panning to the left
+ *   edge hung the page (e2e `equitiesChart.spec.ts` "backfills an older
+ *   page"; `candleSeries.test.ts` pins the hop).
+ *
+ * Taken on the turn, the step lands where it landed on effect 3, and an
+ * interrupt that arrives first still wins (a resume after the fiber was
+ * interrupted is ignored). */
 export function callbackOnTurn<A, E = never>(
   register: (
     resume: (effect: Effect.Effect<A, E>) => void,
   ) => void | Effect.Effect<void>,
 ): Effect.Effect<A, E> {
   return Effect.callback<A, E>((resume) => {
-    let registering = true;
-
-    try {
-      return register((effect: Effect.Effect<A, E>) => {
-        if (registering) {
-          resume(effect);
-          return;
-        }
-
-        turnScheduler.scheduleTask(() => {
-          resume(effect);
-        }, 0);
-      });
-    } finally {
-      registering = false;
-    }
+    return register((effect: Effect.Effect<A, E>) => {
+      turnScheduler.scheduleTask(() => {
+        resume(effect);
+      }, 0);
+    });
   });
 }
 
