@@ -147,7 +147,7 @@ describe("bridge/out", () => {
   it("streamToStream() forwards emissions and completes", async () => {
     const seen: number[] = [];
     await new Promise<void>((resolve) => {
-      streamToStream(useHost(), Stream.make(1, 2, 3)).subscribe({
+      streamToStream(createTrackedHost(), Stream.make(1, 2, 3)).subscribe({
         next: (v: number) => {
           seen.push(v);
         },
@@ -159,7 +159,7 @@ describe("bridge/out", () => {
 
   it("streamToStream() interrupts the fiber on unsubscribe", async () => {
     const { stream, wasInterrupted } = createNeverStream();
-    const sub = streamToStream(useHost(), stream).subscribe(() => {});
+    const sub = streamToStream(createTrackedHost(), stream).subscribe(() => {});
     // Let the fiber actually start: `runFork` returns before the stream is
     // running, and an interrupt delivered before `Effect.never` is reached
     // unwinds a fiber that has not yet registered `onInterrupt`.
@@ -172,7 +172,7 @@ describe("bridge/out", () => {
   it("streamToStream() surfaces a stream failure as an Observable error", async () => {
     const boom = new Error("boom");
     const failure = await new Promise<unknown>((resolve) => {
-      streamToStream(useHost(), Stream.fail(boom)).subscribe({
+      streamToStream(createTrackedHost(), Stream.fail(boom)).subscribe({
         error: resolve,
       });
     });
@@ -182,7 +182,10 @@ describe("bridge/out", () => {
   it("streamToStream() keeps an interrupt-only cause silent", async () => {
     let errored = false;
     let completed = false;
-    streamToStream(useHost(), Stream.fromEffect(Effect.interrupt)).subscribe({
+    streamToStream(
+      createTrackedHost(),
+      Stream.fromEffect(Effect.interrupt),
+    ).subscribe({
       error: () => {
         errored = true;
       },
@@ -248,7 +251,7 @@ describe("bridge/out", () => {
   });
 
   it("sharedFold() hands the seed to the first subscriber synchronously", () => {
-    const stream = sharedFold(useHost(), {
+    const stream = sharedFold(createTrackedHost(), {
       seed: () => {
         return Option.some(1);
       },
@@ -266,7 +269,7 @@ describe("bridge/out", () => {
 
   it("sharedFold() folds an event emitted synchronously after the first subscribe", async () => {
     const subject = new Subject<number>();
-    const stream = sharedFold(useHost(), {
+    const stream = sharedFold(createTrackedHost(), {
       seed: () => {
         return Option.some(0);
       },
@@ -303,7 +306,7 @@ describe("bridge/out", () => {
 
   it("sharedFold() delivers every state of a same-tick burst, in order", async () => {
     const subject = new Subject<number>();
-    const stream = sharedFold(useHost(), {
+    const stream = sharedFold(createTrackedHost(), {
       seed: () => {
         return Option.some(0);
       },
@@ -338,7 +341,7 @@ describe("bridge/out", () => {
 
   it("sharedFold() a subscriber joining in the same tick as a burst misses none of it — the current state at once, then every later one", async () => {
     const subject = new Subject<number>();
-    const stream = sharedFold(useHost(), createSummingFold(subject));
+    const stream = sharedFold(createTrackedHost(), createSummingFold(subject));
     const first: number[] = [];
     const late: number[] = [];
     const firstSub = stream.subscribe((value: number) => {
@@ -361,7 +364,7 @@ describe("bridge/out", () => {
   });
 
   it("sharedFold() hands the first subscriber the seed before anything the producer writes in its first synchronous step", () => {
-    const stream = sharedFold<number>(useHost(), {
+    const stream = sharedFold<number>(createTrackedHost(), {
       seed: () => {
         return Option.some(0);
       },
@@ -382,7 +385,7 @@ describe("bridge/out", () => {
 
   it("sharedFold() a subscriber that joins from inside another's next() hears that state once", async () => {
     const subject = new Subject<number>();
-    const stream = sharedFold(useHost(), createSummingFold(subject));
+    const stream = sharedFold(createTrackedHost(), createSummingFold(subject));
     const joined: number[] = [];
     let joinedSub: Subscription | null = null;
     const sub = stream.subscribe((value: number) => {
@@ -404,7 +407,7 @@ describe("bridge/out", () => {
 
   it("sharedFold() a subscriber that unsubscribes from inside its next() hears nothing more, and the others still do", async () => {
     const subject = new Subject<number>();
-    const stream = sharedFold(useHost(), createSummingFold(subject));
+    const stream = sharedFold(createTrackedHost(), createSummingFold(subject));
     const leaving: number[] = [];
     const staying: number[] = [];
     const leavingSub: Subscription = stream.subscribe((value: number) => {
@@ -431,7 +434,7 @@ describe("bridge/out", () => {
   it("sharedFold() starts the producer on the first subscriber and interrupts it on the last", async () => {
     let interrupted = false;
     let starts = 0;
-    const stream = sharedFold(useHost(), {
+    const stream = sharedFold(createTrackedHost(), {
       seed: () => {
         return Option.some(0);
       },
@@ -460,7 +463,7 @@ describe("bridge/out", () => {
 
   it("sharedFold() delivers updates and de-duplicates Object.is-equal ones", async () => {
     const writes: FoldUpdate<number>[] = [];
-    const host = useHost();
+    const host = createTrackedHost();
     const stream = sharedFold(host, {
       seed: () => {
         return Option.some(1);
@@ -498,7 +501,7 @@ describe("bridge/out", () => {
   it("sharedFold() re-seeds on every cold → warm cycle", async () => {
     const writes: FoldUpdate<number>[] = [];
     let seeds = 0;
-    const host = useHost();
+    const host = createTrackedHost();
     const stream = sharedFold(host, {
       seed: () => {
         seeds += 1;
@@ -544,8 +547,8 @@ describe("bridge/out", () => {
     replaying.next(1);
     replaying.next(2);
     replaying.next(3);
-    // A detached host: its fibers are on the turn scheduler, as the app's
-    // are (`useHost()` builds a plain `ManagedRuntime`, which is not).
+    // A detached host: its fibers are on the turn scheduler, as the app's are
+    // (`createTrackedHost()` builds a plain `ManagedRuntime`, which is not).
     const host = createDetachedHost();
     const stream = sharedFold<number>(host, {
       seed: () => {
@@ -687,7 +690,7 @@ describe("bridge/out", () => {
 
   it("sharedFold() with a None seed delivers nothing until the first write, then replays it", async () => {
     const writes: FoldUpdate<number>[] = [];
-    const host = useHost();
+    const host = createTrackedHost();
     const stream = sharedFold(host, {
       seed: () => {
         return Option.none();
@@ -721,7 +724,7 @@ describe("bridge/out", () => {
 
   it("sharedFold() fails only the triggering subscriber when seed() throws, and starts no period", () => {
     let runs = 0;
-    const stream = sharedFold(useHost(), {
+    const stream = sharedFold(createTrackedHost(), {
       seed: () => {
         throw new Error("storage");
       },
@@ -754,7 +757,7 @@ describe("bridge/out", () => {
     let failFirst: (() => void) | undefined;
     let resumedWithFailure = false;
     let runs = 0;
-    const host = useHost();
+    const host = createTrackedHost();
     const stream = sharedFold(host, {
       seed: () => {
         return Option.some(0);
@@ -801,7 +804,7 @@ describe("bridge/out", () => {
 
   it("sharedFold() releases a port subscription its producer opened through fromPort but never ran", async () => {
     const subject = new Subject<number>();
-    const stream = sharedFold(useHost(), {
+    const stream = sharedFold(createTrackedHost(), {
       seed: () => {
         return Option.some(0);
       },
@@ -820,7 +823,7 @@ describe("bridge/out", () => {
 
   it("sharedFold() surfaces a producer failure as an Observable error", async () => {
     const boom = new Error("boom");
-    const stream = sharedFold(useHost(), {
+    const stream = sharedFold(createTrackedHost(), {
       seed: () => {
         return Option.some(0);
       },
@@ -846,7 +849,7 @@ describe("bridge/out", () => {
     // has its cause flow through `catchAllCause` normally, exercising
     // `failEverySubscriber`'s `Cause.isInterruptedOnly` guard: the one
     // branch the rest of the suite doesn't reach.
-    const stream = sharedFold(useHost(), {
+    const stream = sharedFold(createTrackedHost(), {
       seed: () => {
         return Option.some(0);
       },
@@ -876,7 +879,7 @@ describe("bridge/out", () => {
     let portWasSubscribed = false;
     let seeds = 0;
     let runs = 0;
-    const host = useHost();
+    const host = createTrackedHost();
     const stream = sharedFold(host, {
       seed: () => {
         seeds += 1;
@@ -940,7 +943,7 @@ describe("bridge/out", () => {
     let seeds = 0;
     let attempts = 0;
     let nestedInterrupted = false;
-    const host = useHost();
+    const host = createTrackedHost();
     const stream = sharedFold(host, {
       seed: () => {
         seeds += 1;
@@ -1045,7 +1048,7 @@ describe("bridge/out", () => {
   });
 
   it("sharedFold({ retain: true }) keeps the period across zero subscribers and ends it with the host scope", async () => {
-    const host = useHost();
+    const host = createTrackedHost();
     const subject = new BehaviorSubject<number>(1);
     const stream = sharedFold(host, {
       retain: true,
@@ -1207,7 +1210,7 @@ describe("bridge/out", () => {
   });
 
   it("sharedFold() releases the period's ports on the last unsubscribe, before it returns", async () => {
-    const host = useHost();
+    const host = createTrackedHost();
     const subject = new Subject<number>();
     const stream = sharedFold<number>(host, {
       seed: () => {
@@ -1236,7 +1239,7 @@ describe("bridge/out", () => {
   it("sharedFold() folds several ports as one stream through fromPort.merged, in emission order, and releases them all on the last unsubscribe", async () => {
     const letters = new Subject<string>();
     const numbers = new Subject<number>();
-    const stream = sharedFold<string>(useHost(), {
+    const stream = sharedFold<string>(createTrackedHost(), {
       seed: () => {
         return Option.some("");
       },
@@ -1478,7 +1481,7 @@ describe("bridge/out", () => {
   });
 
   it("createChildHost() ends with the parent scope", async () => {
-    const parent = useHost();
+    const parent = createTrackedHost();
     const child = createChildHost(parent);
     let released = false;
     Effect.runSync(
@@ -1494,7 +1497,7 @@ describe("bridge/out", () => {
   });
 
   it("createChildHost() closing the CHILD leaves the parent open", async () => {
-    const parent = useHost();
+    const parent = createTrackedHost();
     const child = createChildHost(parent);
     let parentReleased = false;
     Effect.runSync(
@@ -1523,7 +1526,7 @@ describe("bridge/out", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host = createHost();
     hosts.push(host);
     return host;

@@ -33,7 +33,10 @@ describe("createWorkspaceNavMachine (effect)", () => {
 
   it("shows admin in the first emission of a resumed administrator, and loses it with the access", () => {
     const auth = createSyncRef<AuthViewState>(createAuthView("admin"));
-    const nav = createWorkspaceNavMachine(useHost(), auth.stateStream());
+    const nav = createWorkspaceNavMachine(
+      createTrackedHost(),
+      auth.stateStream(),
+    );
     const seen: WorkspaceNavState[] = [];
     const sub = nav.state$.subscribe((s) => {
       seen.push(s);
@@ -50,7 +53,10 @@ describe("createWorkspaceNavMachine (effect)", () => {
   });
 
   it("refuses a switch to a hidden tab without emitting", () => {
-    const nav = createWorkspaceNavMachine(useHost(), createAuthState("user"));
+    const nav = createWorkspaceNavMachine(
+      createTrackedHost(),
+      createAuthState("user"),
+    );
     const seen: WorkspaceNavState[] = [];
     const sub = nav.state$.subscribe((s) => {
       seen.push(s);
@@ -62,7 +68,10 @@ describe("createWorkspaceNavMachine (effect)", () => {
   });
 
   it("drops a switch to the tab already active and moves on a new one", async () => {
-    const nav = createWorkspaceNavMachine(useHost(), createAuthState(null));
+    const nav = createWorkspaceNavMachine(
+      createTrackedHost(),
+      createAuthState(null),
+    );
     const seen: WorkspaceNavState[] = [];
     const sub = nav.state$.subscribe((s) => {
       seen.push(s);
@@ -80,7 +89,10 @@ describe("createWorkspaceNavMachine (effect)", () => {
   });
 
   it("a switch is visible to a subscriber joining in the SAME tick — no fiber step", () => {
-    const nav = createWorkspaceNavMachine(useHost(), createAuthState(null));
+    const nav = createWorkspaceNavMachine(
+      createTrackedHost(),
+      createAuthState(null),
+    );
     nav.intents.switchTab("equities");
     const seen: WorkspaceNavState[] = [];
     nav.state$
@@ -95,7 +107,7 @@ describe("createWorkspaceNavMachine (effect)", () => {
   // Read from a fresh subscriber's seed after the close, which reads the
   // ref.
   it("after the host scope closes, switchTab changes nothing", async () => {
-    const host = useHost();
+    const host = createTrackedHost();
     const nav = createWorkspaceNavMachine(host, createAuthState(null));
     await Effect.runPromise(Scope.close(host.scope, Exit.void));
     nav.intents.switchTab("credit");
@@ -111,7 +123,7 @@ describe("createWorkspaceNavMachine (effect)", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

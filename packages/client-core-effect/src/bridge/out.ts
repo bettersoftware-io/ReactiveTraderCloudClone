@@ -35,11 +35,11 @@ export {
 } from "#/bridge/in";
 
 /** What a host runs Effects with: the two operations every bridge helper
- * needs. A `ManagedRuntime` satisfies it structurally (the tests' `useHost`
- * keeps building one); `runnerFor` adapts a plain `Context` — what a Layer
- * captures with `Effect.context`, and what a detached machine host takes
- * as `Context.empty()`. A fiber that a scope must end is forked with
- * `runForkIn`. */
+ * needs. A `ManagedRuntime` satisfies it structurally (the tests'
+ * `createTrackedHost` keeps building one); `runnerFor` adapts a plain
+ * `Context` — what a Layer captures with `Effect.context`, and what a
+ * detached machine host takes as `Context.empty()`. A fiber that a scope
+ * must end is forked with `runForkIn`. */
 export interface EffectRunner {
   runSync<A, E>(effect: Effect.Effect<A, E>): A;
   runFork<A, E>(effect: Effect.Effect<A, E>): Fiber.Fiber<A, E>;

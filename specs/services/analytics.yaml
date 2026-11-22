@@ -6,22 +6,34 @@ operations:
     type: subscription
     description: Streams aggregated position and P&L data.
     request:
-      currency: { type: string, description: "Base currency for P&L calculation", example: "USD" }
+      currency:
+        {
+          type: string,
+          description: "Base currency for P&L calculation",
+          example: "USD",
+        }
     response_stream:
       delivery: individual
       item:
         currentPositions:
           type: array of CurrencyPairPosition
           item:
-            symbol: { type: string, description: "Currency pair", example: "EURUSD" }
+            symbol:
+              { type: string, description: "Currency pair", example: "EURUSD" }
             basePnl: { type: number, description: "P&L in base currency" }
-            baseTradedAmount: { type: number, description: "Total base currency traded" }
-            counterTradedAmount: { type: number, description: "Total counter currency traded" }
+            baseTradedAmount:
+              { type: number, description: "Total base currency traded" }
+            counterTradedAmount:
+              { type: number, description: "Total counter currency traded" }
         history:
           type: array of HistoricPosition
           item:
             timestamp: { type: string, description: "ISO timestamp" }
-            usdPnl: { type: number, description: "Cumulative P&L in USD at this point" }
+            usdPnl:
+              {
+                type: number,
+                description: "Cumulative P&L in USD at this point",
+              }
     behavior:
       - Streams position updates continuously as trades are executed
       - currentPositions contains one entry per currency pair with open positions

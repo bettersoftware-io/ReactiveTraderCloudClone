@@ -34,7 +34,11 @@ describe("createTradeExecutionPresenter", () => {
 
   it("execute() subscribes the port only when subscribed, and unsubscribing withdraws the request", async () => {
     const port = createPort();
-    const p = createTradeExecutionPresenter(useHost(), port.execution);
+    const p = createTradeExecutionPresenter(
+      createTrackedHost(),
+      port.execution,
+    );
+
     const command = p.execute({
       pair: EURUSD,
       direction: Direction.Buy,
@@ -54,7 +58,10 @@ describe("createTradeExecutionPresenter", () => {
 
   it("a result is emitted, the stream completes, and the outcome reaches executions$", async () => {
     const port = createPort();
-    const p = createTradeExecutionPresenter(useHost(), port.execution);
+    const p = createTradeExecutionPresenter(
+      createTrackedHost(),
+      port.execution,
+    );
     const outcomes: ExecutionOutcome[] = [];
     p.executions$.subscribe((outcome: ExecutionOutcome) => {
       outcomes.push(outcome);
@@ -88,7 +95,10 @@ describe("createTradeExecutionPresenter", () => {
 
   it("executions$ reaches only fibers subscribed before the publish", async () => {
     const port = createPort();
-    const p = createTradeExecutionPresenter(useHost(), port.execution);
+    const p = createTradeExecutionPresenter(
+      createTrackedHost(),
+      port.execution,
+    );
     p.execute({
       pair: EURUSD,
       direction: Direction.Buy,
@@ -108,7 +118,10 @@ describe("createTradeExecutionPresenter", () => {
 
   it("a failing command errors the result and publishes nothing", async () => {
     const port = createPort();
-    const p = createTradeExecutionPresenter(useHost(), port.execution);
+    const p = createTradeExecutionPresenter(
+      createTrackedHost(),
+      port.execution,
+    );
     const outcomes: ExecutionOutcome[] = [];
     p.executions$.subscribe((outcome: ExecutionOutcome) => {
       outcomes.push(outcome);
@@ -135,7 +148,7 @@ describe("createTradeExecutionPresenter", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

@@ -28,6 +28,7 @@
     "eslint-rules/**/*.mts",
     "eslint.config.mts",
     "eslint.config.typed.mts",
-    ".dependency-cruiser.mts"
+    ".dependency-cruiser.mts",
+    "stylelint.config.mts"
   ]
 }

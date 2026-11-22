@@ -27,7 +27,7 @@ describe("candleSeries presenter", () => {
 
   it("an empty symbol never calls marketData.candles, and loadOlder on it asks for no page", async () => {
     const scripted = createScriptedCandles();
-    const p = createCandleSeriesPresenter(useHost(), scripted.port);
+    const p = createCandleSeriesPresenter(createTrackedHost(), scripted.port);
     const seen: (readonly Candle[])[] = [];
     p.candles$("").subscribe((series: readonly Candle[]) => {
       seen.push(series);
@@ -42,9 +42,13 @@ describe("candleSeries presenter", () => {
   it("the cooldown reads the INJECTED clock: a retry is blocked inside it and allowed at the boundary", async () => {
     const scripted = createScriptedCandles();
     let clock = T0;
-    const p = createCandleSeriesPresenter(useHost(), scripted.port, () => {
-      return clock;
-    });
+    const p = createCandleSeriesPresenter(
+      createTrackedHost(),
+      scripted.port,
+      () => {
+        return clock;
+      },
+    );
     const series = p.candles$("AAPL").subscribe(() => {});
     await tick();
     scripted.emitCandles("AAPL", "1D", createCandles(3, T0, STEP_MS));
@@ -72,7 +76,7 @@ describe("candleSeries presenter", () => {
 
   it("a nudge offered between warm periods is never stitched into the next one", async () => {
     const scripted = createScriptedCandles();
-    const p = createCandleSeriesPresenter(useHost(), scripted.port);
+    const p = createCandleSeriesPresenter(createTrackedHost(), scripted.port);
     const base = createCandles(3, T0, STEP_MS);
     const first = p.candles$("AAPL").subscribe(() => {});
     await tick();
@@ -110,7 +114,7 @@ describe("candleSeries presenter", () => {
 
   it("a page landing into a fresh period BEFORE its base publishes nothing, then joins the base when it arrives", async () => {
     const scripted = createScriptedCandles();
-    const p = createCandleSeriesPresenter(useHost(), scripted.port);
+    const p = createCandleSeriesPresenter(createTrackedHost(), scripted.port);
     const base = createCandles(3, T0, STEP_MS);
     const first = p.candles$("AAPL").subscribe(() => {});
     await tick();
@@ -146,7 +150,7 @@ describe("candleSeries presenter", () => {
 
   it("closing the host scope mid-page abandons the fetch: the port is released and Effect.ensuring still clears the key", async () => {
     const scripted = createScriptedCandles();
-    const host = useHost();
+    const host = createTrackedHost();
     const p = createCandleSeriesPresenter(host, scripted.port);
     p.candles$("AAPL").subscribe(() => {});
     await tick();
@@ -187,7 +191,7 @@ describe("candleSeries presenter", () => {
 
   it("loadOlder before the series has emitted asks for nothing — there is no anchor yet", async () => {
     const scripted = createScriptedCandles();
-    const p = createCandleSeriesPresenter(useHost(), scripted.port);
+    const p = createCandleSeriesPresenter(createTrackedHost(), scripted.port);
     p.candles$("AAPL").subscribe(() => {});
     await tick();
     p.loadOlder("AAPL");
@@ -197,7 +201,7 @@ describe("candleSeries presenter", () => {
 
   it("loadingOlder$ and historyExhausted$ hand back the SAME instance per key, and the cell survives warm periods", async () => {
     const scripted = createScriptedCandles();
-    const p = createCandleSeriesPresenter(useHost(), scripted.port);
+    const p = createCandleSeriesPresenter(createTrackedHost(), scripted.port);
     // Memoised per key, like the RxJS core's `BehaviorSubject`s — a caller
     // that re-reads the accessor keeps the same cell rather than a fresh
     // view of it.
@@ -241,7 +245,7 @@ describe("candleSeries presenter", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

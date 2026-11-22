@@ -6,7 +6,8 @@ operations:
     type: subscription
     description: Continuous stream of price ticks for a given currency pair.
     request:
-      symbol: { type: string, description: "Currency pair symbol", example: "EURUSD" }
+      symbol:
+        { type: string, description: "Currency pair symbol", example: "EURUSD" }
     response_stream:
       delivery: individual
       item:
@@ -15,7 +16,8 @@ operations:
         ask: { type: number, description: "Best ask price" }
         mid: { type: number, description: "Mid-market price" }
         valueDate: { type: date, description: "Settlement date (ISO format)" }
-        creationTimestamp: { type: integer, description: "Tick timestamp (epoch ms)" }
+        creationTimestamp:
+          { type: integer, description: "Tick timestamp (epoch ms)" }
     behavior:
       - Emits individual PriceTick objects at variable intervals
       - Stream remains active until unsubscribed or disconnected

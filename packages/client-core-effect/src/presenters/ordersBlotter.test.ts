@@ -23,7 +23,7 @@ describe("ordersBlotter presenter", () => {
     const boom = new Error("book unreachable");
     const scripted = createScriptedOrders();
     scripted.failBook(boom);
-    const p = createOrdersBlotterPresenter(useHost(), scripted.port);
+    const p = createOrdersBlotterPresenter(createTrackedHost(), scripted.port);
     const errors: unknown[] = [];
     p.orders$.subscribe({
       next: () => {},
@@ -38,7 +38,7 @@ describe("ordersBlotter presenter", () => {
 
   it("place() twice is two port calls, and an unsubscribe releases that call's port", async () => {
     const scripted = createScriptedOrders();
-    const p = createOrdersBlotterPresenter(useHost(), scripted.port);
+    const p = createOrdersBlotterPresenter(createTrackedHost(), scripted.port);
     const first = p.place(REQUEST).subscribe(() => {});
     const second = p.place(REQUEST).subscribe(() => {});
     await tick();
@@ -54,7 +54,7 @@ describe("ordersBlotter presenter", () => {
 
   it("a refresh arriving while a query is pending SWITCHES to a fresh one: the stale query is abandoned and only the newest book lands", async () => {
     const scripted = createScriptedOrders();
-    const p = createOrdersBlotterPresenter(useHost(), scripted.port);
+    const p = createOrdersBlotterPresenter(createTrackedHost(), scripted.port);
     const books: (readonly EquityOrder[])[] = [];
     p.orders$.subscribe((book: readonly EquityOrder[]) => {
       books.push(book);
@@ -89,7 +89,7 @@ describe("ordersBlotter presenter", () => {
 
   it("place() is lazy: the port is not called until the returned stream is subscribed", async () => {
     const scripted = createScriptedOrders();
-    const p = createOrdersBlotterPresenter(useHost(), scripted.port);
+    const p = createOrdersBlotterPresenter(createTrackedHost(), scripted.port);
     p.place(REQUEST);
     await tick();
     expect(scripted.placeCalls()).toBe(0);
@@ -97,7 +97,7 @@ describe("ordersBlotter presenter", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

@@ -29,7 +29,7 @@ describe("createPriceStreamPresenter", () => {
   it("memoises per pair", () => {
     const { pricing } = createCountingPricing();
     const p = createPriceStreamPresenter(
-      useHost(),
+      createTrackedHost(),
       pricing,
       new BehaviorSubject<boolean>(false),
     );
@@ -40,7 +40,7 @@ describe("createPriceStreamPresenter", () => {
   it("opens the port stream per warm period through the use case, never at construction", async () => {
     const { pricing, subscribes, observed } = createCountingPricing();
     const p = createPriceStreamPresenter(
-      useHost(),
+      createTrackedHost(),
       pricing,
       new BehaviorSubject<boolean>(false),
     );
@@ -61,7 +61,7 @@ describe("createPriceStreamPresenter", () => {
   it("enriches each tick against the previous mid", async () => {
     const { pricing, push } = createCountingPricing();
     const p = createPriceStreamPresenter(
-      useHost(),
+      createTrackedHost(),
       pricing,
       new BehaviorSubject<boolean>(false),
     );
@@ -82,7 +82,7 @@ describe("createPriceStreamPresenter", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

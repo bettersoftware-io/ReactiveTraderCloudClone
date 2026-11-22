@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "imports": {
-    "#/*": "./src/*",
-    "#tests/*": "./tests/*"
+    "#/*": "./src/*"
   },
   "scripts": {
     "build": "vite build",
@@ -24,9 +23,9 @@
     "@types/node": "^26.2.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitejs/plugin-react": "^6",
-    "jsdom": "^30.0.1",
-    "vite": "^8",
-    "vitest": "^5.0.5"
+    "@vitejs/plugin-react": "^6.3.0",
+    "jsdom": "^31.0.1",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
   }
 }

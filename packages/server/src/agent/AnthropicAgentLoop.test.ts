@@ -614,12 +614,14 @@ describe("AnthropicAgentLoop", () => {
     error.mockRestore();
   });
 
-  it("an own key's client ignores the environment: fixed host, no bearer token, no custom headers, no redirects", async () => {
+  it("an own key's client ignores the environment: fixed host, no house bearer token, no custom headers, no redirects", async () => {
     const seen = await captureFirstRequest(true);
 
     expect(new URL(seen.url).origin).toBe("https://api.anthropic.com");
-    expect(seen.headers.get("x-api-key")).toBe("sk-own");
-    expect(seen.headers.get("authorization")).toBeNull();
+    // SDK 1.x sends an API key as `Authorization: Bearer`, the header the
+    // house token would use: the person's key is the only credential sent.
+    expect(seen.headers.get("authorization")).toBe("Bearer sk-own");
+    expect(seen.headers.get("x-api-key")).toBeNull();
     expect(seen.headers.get("x-house-tenant")).toBeNull();
     expect(seen.headers.get("x-house-other")).toBeNull();
     expect(seen.redirect).toBe("error");
@@ -633,7 +635,7 @@ describe("AnthropicAgentLoop", () => {
     expect(seen.redirect).toBeUndefined();
   });
 
-  it("(f) breaching the per-session turn cap short-circuits with no runnerFactory invocation", async () => {
+  it("a 429 on an own key stays the sanitized copy and refuses nothing", async () => {
     const refused = vi.fn();
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const loop = new AnthropicAgentLoop({

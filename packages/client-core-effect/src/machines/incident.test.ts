@@ -22,7 +22,7 @@ describe("createIncidentMachine (effect)", () => {
   // All three are synchronous within the intent: the state has reached its
   // subscriber by the time `inject` returns, after both side effects.
   it("inject perturbs every control, then pushes, then updates state — in that order", () => {
-    const rig = createRig(useHost());
+    const rig = createRig(createTrackedHost());
     rig.machine.intents.inject("latencySpike");
 
     expect(rig.log).toEqual([
@@ -34,7 +34,7 @@ describe("createIncidentMachine (effect)", () => {
   });
 
   it("errorBurst pushes nothing; a repeated inject perturbs and pushes again but does not duplicate the kind", async () => {
-    const rig = createRig(useHost());
+    const rig = createRig(createTrackedHost());
     rig.machine.intents.inject("errorBurst");
     await tick();
     expect(rig.log).toEqual([
@@ -59,7 +59,7 @@ describe("createIncidentMachine (effect)", () => {
   });
 
   it("clear resets every control, then pushes gatewayConnected, then resets state", async () => {
-    const rig = createRig(useHost());
+    const rig = createRig(createTrackedHost());
     rig.machine.intents.inject("errorBurst");
     await tick();
     rig.log.length = 0;
@@ -75,7 +75,7 @@ describe("createIncidentMachine (effect)", () => {
   });
 
   it("clear pushes gatewayConnected even when nothing is active", () => {
-    const rig = createRig(useHost());
+    const rig = createRig(createTrackedHost());
     rig.machine.intents.clear();
 
     expect(rig.log).toContain("push(gatewayConnected)");
@@ -83,7 +83,7 @@ describe("createIncidentMachine (effect)", () => {
 
   // State is read from a fresh subscriber's seed, which reads the ref.
   it("an intent after the host scope closes touches no control, pushes nothing and changes no state", async () => {
-    const host = useHost();
+    const host = createTrackedHost();
     const rig = createRig(host);
     await Effect.runPromise(Scope.close(host.scope, Exit.void));
     rig.log.length = 0;
@@ -102,7 +102,7 @@ describe("createIncidentMachine (effect)", () => {
   });
 
   it("dispose() is idempotent and ends intents the same way", () => {
-    const rig = createRig(useHost());
+    const rig = createRig(createTrackedHost());
     rig.machine.dispose();
     rig.machine.dispose();
     rig.log.length = 0;
@@ -113,7 +113,7 @@ describe("createIncidentMachine (effect)", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

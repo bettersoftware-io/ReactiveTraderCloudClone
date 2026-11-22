@@ -4,7 +4,8 @@
   "ignoreBinaries": ["scripts/install-actionlint.sh"],
   "workspaces": {
     ".": {
-      "ignoreDependencies": ["@babel/core", "babel-plugin-react-compiler"]
+      "ignoreDependencies": ["@babel/core", "babel-plugin-react-compiler"],
+      "stylelint": { "config": ["stylelint.config.mts"] }
     },
     "packages/domain": {
       "entry": ["src/index.ts", "src/ports/__contracts__/*.ts"],

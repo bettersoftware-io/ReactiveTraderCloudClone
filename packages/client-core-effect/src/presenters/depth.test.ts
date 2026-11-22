@@ -21,7 +21,7 @@ describe("depth presenter", () => {
 
   it("memoises per symbol — one port CALL per symbol ever, one SUBSCRIPTION per warm period, released on the last unsubscribe", async () => {
     const scripted = createScriptedDepth();
-    const p = createDepthPresenter(useHost(), scripted.port);
+    const p = createDepthPresenter(createTrackedHost(), scripted.port);
     expect(p.depth$("AAPL")).toBe(p.depth$("AAPL"));
     expect(p.depth$("AAPL")).not.toBe(p.depth$("MSFT"));
     // The port METHOD is called once per symbol, when the stream is
@@ -54,7 +54,7 @@ describe("depth presenter", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),

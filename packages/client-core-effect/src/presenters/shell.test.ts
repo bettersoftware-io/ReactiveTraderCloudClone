@@ -59,7 +59,7 @@ describe("shell presenters (effect)", () => {
   // The contract suite cannot prove this for a sibling (slice-6 ledger A-5).
   it("auth: a stored session that has expired is cleared at resume", () => {
     const rig = createAuthRig(createSession(1_000));
-    createAuthPresenter(useHost(), rig.deps, () => {
+    createAuthPresenter(createTrackedHost(), rig.deps, () => {
       return 1_000;
     });
 
@@ -69,7 +69,7 @@ describe("shell presenters (effect)", () => {
   it("auth: a live session resumes signed in, and is left in the store", () => {
     const session = createSession(2_000);
     const rig = createAuthRig(session);
-    const auth = createAuthPresenter(useHost(), rig.deps, () => {
+    const auth = createAuthPresenter(createTrackedHost(), rig.deps, () => {
       return 1_000;
     });
     const first: AuthViewState[] = [];
@@ -88,7 +88,7 @@ describe("shell presenters (effect)", () => {
 
   it("auth: a login whose outcome lands after the host scope closes commits nothing", async () => {
     const rig = createAuthRig(null);
-    const host = useHost();
+    const host = createTrackedHost();
     const auth = createAuthPresenter(host, rig.deps);
     auth.login("demo", "pw");
     await tick();
@@ -107,7 +107,7 @@ describe("shell presenters (effect)", () => {
 
   it("director: releases a dropped pair's price stream when the roster changes, and every source on the last unsubscribe", async () => {
     const rig = createDirectorRig();
-    const director = createAnimationDirector(useHost(), rig.sources);
+    const director = createAnimationDirector(createTrackedHost(), rig.sources);
     const seen: AnimationIntent[] = [];
     const sub = director.intentsFor("tile:EURUSD").subscribe((i) => {
       seen.push(i);
@@ -131,7 +131,7 @@ describe("shell presenters (effect)", () => {
 
   const hosts: TestHost[] = [];
 
-  function useHost(): TestHost {
+  function createTrackedHost(): TestHost {
     const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),
