@@ -413,19 +413,10 @@ overrides:
 
   # 2026-10-06: three advisories published the same night, all red on CI gate
   # 25 (`pnpm audit --prod`). Each override is SCOPED to the vulnerable range,
-  # and each patched release is outside the minimumReleaseAge cooldown.
+  # and each patched release is outside the minimumReleaseAge cooldown. The
+  # third, seroval's (<=1.6.2, reached through solid-js 1's server renderer),
+  # went with Solid 1 on 2026-11-22: solid-js 2 asks for seroval ^1.8 itself.
   #
-  # seroval (client-solid > solid-js > seroval, and > seroval-plugins):
-  # CRITICAL GHSA-p6vx-979v-rg4c (`fromJSON()` thenable assimilation invokes
-  # plugin-produced callables; <=1.6.0) and HIGH GHSA-jp82-f5mq-hwhp (memory
-  # exhaustion via an unchecked TypedArray length; <=1.6.2). There is no 1.5.x
-  # backport and no solid-js release that asks for a patched one — solid-js
-  # 1.9.15, the latest, still pins `~1.5.4` — so the override crosses a minor.
-  # Solid reaches seroval only from its server renderer (serialising state for
-  # hydration); this app renders in the browser only. seroval-plugins is lifted
-  # with it so the pair stays on one release (1.6.8, published 2026-09-29).
-  "seroval@<1.6.3": ^1.6.8
-  "seroval-plugins@<1.6.3": ^1.6.8
   # proxy-addr (server > @modelcontextprotocol/sdk > express > proxy-addr):
   # CRITICAL GHSA-jqcg-44mw-7w3h (IP spoofing through an IPv4-mapped IPv6
   # trust subnet; <2.0.8). 2.0.8 published 2026-09-15.
@@ -470,21 +461,13 @@ packageExtensions:
     dependencies:
       "@babel/core": "7.29.7"
 
-# vitest-browser-solid@1.0.1 (latest; upstream dormant since 2025-10-31) peers
-# on vitest `^4.0.0` only. Its whole runtime is ~60 lines over two vitest/browser
-# APIs — `utils.getElementLocatorSelectors` and `utils.debug` — both still
-# exported unchanged by @vitest/browser@5, so it runs on vitest 5 as published.
-# Upstream PR advancedtw/vitest-browser-solid#6 (open since 2026-09-06) widens
-# the peer to `^4.0.0 || ^5.0.0`; delete this block once a release carries it.
-#
-# vite-plugin-solid@2.11.17 (latest) peers on @testing-library/jest-dom up to
-# `^7.0.0`. jest-dom 8.0.0's only breaking change drops vitest < 5 (this repo
-# is on vitest 5); the plugin only resolves the bare `@testing-library/jest-dom/vitest`
-# specifier from the project root and injects it as a setup file, and 8.0.0
-# still exports that subpath — verified 2026-11-22 by a probe test asserting
-# `toBeInTheDocument()` under client-solid's and solid-bindings' configs.
-# Delete that entry once a vite-plugin-solid release widens the peer.
+# @solidjs/vite-plugin@3.0.1 (latest) peers on @testing-library/jest-dom up to
+# `^7.0.0` (an optional peer). jest-dom 8.0.0's only breaking change drops
+# vitest < 5 (this repo is on vitest 5); the plugin only resolves the bare
+# `@testing-library/jest-dom/vitest` specifier from the project root and
+# injects it as a setup file, and 8.0.0 still exports that subpath. (The same
+# entry, verified by a probe on 2026-11-22, existed for the plugin's Solid 1
+# predecessor, vite-plugin-solid.) Delete it once a release widens the peer.
 peerDependencyRules:
   allowedVersions:
-    "vitest-browser-solid>vitest": "^5.0.0"
-    "vite-plugin-solid>@testing-library/jest-dom": "^8.0.0"
+    "@solidjs/vite-plugin>@testing-library/jest-dom": "^8.0.0"

@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import solid from "vite-plugin-solid";
+import solid from "@solidjs/vite-plugin";
 import { defineConfig } from "vitest/config";
 
 // Package root (packages/client-solid) — used to anchor # subpath aliases so
@@ -19,8 +19,9 @@ const pkgRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const specsDir = resolve(pkgRoot, "../ui-contract/src/specs");
 
 export default defineConfig({
-  // hot: false (Task 12/P5) — vite-plugin-solid enables solid-refresh HMR
-  // wrapping whenever `command === "serve"`, which vitest's own dev server
+  // refresh: false (Task 12/P5; `hot: false` under Solid 1's
+  // vite-plugin-solid) — the plugin enables its HMR refresh transform
+  // whenever `command === "serve"`, which vitest's own dev server
   // always reports true for, even under a one-shot `vitest run`; harmless
   // until the new `AppShell` token (`registry.tsx`) made App.tsx (and
   // therefore every panel it reaches) part of setup.ts's eagerly-loaded
@@ -33,7 +34,7 @@ export default defineConfig({
   // `ViewModelProvider`, `useViewModel must be used within ViewModelProvider`).
   // HMR has no meaning inside a one-shot test run, so disabling it outright
   // is the correct fix, not a workaround for the mock specifically.
-  plugins: [solid({ hot: false })],
+  plugins: [solid({ refresh: false })],
   resolve: {
     alias: {
       // The framework-neutral harness lives in @rtc/ui-contract; resolve
@@ -70,6 +71,7 @@ export default defineConfig({
     include: [`${specsDir}/**/*.contract.spec.ts`],
     setupFiles: [
       "./tests/setup/jsdom-storage.ts",
+      "./tests/setup/flush-after-each-event.ts",
       "./tests/ui/contract/solid/setup.ts",
     ],
     passWithNoTests: false,
