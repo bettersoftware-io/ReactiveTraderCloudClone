@@ -48,7 +48,7 @@
     "@vitest/browser-playwright": "5.0.5",
     "@vitest/coverage-istanbul": "^5.0.5",
     "@vitest/ui": "^5.0.5",
-    "jsdom": "^30.0.1",
+    "jsdom": "^31.0.1",
     "playwright": "^1.60.0",
     "solid-devtools": "^0.34.5",
     "vite": "^8",
