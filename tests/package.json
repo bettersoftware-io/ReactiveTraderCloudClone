@@ -54,7 +54,7 @@
   },
   "devDependencies": {
     "@cucumber/cucumber": "^13.0.0",
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "^1.65.1",
     "@rtc/client-core-async": "workspace:*",
     "@rtc/client-core-effect": "workspace:*",
     "@sinonjs/fake-timers": "^15.0.0",

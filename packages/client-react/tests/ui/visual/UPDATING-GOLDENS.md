@@ -302,7 +302,7 @@ sequenceDiagram
 | [`ADR-001-visual-diff-tooling.md`](./ADR-001-visual-diff-tooling.md) | why two sets exist; the collapse that was reverted; the 2026-07-20 tier-retirement Outcome |
 | [`.github/workflows/visual.yml`](../../../../../.github/workflows/visual.yml) | the gate — checks `react/` on push to `main` |
 
-Container image is pinned to `mcr.microsoft.com/playwright:v1.63.0-noble`;
+Container image is pinned to `mcr.microsoft.com/playwright:v1.65.1-noble`;
 tolerance is `maxDiffPixelRatio: 0.005` + `maxDiffPixels: 100` (react and solid alike); sole tier: `playwright`
 (`playwright-ct` and `vitest-browser`'s assert role retired 2026-07-20 — see
 ADR-001). Keep the image tag identical across
